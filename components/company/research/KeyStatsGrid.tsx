@@ -1,8 +1,11 @@
+"use client";
+
 import { Card } from "@/components/ui/Card";
-import { ChangeIndicator } from "@/components/ui/ChangeIndicator";
-import { cn, formatPrice, formatVolume } from "@/lib/utils";
+import { CompanyLiveQuote } from "@/components/market/CompanyLiveQuote";
+import { useMarketQuotes } from "@/hooks/useMarketQuotes";
+import { createUnavailableQuote } from "@/lib/market-data/enriched-quote";
+import { cn, formatPrice, formatVolume, isValidMarketPrice } from "@/lib/utils";
 import type { CompanyProfile, TradingData } from "@/types";
-import { Radio } from "lucide-react";
 
 interface KeyStatsGridProps {
   company: CompanyProfile;
@@ -17,12 +20,27 @@ interface Stat {
 }
 
 export function KeyStatsGrid({ company, trading }: KeyStatsGridProps) {
-  const isGain = company.changePercent >= 0;
+  const { quotes, loading } = useMarketQuotes([company.symbol], {
+    initialQuotes: company.quote
+      ? { [company.symbol.toUpperCase()]: company.quote }
+      : {},
+  });
 
+  const normalized = company.symbol.toUpperCase();
+  const polled = quotes.get(company.symbol) ?? quotes.get(normalized);
+  const quote =
+    polled ??
+    (loading ? company.quote : undefined) ??
+    createUnavailableQuote(company.symbol);
+
+  const livePrice = quote.price;
   const rangePosition =
-    ((company.price - trading.weekLow52) /
-      (trading.weekHigh52 - trading.weekLow52)) *
-    100;
+    isValidMarketPrice(livePrice) &&
+    trading.weekHigh52 > trading.weekLow52
+      ? ((livePrice - trading.weekLow52) /
+          (trading.weekHigh52 - trading.weekLow52)) *
+        100
+      : 0;
 
   const stats: Stat[] = [
     { label: "Open", value: formatPrice(trading.open), mono: true },
@@ -53,52 +71,33 @@ export function KeyStatsGrid({ company, trading }: KeyStatsGridProps) {
   return (
     <Card padding="lg" className="animate-fade-in-up">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-center gap-4">
-          <div className="flex flex-col">
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gain opacity-60" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-gain" />
-              </span>
-              <span className="text-[10px] font-medium uppercase tracking-wider text-text-faint">
-                Live · NSE
-              </span>
-              <Radio className="h-3 w-3 text-text-faint" />
-            </div>
-            <p className="mt-1 font-mono text-4xl font-bold tabular-nums text-text-primary">
-              {formatPrice(company.price)}
-            </p>
-            <div className="mt-1 flex items-center gap-2">
-              <span
-                className={cn(
-                  "font-mono text-sm tabular-nums",
-                  isGain ? "text-gain" : "text-loss"
-                )}
-              >
-                {isGain ? "+" : ""}
-                {formatPrice(Math.abs(company.change))}
-              </span>
-              <ChangeIndicator value={company.changePercent} size="md" />
-            </div>
-          </div>
-        </div>
+        <CompanyLiveQuote
+          symbol={company.symbol}
+          initialQuote={company.quote}
+          size="lg"
+        />
 
-        {/* 52-week range bar */}
         <div className="w-full max-w-sm">
           <div className="mb-1.5 flex items-center justify-between text-[10px] uppercase tracking-wider text-text-faint">
             <span>52W Low</span>
             <span>52W High</span>
           </div>
           <div className="relative h-2 rounded-full bg-surface-overlay">
-            <div className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-loss/40 via-accent/40 to-gain/40 w-full" />
-            <div
-              className="absolute top-1/2 h-4 w-1 -translate-y-1/2 rounded-full bg-text-primary shadow-glow"
-              style={{ left: `calc(${Math.max(2, Math.min(98, rangePosition))}% - 2px)` }}
-            />
+            <div className="absolute inset-y-0 left-0 w-full rounded-full bg-gradient-to-r from-loss/40 via-accent/40 to-gain/40" />
+            {isValidMarketPrice(livePrice) && (
+              <div
+                className="absolute top-1/2 h-4 w-1 -translate-y-1/2 rounded-full bg-text-primary shadow-glow"
+                style={{ left: `calc(${Math.max(2, Math.min(98, rangePosition))}% - 2px)` }}
+              />
+            )}
           </div>
           <div className="mt-1.5 flex items-center justify-between font-mono text-xs tabular-nums text-text-secondary">
             <span>{formatPrice(trading.weekLow52)}</span>
-            <span className="text-text-faint">{Math.round(rangePosition)}% of range</span>
+            <span className="text-text-faint">
+              {isValidMarketPrice(livePrice)
+                ? `${Math.round(rangePosition)}% of range`
+                : "52W range"}
+            </span>
             <span>{formatPrice(trading.weekHigh52)}</span>
           </div>
         </div>

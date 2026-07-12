@@ -3,8 +3,18 @@
  * All market data consumption flows through MarketDataService.
  */
 
-export { marketDataService, getQuote, getMarketData, getIndex, getQuotes } from "@/lib/market-data/service";
+export {
+  marketDataService,
+  getQuote,
+  getMarketData,
+  getIndex,
+  getQuotes,
+  getEnrichedQuote,
+  getEnrichedQuotes,
+} from "@/lib/market-data/service";
 export type { QuoteResult } from "@/lib/market-data/service";
+export type { EnrichedQuote, QuoteAvailability } from "@/lib/market-data/enriched-quote";
+export { toEnrichedQuote, createUnavailableQuote } from "@/lib/market-data/enriched-quote";
 export type { OhlcResult } from "@/lib/market/ohlc-engine";
 
 export type {

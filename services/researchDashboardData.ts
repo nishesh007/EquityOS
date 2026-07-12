@@ -1,10 +1,13 @@
 import type {
   IntradayIdea,
   MarketBreadth,
+  MarketMover,
   MarketPulse,
   SwingTradeIdea,
 } from "@/types";
 import { EquityIntelligenceEngine } from "@/lib/engine";
+import { marketDataService } from "@/lib/market-data";
+import { formatVolume } from "@/lib/utils";
 import { fetchCompanyProfile } from "@/services/companyData";
 import { fetchCompanyResearch } from "@/services/researchData";
 import { getCached, cacheKey, CACHE_TTL } from "@/lib/cache";
@@ -26,35 +29,35 @@ export const marketBreadth: MarketBreadth = {
     { name: "Nifty Media", changePercent: -1.12, breadth: 29 },
   ],
   gainers: [
-    { symbol: "COFORGE", name: "Coforge", price: 6842.4, changePercent: 7.82, volume: "2.8M" },
-    { symbol: "TRENT", name: "Trent", price: 5641.2, changePercent: 6.34, volume: "3.1M" },
-    { symbol: "BEL", name: "Bharat Electronics", price: 318.75, changePercent: 5.91, volume: "18.4M" },
-    { symbol: "DIXON", name: "Dixon Technologies", price: 12480.5, changePercent: 5.42, volume: "1.2M" },
-    { symbol: "PERSISTENT", name: "Persistent Systems", price: 4938.8, changePercent: 4.88, volume: "1.6M" },
+    { symbol: "COFORGE", name: "Coforge", price: 0, changePercent: 0, volume: "—" },
+    { symbol: "TRENT", name: "Trent", price: 0, changePercent: 0, volume: "—" },
+    { symbol: "BEL", name: "Bharat Electronics", price: 0, changePercent: 0, volume: "—" },
+    { symbol: "DIXON", name: "Dixon Technologies", price: 0, changePercent: 0, volume: "—" },
+    { symbol: "PERSISTENT", name: "Persistent Systems", price: 0, changePercent: 0, volume: "—" },
   ],
   losers: [
-    { symbol: "DRREDDY", name: "Dr. Reddy's Labs", price: 1284.6, changePercent: -4.31, volume: "3.4M" },
-    { symbol: "GODREJPROP", name: "Godrej Properties", price: 2852.15, changePercent: -3.87, volume: "2.2M" },
-    { symbol: "HINDPETRO", name: "HPCL", price: 376.9, changePercent: -3.44, volume: "9.8M" },
-    { symbol: "CIPLA", name: "Cipla", price: 1518.2, changePercent: -2.96, volume: "2.1M" },
-    { symbol: "PIDILITIND", name: "Pidilite Industries", price: 3042.7, changePercent: -2.51, volume: "0.8M" },
+    { symbol: "DRREDDY", name: "Dr. Reddy's Labs", price: 0, changePercent: 0, volume: "—" },
+    { symbol: "GODREJPROP", name: "Godrej Properties", price: 0, changePercent: 0, volume: "—" },
+    { symbol: "HINDPETRO", name: "HPCL", price: 0, changePercent: 0, volume: "—" },
+    { symbol: "CIPLA", name: "Cipla", price: 0, changePercent: 0, volume: "—" },
+    { symbol: "PIDILITIND", name: "Pidilite Industries", price: 0, changePercent: 0, volume: "—" },
   ],
   weekHighs: [
-    { symbol: "BHARTIARTL", name: "Bharti Airtel", price: 1685.4, changePercent: 1.48, volume: "4.2M" },
-    { symbol: "M&M", name: "Mahindra & Mahindra", price: 2924.8, changePercent: 2.12, volume: "3.8M" },
-    { symbol: "HAL", name: "Hindustan Aeronautics", price: 4782.3, changePercent: 3.26, volume: "2.6M" },
+    { symbol: "BHARTIARTL", name: "Bharti Airtel", price: 0, changePercent: 0, volume: "—" },
+    { symbol: "M&M", name: "Mahindra & Mahindra", price: 0, changePercent: 0, volume: "—" },
+    { symbol: "HAL", name: "Hindustan Aeronautics", price: 0, changePercent: 0, volume: "—" },
   ],
   weekLows: [
-    { symbol: "BANDHANBNK", name: "Bandhan Bank", price: 164.25, changePercent: -1.84, volume: "12.4M" },
-    { symbol: "IDEA", name: "Vodafone Idea", price: 8.42, changePercent: -2.32, volume: "184.6M" },
-    { symbol: "DELHIVERY", name: "Delhivery", price: 326.7, changePercent: -1.18, volume: "5.2M" },
+    { symbol: "BANDHANBNK", name: "Bandhan Bank", price: 0, changePercent: 0, volume: "—" },
+    { symbol: "IDEA", name: "Vodafone Idea", price: 0, changePercent: 0, volume: "—" },
+    { symbol: "DELHIVERY", name: "Delhivery", price: 0, changePercent: 0, volume: "—" },
   ],
   mostActive: [
-    { symbol: "HDFCBANK", name: "HDFC Bank", price: 1724.3, changePercent: -0.42, volume: "₹2,184Cr" },
-    { symbol: "RELIANCE", name: "Reliance Industries", price: 2890.5, changePercent: 1.24, volume: "₹1,946Cr" },
-    { symbol: "ICICIBANK", name: "ICICI Bank", price: 1285.4, changePercent: 0.32, volume: "₹1,624Cr" },
-    { symbol: "TATASTEEL", name: "Tata Steel", price: 168.7, changePercent: 2.18, volume: "₹1,318Cr" },
-    { symbol: "INFY", name: "Infosys", price: 1892.15, changePercent: 1.56, volume: "₹1,172Cr" },
+    { symbol: "HDFCBANK", name: "HDFC Bank", price: 0, changePercent: 0, volume: "—" },
+    { symbol: "RELIANCE", name: "Reliance Industries", price: 0, changePercent: 0, volume: "—" },
+    { symbol: "ICICIBANK", name: "ICICI Bank", price: 0, changePercent: 0, volume: "—" },
+    { symbol: "TATASTEEL", name: "Tata Steel", price: 0, changePercent: 0, volume: "—" },
+    { symbol: "INFY", name: "Infosys", price: 0, changePercent: 0, volume: "—" },
   ],
 };
 
@@ -84,12 +87,12 @@ const swingTradeIdeasBase: Omit<SwingTradeIdea, "technicalScore" | "fundamentalS
   { symbol: "TATAPOWER", company: "Tata Power", side: "Long", entryLow: 432, entryHigh: 441, stopLoss: 416, targets: [460, 478, 498] },
 ];
 
-const intradayIdeasBase: Omit<IntradayIdea, "conviction">[] = [
-  { symbol: "RELIANCE", company: "Reliance Industries", side: "Long", entry: 2892, stopLoss: 2862, target: 2952, riskReward: 2, timeHorizon: "2–4 hours" },
-  { symbol: "INFY", company: "Infosys", side: "Long", entry: 1894, stopLoss: 1878, target: 1928, riskReward: 2.1, timeHorizon: "1–3 hours" },
-  { symbol: "SBIN", company: "State Bank of India", side: "Short", entry: 811, stopLoss: 819, target: 795, riskReward: 2, timeHorizon: "2–5 hours" },
-  { symbol: "TATASTEEL", company: "Tata Steel", side: "Long", entry: 169.1, stopLoss: 166.8, target: 173.8, riskReward: 2, timeHorizon: "1–2 hours" },
-  { symbol: "MARUTI", company: "Maruti Suzuki", side: "Long", entry: 12465, stopLoss: 12342, target: 12725, riskReward: 2.1, timeHorizon: "3–5 hours" },
+const intradayIdeasBase: Omit<IntradayIdea, "conviction" | "entry">[] = [
+  { symbol: "RELIANCE", company: "Reliance Industries", side: "Long", stopLoss: 2862, target: 2952, riskReward: 2, timeHorizon: "2–4 hours" },
+  { symbol: "INFY", company: "Infosys", side: "Long", stopLoss: 1878, target: 1928, riskReward: 2.1, timeHorizon: "1–3 hours" },
+  { symbol: "SBIN", company: "State Bank of India", side: "Short", stopLoss: 819, target: 795, riskReward: 2, timeHorizon: "2–5 hours" },
+  { symbol: "TATASTEEL", company: "Tata Steel", side: "Long", stopLoss: 166.8, target: 173.8, riskReward: 2, timeHorizon: "1–2 hours" },
+  { symbol: "MARUTI", company: "Maruti Suzuki", side: "Long", stopLoss: 12342, target: 12725, riskReward: 2.1, timeHorizon: "3–5 hours" },
 ];
 
 const FALLBACK_CONVICTION: Record<string, number> = {
@@ -99,6 +102,61 @@ const FALLBACK_CONVICTION: Record<string, number> = {
   TATASTEEL: 76,
   MARUTI: 73,
 };
+
+async function resolveMover(
+  mover: MarketMover,
+  volumeLabel?: "shares" | "turnover"
+): Promise<MarketMover> {
+  const quote = await marketDataService.getEnrichedQuote(mover.symbol);
+  return {
+    ...mover,
+    price: quote.price ?? 0,
+    changePercent: quote.changePercent ?? 0,
+    volume:
+      volumeLabel === "turnover"
+        ? quote.volume
+          ? `₹${formatVolume(quote.volume)}`
+          : "—"
+        : quote.volume
+          ? formatVolume(quote.volume)
+          : "—",
+    quote,
+  };
+}
+
+async function enrichMovers(movers: MarketMover[], volumeLabel?: "shares" | "turnover") {
+  return Promise.all(movers.map((m) => resolveMover(m, volumeLabel)));
+}
+
+async function buildLiveMarketBreadth(): Promise<MarketBreadth> {
+  const [gainers, losers, weekHighs, weekLows, mostActive] = await Promise.all([
+    enrichMovers(marketBreadth.gainers),
+    enrichMovers(marketBreadth.losers),
+    enrichMovers(marketBreadth.weekHighs),
+    enrichMovers(marketBreadth.weekLows),
+    enrichMovers(marketBreadth.mostActive, "turnover"),
+  ]);
+
+  return {
+    ...marketBreadth,
+    gainers,
+    losers,
+    weekHighs,
+    weekLows,
+    mostActive,
+  };
+}
+
+
+async function resolveSwingEntryRange(symbol: string): Promise<{ entryLow: number; entryHigh: number }> {
+  const quote = await marketDataService.getEnrichedQuote(symbol);
+  const price = quote.price ?? 0;
+  if (price <= 0) return { entryLow: 0, entryHigh: 0 };
+  return {
+    entryLow: Math.round(price * 0.985 * 100) / 100,
+    entryHigh: Math.round(price * 1.015 * 100) / 100,
+  };
+}
 
 async function resolveSwingScores(
   symbol: string
@@ -138,8 +196,8 @@ function buildMarketPulse(): MarketPulse {
     .normalizedScore;
 
   return {
-    indiaVix: 13.42,
-    indiaVixChange: -4.82,
+    indiaVix: 0,
+    indiaVixChange: 0,
     institutionalFlow: {
       fii: 3240,
       dii: 1185,
@@ -151,34 +209,61 @@ function buildMarketPulse(): MarketPulse {
   };
 }
 
+async function buildLiveMarketPulse(): Promise<MarketPulse> {
+  const vixQuote = await marketDataService.getEnrichedQuote("INDIAVIX");
+  const base = buildMarketPulse();
+
+  return {
+    ...base,
+    indiaVix: vixQuote.price ?? 0,
+    indiaVixChange: vixQuote.changePercent ?? 0,
+    vixQuote,
+  };
+}
+
 export const marketPulse = buildMarketPulse();
 
 export async function fetchMarketBreadth(): Promise<MarketBreadth> {
-  return getCached({ key: cacheKey("market-breadth"), ttlMs: CACHE_TTL.DASHBOARD }, async () => marketBreadth);
+  return getCached(
+    { key: cacheKey("market-breadth"), ttlMs: CACHE_TTL.QUOTE },
+    buildLiveMarketBreadth
+  );
 }
 
 export async function fetchMarketPulse(): Promise<MarketPulse> {
-  return getCached({ key: cacheKey("market-pulse"), ttlMs: CACHE_TTL.DASHBOARD }, async () => buildMarketPulse());
+  return getCached(
+    { key: cacheKey("market-pulse"), ttlMs: CACHE_TTL.QUOTE },
+    buildLiveMarketPulse
+  );
 }
 
 export async function fetchIntradayIdeas(): Promise<IntradayIdea[]> {
-  return getCached({ key: cacheKey("intraday-ideas"), ttlMs: CACHE_TTL.DASHBOARD }, async () => {
+  return getCached({ key: cacheKey("intraday-ideas"), ttlMs: CACHE_TTL.QUOTE }, async () => {
     const ideas = await Promise.all(
-      intradayIdeasBase.map(async (idea) => ({
-        ...idea,
-        conviction: await resolveConviction(idea.symbol, idea.side),
-      }))
+      intradayIdeasBase.map(async (idea) => {
+        const quote = await marketDataService.getEnrichedQuote(idea.symbol);
+        return {
+          ...idea,
+          entry: quote.price ?? 0,
+          conviction: await resolveConviction(idea.symbol, idea.side),
+          quote,
+        };
+      })
     );
     return ideas;
   });
 }
 
 export async function fetchSwingTradeIdeas(): Promise<SwingTradeIdea[]> {
-  return getCached({ key: cacheKey("swing-ideas"), ttlMs: CACHE_TTL.DASHBOARD }, async () => {
+  return getCached({ key: cacheKey("swing-ideas"), ttlMs: CACHE_TTL.QUOTE }, async () => {
     const ideas = await Promise.all(
       swingTradeIdeasBase.map(async (idea) => {
-        const scores = await resolveSwingScores(idea.symbol);
-        return { ...idea, ...scores };
+        const quote = await marketDataService.getEnrichedQuote(idea.symbol);
+        const [scores, entryRange] = await Promise.all([
+          resolveSwingScores(idea.symbol),
+          resolveSwingEntryRange(idea.symbol),
+        ]);
+        return { ...idea, ...scores, ...entryRange, quote };
       })
     );
     return ideas;

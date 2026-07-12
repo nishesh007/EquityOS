@@ -1,5 +1,7 @@
 import { DataTransparencyBar } from "@/components/ui/DataTransparency";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { CompanyLiveQuote } from "@/components/market/CompanyLiveQuote";
+import type { EnrichedQuote } from "@/lib/market-data/enriched-quote";
 import { formatPrice, formatRatio } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import type { DataTransparency, ValuationAnalysis, ValuationVerdict } from "@/types";
@@ -8,6 +10,8 @@ import { Scale } from "lucide-react";
 interface ValuationAnalysisPanelProps {
   valuation: ValuationAnalysis;
   dataTransparency: DataTransparency;
+  symbol: string;
+  initialQuote?: EnrichedQuote;
 }
 
 const verdictStyles: Record<ValuationVerdict, string> = {
@@ -47,7 +51,12 @@ function MetricRow({
   );
 }
 
-export function ValuationAnalysisPanel({ valuation, dataTransparency }: ValuationAnalysisPanelProps) {
+export function ValuationAnalysisPanel({
+  valuation,
+  dataTransparency,
+  symbol,
+  initialQuote,
+}: ValuationAnalysisPanelProps) {
   return (
     <Card padding="lg" className="animate-fade-in-up">
       <CardHeader
@@ -55,6 +64,9 @@ export function ValuationAnalysisPanel({ valuation, dataTransparency }: Valuatio
         subtitle="DCF · Graham · EPV · P/E · P/B · EV/EBITDA · Sector Comparison"
         action={<Scale className="h-4 w-4 text-accent" />}
       />
+      <div className="mb-4">
+        <CompanyLiveQuote symbol={symbol} initialQuote={initialQuote} size="sm" />
+      </div>
       <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-lg border border-surface-border-subtle bg-surface-overlay/30 p-4">
           <p className="data-label">Overall Verdict</p>

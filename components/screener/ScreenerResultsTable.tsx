@@ -1,9 +1,13 @@
 "use client";
 
 import { ChangeIndicator } from "@/components/ui/ChangeIndicator";
+import { QuoteDisplayCompact } from "@/components/market/QuoteDisplay";
+import { useMarketQuotes } from "@/hooks/useMarketQuotes";
+import { createUnavailableQuote } from "@/lib/market-data/enriched-quote";
 import { getCompanyRoute } from "@/lib/routes";
 import type { ScreenerRow } from "@/lib/screener/types";
 import { useRouter } from "next/navigation";
+import { useMemo } from "react";
 
 interface ScreenerResultsTableProps {
   rows: ScreenerRow[];
@@ -28,6 +32,16 @@ export function ScreenerResultsTable({
   executionMs,
 }: ScreenerResultsTableProps) {
   const router = useRouter();
+  const symbols = useMemo(() => rows.map((row) => row.symbol), [rows]);
+  const initialQuotes = useMemo(() => {
+    const map: Record<string, NonNullable<ScreenerRow["quote"]>> = {};
+    for (const row of rows) {
+      if (row.quote) map[row.symbol] = row.quote;
+    }
+    return map;
+  }, [rows]);
+
+  const { quotes } = useMarketQuotes(symbols, { initialQuotes });
 
   if (rows.length === 0) {
     return (
@@ -60,6 +74,9 @@ export function ScreenerResultsTable({
                 CMP
               </th>
               <th className="pb-2 text-right text-[10px] font-medium uppercase tracking-wider text-text-faint">
+                Updated
+              </th>
+              <th className="pb-2 text-right text-[10px] font-medium uppercase tracking-wider text-text-faint">
                 Change
               </th>
               <th className="pb-2 text-right text-[10px] font-medium uppercase tracking-wider text-text-faint">
@@ -81,8 +98,11 @@ export function ScreenerResultsTable({
           </thead>
           <tbody>
             {rows.map((row) => {
-              const cmp = row.metrics.cmp as number;
-              const changePercent = row.metrics.change_percent as number;
+              const quote =
+                quotes.get(row.symbol) ?? row.quote ?? createUnavailableQuote(row.symbol);
+              const changePercent =
+                quote.changePercent ?? (row.metrics.change_percent as number | null);
+
               return (
                 <tr
                   key={row.symbol}
@@ -100,13 +120,18 @@ export function ScreenerResultsTable({
                     </div>
                   </td>
                   <td className="py-2.5 text-right">
-                    <p className="text-sm font-mono text-text-primary tabular-nums">
-                      ₹{formatMetric(cmp)}
+                    <QuoteDisplayCompact quote={quote} className="flex flex-col items-end" />
+                  </td>
+                  <td className="py-2.5 text-right">
+                    <p className="text-[9px] text-text-faint">
+                      {quote.availability === "unavailable"
+                        ? quote.lastSuccessfulUpdateIST ?? "—"
+                        : quote.lastUpdatedIST?.split(" ").slice(-3).join(" ") ?? "—"}
                     </p>
                   </td>
                   <td className="py-2.5 text-right">
                     <ChangeIndicator
-                      value={changePercent}
+                      value={changePercent ?? 0}
                       size="sm"
                       showIcon={false}
                     />

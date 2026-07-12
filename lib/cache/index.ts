@@ -16,8 +16,8 @@ export interface CacheOptions {
 }
 
 export const CACHE_TTL = {
-  /** Live quotes — 15 seconds */
-  QUOTE: 15_000,
+  /** Live quotes — 5 seconds during market hours (see getQuoteCacheTtlMs) */
+  QUOTE: 5_000,
   /** Sprint 8A — full market data snapshot */
   MARKET_DATA: 300_000,
   /** Sprint 8A explicit tiers */

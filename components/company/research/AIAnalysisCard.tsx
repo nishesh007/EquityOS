@@ -1,4 +1,6 @@
 import { Card, CardHeader } from "@/components/ui/Card";
+import { CompanyLiveQuote } from "@/components/market/CompanyLiveQuote";
+import type { EnrichedQuote } from "@/lib/market-data/enriched-quote";
 import { cn, formatPrice } from "@/lib/utils";
 import type { AIAnalysis, RiskLevel } from "@/types";
 import {
@@ -11,6 +13,8 @@ import {
 
 interface AIAnalysisCardProps {
   analysis: AIAnalysis;
+  symbol: string;
+  initialQuote?: EnrichedQuote;
 }
 
 const riskStyles: Record<RiskLevel, string> = {
@@ -19,7 +23,7 @@ const riskStyles: Record<RiskLevel, string> = {
   High: "border-loss/25 bg-loss-bg text-loss",
 };
 
-export function AIAnalysisCard({ analysis }: AIAnalysisCardProps) {
+export function AIAnalysisCard({ analysis, symbol, initialQuote }: AIAnalysisCardProps) {
   const insightRows = [
     { label: "Trend", value: analysis.trend, icon: LineChart },
     { label: "Momentum", value: analysis.momentum, icon: Waves },
@@ -39,6 +43,8 @@ export function AIAnalysisCard({ analysis }: AIAnalysisCardProps) {
             </div>
           }
         />
+
+        <CompanyLiveQuote symbol={symbol} initialQuote={initialQuote} size="sm" className="mb-4" />
 
         <div className="grid grid-cols-2 gap-3">
           <LevelTile label="Support" value={formatPrice(analysis.support)} tone="gain" />

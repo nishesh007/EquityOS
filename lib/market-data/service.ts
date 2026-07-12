@@ -1,5 +1,5 @@
 /**
- * Sprint 8A — Unified Market Data Service.
+ * Sprint 9A.1 — Unified Market Data Service.
  * Single entry point for all market data consumption across EquityOS.
  *
  * Architecture:
@@ -17,8 +17,13 @@ import {
   fetchQuoteWithFailover,
   getActiveMarketDataProviders,
 } from "@/lib/market-data/fallback";
+import {
+  toEnrichedQuote,
+  type EnrichedQuote,
+} from "@/lib/market-data/enriched-quote";
 import { marketDataToLiveQuote } from "@/lib/market-data/mappers";
 import { normalizeSymbol, isValidSymbol } from "@/lib/market-data/symbols";
+import { getQuoteCacheTtlMs } from "@/lib/market/session";
 import type {
   MarketData,
   MarketDataResult,
@@ -31,7 +36,7 @@ import type { LiveQuote } from "@/lib/providers/types";
 export interface QuoteResult {
   data: LiveQuote;
   provider: string;
-  source: "live" | "cached" | "mock";
+  source: "live" | "cached" | "mock" | "unavailable";
   attempted: string[];
 }
 
@@ -39,7 +44,7 @@ function toQuoteResult(result: MarketDataResult): QuoteResult {
   return {
     data: marketDataToLiveQuote(result.data),
     provider: result.provider,
-    source: result.source === "unavailable" ? "mock" : result.source,
+    source: result.source,
     attempted: result.attempted,
   };
 }
@@ -60,11 +65,17 @@ class MarketDataServiceImpl {
     const result = await getCached(
       {
         key: cacheKey("quote", normalized.internal),
-        ttlMs: CACHE_TTL.QUOTE,
+        ttlMs: getQuoteCacheTtlMs(),
       },
       () => fetchQuoteWithFailover(normalized.internal)
     );
     return toQuoteResult(result);
+  }
+
+  /** Enriched quote with exchange, market status, and IST timestamps */
+  async getEnrichedQuote(symbol: string): Promise<EnrichedQuote> {
+    const result = await this.getQuote(symbol);
+    return toEnrichedQuote(symbol, result);
   }
 
   /** Full market data model with valuation, quality, and risk fields */
@@ -85,11 +96,17 @@ class MarketDataServiceImpl {
     const result = await getCached(
       {
         key: cacheKey("index", normalized),
-        ttlMs: CACHE_TTL.QUOTE,
+        ttlMs: getQuoteCacheTtlMs(),
       },
       () => fetchQuoteWithFailover(normalized)
     );
     return toQuoteResult(result);
+  }
+
+  /** Enriched index quote */
+  async getEnrichedIndex(indexSymbol: string): Promise<EnrichedQuote> {
+    const result = await this.getIndex(indexSymbol);
+    return toEnrichedQuote(indexSymbol, result);
   }
 
   /** Batch quotes for multiple symbols */
@@ -98,6 +115,17 @@ class MarketDataServiceImpl {
       symbols.map(async (symbol) => {
         const result = await this.getQuote(symbol);
         return [normalizeSymbol(symbol).internal, result] as const;
+      })
+    );
+    return new Map(results);
+  }
+
+  /** Batch enriched quotes */
+  async getEnrichedQuotes(symbols: string[]): Promise<Map<string, EnrichedQuote>> {
+    const results = await Promise.all(
+      symbols.map(async (symbol) => {
+        const enriched = await this.getEnrichedQuote(symbol);
+        return [normalizeSymbol(symbol).internal, enriched] as const;
       })
     );
     return new Map(results);
@@ -116,17 +144,29 @@ class MarketDataServiceImpl {
     return new Map(results);
   }
 
-  /** Graceful stale read — never throws */
+  /** Graceful stale read — never throws; returns null when no live data */
   async getQuoteSafe(symbol: string): Promise<LiveQuote | null> {
     try {
       const result = await this.getQuote(symbol);
+      if (result.source === "unavailable" || result.source === "mock") {
+        const normalized = normalizeSymbol(symbol);
+        const stale = getStaleCachedSync<MarketDataResult>(
+          cacheKey("market-data", normalized.internal)
+        );
+        if (stale && stale.source !== "mock" && stale.source !== "unavailable") {
+          return marketDataToLiveQuote(stale.data);
+        }
+        return null;
+      }
       return result.data;
     } catch {
       const normalized = normalizeSymbol(symbol);
       const stale = getStaleCachedSync<MarketDataResult>(
         cacheKey("market-data", normalized.internal)
       );
-      if (stale) return marketDataToLiveQuote(stale.data);
+      if (stale && stale.source !== "mock" && stale.source !== "unavailable") {
+        return marketDataToLiveQuote(stale.data);
+      }
       return null;
     }
   }
@@ -163,3 +203,5 @@ export const getQuote = marketDataService.getQuote.bind(marketDataService);
 export const getMarketData = marketDataService.getMarketData.bind(marketDataService);
 export const getIndex = marketDataService.getIndex.bind(marketDataService);
 export const getQuotes = marketDataService.getQuotes.bind(marketDataService);
+export const getEnrichedQuote = marketDataService.getEnrichedQuote.bind(marketDataService);
+export const getEnrichedQuotes = marketDataService.getEnrichedQuotes.bind(marketDataService);

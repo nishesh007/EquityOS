@@ -3,11 +3,9 @@
  * UI and services must use this module, never adapters directly.
  */
 
-import { marketDataService } from "@/lib/market-data";
-import type { FailoverResult } from "@/lib/providers/failover";
-import type { LiveQuote } from "@/lib/providers/types";
+import { marketDataService, type QuoteResult } from "@/lib/market-data";
 
-export type QuoteResult = FailoverResult<LiveQuote>;
+export type { QuoteResult };
 
 export async function getLiveQuote(symbol: string): Promise<QuoteResult> {
   return marketDataService.getQuote(symbol);

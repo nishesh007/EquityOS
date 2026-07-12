@@ -1,7 +1,18 @@
+"use client";
+
 import { Card, CardHeader } from "@/components/ui/Card";
 import { ChangeIndicator } from "@/components/ui/ChangeIndicator";
+import { MarketSessionIndicator } from "@/components/market/MarketSessionIndicator";
+import { useMarketQuotes } from "@/hooks/useMarketQuotes";
+import {
+  createUnavailableQuote,
+  type EnrichedQuote,
+} from "@/lib/market-data/enriched-quote";
+import type { MarketStatus } from "@/lib/market/session";
+import { getMarketStatusLabel } from "@/lib/market/session";
 import type { MarketPulse as MarketPulseType } from "@/types";
 import { Activity, ArrowDownToLine, ArrowUpFromLine, Gauge, Radio } from "lucide-react";
+import { useMemo } from "react";
 
 interface MarketPulseProps {
   pulse: MarketPulseType;
@@ -29,8 +40,45 @@ function PulseMetric({ label, children, detail, icon }: PulseMetricProps) {
   );
 }
 
+function resolveVixQuote(
+  polled: EnrichedQuote | undefined,
+  loading: boolean,
+  initial?: EnrichedQuote
+): EnrichedQuote {
+  return (
+    polled ??
+    (loading ? initial : undefined) ??
+    createUnavailableQuote("INDIAVIX")
+  );
+}
+
 export function MarketPulse({ pulse }: MarketPulseProps) {
   const flow = pulse.institutionalFlow;
+  const initialQuotes = useMemo(() => {
+    const map: Record<string, EnrichedQuote> = {};
+    if (pulse.vixQuote) {
+      map.INDIAVIX = pulse.vixQuote;
+    }
+    return map;
+  }, [pulse.vixQuote]);
+
+  const { quotes, marketStatus, loading } = useMarketQuotes(["INDIAVIX"], {
+    initialQuotes,
+  });
+
+  const vixQuote = resolveVixQuote(
+    quotes.get("INDIAVIX"),
+    loading,
+    pulse.vixQuote
+  );
+  const vixAvailable =
+    vixQuote.availability !== "unavailable" &&
+    vixQuote.price !== null &&
+    vixQuote.price > 0;
+
+  const vixUpdated = vixQuote.lastUpdatedIST?.replace("\n", " ");
+
+  const sessionLabel = getMarketStatusLabel(marketStatus as MarketStatus);
 
   return (
     <Card padding="lg" className="relative overflow-hidden">
@@ -39,13 +87,10 @@ export function MarketPulse({ pulse }: MarketPulseProps) {
         title="Market Pulse"
         subtitle="Live risk, positioning and participation snapshot"
         action={
-          <div className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-wider text-gain">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gain opacity-50" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-gain" />
-            </span>
-            Market open
-          </div>
+          <MarketSessionIndicator
+            marketStatus={marketStatus}
+            marketStatusLabel={sessionLabel}
+          />
         }
       />
 
@@ -53,11 +98,25 @@ export function MarketPulse({ pulse }: MarketPulseProps) {
         <PulseMetric
           label="India VIX"
           icon={<Activity className="h-4 w-4" />}
-          detail="Volatility cooling"
+          detail={
+            vixUpdated ? (
+              <>Updated {vixUpdated}</>
+            ) : (
+              "Volatility data unavailable"
+            )
+          }
         >
           <div className="flex items-end gap-2">
-            <p className="data-value text-xl font-semibold">{pulse.indiaVix}</p>
-            <ChangeIndicator value={pulse.indiaVixChange} size="sm" />
+            {vixAvailable ? (
+              <>
+                <p className="data-value text-xl font-semibold font-mono tabular-nums">
+                  {vixQuote.price!.toFixed(2)}
+                </p>
+                <ChangeIndicator value={vixQuote.changePercent ?? 0} size="sm" />
+              </>
+            ) : (
+              <p className="text-xl font-semibold text-text-muted">Unavailable</p>
+            )}
           </div>
         </PulseMetric>
 

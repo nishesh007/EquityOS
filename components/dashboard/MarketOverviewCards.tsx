@@ -1,7 +1,12 @@
+"use client";
+
 import { Card } from "@/components/ui/Card";
-import { ChangeIndicator } from "@/components/ui/ChangeIndicator";
+import { QuoteDisplay } from "@/components/market/QuoteDisplay";
 import { Sparkline } from "@/components/ui/Sparkline";
+import { useMarketQuotes } from "@/hooks/useMarketQuotes";
+import { createUnavailableQuote } from "@/lib/market-data/enriched-quote";
 import { formatNumber } from "@/lib/utils";
+import { buildInitialQuotesMap } from "@/services/marketData";
 import type { MarketIndex } from "@/types";
 
 interface MarketOverviewCardsProps {
@@ -9,56 +14,55 @@ interface MarketOverviewCardsProps {
 }
 
 export function MarketOverviewCards({ indices }: MarketOverviewCardsProps) {
+  const symbols = indices.map((i) => i.symbol);
+  const { quotes } = useMarketQuotes(symbols, {
+    initialQuotes: buildInitialQuotesMap(indices),
+  });
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      {indices.map((index) => (
-        <Card key={index.id} hover padding="md">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="data-label">{index.name}</p>
-              <p className="mt-1 text-[10px] font-mono text-text-faint">
-                {index.symbol}
-              </p>
-            </div>
-            <Sparkline
-              data={index.sparkline}
-              positive={index.changePercent >= 0}
-            />
-          </div>
+      {indices.map((index) => {
+        const quote = quotes.get(index.symbol) ?? index.quote ?? createUnavailableQuote(index.symbol);
+        const changePercent = quote.changePercent ?? index.changePercent;
 
-          <div className="mt-3">
-            <p className="data-value text-xl font-semibold">
-              {formatNumber(index.value)}
-            </p>
-            <div className="mt-1 flex items-center gap-2">
-              <ChangeIndicator value={index.changePercent} size="sm" />
-              <span
-                className={`text-xs font-mono tabular-nums ${
-                  index.change >= 0 ? "text-gain" : "text-loss"
-                }`}
-              >
-                {index.change >= 0 ? "+" : ""}
-                {formatNumber(index.change)}
-              </span>
+        return (
+          <Card key={index.id} hover padding="md">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="data-label">{index.name}</p>
+                <p className="mt-1 text-[10px] font-mono text-text-faint">
+                  {index.symbol}
+                </p>
+              </div>
+              {index.sparkline.length > 0 && (
+                <Sparkline
+                  data={index.sparkline}
+                  positive={changePercent >= 0}
+                />
+              )}
             </div>
-          </div>
 
-          <div className="mt-3 flex gap-4 border-t border-surface-border-subtle pt-3">
-            <div>
-              <p className="text-[10px] text-text-faint">H</p>
-              <p className="text-xs font-mono text-text-secondary tabular-nums">
-                {formatNumber(index.high)}
-              </p>
+            <div className="mt-3">
+              <QuoteDisplay quote={quote} size="md" />
             </div>
-            <div>
-              <p className="text-[10px] text-text-faint">L</p>
-              <p className="text-xs font-mono text-text-secondary tabular-nums">
-                {formatNumber(index.low)}
-              </p>
+
+            <div className="mt-3 flex gap-4 border-t border-surface-border-subtle pt-3">
+              <div>
+                <p className="text-[10px] text-text-faint">H</p>
+                <p className="text-xs font-mono text-text-secondary tabular-nums">
+                  {formatNumber(index.high)}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] text-text-faint">L</p>
+                <p className="text-xs font-mono text-text-secondary tabular-nums">
+                  {formatNumber(index.low)}
+                </p>
+              </div>
             </div>
-          </div>
-        </Card>
-      ))}
+          </Card>
+        );
+      })}
     </div>
   );
 }

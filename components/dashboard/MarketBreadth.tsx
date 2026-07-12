@@ -1,6 +1,12 @@
+"use client";
+
 import { Card, CardHeader } from "@/components/ui/Card";
 import { ChangeIndicator } from "@/components/ui/ChangeIndicator";
+import { QuoteDisplayCompact } from "@/components/market/QuoteDisplay";
 import { StockLink } from "@/components/ui/StockLink";
+import { useMarketQuotes } from "@/hooks/useMarketQuotes";
+import { createUnavailableQuote } from "@/lib/market-data/enriched-quote";
+import { buildInitialQuotesMap } from "@/services/marketData";
 import type { MarketBreadth as MarketBreadthType, MarketMover } from "@/types";
 import { BarChart3, CircleArrowDown, CircleArrowUp, Layers3 } from "lucide-react";
 
@@ -16,37 +22,55 @@ interface MoverListProps {
 }
 
 function MoverList({ title, subtitle, items, valueLabel = "LTP" }: MoverListProps) {
+  const symbols = items.map((item) => item.symbol);
+  const { quotes } = useMarketQuotes(symbols, {
+    initialQuotes: buildInitialQuotesMap(items),
+  });
+
   return (
     <Card padding="lg" className="h-full">
       <CardHeader title={title} subtitle={subtitle} />
       <div className="space-y-0.5">
-        {items.map((item, index) => (
-          <StockLink
-            key={item.symbol}
-            symbol={item.symbol}
-            className="group flex items-center justify-between rounded-lg px-2 py-2 transition-colors hover:bg-surface-hover/50"
-          >
-            <div className="flex min-w-0 items-center gap-2.5">
-              <span className="w-4 text-[10px] font-mono text-text-faint">
-                {String(index + 1).padStart(2, "0")}
-              </span>
-              <div className="min-w-0">
-                <p className="truncate text-xs font-semibold text-text-primary transition-colors group-hover:text-accent">
-                  {item.symbol}
-                </p>
-                <p className="truncate text-[10px] text-text-muted">{item.name}</p>
+        {items.map((item, index) => {
+          const quote =
+            quotes.get(item.symbol) ?? item.quote ?? createUnavailableQuote(item.symbol);
+
+          return (
+            <StockLink
+              key={item.symbol}
+              symbol={item.symbol}
+              className="group flex items-center justify-between rounded-lg px-2 py-2 transition-colors hover:bg-surface-hover/50"
+            >
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span className="w-4 text-[10px] font-mono text-text-faint">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-semibold text-text-primary transition-colors group-hover:text-accent">
+                    {item.symbol}
+                  </p>
+                  <p className="truncate text-[10px] text-text-muted">{item.name}</p>
+                </div>
               </div>
-            </div>
-            <div className="ml-3 text-right">
-              <p className="font-mono text-xs text-text-secondary tabular-nums">
-                {valueLabel === "Volume"
-                  ? item.volume
-                  : `₹${item.price.toLocaleString("en-IN")}`}
-              </p>
-              <ChangeIndicator value={item.changePercent} size="sm" showIcon={false} />
-            </div>
-          </StockLink>
-        ))}
+              <div className="ml-3 text-right">
+                {valueLabel === "Volume" ? (
+                  <>
+                    <p className="font-mono text-xs text-text-secondary tabular-nums">
+                      {item.volume}
+                    </p>
+                    <ChangeIndicator
+                      value={quote.changePercent ?? item.changePercent}
+                      size="sm"
+                      showIcon={false}
+                    />
+                  </>
+                ) : (
+                  <QuoteDisplayCompact quote={quote} className="text-right" />
+                )}
+              </div>
+            </StockLink>
+          );
+        })}
       </div>
     </Card>
   );

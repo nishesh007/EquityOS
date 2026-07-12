@@ -5,7 +5,6 @@ import { ScreenerFilterPanel } from "@/components/screener/ScreenerFilterPanel";
 import { ScreenerResultsTable } from "@/components/screener/ScreenerResultsTable";
 import {
   createQuery,
-  runScreener,
   SCREENER_PRESETS,
   type FilterDefinition,
   type ScreenerQuery,
@@ -13,12 +12,26 @@ import {
   type ScreenerUniverseSnapshot,
 } from "@/lib/screener";
 import { Bookmark, Layers } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface ScreenerWorkspaceProps {
   universe: ScreenerUniverseSnapshot;
   filters: FilterDefinition[];
   filterCount: number;
+}
+
+async function runScreenerOnServer(query: ScreenerQuery): Promise<ScreenerResult> {
+  const response = await fetch("/api/screener/run", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(query),
+  });
+
+  if (!response.ok) {
+    throw new Error("Screener run failed");
+  }
+
+  return response.json() as Promise<ScreenerResult>;
 }
 
 export function ScreenerWorkspace({
@@ -27,31 +40,37 @@ export function ScreenerWorkspace({
   filterCount,
 }: ScreenerWorkspaceProps) {
   const [query, setQuery] = useState<ScreenerQuery>(() => createQuery());
-  const [result, setResult] = useState<ScreenerResult>(() =>
-    runScreener(createQuery(), universe)
-  );
-  const [isRunning, setIsRunning] = useState(false);
+  const [result, setResult] = useState<ScreenerResult | null>(null);
+  const [isRunning, setIsRunning] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const runQuery = useCallback(async (nextQuery: ScreenerQuery) => {
+    setIsRunning(true);
+    setError(null);
+    try {
+      const next = await runScreenerOnServer(nextQuery);
+      setResult(next);
+    } catch {
+      setError("Failed to run screener. Please try again.");
+    } finally {
+      setIsRunning(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void runQuery(createQuery());
+  }, [runQuery]);
 
   const handleRun = useCallback(() => {
-    setIsRunning(true);
-    requestAnimationFrame(() => {
-      const next = runScreener(query, universe);
-      setResult(next);
-      setIsRunning(false);
-    });
-  }, [query, universe]);
+    void runQuery(query);
+  }, [query, runQuery]);
 
   const handlePreset = useCallback(
     (presetQuery: ScreenerQuery) => {
       setQuery(presetQuery);
-      setIsRunning(true);
-      requestAnimationFrame(() => {
-        const next = runScreener(presetQuery, universe);
-        setResult(next);
-        setIsRunning(false);
-      });
+      void runQuery(presetQuery);
     },
-    [universe]
+    [runQuery]
   );
 
   const categorySummary = useMemo(() => {
@@ -104,12 +123,18 @@ export function ScreenerWorkspace({
             title="Results"
             subtitle={`Screening ${universe.totalCount.toLocaleString("en-IN")} NSE/BSE stocks`}
           />
-          <ScreenerResultsTable
-            rows={result.rows}
-            totalMatched={result.totalMatched}
-            totalUniverse={result.totalUniverse}
-            executionMs={result.executionMs}
-          />
+          {error ? (
+            <p className="py-8 text-center text-sm text-loss">{error}</p>
+          ) : result ? (
+            <ScreenerResultsTable
+              rows={result.rows}
+              totalMatched={result.totalMatched}
+              totalUniverse={result.totalUniverse}
+              executionMs={result.executionMs}
+            />
+          ) : (
+            <p className="py-8 text-center text-sm text-text-muted">Loading results…</p>
+          )}
         </Card>
       </section>
 

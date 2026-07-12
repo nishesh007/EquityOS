@@ -1,8 +1,17 @@
+"use client";
+
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { StockLink } from "@/components/ui/StockLink";
+import { useMarketQuotes } from "@/hooks/useMarketQuotes";
+import {
+  createUnavailableQuote,
+  type EnrichedQuote,
+} from "@/lib/market-data/enriched-quote";
+import { isValidMarketPrice } from "@/lib/utils";
 import type { IntradayIdea, SwingTradeIdea } from "@/types";
 import { Bot, Clock3, Sparkles } from "lucide-react";
+import { useCallback, useMemo } from "react";
 
 interface IntradayIdeasProps {
   ideas: IntradayIdea[];
@@ -12,12 +21,40 @@ interface SwingIdeasProps {
   ideas: SwingTradeIdea[];
 }
 
+function buildInitialQuotes(
+  ideas: Array<{ symbol: string; quote?: EnrichedQuote }>
+): Record<string, EnrichedQuote> {
+  const map: Record<string, EnrichedQuote> = {};
+  for (const idea of ideas) {
+    if (idea.quote) {
+      map[idea.symbol.toUpperCase()] = idea.quote;
+    }
+  }
+  return map;
+}
+
+function swingEntryZone(price: number | null): { entryLow: number; entryHigh: number } | null {
+  if (!isValidMarketPrice(price)) return null;
+  return {
+    entryLow: Math.round(price * 0.985 * 100) / 100,
+    entryHigh: Math.round(price * 1.015 * 100) / 100,
+  };
+}
+
 function Price({ value }: { value: number }) {
   return (
     <span className="font-mono text-xs text-text-secondary tabular-nums">
       ₹{value.toLocaleString("en-IN")}
     </span>
   );
+}
+
+function LiveEntryPrice({ value }: { value: number | null }) {
+  if (!isValidMarketPrice(value)) {
+    return <span className="text-xs text-text-muted">Unavailable</span>;
+  }
+
+  return <Price value={value} />;
 }
 
 function DirectionBadge({ side }: { side: "Long" | "Short" }) {
@@ -53,6 +90,23 @@ const headerClass =
 const cellClass = "whitespace-nowrap py-3";
 
 export function AIIntradayIdeas({ ideas }: IntradayIdeasProps) {
+  const symbols = useMemo(() => ideas.map((idea) => idea.symbol), [ideas]);
+  const initialQuotes = useMemo(() => buildInitialQuotes(ideas), [ideas]);
+
+  const { quotes, loading } = useMarketQuotes(symbols, { initialQuotes });
+
+  const resolveQuote = useCallback(
+    (symbol: string, ideaQuote?: EnrichedQuote) => {
+      const polled = quotes.get(symbol) ?? quotes.get(symbol.toUpperCase());
+      return (
+        polled ??
+        (loading ? ideaQuote : undefined) ??
+        createUnavailableQuote(symbol)
+      );
+    },
+    [quotes, loading]
+  );
+
   return (
     <Card padding="lg" className="relative overflow-hidden">
       <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-accent/5 blur-2xl" />
@@ -84,37 +138,51 @@ export function AIIntradayIdeas({ ideas }: IntradayIdeasProps) {
             </tr>
           </thead>
           <tbody>
-            {ideas.map((idea) => (
-              <tr
-                key={idea.symbol}
-                className="group border-b border-surface-border-subtle/50 transition-colors last:border-0 hover:bg-surface-hover/30"
-              >
-                <td className={cellClass}>
-                  <StockLink symbol={idea.symbol}>
-                    <p className="text-xs font-semibold text-text-primary group-hover:text-accent">
-                      {idea.symbol}
-                    </p>
-                    <p className="text-[10px] text-text-muted">{idea.company}</p>
-                  </StockLink>
-                </td>
-                <td className={cellClass}><DirectionBadge side={idea.side} /></td>
-                <td className={`${cellClass} text-right`}><Price value={idea.entry} /></td>
-                <td className={`${cellClass} text-right`}><Price value={idea.stopLoss} /></td>
-                <td className={`${cellClass} text-right`}><Price value={idea.target} /></td>
-                <td className={`${cellClass} text-right`}>
-                  <span className="font-mono text-xs font-medium text-gain">1:{idea.riskReward}</span>
-                </td>
-                <td className={`${cellClass} text-right`}>
-                  <ScoreBar score={idea.conviction} tone="gain" />
-                </td>
-                <td className={`${cellClass} text-right`}>
-                  <span className="inline-flex items-center gap-1 text-xs text-text-muted">
-                    <Clock3 className="h-3 w-3" />
-                    {idea.timeHorizon}
-                  </span>
-                </td>
-              </tr>
-            ))}
+            {ideas.map((idea) => {
+              const quote = resolveQuote(idea.symbol, idea.quote);
+
+              return (
+                <tr
+                  key={idea.symbol}
+                  className="group border-b border-surface-border-subtle/50 transition-colors last:border-0 hover:bg-surface-hover/30"
+                >
+                  <td className={cellClass}>
+                    <StockLink symbol={idea.symbol}>
+                      <p className="text-xs font-semibold text-text-primary group-hover:text-accent">
+                        {idea.symbol}
+                      </p>
+                      <p className="text-[10px] text-text-muted">{idea.company}</p>
+                    </StockLink>
+                  </td>
+                  <td className={cellClass}>
+                    <DirectionBadge side={idea.side} />
+                  </td>
+                  <td className={`${cellClass} text-right`}>
+                    <LiveEntryPrice value={quote.price} />
+                  </td>
+                  <td className={`${cellClass} text-right`}>
+                    <Price value={idea.stopLoss} />
+                  </td>
+                  <td className={`${cellClass} text-right`}>
+                    <Price value={idea.target} />
+                  </td>
+                  <td className={`${cellClass} text-right`}>
+                    <span className="font-mono text-xs font-medium text-gain">
+                      1:{idea.riskReward}
+                    </span>
+                  </td>
+                  <td className={`${cellClass} text-right`}>
+                    <ScoreBar score={idea.conviction} tone="gain" />
+                  </td>
+                  <td className={`${cellClass} text-right`}>
+                    <span className="inline-flex items-center gap-1 text-xs text-text-muted">
+                      <Clock3 className="h-3 w-3" />
+                      {idea.timeHorizon}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -123,6 +191,23 @@ export function AIIntradayIdeas({ ideas }: IntradayIdeasProps) {
 }
 
 export function AISwingTradeIdeas({ ideas }: SwingIdeasProps) {
+  const symbols = useMemo(() => ideas.map((idea) => idea.symbol), [ideas]);
+  const initialQuotes = useMemo(() => buildInitialQuotes(ideas), [ideas]);
+
+  const { quotes, loading } = useMarketQuotes(symbols, { initialQuotes });
+
+  const resolveQuote = useCallback(
+    (symbol: string, ideaQuote?: EnrichedQuote) => {
+      const polled = quotes.get(symbol) ?? quotes.get(symbol.toUpperCase());
+      return (
+        polled ??
+        (loading ? ideaQuote : undefined) ??
+        createUnavailableQuote(symbol)
+      );
+    },
+    [quotes, loading]
+  );
+
   return (
     <Card padding="lg" className="relative overflow-hidden">
       <div className="pointer-events-none absolute -left-10 bottom-0 h-28 w-28 rounded-full bg-gain/5 blur-2xl" />
@@ -150,52 +235,66 @@ export function AISwingTradeIdeas({ ideas }: SwingIdeasProps) {
             </tr>
           </thead>
           <tbody>
-            {ideas.map((idea, index) => (
-              <tr
-                key={idea.symbol}
-                className="group border-b border-surface-border-subtle/50 transition-colors last:border-0 hover:bg-surface-hover/30"
-              >
-                <td className={cellClass}>
-                  <StockLink symbol={idea.symbol} className="flex items-center gap-2.5">
-                    <span className="text-[10px] font-mono text-text-faint">
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                    <div>
-                      <p className="text-xs font-semibold text-text-primary group-hover:text-accent">
-                        {idea.symbol}
-                      </p>
-                      <p className="text-[10px] text-text-muted">{idea.company}</p>
-                    </div>
-                  </StockLink>
-                </td>
-                <td className={cellClass}><DirectionBadge side={idea.side} /></td>
-                <td className={`${cellClass} text-right`}>
-                  <span className="font-mono text-xs text-text-secondary tabular-nums">
-                    ₹{idea.entryLow.toLocaleString("en-IN")}–{idea.entryHigh.toLocaleString("en-IN")}
-                  </span>
-                </td>
-                <td className={`${cellClass} text-right`}><Price value={idea.stopLoss} /></td>
-                <td className={`${cellClass} text-right`}>
-                  <div className="flex justify-end gap-1">
-                    {idea.targets.map((target, targetIndex) => (
-                      <span
-                        key={target}
-                        className="rounded bg-gain/10 px-1.5 py-1 font-mono text-[10px] text-gain tabular-nums"
-                        title={`Target ${targetIndex + 1}`}
-                      >
-                        ₹{target.toLocaleString("en-IN")}
+            {ideas.map((idea, index) => {
+              const quote = resolveQuote(idea.symbol, idea.quote);
+              const entryZone = swingEntryZone(quote.price);
+
+              return (
+                <tr
+                  key={idea.symbol}
+                  className="group border-b border-surface-border-subtle/50 transition-colors last:border-0 hover:bg-surface-hover/30"
+                >
+                  <td className={cellClass}>
+                    <StockLink symbol={idea.symbol} className="flex items-center gap-2.5">
+                      <span className="text-[10px] font-mono text-text-faint">
+                        {String(index + 1).padStart(2, "0")}
                       </span>
-                    ))}
-                  </div>
-                </td>
-                <td className={`${cellClass} text-right`}>
-                  <ScoreBar score={idea.technicalScore} />
-                </td>
-                <td className={`${cellClass} text-right`}>
-                  <ScoreBar score={idea.fundamentalScore} tone="gain" />
-                </td>
-              </tr>
-            ))}
+                      <div>
+                        <p className="text-xs font-semibold text-text-primary group-hover:text-accent">
+                          {idea.symbol}
+                        </p>
+                        <p className="text-[10px] text-text-muted">{idea.company}</p>
+                      </div>
+                    </StockLink>
+                  </td>
+                  <td className={cellClass}>
+                    <DirectionBadge side={idea.side} />
+                  </td>
+                  <td className={`${cellClass} text-right`}>
+                    {entryZone ? (
+                      <span className="font-mono text-xs text-text-secondary tabular-nums">
+                        ₹{entryZone.entryLow.toLocaleString("en-IN")}–
+                        {entryZone.entryHigh.toLocaleString("en-IN")}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-text-muted">Unavailable</span>
+                    )}
+                  </td>
+                  <td className={`${cellClass} text-right`}>
+                    <Price value={idea.stopLoss} />
+                  </td>
+                  <td className={`${cellClass} text-right`}>
+                    <div className="flex justify-end gap-1">
+                      {idea.targets.map((target, targetIndex) => (
+                        <span
+                          key={target}
+                          className="rounded bg-gain/10 px-1.5 py-1 font-mono text-[10px] text-gain tabular-nums"
+                          title={`Target ${targetIndex + 1}`}
+                        >
+                          ₹{target.toLocaleString("en-IN")}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                  <td className={`${cellClass} text-right`}>
+                    <ScoreBar score={idea.technicalScore} />
+                  </td>
+                  <td className={`${cellClass} text-right`}>
+                    <ScoreBar score={idea.fundamentalScore} tone="gain" />
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

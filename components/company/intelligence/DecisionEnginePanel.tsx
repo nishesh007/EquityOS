@@ -3,6 +3,8 @@ import { DataTransparencyBar } from "@/components/ui/DataTransparency";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { ScoreGauge } from "@/components/ui/ScoreGauge";
 import { cn, formatPrice } from "@/lib/utils";
+import { CompanyLiveQuote } from "@/components/market/CompanyLiveQuote";
+import type { EnrichedQuote } from "@/lib/market-data/enriched-quote";
 import type {
   AIDecisionAnalysis,
   DataTransparency,
@@ -28,6 +30,8 @@ import {
 interface DecisionEnginePanelProps {
   decision: AIDecisionAnalysis;
   dataTransparency: DataTransparency;
+  symbol: string;
+  initialQuote?: EnrichedQuote;
 }
 
 const recStyles: Record<RecommendationLevel, { text: string; border: string; bg: string }> = {
@@ -109,7 +113,12 @@ function ConvictionStat({
   );
 }
 
-export function DecisionEnginePanel({ decision, dataTransparency }: DecisionEnginePanelProps) {
+export function DecisionEnginePanel({
+  decision,
+  dataTransparency,
+  symbol,
+  initialQuote,
+}: DecisionEnginePanelProps) {
   const rec = recStyles[decision.recommendation];
   const { conviction, entry, targets, aiSummary } = decision;
 
@@ -165,7 +174,15 @@ export function DecisionEnginePanel({ decision, dataTransparency }: DecisionEngi
             <ConvictionStat label="Upside" value={`${conviction.upside}%`} tone="gain" />
             <ConvictionStat label="Downside" value={`${conviction.downside}%`} tone="loss" />
             <ConvictionStat label="Intrinsic Value" value={formatPrice(conviction.intrinsicValue, 0)} />
-            <ConvictionStat label="Current Price" value={formatPrice(conviction.currentPrice, 0)} />
+            <div className="rounded-lg border border-surface-border-subtle bg-surface-overlay/30 p-3">
+              <p className="data-label">Current Price</p>
+              <CompanyLiveQuote
+                symbol={symbol}
+                initialQuote={initialQuote}
+                size="sm"
+                showChange
+              />
+            </div>
             <ConvictionStat label="Expected CAGR" value={`${conviction.expectedCagr}%`} tone={toneFromScore(conviction.expectedCagr * 3)} />
             <ConvictionStat label="Confidence" value={`${conviction.confidence}%`} tone={toneFromScore(conviction.confidence)} />
             <ConvictionStat label="Risk Meter" value={`${decision.risk.overallRiskMeter}%`} tone={riskTone(decision.risk.overallRiskMeter)} />

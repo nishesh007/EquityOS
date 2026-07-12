@@ -54,9 +54,13 @@ function deriveSymbolFromPath(pathname: string): string | null {
 
 interface AIWorkspaceProviderProps {
   children: React.ReactNode;
+  sidebarOffset?: string;
 }
 
-export function AIWorkspaceProvider({ children }: AIWorkspaceProviderProps) {
+export function AIWorkspaceProvider({
+  children,
+  sidebarOffset = "0px",
+}: AIWorkspaceProviderProps) {
   const pathname = usePathname();
   const routeSymbol = useMemo(() => deriveSymbolFromPath(pathname), [pathname]);
   const routePageContext = useMemo(() => derivePageContext(pathname), [pathname]);
@@ -122,7 +126,10 @@ export function AIWorkspaceProvider({ children }: AIWorkspaceProviderProps) {
       {children}
 
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-stretch justify-end bg-black/50 backdrop-blur-sm">
+        <div
+          className="fixed top-0 right-0 bottom-0 z-40 flex items-stretch justify-end bg-black/50 backdrop-blur-sm"
+          style={{ left: sidebarOffset }}
+        >
           <button
             type="button"
             aria-label="Close AI workspace"

@@ -8,6 +8,7 @@ export interface MarketIndex {
   high: number;
   low: number;
   sparkline: number[];
+  quote?: import("@/lib/market-data/enriched-quote").EnrichedQuote;
 }
 
 export interface PortfolioHolding {
@@ -18,6 +19,7 @@ export interface PortfolioHolding {
   avgPrice: number;
   currentPrice: number;
   changePercent: number;
+  quote?: import("@/lib/market-data/enriched-quote").EnrichedQuote;
 }
 
 export interface PortfolioSummary {
@@ -39,6 +41,7 @@ export interface WatchlistItem {
   changePercent: number;
   volume: string;
   sector: string;
+  quote?: import("@/lib/market-data/enriched-quote").EnrichedQuote;
 }
 
 export interface MarketNews {
@@ -84,6 +87,7 @@ export interface MarketMover {
   price: number;
   changePercent: number;
   volume: string;
+  quote?: import("@/lib/market-data/enriched-quote").EnrichedQuote;
 }
 
 export interface MarketBreadth {
@@ -109,6 +113,7 @@ export interface InstitutionalFlow {
 export interface MarketPulse {
   indiaVix: number;
   indiaVixChange: number;
+  vixQuote?: import("@/lib/market-data/enriched-quote").EnrichedQuote;
   institutionalFlow: InstitutionalFlow;
   putCallRatio: number;
   marketTrend: "Strong Bullish" | "Bullish" | "Neutral" | "Bearish";
@@ -125,6 +130,7 @@ export interface IntradayIdea {
   riskReward: number;
   conviction: number;
   timeHorizon: string;
+  quote?: import("@/lib/market-data/enriched-quote").EnrichedQuote;
 }
 
 export interface SwingTradeIdea {
@@ -137,6 +143,7 @@ export interface SwingTradeIdea {
   targets: number[];
   technicalScore: number;
   fundamentalScore: number;
+  quote?: import("@/lib/market-data/enriched-quote").EnrichedQuote;
 }
 
 export type ChartTimeframe = "1D" | "1W" | "1M" | "3M" | "6M" | "1Y" | "5Y";
@@ -200,6 +207,7 @@ export interface PeerCompany {
   changePercent: number;
   pe: number;
   marketCap: string;
+  quote?: import("@/lib/market-data/enriched-quote").EnrichedQuote;
 }
 
 export interface ValuationMetric {
@@ -247,6 +255,7 @@ export interface CompanyProfile {
   valuation: ValuationMetric[];
   news: CompanyNews[];
   notes: CompanyNote[];
+  quote?: import("@/lib/market-data/enriched-quote").EnrichedQuote;
 }
 
 /* ─────────────────────────────────────────────────────────────

@@ -54,7 +54,7 @@ export function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-surface-border-subtle bg-surface/95 backdrop-blur-xl transition-all duration-300",
+        "fixed left-0 top-0 z-50 isolate flex h-screen flex-col border-r border-surface-border-subtle bg-surface/95 backdrop-blur-xl transition-all duration-300",
         collapsed ? "w-[68px]" : "w-[240px]"
       )}
     >
@@ -105,6 +105,7 @@ export function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) {
               <li key={item.href}>
                 <Link
                   href={item.href}
+                  prefetch={false}
                   className={cn(
                     "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
                     isActive
@@ -145,6 +146,7 @@ export function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) {
               <li key={item.href}>
                 <Link
                   href={item.href}
+                  prefetch={false}
                   className={cn(
                     "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
                     isActive

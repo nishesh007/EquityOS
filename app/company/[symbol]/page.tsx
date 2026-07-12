@@ -50,7 +50,11 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
         <CompanyHeader company={company} />
         <ActionButtons symbol={company.symbol} />
         <ResearchTerminal company={company} research={research} />
-        <EquityIntelligenceEngine intelligence={intelligence} />
+        <EquityIntelligenceEngine
+          intelligence={intelligence}
+          symbol={company.symbol}
+          initialQuote={company.quote}
+        />
         <FinancialSummaryCards financials={company.financials} dataTransparency={intelligence.dataTransparency} />
         <CompanyTabs company={company} dataTransparency={intelligence.dataTransparency} />
       </div>

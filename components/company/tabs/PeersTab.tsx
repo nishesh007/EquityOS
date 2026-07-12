@@ -1,15 +1,50 @@
+"use client";
+
 import { Card, CardHeader } from "@/components/ui/Card";
-import { ChangeIndicator } from "@/components/ui/ChangeIndicator";
+import { QuoteDisplayCompact } from "@/components/market/QuoteDisplay";
 import { DataTable } from "@/components/ui/DataTable";
 import { StockLink } from "@/components/ui/StockLink";
+import { useMarketQuotes } from "@/hooks/useMarketQuotes";
+import {
+  createUnavailableQuote,
+  type EnrichedQuote,
+} from "@/lib/market-data/enriched-quote";
 import type { PeerCompany } from "@/types";
 import { Users } from "lucide-react";
+import { useCallback, useMemo } from "react";
 
 interface PeersTabProps {
   peers: PeerCompany[];
 }
 
+function buildInitialQuotes(peers: PeerCompany[]): Record<string, EnrichedQuote> {
+  const map: Record<string, EnrichedQuote> = {};
+  for (const peer of peers) {
+    if (peer.quote) {
+      map[peer.symbol.toUpperCase()] = peer.quote;
+    }
+  }
+  return map;
+}
+
 export function PeersTab({ peers }: PeersTabProps) {
+  const symbols = useMemo(() => peers.map((peer) => peer.symbol), [peers]);
+  const initialQuotes = useMemo(() => buildInitialQuotes(peers), [peers]);
+
+  const { quotes, loading } = useMarketQuotes(symbols, { initialQuotes });
+
+  const resolveQuote = useCallback(
+    (symbol: string, peerQuote?: EnrichedQuote) => {
+      const polled = quotes.get(symbol) ?? quotes.get(symbol.toUpperCase());
+      return (
+        polled ??
+        (loading ? peerQuote : undefined) ??
+        createUnavailableQuote(symbol)
+      );
+    },
+    [quotes, loading]
+  );
+
   return (
     <Card padding="lg">
       <CardHeader
@@ -45,19 +80,12 @@ export function PeersTab({ peers }: PeersTabProps) {
             key: "price",
             header: "Price",
             align: "right",
-            render: (row) => (
-              <span className="font-mono text-text-primary tabular-nums">
-                ₹{row.price.toLocaleString("en-IN")}
-              </span>
-            ),
-          },
-          {
-            key: "change",
-            header: "Change",
-            align: "right",
-            render: (row) => (
-              <ChangeIndicator value={row.changePercent} size="sm" />
-            ),
+            render: (row) => {
+              const quote = resolveQuote(row.symbol, row.quote);
+              return (
+                <QuoteDisplayCompact quote={quote} className="text-right" />
+              );
+            },
           },
           {
             key: "pe",

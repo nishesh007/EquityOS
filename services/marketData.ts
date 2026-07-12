@@ -6,64 +6,47 @@ import type {
   UpcomingResult,
   WatchlistItem,
 } from "@/types";
-import { marketDataService } from "@/lib/market-data";
-import {
-  formatVolume,
-  mockQuoteToIndex,
-  MOCK_INDEX_QUOTES,
-} from "@/lib/providers/mock-data";
+import { marketDataService, type EnrichedQuote } from "@/lib/market-data";
+import { formatVolume } from "@/lib/utils";
 import { CACHE_TTL, cacheKey, getCached } from "@/lib/cache";
 
 const INDEX_META: Record<
   string,
   { id: string; name: string; sparkline: number[] }
 > = {
-  NIFTY: {
-    id: "nifty50",
-    name: "Nifty 50",
-    sparkline: [24680, 24720, 24750, 24710, 24780, 24820, 24856],
-  },
-  SENSEX: {
-    id: "sensex",
-    name: "Sensex",
-    sparkline: [81280, 81400, 81520, 81450, 81600, 81700, 81742],
-  },
-  BANKNIFTY: {
-    id: "banknifty",
-    name: "Bank Nifty",
-    sparkline: [53120, 53050, 52980, 52920, 52880, 52850, 52840],
-  },
-  INDIAVIX: {
-    id: "indiavix",
-    name: "India VIX",
-    sparkline: [14.25, 14.1, 13.9, 13.75, 13.6, 13.5, 13.42],
-  },
+  NIFTY: { id: "nifty50", name: "Nifty 50", sparkline: [] },
+  SENSEX: { id: "sensex", name: "Sensex", sparkline: [] },
+  BANKNIFTY: { id: "banknifty", name: "Bank Nifty", sparkline: [] },
+  INDIAVIX: { id: "indiavix", name: "India VIX", sparkline: [] },
 };
+
+function buildSparkline(low: number, ltp: number, high: number): number[] {
+  const mid = (low + ltp) / 2;
+  return [low, mid, ltp, mid, high, ltp];
+}
 
 async function resolveIndex(symbol: string): Promise<MarketIndex> {
   const meta = INDEX_META[symbol];
-  const fallback = MOCK_INDEX_QUOTES[symbol];
+  const enriched = await marketDataService.getEnrichedIndex(symbol);
+  const value = enriched.price ?? 0;
+  const change = enriched.change ?? 0;
+  const changePercent = enriched.changePercent ?? 0;
 
-  try {
-    const result = await marketDataService.getIndex(symbol);
-    const quote = result.data;
-    return {
-      id: meta?.id ?? symbol.toLowerCase(),
-      name: meta?.name ?? symbol,
-      symbol,
-      value: quote.ltp,
-      change: quote.change,
-      changePercent: quote.changePercent,
-      high: quote.high,
-      low: quote.low,
-      sparkline: meta?.sparkline ?? [quote.low, quote.ltp],
-    };
-  } catch {
-    if (fallback && meta) {
-      return mockQuoteToIndex(fallback, meta);
-    }
-    throw new Error(`Index data unavailable for ${symbol}`);
-  }
+  return {
+    id: meta?.id ?? symbol.toLowerCase(),
+    name: meta?.name ?? symbol,
+    symbol,
+    value,
+    change,
+    changePercent,
+    high: value > 0 ? value + Math.abs(change) : 0,
+    low: value > 0 ? value - Math.abs(change) : 0,
+    sparkline:
+      value > 0
+        ? buildSparkline(value - Math.abs(change), value, value + Math.abs(change))
+        : [],
+    quote: enriched,
+  };
 }
 
 export const aiMarketSummary: AIMarketSummary = {
@@ -192,7 +175,10 @@ export const upcomingResults: UpcomingResult[] = [
   },
 ];
 
-const WATCHLIST_SEED: Omit<WatchlistItem, "price" | "change" | "changePercent" | "volume">[] = [
+const WATCHLIST_SEED: Omit<
+  WatchlistItem,
+  "price" | "change" | "changePercent" | "volume" | "quote"
+>[] = [
   { id: "1", symbol: "BHARTIARTL", name: "Bharti Airtel", sector: "Telecom" },
   { id: "2", symbol: "SBIN", name: "State Bank of India", sector: "Banking" },
   { id: "3", symbol: "LT", name: "Larsen & Toubro", sector: "Infrastructure" },
@@ -202,12 +188,6 @@ const WATCHLIST_SEED: Omit<WatchlistItem, "price" | "change" | "changePercent" |
 ];
 
 const PORTFOLIO_SEED = {
-  totalValue: 2847560,
-  dayChange: 18420,
-  dayChangePercent: 0.65,
-  totalInvested: 2450000,
-  totalGain: 397560,
-  totalGainPercent: 16.23,
   holdings: [
     { id: "1", symbol: "RELIANCE", name: "Reliance Industries", quantity: 50, avgPrice: 2450 },
     { id: "2", symbol: "TCS", name: "Tata Consultancy", quantity: 30, avgPrice: 3200 },
@@ -216,6 +196,32 @@ const PORTFOLIO_SEED = {
     { id: "5", symbol: "ICICIBANK", name: "ICICI Bank", quantity: 60, avgPrice: 980 },
   ],
 };
+
+function holdingFromQuote(
+  holding: (typeof PORTFOLIO_SEED.holdings)[number],
+  quote: EnrichedQuote
+) {
+  return {
+    ...holding,
+    currentPrice: quote.price ?? 0,
+    changePercent: quote.changePercent ?? 0,
+    quote,
+  };
+}
+
+function watchlistFromQuote(
+  item: (typeof WATCHLIST_SEED)[number],
+  quote: EnrichedQuote
+): WatchlistItem {
+  return {
+    ...item,
+    price: quote.price ?? 0,
+    change: quote.change ?? 0,
+    changePercent: quote.changePercent ?? 0,
+    volume: quote.volume ? formatVolume(quote.volume) : "—",
+    quote,
+  };
+}
 
 export async function fetchMarketIndices(): Promise<MarketIndex[]> {
   return getCached(
@@ -233,24 +239,15 @@ export async function fetchPortfolioSummary(): Promise<PortfolioSummary> {
     async () => {
       const holdings = await Promise.all(
         PORTFOLIO_SEED.holdings.map(async (holding) => {
-          try {
-            const { data: quote } = await marketDataService.getQuote(holding.symbol);
-            return {
-              ...holding,
-              currentPrice: quote.ltp,
-              changePercent: quote.changePercent,
-            };
-          } catch {
-            return {
-              ...holding,
-              currentPrice: holding.avgPrice * 1.15,
-              changePercent: 0,
-            };
-          }
+          const quote = await marketDataService.getEnrichedQuote(holding.symbol);
+          return holdingFromQuote(holding, quote);
         })
       );
 
-      const totalValue = holdings.reduce(
+      const pricedHoldings = holdings.filter(
+        (h) => h.quote.availability !== "unavailable"
+      );
+      const totalValue = pricedHoldings.reduce(
         (sum, h) => sum + h.currentPrice * h.quantity,
         0
       );
@@ -258,7 +255,7 @@ export async function fetchPortfolioSummary(): Promise<PortfolioSummary> {
         (sum, h) => sum + h.avgPrice * h.quantity,
         0
       );
-      const dayChange = holdings.reduce(
+      const dayChange = pricedHoldings.reduce(
         (sum, h) =>
           sum + h.currentPrice * h.quantity * (h.changePercent / 100),
         0
@@ -287,24 +284,8 @@ export async function fetchWatchlist(): Promise<WatchlistItem[]> {
     async () =>
       Promise.all(
         WATCHLIST_SEED.map(async (item) => {
-          try {
-            const { data: quote } = await marketDataService.getQuote(item.symbol);
-            return {
-              ...item,
-              price: quote.ltp,
-              change: quote.change,
-              changePercent: quote.changePercent,
-              volume: formatVolume(quote.volume),
-            };
-          } catch {
-            return {
-              ...item,
-              price: 0,
-              change: 0,
-              changePercent: 0,
-              volume: "—",
-            };
-          }
+          const quote = await marketDataService.getEnrichedQuote(item.symbol);
+          return watchlistFromQuote(item, quote);
         })
       )
   );
@@ -320,4 +301,17 @@ export async function fetchMarketNews(): Promise<MarketNews[]> {
 
 export async function fetchUpcomingResults(): Promise<UpcomingResult[]> {
   return upcomingResults;
+}
+
+/** Build initial quotes map for client-side live polling */
+export function buildInitialQuotesMap(
+  items: Array<{ symbol: string; quote?: EnrichedQuote }>
+): Record<string, EnrichedQuote> {
+  const map: Record<string, EnrichedQuote> = {};
+  for (const item of items) {
+    if (item.quote) {
+      map[item.symbol.toUpperCase()] = item.quote;
+    }
+  }
+  return map;
 }

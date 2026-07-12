@@ -13,15 +13,20 @@ import { RedFlagPanel } from "@/components/company/intelligence/RedFlagPanel";
 import { ResearchConfidencePanel } from "@/components/company/intelligence/ResearchConfidencePanel";
 import { ValuationAnalysisPanel } from "@/components/company/intelligence/ValuationAnalysisPanel";
 import { DataTransparencyBar } from "@/components/ui/DataTransparency";
+import type { EnrichedQuote } from "@/lib/market-data/enriched-quote";
 import type { EquityIntelligence } from "@/types";
 import { BrainCircuit } from "lucide-react";
 
 interface EquityIntelligenceEngineProps {
   intelligence: EquityIntelligence;
+  symbol: string;
+  initialQuote?: EnrichedQuote;
 }
 
 export function EquityIntelligenceEngine({
   intelligence,
+  symbol,
+  initialQuote,
 }: EquityIntelligenceEngineProps) {
   return (
     <section className="space-y-6" aria-labelledby="equity-intelligence-title">
@@ -53,12 +58,19 @@ export function EquityIntelligenceEngine({
       <DecisionEnginePanel
         decision={intelligence.decision}
         dataTransparency={intelligence.dataTransparency}
+        symbol={symbol}
+        initialQuote={initialQuote}
       />
       <ResearchConfidencePanel
         confidence={intelligence.researchConfidence}
         dataTransparency={intelligence.dataTransparency}
       />
-      <AIInvestmentThesisCard thesis={intelligence.thesis} dataTransparency={intelligence.dataTransparency} />
+      <AIInvestmentThesisCard
+        thesis={intelligence.thesis}
+        dataTransparency={intelligence.dataTransparency}
+        symbol={symbol}
+        initialQuote={initialQuote}
+      />
       <FinancialQualityPanel
         analysis={intelligence.financialQuality}
         dataTransparency={intelligence.dataTransparency}
@@ -66,6 +78,8 @@ export function EquityIntelligenceEngine({
       <ValuationAnalysisPanel
         valuation={intelligence.valuation}
         dataTransparency={intelligence.dataTransparency}
+        symbol={symbol}
+        initialQuote={initialQuote}
       />
       <MultiYearTrendPanel
         trends={intelligence.multiYearTrends}

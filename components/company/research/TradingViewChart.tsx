@@ -1,7 +1,10 @@
 "use client";
 
 import { Card, CardHeader } from "@/components/ui/Card";
+import { QuoteDisplay } from "@/components/market/QuoteDisplay";
 import { TabBar } from "@/components/ui/TabBar";
+import { createUnavailableQuote } from "@/lib/market-data/enriched-quote";
+import type { EnrichedQuote } from "@/lib/market-data/enriched-quote";
 import type { ChartTimeframe, PricePoint, TradingViewTimeframe } from "@/types";
 import { CandlestickChart, Loader2 } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
@@ -10,8 +13,9 @@ interface TradingViewChartProps {
   exchangeSymbol: string;
   companyName: string;
   symbol: string;
-  currentPrice: number;
+  chartAnchorPrice: number;
   priceHistory?: Record<ChartTimeframe, PricePoint[]>;
+  liveQuote?: EnrichedQuote;
 }
 
 const TIMEFRAMES: TradingViewTimeframe[] = [
@@ -197,8 +201,9 @@ export function TradingViewChart({
   exchangeSymbol,
   companyName,
   symbol,
-  currentPrice,
+  chartAnchorPrice,
   priceHistory,
+  liveQuote,
 }: TradingViewChartProps) {
   const [timeframe, setTimeframe] = useState<TradingViewTimeframe>("6M");
   const [status, setStatus] = useState<ChartStatus>("resolving");
@@ -379,8 +384,10 @@ export function TradingViewChart({
         {status === "fallback" ? (
           <CustomCandlestickChart
             points={fallbackPoints}
-            currentPrice={currentPrice}
+            chartAnchorPrice={chartAnchorPrice}
             timeframe={timeframe}
+            symbol={symbol}
+            liveQuote={liveQuote}
           />
         ) : (
           <div ref={containerRef} id={containerId} className="h-full w-full" />
@@ -429,12 +436,12 @@ interface Candle {
   timestamp: string;
 }
 
-function buildCandles(points: PricePoint[], currentPrice: number): Candle[] {
+function buildCandles(points: PricePoint[], chartAnchorPrice: number): Candle[] {
   const series = points.slice(-64);
   if (series.length === 0) return [];
 
   const closes = new Array<number>(series.length);
-  closes[series.length - 1] = currentPrice;
+  closes[series.length - 1] = chartAnchorPrice;
 
   for (let index = series.length - 2; index >= 0; index--) {
     const rawCurrent = series[index].price;
@@ -464,16 +471,20 @@ function buildCandles(points: PricePoint[], currentPrice: number): Candle[] {
 
 function CustomCandlestickChart({
   points,
-  currentPrice,
+  chartAnchorPrice,
   timeframe,
+  symbol,
+  liveQuote,
 }: {
   points: PricePoint[];
-  currentPrice: number;
+  chartAnchorPrice: number;
   timeframe: TradingViewTimeframe;
+  symbol: string;
+  liveQuote?: EnrichedQuote;
 }) {
   const candles = useMemo(
-    () => buildCandles(points, currentPrice),
-    [points, currentPrice]
+    () => buildCandles(points, chartAnchorPrice),
+    [points, chartAnchorPrice]
   );
 
   if (candles.length === 0) {
@@ -507,8 +518,8 @@ function CustomCandlestickChart({
     `₹${price.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
   const axisPrices = [maxHigh, (maxHigh + minLow) / 2, minLow];
-  const lastCandle = candles[candles.length - 1];
-  const isGain = lastCandle.close >= candles[0].open;
+
+  const quote = liveQuote ?? createUnavailableQuote(symbol, new Date());
 
   return (
     <div className="relative h-full w-full bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.08),transparent_35%)] p-4">
@@ -518,17 +529,15 @@ function CustomCandlestickChart({
             EquityOS Candles · {timeframe}
           </p>
           <p className="text-[10px] text-text-muted">
-            Local OHLC approximation from mock price history
+            Local OHLC from price history
           </p>
         </div>
-        <div className="text-right">
-          <p className="font-mono text-sm font-semibold tabular-nums text-text-primary">
-            ₹{currentPrice.toLocaleString("en-IN")}
-          </p>
-          <p className={isGain ? "text-[10px] text-gain" : "text-[10px] text-loss"}>
-            {isGain ? "Positive structure" : "Corrective structure"}
-          </p>
-        </div>
+        <QuoteDisplay
+          quote={quote}
+          size="sm"
+          align="right"
+          showTimestamp
+        />
       </div>
 
       <svg

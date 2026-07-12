@@ -15,22 +15,22 @@ export function AppShell({ children }: AppShellProps) {
   const sidebarWidth = sidebarCollapsed ? "68px" : "240px";
 
   return (
-    <AIWorkspaceProvider>
-      <div className="min-h-screen">
-        <Sidebar
-          collapsed={sidebarCollapsed}
-          onCollapsedChange={setSidebarCollapsed}
-        />
+    <div className="min-h-screen">
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        onCollapsedChange={setSidebarCollapsed}
+      />
+      <AIWorkspaceProvider sidebarOffset={sidebarWidth}>
         <TopNav sidebarWidth={sidebarWidth} />
         <main
-          className="mt-14 min-h-[calc(100vh-3.5rem)] transition-[margin-left] duration-300"
+          className="relative z-0 mt-14 min-h-[calc(100vh-3.5rem)] transition-[margin-left] duration-300"
           style={{ marginLeft: sidebarWidth }}
         >
           <ErrorBoundary title="Application section failed">
             {children}
           </ErrorBoundary>
         </main>
-      </div>
-    </AIWorkspaceProvider>
+      </AIWorkspaceProvider>
+    </div>
   );
 }

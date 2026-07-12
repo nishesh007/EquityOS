@@ -7,14 +7,14 @@ import { loadProviderConfig } from "@/lib/providers/config";
 import { cacheKey, getStaleCachedSync } from "@/lib/cache";
 import { createBridgeProvider } from "@/lib/market-data/providers/adapter-bridge";
 import { freeProvider } from "@/lib/market-data/providers/free-provider";
+import { normalizeSymbol } from "@/lib/market-data/symbols";
 import type {
   IMarketDataProvider,
   MarketData,
   MarketDataResult,
 } from "@/lib/market-data/types";
-import { normalizeSymbol } from "@/lib/market-data/symbols";
 
-function buildProviderChain(): IMarketDataProvider[] {
+function buildProviderChain(includeFree = true): IMarketDataProvider[] {
   const config = loadProviderConfig();
   const chain: IMarketDataProvider[] = [];
 
@@ -33,17 +33,43 @@ function buildProviderChain(): IMarketDataProvider[] {
     }
   }
 
-  chain.push(freeProvider);
+  if (includeFree) {
+    chain.push(freeProvider);
+  }
   return chain;
+}
+
+function buildUnavailableMarketData(symbol: string): MarketData {
+  const normalized = normalizeSymbol(symbol);
+  const now = new Date().toISOString();
+  return {
+    symbol: normalized.internal,
+    companyName: normalized.companyName ?? normalized.internal,
+    exchange: normalized.exchange,
+    currency: normalized.currency,
+    ltp: 0,
+    previousClose: 0,
+    open: 0,
+    high: 0,
+    low: 0,
+    change: 0,
+    changePercent: 0,
+    volume: 0,
+    provider: "unavailable",
+    lastUpdated: now,
+    source: "unavailable",
+  };
 }
 
 async function executeWithFailover(
   symbol: string,
-  operation: (provider: IMarketDataProvider) => Promise<MarketData>
+  operation: (provider: IMarketDataProvider) => Promise<MarketData>,
+  options: { allowMock?: boolean } = {}
 ): Promise<MarketDataResult> {
+  const { allowMock = true } = options;
   const normalized = normalizeSymbol(symbol);
   const cacheKeyStr = cacheKey("market-data", normalized.internal);
-  const chain = buildProviderChain();
+  const chain = buildProviderChain(allowMock);
   const attempted: string[] = [];
 
   for (const provider of chain) {
@@ -72,13 +98,21 @@ async function executeWithFailover(
     };
   }
 
-  // Terminal fallback — Free provider should never throw, but guard anyway
-  const fallback = await freeProvider.getMarketData(normalized.internal);
+  if (allowMock) {
+    const fallback = await freeProvider.getMarketData(normalized.internal);
+    return {
+      data: fallback,
+      provider: "Free",
+      source: "mock",
+      attempted: [...attempted, "Free (terminal)"],
+    };
+  }
+
   return {
-    data: fallback,
-    provider: "Free",
-    source: "mock",
-    attempted: [...attempted, "Free (terminal)"],
+    data: buildUnavailableMarketData(symbol),
+    provider: "unavailable",
+    source: "unavailable",
+    attempted,
   };
 }
 
@@ -91,7 +125,9 @@ export async function fetchMarketDataWithFailover(
 export async function fetchQuoteWithFailover(
   symbol: string
 ): Promise<MarketDataResult> {
-  return executeWithFailover(symbol, (p) => p.getQuote(symbol));
+  return executeWithFailover(symbol, (p) => p.getQuote(symbol), {
+    allowMock: false,
+  });
 }
 
 export function getActiveMarketDataProviders(): string[] {

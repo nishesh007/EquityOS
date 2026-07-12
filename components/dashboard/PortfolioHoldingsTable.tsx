@@ -3,8 +3,12 @@
 import { useRouter } from "next/navigation";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { ChangeIndicator } from "@/components/ui/ChangeIndicator";
+import { QuoteDisplayCompact } from "@/components/market/QuoteDisplay";
+import { useMarketQuotes } from "@/hooks/useMarketQuotes";
+import { createUnavailableQuote } from "@/lib/market-data/enriched-quote";
 import { formatCurrency } from "@/lib/utils";
 import { getCompanyRoute } from "@/lib/routes";
+import { buildInitialQuotesMap } from "@/services/marketData";
 import type { PortfolioHolding } from "@/types";
 import { Briefcase } from "lucide-react";
 
@@ -16,6 +20,10 @@ export function PortfolioHoldingsTable({
   holdings,
 }: PortfolioHoldingsTableProps) {
   const router = useRouter();
+  const symbols = holdings.map((h) => h.symbol);
+  const { quotes } = useMarketQuotes(symbols, {
+    initialQuotes: buildInitialQuotesMap(holdings),
+  });
 
   return (
     <Card padding="lg" className="h-full">
@@ -58,7 +66,13 @@ export function PortfolioHoldingsTable({
           </thead>
           <tbody>
             {holdings.map((holding) => {
-              const currentValue = holding.currentPrice * holding.quantity;
+              const quote =
+                quotes.get(holding.symbol) ??
+                holding.quote ??
+                createUnavailableQuote(holding.symbol);
+              const currentPrice = quote.price ?? holding.currentPrice;
+              const changePercent = quote.changePercent ?? holding.changePercent;
+              const currentValue = currentPrice * holding.quantity;
               const investedValue = holding.avgPrice * holding.quantity;
               const pnl = currentValue - investedValue;
               const pnlPercent =
@@ -91,13 +105,11 @@ export function PortfolioHoldingsTable({
                     </p>
                   </td>
                   <td className="py-3 text-right">
-                    <p className="text-sm font-mono text-text-primary tabular-nums">
-                      ₹{holding.currentPrice.toLocaleString("en-IN")}
-                    </p>
+                    <QuoteDisplayCompact quote={quote} className="flex flex-col items-end" />
                   </td>
                   <td className="py-3 text-right">
                     <ChangeIndicator
-                      value={holding.changePercent}
+                      value={changePercent}
                       size="sm"
                       showIcon={false}
                     />

@@ -1,4 +1,4 @@
-import type { CompanyProfile } from "@/types";
+import type { CompanyProfile, PeerCompany } from "@/types";
 import {
   bundleToCompanyProfile,
   buildFallbackPriceHistory,
@@ -8,9 +8,24 @@ import {
 import { isValidNseSymbol, normalizeNseSymbol } from "@/lib/fundamentals/symbols";
 import { getFullPriceHistory } from "@/lib/market";
 import { marketDataService } from "@/lib/market-data";
-import { getMockQuote } from "@/lib/providers/mock-data";
-import { resolveMarketPrice } from "@/lib/utils";
+import { isValidMarketPrice } from "@/lib/utils";
 import { CACHE_TTL, cacheKey, getCached, getStaleCachedSync } from "@/lib/cache";
+
+async function enrichPeersWithQuotes(peers: PeerCompany[]): Promise<PeerCompany[]> {
+  if (peers.length === 0) return peers;
+
+  const quoteMap = await marketDataService.getEnrichedQuotes(peers.map((peer) => peer.symbol));
+
+  return peers.map((peer) => {
+    const quote = quoteMap.get(peer.symbol.toUpperCase()) ?? quoteMap.get(peer.symbol);
+    return {
+      ...peer,
+      price: quote?.price ?? 0,
+      changePercent: quote?.changePercent ?? 0,
+      quote: quote ?? undefined,
+    };
+  });
+}
 
 export async function fetchCompanyProfile(
   symbol: string
@@ -26,40 +41,44 @@ export async function fetchCompanyProfile(
       async () => {
         const [fundamentalsResult, quoteResult, priceHistory] = await Promise.all([
           fetchFundamentalsBundle(normalized),
-          marketDataService.getQuote(normalized).catch(() => null),
+          marketDataService.getEnrichedQuote(normalized).catch(() => null),
           getFullPriceHistory(normalized).catch(() => null),
         ]);
 
         if (!fundamentalsResult) return null;
 
         const bundle = fundamentalsResult.data;
-        const quote = quoteResult?.data;
-        const seedQuote = getMockQuote(normalized);
-        const resolvedPrice = resolveMarketPrice(quote?.ltp, seedQuote?.ltp, bundle.price);
+        const quote = quoteResult;
+        const livePrice = quote?.price ?? null;
+        const resolvedPrice = isValidMarketPrice(livePrice) ? livePrice : 0;
 
         const history =
           priceHistory ??
-          buildFallbackPriceHistory(
-            resolvedPrice || quote?.ltp || bundle.price,
-            quote?.changePercent ?? bundle.changePercent
-          );
+          (resolvedPrice > 0
+            ? buildFallbackPriceHistory(
+                resolvedPrice,
+                quote?.changePercent ?? bundle.changePercent
+              )
+            : buildFallbackPriceHistory(bundle.price, bundle.changePercent));
 
         const profile = bundleToCompanyProfile(bundle, history);
 
         const enriched = attachFundamentalsToProfile(
           {
             ...profile,
-            price: resolvedPrice || profile.price,
+            price: resolvedPrice,
             change: quote?.change ?? profile.change,
             changePercent: quote?.changePercent ?? profile.changePercent,
-            marketCap: quote?.marketCap ?? profile.marketCap,
-            sector: quote?.sector ?? profile.sector,
-            industry: quote?.industry ?? profile.industry,
+            marketCap: profile.marketCap,
+            sector: quote?.exchange ? profile.sector : profile.sector,
+            industry: profile.industry,
+            quote: quote ?? undefined,
           },
           bundle
         );
 
-        return enriched;
+        const peers = await enrichPeersWithQuotes(enriched.peers);
+        return { ...enriched, peers };
       }
     );
   } catch {

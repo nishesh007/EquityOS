@@ -1,6 +1,8 @@
 import { IntelligenceProgress } from "@/components/company/intelligence/IntelligenceProgress";
 import { DataTransparencyBar } from "@/components/ui/DataTransparency";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { CompanyLiveQuote } from "@/components/market/CompanyLiveQuote";
+import type { EnrichedQuote } from "@/lib/market-data/enriched-quote";
 import { formatPrice } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import type { AIInvestmentThesis, DataTransparency, RecommendationLevel } from "@/types";
@@ -18,6 +20,8 @@ import {
 interface AIInvestmentThesisCardProps {
   thesis: AIInvestmentThesis;
   dataTransparency?: DataTransparency;
+  symbol: string;
+  initialQuote?: EnrichedQuote;
 }
 
 function NarrativeBlock({
@@ -65,7 +69,12 @@ function InsightBlock({
   );
 }
 
-export function AIInvestmentThesisCard({ thesis, dataTransparency }: AIInvestmentThesisCardProps) {
+export function AIInvestmentThesisCard({
+  thesis,
+  dataTransparency,
+  symbol,
+  initialQuote,
+}: AIInvestmentThesisCardProps) {
   const recStyles: Record<RecommendationLevel, string> = {
     "Strong Buy": "text-gain border-gain/20 bg-gain-bg",
     Buy: "text-gain border-gain/20 bg-gain-bg",
@@ -89,6 +98,10 @@ export function AIInvestmentThesisCard({ thesis, dataTransparency }: AIInvestmen
             </div>
           }
         />
+
+        <div className="mb-4">
+          <CompanyLiveQuote symbol={symbol} initialQuote={initialQuote} size="sm" />
+        </div>
 
         <div className={cn("mb-4 rounded-lg border p-4", recStyles[thesis.recommendation])}>
           <p className="text-[10px] font-medium uppercase tracking-wider opacity-70">Recommendation</p>

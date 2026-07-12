@@ -1,4 +1,6 @@
 import { ScoreGauge } from "@/components/ui/ScoreGauge";
+import { CompanyLiveQuote } from "@/components/market/CompanyLiveQuote";
+import type { EnrichedQuote } from "@/lib/market-data/enriched-quote";
 import { cn, formatPrice } from "@/lib/utils";
 import type { ConvictionLevel, SwingTradeSetup } from "@/types";
 import { Crosshair, Shield, Target, TrendingUp } from "lucide-react";
@@ -6,6 +8,7 @@ import { Crosshair, Shield, Target, TrendingUp } from "lucide-react";
 interface SwingTradePanelProps {
   swing: SwingTradeSetup;
   symbol: string;
+  initialQuote?: EnrichedQuote;
 }
 
 const convictionStyles: Record<
@@ -17,7 +20,7 @@ const convictionStyles: Record<
   Low: { text: "text-text-muted", dot: "bg-text-faint", ring: "ring-surface-border" },
 };
 
-export function SwingTradePanel({ swing, symbol }: SwingTradePanelProps) {
+export function SwingTradePanel({ swing, symbol, initialQuote }: SwingTradePanelProps) {
   const conviction = convictionStyles[swing.conviction];
 
   const targets = [
@@ -77,6 +80,8 @@ export function SwingTradePanel({ swing, symbol }: SwingTradePanelProps) {
 
           {/* Right: levels */}
           <div className="flex-1 space-y-4">
+            <CompanyLiveQuote symbol={symbol} initialQuote={initialQuote} size="sm" />
+
             {/* Entry / Stop */}
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-lg border border-accent/15 bg-accent/5 p-3">

@@ -27,8 +27,8 @@ export function ResearchTerminal({ company, research }: ResearchTerminalProps) {
           exchangeSymbol={research.exchangeSymbol}
           companyName={company.name}
           symbol={company.symbol}
-          currentPrice={company.price}
           priceHistory={company.priceHistory}
+          quote={company.quote}
         />
         <TechnicalIndicatorsPanel
           symbol={company.symbol}
@@ -37,8 +37,16 @@ export function ResearchTerminal({ company, research }: ResearchTerminalProps) {
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(420px,0.9fr)]">
-        <SwingTradePanel swing={research.swing} symbol={company.symbol} />
-        <AIAnalysisCard analysis={research.ai} />
+        <SwingTradePanel
+          swing={research.swing}
+          symbol={company.symbol}
+          initialQuote={company.quote}
+        />
+        <AIAnalysisCard
+          analysis={research.ai}
+          symbol={company.symbol}
+          initialQuote={company.quote}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">

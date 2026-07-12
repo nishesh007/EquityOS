@@ -76,6 +76,7 @@ export interface ScreenerRow {
   exchange: string;
   /** All metric values keyed by filter key */
   metrics: Record<string, number | string | null>;
+  quote?: import("@/lib/market-data/enriched-quote").EnrichedQuote;
 }
 
 export interface ScreenerResult {
