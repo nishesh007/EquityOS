@@ -20,6 +20,9 @@ export interface ProviderEnvConfig {
     apiKey?: string;
     baseUrl: string;
   };
+  yahoo: {
+    baseUrl: string;
+  };
   polygon: {
     apiKey?: string;
     baseUrl: string;
@@ -59,6 +62,9 @@ export function loadProviderConfig(): ProviderEnvConfig {
       apiKey: env("FINNHUB_API_KEY") || undefined,
       baseUrl: env("FINNHUB_API_BASE_URL", "https://finnhub.io/api/v1"),
     },
+    yahoo: {
+      baseUrl: env("YAHOO_FINANCE_BASE_URL", "https://query1.finance.yahoo.com"),
+    },
     polygon: {
       apiKey: env("POLYGON_API_KEY") || undefined,
       baseUrl: env("POLYGON_API_BASE_URL", "https://api.polygon.io"),
@@ -92,6 +98,8 @@ export function isProviderConfigured(provider: string): boolean {
       return config.nse.enabled;
     case "bse":
       return config.bse.enabled;
+    case "yahoo":
+      return true;
     case "finnhub":
       return hasApiKey(config.finnhub.apiKey);
     case "polygon":

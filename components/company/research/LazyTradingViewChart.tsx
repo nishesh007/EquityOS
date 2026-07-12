@@ -3,8 +3,8 @@
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useMarketQuotes } from "@/hooks/useMarketQuotes";
-import { isValidMarketPrice } from "@/lib/utils";
 import type { ChartTimeframe } from "@/types";
+import type { OhlcBar } from "@/lib/providers/types";
 
 function ChartSkeleton() {
   return (
@@ -27,19 +27,8 @@ interface LazyTradingViewChartProps {
   exchangeSymbol: string;
   companyName: string;
   symbol: string;
-  priceHistory: Record<ChartTimeframe, { timestamp: string; price: number; volume?: number }[]>;
+  priceHistory: Record<ChartTimeframe, OhlcBar[]>;
   quote?: import("@/lib/market-data/enriched-quote").EnrichedQuote;
-}
-
-function lastHistoricalPrice(
-  priceHistory: LazyTradingViewChartProps["priceHistory"]
-): number {
-  for (const timeframe of ["6M", "1Y", "3M", "1M", "1W", "1D", "5Y"] as ChartTimeframe[]) {
-    const series = priceHistory[timeframe];
-    const last = series?.[series.length - 1]?.price;
-    if (isValidMarketPrice(last)) return last;
-  }
-  return 0;
 }
 
 export function LazyTradingViewChart({
@@ -53,17 +42,12 @@ export function LazyTradingViewChart({
   });
 
   const liveQuote = quotes.get(symbol) ?? quotes.get(symbol.toUpperCase());
-  const livePrice = liveQuote?.price;
-  const chartAnchorPrice = isValidMarketPrice(livePrice)
-    ? livePrice
-    : lastHistoricalPrice(priceHistory);
 
   return (
     <TradingViewChart
       {...props}
       symbol={symbol}
       priceHistory={priceHistory}
-      chartAnchorPrice={chartAnchorPrice}
       liveQuote={liveQuote}
     />
   );

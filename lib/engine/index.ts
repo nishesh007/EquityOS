@@ -43,10 +43,10 @@ import type {
   EquityScore,
   InvestmentChecklist,
   MarketBreadth,
-  PricePoint,
   TechnicalAnalysis,
   TradingData,
 } from "@/types";
+import type { OhlcBar } from "@/lib/providers/types";
 
 /**
  * Central Equity Intelligence Engine.
@@ -67,7 +67,7 @@ export const EquityIntelligenceEngine = {
   buildTechnicalAnalysis(
     profile: CompanyProfile,
     trading: TradingData,
-    options?: { priceHistory?: PricePoint[] }
+    options?: { candles?: OhlcBar[] }
   ): TechnicalBuildResult {
     return buildTechnicalAnalysis(profile, trading, options);
   },

@@ -5,7 +5,8 @@ import { QuoteDisplay } from "@/components/market/QuoteDisplay";
 import { TabBar } from "@/components/ui/TabBar";
 import { createUnavailableQuote } from "@/lib/market-data/enriched-quote";
 import type { EnrichedQuote } from "@/lib/market-data/enriched-quote";
-import type { ChartTimeframe, PricePoint, TradingViewTimeframe } from "@/types";
+import type { ChartTimeframe, TradingViewTimeframe } from "@/types";
+import type { OhlcBar } from "@/lib/providers/types";
 import { CandlestickChart, Loader2 } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
@@ -13,8 +14,7 @@ interface TradingViewChartProps {
   exchangeSymbol: string;
   companyName: string;
   symbol: string;
-  chartAnchorPrice: number;
-  priceHistory?: Record<ChartTimeframe, PricePoint[]>;
+  priceHistory?: Record<ChartTimeframe, OhlcBar[]>;
   liveQuote?: EnrichedQuote;
 }
 
@@ -201,7 +201,6 @@ export function TradingViewChart({
   exchangeSymbol,
   companyName,
   symbol,
-  chartAnchorPrice,
   priceHistory,
   liveQuote,
 }: TradingViewChartProps) {
@@ -383,8 +382,7 @@ export function TradingViewChart({
       <div className="relative h-[440px] w-full overflow-hidden rounded-lg border border-surface-border-subtle bg-surface">
         {status === "fallback" ? (
           <CustomCandlestickChart
-            points={fallbackPoints}
-            chartAnchorPrice={chartAnchorPrice}
+            candles={fallbackPoints}
             timeframe={timeframe}
             symbol={symbol}
             liveQuote={liveQuote}
@@ -410,7 +408,7 @@ export function TradingViewChart({
                   Chart unavailable
                 </p>
                 <p className="mt-1 text-xs text-text-muted">
-                  Could not reach TradingView. Check your connection and retry.
+                  Historical data unavailable
                 </p>
               </div>
             )}
@@ -420,79 +418,32 @@ export function TradingViewChart({
 
       <p className="mt-3 text-[10px] text-text-faint">
         {status === "fallback"
-          ? "TradingView did not confirm NSE/BSE availability, so EquityOS is showing a clean mock candlestick chart."
+          ? "TradingView did not confirm NSE/BSE availability, so EquityOS is showing provider historical candles."
           : "Interactive charting powered by TradingView. Timeframes update the visible range in real time."}
       </p>
     </Card>
   );
 }
 
-interface Candle {
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
-  timestamp: string;
-}
-
-function buildCandles(points: PricePoint[], chartAnchorPrice: number): Candle[] {
-  const series = points.slice(-64);
-  if (series.length === 0) return [];
-
-  const closes = new Array<number>(series.length);
-  closes[series.length - 1] = chartAnchorPrice;
-
-  for (let index = series.length - 2; index >= 0; index--) {
-    const rawCurrent = series[index].price;
-    const rawNext = series[index + 1].price;
-    const rawMove = rawNext > 0 ? (rawCurrent - rawNext) / rawNext : 0;
-    const cappedMove = Math.max(-0.045, Math.min(0.045, rawMove));
-    closes[index] = closes[index + 1] * (1 + cappedMove);
-  }
-
-  return series.map((point, index) => {
-    const previousClose =
-      index > 0 ? closes[index - 1] : closes[index] * 0.996;
-    const open = previousClose;
-    const close = closes[index];
-    const wick = Math.max(Math.abs(close - open) * 0.45, close * 0.004);
-
-    return {
-      open,
-      close,
-      high: Math.max(open, close) + wick,
-      low: Math.min(open, close) - wick,
-      volume: point.volume ?? 0,
-      timestamp: point.timestamp,
-    };
-  });
-}
-
 function CustomCandlestickChart({
-  points,
-  chartAnchorPrice,
+  candles: providerCandles,
   timeframe,
   symbol,
   liveQuote,
 }: {
-  points: PricePoint[];
-  chartAnchorPrice: number;
+  candles: OhlcBar[];
   timeframe: TradingViewTimeframe;
   symbol: string;
   liveQuote?: EnrichedQuote;
 }) {
-  const candles = useMemo(
-    () => buildCandles(points, chartAnchorPrice),
-    [points, chartAnchorPrice]
-  );
+  const candles = useMemo(() => providerCandles.slice(-64), [providerCandles]);
 
   if (candles.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center text-center">
         <p className="text-sm font-medium text-text-secondary">Chart unavailable</p>
         <p className="mt-1 text-xs text-text-muted">
-          No local price history is available for this symbol.
+          Historical data unavailable
         </p>
       </div>
     );
@@ -529,7 +480,7 @@ function CustomCandlestickChart({
             EquityOS Candles · {timeframe}
           </p>
           <p className="text-[10px] text-text-muted">
-            Local OHLC from price history
+            Provider OHLC from historical data
           </p>
         </div>
         <QuoteDisplay

@@ -1,9 +1,8 @@
 /**
- * Fundamentals failover chain: Primary → Secondary → Mock.
+ * Fundamentals failover chain: Primary → Secondary, with dev-only mock fallback.
  */
 
 import { createFundamentalsProviderByName } from "@/lib/fundamentals/adapter-providers";
-import { mockFundamentalsProvider } from "@/lib/fundamentals/mock-provider";
 import { loadFundamentalsConfig } from "@/lib/fundamentals/config";
 import { normalizeNseSymbol } from "@/lib/fundamentals/symbols";
 import type {
@@ -13,7 +12,11 @@ import type {
 } from "@/lib/fundamentals/types";
 import type { DataSource } from "@/lib/providers/types";
 
-function buildFundamentalsChain(): FundamentalsProvider[] {
+function isDevelopmentMode(): boolean {
+  return process.env.NODE_ENV === "development";
+}
+
+async function buildFundamentalsChain(): Promise<FundamentalsProvider[]> {
   const config = loadFundamentalsConfig();
   const chain: FundamentalsProvider[] = [];
 
@@ -25,7 +28,11 @@ function buildFundamentalsChain(): FundamentalsProvider[] {
     chain.push(secondary);
   }
 
-  chain.push(mockFundamentalsProvider);
+  if (isDevelopmentMode()) {
+    const { mockFundamentalsProvider } = await import("@/lib/fundamentals/mock-provider");
+    chain.push(mockFundamentalsProvider);
+  }
+
   return chain;
 }
 
@@ -48,18 +55,18 @@ async function executeWithFailover(
   }
 
   throw new Error(
-    `All fundamentals providers failed (${attempted.join(" → ")}). Mock is terminal.`
+    `All fundamentals providers failed (${attempted.join(" → ")}).`
   );
 }
 
 export async function fetchFundamentalsWithFailover(
   symbol: string
 ): Promise<FundamentalsFailoverResult> {
-  return executeWithFailover(buildFundamentalsChain(), normalizeNseSymbol(symbol));
+  return executeWithFailover(await buildFundamentalsChain(), normalizeNseSymbol(symbol));
 }
 
-export function getActiveFundamentalsProviders(): string[] {
-  return buildFundamentalsChain().map((p) => p.name);
+export async function getActiveFundamentalsProviders(): Promise<string[]> {
+  return (await buildFundamentalsChain()).map((p) => p.name);
 }
 
 export type { FundamentalsBundle, FundamentalsFailoverResult };

@@ -74,25 +74,28 @@ const FALLBACK_SWING_SCORES: Record<string, { technicalScore: number; fundamenta
   TATAPOWER: { technicalScore: 79, fundamentalScore: 80 },
 };
 
-const swingTradeIdeasBase: Omit<SwingTradeIdea, "technicalScore" | "fundamentalScore">[] = [
-  { symbol: "BHARTIARTL", company: "Bharti Airtel", side: "Long", entryLow: 1650, entryHigh: 1680, stopLoss: 1598, targets: [1740, 1810, 1890] },
-  { symbol: "LT", company: "Larsen & Toubro", side: "Long", entryLow: 3580, entryHigh: 3640, stopLoss: 3485, targets: [3775, 3890, 4020] },
-  { symbol: "ICICIBANK", company: "ICICI Bank", side: "Long", entryLow: 1260, entryHigh: 1285, stopLoss: 1218, targets: [1335, 1380, 1425] },
-  { symbol: "TCS", company: "Tata Consultancy", side: "Long", entryLow: 4050, entryHigh: 4120, stopLoss: 3940, targets: [4260, 4410, 4580] },
-  { symbol: "M&M", company: "Mahindra & Mahindra", side: "Long", entryLow: 2860, entryHigh: 2920, stopLoss: 2765, targets: [3050, 3175, 3320] },
-  { symbol: "SUNPHARMA", company: "Sun Pharma", side: "Long", entryLow: 1705, entryHigh: 1735, stopLoss: 1648, targets: [1800, 1870, 1940] },
-  { symbol: "HINDALCO", company: "Hindalco Industries", side: "Long", entryLow: 672, entryHigh: 684, stopLoss: 648, targets: [712, 738, 765] },
-  { symbol: "ASIANPAINT", company: "Asian Paints", side: "Short", entryLow: 2870, entryHigh: 2910, stopLoss: 2978, targets: [2795, 2725, 2640] },
-  { symbol: "SBILIFE", company: "SBI Life Insurance", side: "Long", entryLow: 1580, entryHigh: 1610, stopLoss: 1528, targets: [1665, 1720, 1790] },
-  { symbol: "TATAPOWER", company: "Tata Power", side: "Long", entryLow: 432, entryHigh: 441, stopLoss: 416, targets: [460, 478, 498] },
+const swingTradeIdeasBase: Omit<
+  SwingTradeIdea,
+  "entryLow" | "entryHigh" | "stopLoss" | "targets" | "technicalScore" | "fundamentalScore"
+>[] = [
+  { symbol: "BHARTIARTL", company: "Bharti Airtel", side: "Long" },
+  { symbol: "LT", company: "Larsen & Toubro", side: "Long" },
+  { symbol: "ICICIBANK", company: "ICICI Bank", side: "Long" },
+  { symbol: "TCS", company: "Tata Consultancy", side: "Long" },
+  { symbol: "M&M", company: "Mahindra & Mahindra", side: "Long" },
+  { symbol: "SUNPHARMA", company: "Sun Pharma", side: "Long" },
+  { symbol: "HINDALCO", company: "Hindalco Industries", side: "Long" },
+  { symbol: "ASIANPAINT", company: "Asian Paints", side: "Short" },
+  { symbol: "SBILIFE", company: "SBI Life Insurance", side: "Long" },
+  { symbol: "TATAPOWER", company: "Tata Power", side: "Long" },
 ];
 
-const intradayIdeasBase: Omit<IntradayIdea, "conviction" | "entry">[] = [
-  { symbol: "RELIANCE", company: "Reliance Industries", side: "Long", stopLoss: 2862, target: 2952, riskReward: 2, timeHorizon: "2–4 hours" },
-  { symbol: "INFY", company: "Infosys", side: "Long", stopLoss: 1878, target: 1928, riskReward: 2.1, timeHorizon: "1–3 hours" },
-  { symbol: "SBIN", company: "State Bank of India", side: "Short", stopLoss: 819, target: 795, riskReward: 2, timeHorizon: "2–5 hours" },
-  { symbol: "TATASTEEL", company: "Tata Steel", side: "Long", stopLoss: 166.8, target: 173.8, riskReward: 2, timeHorizon: "1–2 hours" },
-  { symbol: "MARUTI", company: "Maruti Suzuki", side: "Long", stopLoss: 12342, target: 12725, riskReward: 2.1, timeHorizon: "3–5 hours" },
+const intradayIdeasBase: Omit<IntradayIdea, "conviction" | "entry" | "stopLoss" | "target">[] = [
+  { symbol: "RELIANCE", company: "Reliance Industries", side: "Long", riskReward: 2, timeHorizon: "2–4 hours" },
+  { symbol: "INFY", company: "Infosys", side: "Long", riskReward: 2.1, timeHorizon: "1–3 hours" },
+  { symbol: "SBIN", company: "State Bank of India", side: "Short", riskReward: 2, timeHorizon: "2–5 hours" },
+  { symbol: "TATASTEEL", company: "Tata Steel", side: "Long", riskReward: 2, timeHorizon: "1–2 hours" },
+  { symbol: "MARUTI", company: "Maruti Suzuki", side: "Long", riskReward: 2.1, timeHorizon: "3–5 hours" },
 ];
 
 const FALLBACK_CONVICTION: Record<string, number> = {
@@ -148,13 +151,34 @@ async function buildLiveMarketBreadth(): Promise<MarketBreadth> {
 }
 
 
-async function resolveSwingEntryRange(symbol: string): Promise<{ entryLow: number; entryHigh: number }> {
-  const quote = await marketDataService.getEnrichedQuote(symbol);
-  const price = quote.price ?? 0;
-  if (price <= 0) return { entryLow: 0, entryHigh: 0 };
+function resolveIntradayLevels(
+  price: number,
+  side: "Long" | "Short"
+): Pick<IntradayIdea, "entry" | "stopLoss" | "target"> {
+  if (price <= 0) return { entry: 0, stopLoss: 0, target: 0 };
+  const stopLossFactor = side === "Long" ? 0.99 : 1.01;
+  const targetFactor = side === "Long" ? 1.02 : 0.98;
   return {
-    entryLow: Math.round(price * 0.985 * 100) / 100,
-    entryHigh: Math.round(price * 1.015 * 100) / 100,
+    entry: price,
+    stopLoss: Math.round(price * stopLossFactor * 100) / 100,
+    target: Math.round(price * targetFactor * 100) / 100,
+  };
+}
+
+function resolveSwingLevels(
+  price: number,
+  side: "Long" | "Short"
+): Pick<SwingTradeIdea, "entryLow" | "entryHigh" | "stopLoss" | "targets"> {
+  if (price <= 0) return { entryLow: 0, entryHigh: 0, stopLoss: 0, targets: [] };
+  const entryLow = Math.round(price * 0.985 * 100) / 100;
+  const entryHigh = Math.round(price * 1.015 * 100) / 100;
+  const stopLoss = Math.round(price * (side === "Long" ? 0.96 : 1.04) * 100) / 100;
+  const targetFactors = side === "Long" ? [1.03, 1.06, 1.1] : [0.97, 0.94, 0.9];
+  return {
+    entryLow,
+    entryHigh,
+    stopLoss,
+    targets: targetFactors.map((factor) => Math.round(price * factor * 100) / 100),
   };
 }
 
@@ -242,9 +266,10 @@ export async function fetchIntradayIdeas(): Promise<IntradayIdea[]> {
     const ideas = await Promise.all(
       intradayIdeasBase.map(async (idea) => {
         const quote = await marketDataService.getEnrichedQuote(idea.symbol);
+        const price = quote.price ?? 0;
         return {
           ...idea,
-          entry: quote.price ?? 0,
+          ...resolveIntradayLevels(price, idea.side),
           conviction: await resolveConviction(idea.symbol, idea.side),
           quote,
         };
@@ -259,11 +284,14 @@ export async function fetchSwingTradeIdeas(): Promise<SwingTradeIdea[]> {
     const ideas = await Promise.all(
       swingTradeIdeasBase.map(async (idea) => {
         const quote = await marketDataService.getEnrichedQuote(idea.symbol);
-        const [scores, entryRange] = await Promise.all([
-          resolveSwingScores(idea.symbol),
-          resolveSwingEntryRange(idea.symbol),
-        ]);
-        return { ...idea, ...scores, ...entryRange, quote };
+        const price = quote.price ?? 0;
+        const scores = await resolveSwingScores(idea.symbol);
+        return {
+          ...idea,
+          ...scores,
+          ...resolveSwingLevels(price, idea.side),
+          quote,
+        };
       })
     );
     return ideas;

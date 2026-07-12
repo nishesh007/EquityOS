@@ -2,7 +2,8 @@ import { adapterFetch, hasApiKey } from "@/lib/adapters/http";
 import { loadProviderConfig } from "@/lib/providers/config";
 import { toFinnhubSymbol } from "@/lib/adapters/finnhub";
 import { BaseDataAdapter, type AdapterConfig } from "@/lib/adapters/types";
-import type { ChartTimeframe, PricePoint } from "@/types";
+import type { ChartTimeframe } from "@/types";
+import type { OhlcBar } from "@/lib/providers/types";
 
 export interface PolygonParams {
   symbol: string;
@@ -93,7 +94,7 @@ export class PolygonAdapter extends BaseDataAdapter<PolygonParams, PolygonResult
   async fetchAggregates(
     symbol: string,
     timeframe: ChartTimeframe
-  ): Promise<PricePoint[]> {
+  ): Promise<OhlcBar[]> {
     const config = TIMEFRAME_TO_POLYGON[timeframe];
     const ticker = toPolygonTicker(symbol);
     const baseUrl = this.config.baseUrl ?? "https://api.polygon.io";
@@ -117,7 +118,10 @@ export class PolygonAdapter extends BaseDataAdapter<PolygonParams, PolygonResult
 
     return data.results.map((bar) => ({
       timestamp: new Date(bar.t).toISOString(),
-      price: bar.c,
+      open: bar.o,
+      high: bar.h,
+      low: bar.l,
+      close: bar.c,
       volume: bar.v,
     }));
   }

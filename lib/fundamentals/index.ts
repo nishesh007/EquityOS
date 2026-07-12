@@ -28,7 +28,6 @@ export {
 
 export { loadFundamentalsConfig, isFundamentalsProviderConfigured } from "@/lib/fundamentals/config";
 
-export { getMockSeed, listMockSymbols } from "@/lib/fundamentals/mock-data";
 export {
   getCompanyRegistry,
   lookupCompanyRegistry,
@@ -43,7 +42,6 @@ export {
   resetCompanyMasterCache,
   type CompanyMasterRecord,
 } from "@/lib/company-master";
-export { resolveFundamentalsSeed } from "@/lib/fundamentals/dynamic-seed";
 export {
   FUNDAMENTALS_METRIC_REGISTRY,
   normalizeScore,

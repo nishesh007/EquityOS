@@ -3,7 +3,7 @@
  * All live data flows through providers — never from React components.
  */
 
-import type { ChartTimeframe, PricePoint } from "@/types";
+import type { ChartTimeframe } from "@/types";
 
 export type ProviderTier = "primary" | "secondary" | "mock";
 
@@ -44,7 +44,7 @@ export interface MarketDataProvider {
   isAvailable(): boolean;
   fetchQuote(symbol: string): Promise<LiveQuote>;
   fetchIndex(indexSymbol: string): Promise<LiveQuote>;
-  fetchOhlc(symbol: string, timeframe: ChartTimeframe): Promise<PricePoint[]>;
+  fetchOhlc(symbol: string, timeframe: ChartTimeframe): Promise<OhlcBar[]>;
 }
 
 export interface ProviderResult<T> {

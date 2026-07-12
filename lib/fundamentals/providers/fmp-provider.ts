@@ -13,7 +13,6 @@ import {
   normalizeFmpStatements,
 } from "@/lib/fundamentals/fmp-normalizer";
 import { calculateGrowthFromStatements } from "@/lib/fundamentals/growth-engine";
-import { getMockSeed } from "@/lib/fundamentals/mock-data";
 import {
   buildCompanyFinancials,
   buildValuationMetrics,
@@ -43,7 +42,6 @@ export class FMPFundamentalsProvider implements FundamentalsProvider {
 
   async fetchFundamentals(symbol: string): Promise<FundamentalsBundle> {
     const normalized = symbol.toUpperCase();
-    const seed = getMockSeed(normalized);
 
     const [profile, incomeAnnual, incomeQuarterly, balanceAnnual, cashflowAnnual, keyMetrics] =
       await Promise.all([
@@ -64,33 +62,28 @@ export class FMPFundamentalsProvider implements FundamentalsProvider {
 
     const metricsRows = Array.isArray(keyMetrics.data) ? keyMetrics.data : [];
     const latestMetrics = (metricsRows[0] ?? {}) as Record<string, unknown>;
-    const ratios = mergeRatios(ratiosFromFmpKeyMetrics(latestMetrics), {
-      pe: seed?.financials.pe,
-      pb: seed?.financials.pb,
-    });
+    const ratios = mergeRatios(ratiosFromFmpKeyMetrics(latestMetrics), {});
 
     const annualFinancials = fmpIncomeToAnnualFinancials(incomeAnnual.data);
     const quarterlyBase = fmpIncomeToQuarterly(incomeQuarterly.data);
     const quarterlyResults =
       quarterlyBase.length > 0
         ? enrichQuarterlyResults(quarterlyBase)
-        : seed
-          ? enrichQuarterlyResults(seed.quarterlyResults)
-          : [];
+        : [];
 
     const growth = calculateGrowthFromStatements(
       statements.income,
       statements.cashflow,
-      annualFinancials.length ? annualFinancials : (seed?.annualFinancials ?? [])
+      annualFinancials
     );
 
     const revenueCr =
-      annualFinancials[0] ? parseInrCrores(annualFinancials[0].revenue) : seed ? parseInrCrores(seed.financials.revenue) : 0;
+      annualFinancials[0] ? parseInrCrores(annualFinancials[0].revenue) : 0;
     const profitCr =
-      annualFinancials[0] ? parseInrCrores(annualFinancials[0].netProfit) : seed ? parseInrCrores(seed.financials.netProfit) : 0;
+      annualFinancials[0] ? parseInrCrores(annualFinancials[0].netProfit) : 0;
 
     const financials = buildCompanyFinancials(ratios, growth, revenueCr, profitCr);
-    const shareholdingBase = seed?.shareholding ?? {
+    const shareholdingBase = {
       promoter: 0,
       fii: 0,
       dii: 0,
@@ -98,32 +91,32 @@ export class FMPFundamentalsProvider implements FundamentalsProvider {
       lastUpdated: "Latest",
     };
     const corporateActions = generateCorporateActions(normalized);
-    const news = seed?.news ?? [];
-    const notes = seed?.notes ?? [];
-    const peers = seed?.peers ?? [];
+    const news: FundamentalsBundle["news"] = [];
+    const notes: FundamentalsBundle["notes"] = [];
+    const peers: FundamentalsBundle["peers"] = [];
     const valuation = buildValuationMetrics(ratios);
 
     return {
       symbol: normalized,
-      name: profile.companyName ?? seed?.name ?? normalized,
-      sector: profile.sector ?? seed?.sector ?? "—",
-      industry: profile.industry ?? seed?.industry ?? "—",
-      description: profile.description ?? seed?.description ?? "",
-      website: profile.website?.replace(/^https?:\/\//, "") ?? seed?.website ?? "",
-      founded: profile.ipoDate?.slice(0, 4) ?? seed?.founded ?? "—",
+      name: profile.companyName ?? normalized,
+      sector: profile.sector ?? "—",
+      industry: profile.industry ?? "—",
+      description: profile.description ?? "",
+      website: profile.website?.replace(/^https?:\/\//, "") ?? "",
+      founded: profile.ipoDate?.slice(0, 4) ?? "—",
       employees: profile.fullTimeEmployees
         ? `${profile.fullTimeEmployees.toLocaleString("en-IN")}+`
-        : (seed?.employees ?? "—"),
-      marketCap: formatFmpMarketCap(profile.mktCap) || (seed?.marketCap ?? "—"),
-      price: profile.price ?? seed?.price ?? 0,
-      change: seed?.change ?? 0,
-      changePercent: seed?.changePercent ?? 0,
+        : "—",
+      marketCap: formatFmpMarketCap(profile.mktCap) || "—",
+      price: 0,
+      change: 0,
+      changePercent: 0,
       financials,
       statements,
       ratios,
       growth,
       quarterlyResults,
-      annualFinancials: annualFinancials.length ? annualFinancials : (seed?.annualFinancials ?? []),
+      annualFinancials,
       shareholding: enrichShareholding(
         shareholdingBase,
         derivePreviousShareholding(shareholdingBase)

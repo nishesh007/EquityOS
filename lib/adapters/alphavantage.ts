@@ -1,7 +1,8 @@
 import { adapterFetch, hasApiKey } from "@/lib/adapters/http";
 import { loadProviderConfig } from "@/lib/providers/config";
 import { BaseDataAdapter, type AdapterConfig } from "@/lib/adapters/types";
-import type { ChartTimeframe, PricePoint } from "@/types";
+import type { ChartTimeframe } from "@/types";
+import type { OhlcBar } from "@/lib/providers/types";
 
 export interface AlphaVantageParams {
   symbol: string;
@@ -46,10 +47,13 @@ function toAlphaVantageSymbol(symbol: string): string {
   return `${upper}.BSE`;
 }
 
-function parseBar(date: string, bar: AlphaVantageDailyBar): PricePoint {
+function parseBar(date: string, bar: AlphaVantageDailyBar): OhlcBar {
   return {
     timestamp: new Date(date).toISOString(),
-    price: parseFloat(bar["4. close"] ?? "0"),
+    open: parseFloat(bar["1. open"] ?? "0"),
+    high: parseFloat(bar["2. high"] ?? "0"),
+    low: parseFloat(bar["3. low"] ?? "0"),
+    close: parseFloat(bar["4. close"] ?? "0"),
     volume: parseInt(bar["5. volume"] ?? "0", 10),
   };
 }
@@ -149,7 +153,7 @@ export class AlphaVantageAdapter extends BaseDataAdapter<
   async fetchDailySeries(
     symbol: string,
     timeframe: ChartTimeframe
-  ): Promise<PricePoint[]> {
+  ): Promise<OhlcBar[]> {
     const avSymbol = toAlphaVantageSymbol(symbol);
     const baseUrl = this.config.baseUrl ?? "https://www.alphavantage.co/query";
     const url =

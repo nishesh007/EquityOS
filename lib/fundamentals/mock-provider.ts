@@ -18,7 +18,6 @@ import {
 } from "@/lib/fundamentals/shareholding-engine";
 import { buildCompanyTimeline } from "@/lib/fundamentals/timeline-engine";
 import type { FundamentalsBundle, FundamentalsProvider } from "@/lib/fundamentals/types";
-import { buildMockOhlc } from "@/lib/providers/mock-data";
 
 function seedToBundle(symbol: string): FundamentalsBundle {
   const seed = resolveFundamentalsSeed(symbol);
@@ -108,15 +107,5 @@ export class MockFundamentalsProvider implements FundamentalsProvider {
 }
 
 export const mockFundamentalsProvider = new MockFundamentalsProvider();
-
-/** Build full CompanyProfile priceHistory from mock seed. */
-export function buildMockPriceHistory(symbol: string): ReturnType<typeof buildMockOhlc> | null {
-  try {
-    const seed = resolveFundamentalsSeed(symbol);
-    return buildMockOhlc(seed.price, seed.changePercent);
-  } catch {
-    return null;
-  }
-}
 
 export { seedToBundle as mockSeedToBundle };

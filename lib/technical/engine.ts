@@ -2,7 +2,6 @@ import { createScoreResult } from "@/lib/engine/framework";
 import type { ScoreResult } from "@/lib/engine/types";
 import { round } from "@/lib/engine/utils";
 import type { OhlcBar } from "@/lib/providers/types";
-import { pricePointsToCandles } from "@/lib/technical/candles";
 import {
   adx,
   atr,
@@ -24,7 +23,6 @@ import {
 } from "@/lib/technical/math";
 import type {
   CompanyProfile,
-  PricePoint,
   Signal,
   TechnicalAnalysis,
   TechnicalIndicator,
@@ -43,7 +41,6 @@ export interface TechnicalEngineInput {
   profile: CompanyProfile;
   trading: TradingData;
   candles?: OhlcBar[];
-  priceHistory?: PricePoint[];
 }
 
 export interface TechnicalBuildResult {
@@ -491,10 +488,6 @@ function buildIndicatorCards(
 function resolveCandles(input: TechnicalEngineInput): OhlcBar[] {
   if (input.candles && input.candles.length > 0) {
     return input.candles;
-  }
-
-  if (input.priceHistory && input.priceHistory.length > 0) {
-    return pricePointsToCandles(input.priceHistory, input.profile.price);
   }
 
   return [];

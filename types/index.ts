@@ -247,7 +247,7 @@ export interface CompanyProfile {
   financials: CompanyFinancials;
   /** Sprint 8C — institutional fundamentals engine output. */
   fundamentals?: import("@/lib/fundamentals/types").FinancialFundamentals;
-  priceHistory: Record<ChartTimeframe, PricePoint[]>;
+  priceHistory: Record<ChartTimeframe, import("@/lib/providers/types").OhlcBar[]>;
   quarterlyResults: QuarterlyResult[];
   annualFinancials: AnnualFinancial[];
   shareholding: ShareholdingPattern;

@@ -6,7 +6,6 @@ import type {
   CompanyMasterSnapshot,
   CompanyMasterTuple,
 } from "@/lib/company-master/types";
-import { MOCK_COMPANY_SEEDS } from "@/lib/fundamentals/mock-data";
 import { normalizeNseSymbol, toDisplaySymbol } from "@/lib/fundamentals/symbols";
 
 interface MasterIndex {
@@ -28,17 +27,6 @@ function applyEnrichment(record: CompanyMasterRecord): CompanyMasterRecord {
   };
 }
 
-function applyMockSeed(record: CompanyMasterRecord): CompanyMasterRecord {
-  const seed = MOCK_COMPANY_SEEDS[record.symbol];
-  if (!seed) return record;
-  return {
-    ...record,
-    name: seed.name,
-    sector: seed.sector,
-    industry: seed.industry,
-  };
-}
-
 function buildIndex(records: CompanyMasterRecord[]): MasterIndex {
   const bySymbol = new Map<string, CompanyMasterRecord>();
   const byBse = new Map<string, CompanyMasterRecord>();
@@ -55,9 +43,7 @@ export function getCompanyMasterSnapshot(): CompanyMasterSnapshot {
   if (snapshotCache) return snapshotCache;
 
   const tuples = universeData as CompanyMasterTuple[];
-  const records = parseMasterTuples(tuples).map((record) =>
-    applyMockSeed(applyEnrichment(record))
-  );
+  const records = parseMasterTuples(tuples).map((record) => applyEnrichment(record));
 
   snapshotCache = {
     version: 1,

@@ -1,7 +1,6 @@
 import type { CompanyProfile, PeerCompany } from "@/types";
 import {
   bundleToCompanyProfile,
-  buildFallbackPriceHistory,
   fetchFundamentalsBundle,
   attachFundamentalsToProfile,
 } from "@/lib/fundamentals";
@@ -10,6 +9,16 @@ import { getFullPriceHistory } from "@/lib/market";
 import { marketDataService } from "@/lib/market-data";
 import { isValidMarketPrice } from "@/lib/utils";
 import { CACHE_TTL, cacheKey, getCached, getStaleCachedSync } from "@/lib/cache";
+
+const EMPTY_PRICE_HISTORY: CompanyProfile["priceHistory"] = {
+  "1D": [],
+  "1W": [],
+  "1M": [],
+  "3M": [],
+  "6M": [],
+  "1Y": [],
+  "5Y": [],
+};
 
 async function enrichPeersWithQuotes(peers: PeerCompany[]): Promise<PeerCompany[]> {
   if (peers.length === 0) return peers;
@@ -47,19 +56,17 @@ export async function fetchCompanyProfile(
 
         if (!fundamentalsResult) return null;
 
-        const bundle = fundamentalsResult.data;
+        const bundle = {
+          ...fundamentalsResult.data,
+          price: 0,
+          change: 0,
+          changePercent: 0,
+        };
         const quote = quoteResult;
         const livePrice = quote?.price ?? null;
         const resolvedPrice = isValidMarketPrice(livePrice) ? livePrice : 0;
 
-        const history =
-          priceHistory ??
-          (resolvedPrice > 0
-            ? buildFallbackPriceHistory(
-                resolvedPrice,
-                quote?.changePercent ?? bundle.changePercent
-              )
-            : buildFallbackPriceHistory(bundle.price, bundle.changePercent));
+        const history = priceHistory ?? EMPTY_PRICE_HISTORY;
 
         const profile = bundleToCompanyProfile(bundle, history);
 
@@ -90,6 +97,4 @@ export async function fetchCompanyProfile(
   }
 }
 
-/** Re-export for services that need symbol coverage checks. */
-export { getMockSeed, listMockSymbols } from "@/lib/fundamentals";
 export { isValidNseSymbol, normalizeNseSymbol, providerSymbolMap } from "@/lib/fundamentals/symbols";

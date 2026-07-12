@@ -14,7 +14,6 @@ import {
 import { generateCorporateActions } from "@/lib/fundamentals/corporate-actions";
 import { formatFmpMarketCap } from "@/lib/fundamentals/fmp-normalizer";
 import { calculateGrowthFromStatements } from "@/lib/fundamentals/growth-engine";
-import { getMockSeed } from "@/lib/fundamentals/mock-data";
 import {
   buildCompanyFinancials,
   buildValuationMetrics,
@@ -44,7 +43,6 @@ export class AlphaVantageFundamentalsProvider implements FundamentalsProvider {
 
   async fetchFundamentals(symbol: string): Promise<FundamentalsBundle> {
     const normalized = symbol.toUpperCase();
-    const seed = getMockSeed(normalized);
 
     const [overviewResult, incomeResult] = await Promise.all([
       alphaVantageAdapter.fetch({ symbol: normalized, function: "OVERVIEW" }),
@@ -54,9 +52,9 @@ export class AlphaVantageFundamentalsProvider implements FundamentalsProvider {
     const overview = normalizeAvOverview(overviewResult.data);
     const statements = normalizeAvIncomeStatement(incomeResult.data);
     const ratios = mergeRatios(ratiosFromAlphaOverview(overviewResult.data), {
-      pe: overview.pe || seed?.financials.pe,
-      pb: overview.pb || seed?.financials.pb,
-      roe: overview.roe || seed?.financials.roe,
+      pe: overview.pe,
+      pb: overview.pb,
+      roe: overview.roe,
     });
 
     const annualFinancials = avIncomeToAnnualFinancials(incomeResult.data);
@@ -64,23 +62,21 @@ export class AlphaVantageFundamentalsProvider implements FundamentalsProvider {
     const quarterlyResults =
       quarterlyBase.length > 0
         ? enrichQuarterlyResults(quarterlyBase)
-        : seed
-          ? enrichQuarterlyResults(seed.quarterlyResults)
-          : [];
+        : [];
 
     const growth = calculateGrowthFromStatements(
       statements.income,
       statements.cashflow,
-      annualFinancials.length ? annualFinancials : (seed?.annualFinancials ?? [])
+      annualFinancials
     );
 
     const revenueCr =
-      annualFinancials[0] ? parseInrCrores(annualFinancials[0].revenue) : seed ? parseInrCrores(seed.financials.revenue) : 0;
+      annualFinancials[0] ? parseInrCrores(annualFinancials[0].revenue) : 0;
     const profitCr =
-      annualFinancials[0] ? parseInrCrores(annualFinancials[0].netProfit) : seed ? parseInrCrores(seed.financials.netProfit) : 0;
+      annualFinancials[0] ? parseInrCrores(annualFinancials[0].netProfit) : 0;
 
     const financials = buildCompanyFinancials(ratios, growth, revenueCr, profitCr);
-    const shareholdingBase = seed?.shareholding ?? {
+    const shareholdingBase = {
       promoter: 0,
       fii: 0,
       dii: 0,
@@ -88,29 +84,29 @@ export class AlphaVantageFundamentalsProvider implements FundamentalsProvider {
       lastUpdated: "Latest",
     };
     const corporateActions = generateCorporateActions(normalized);
-    const news = seed?.news ?? [];
-    const notes = seed?.notes ?? [];
-    const peers = seed?.peers ?? [];
+    const news: FundamentalsBundle["news"] = [];
+    const notes: FundamentalsBundle["notes"] = [];
+    const peers: FundamentalsBundle["peers"] = [];
 
     return {
       symbol: normalized,
-      name: overview.name || seed?.name || normalized,
-      sector: overview.sector || seed?.sector || "—",
-      industry: overview.industry || seed?.industry || "—",
-      description: overview.description || seed?.description || "",
-      website: seed?.website ?? "",
-      founded: seed?.founded ?? "—",
-      employees: seed?.employees ?? "—",
-      marketCap: formatFmpMarketCap(overview.marketCap) || (seed?.marketCap ?? "—"),
-      price: seed?.price ?? 0,
-      change: seed?.change ?? 0,
-      changePercent: seed?.changePercent ?? 0,
+      name: overview.name || normalized,
+      sector: overview.sector || "—",
+      industry: overview.industry || "—",
+      description: overview.description || "",
+      website: "",
+      founded: "—",
+      employees: "—",
+      marketCap: formatFmpMarketCap(overview.marketCap) || "—",
+      price: 0,
+      change: 0,
+      changePercent: 0,
       financials,
       statements,
       ratios,
       growth,
       quarterlyResults,
-      annualFinancials: annualFinancials.length ? annualFinancials : (seed?.annualFinancials ?? []),
+      annualFinancials,
       shareholding: enrichShareholding(
         shareholdingBase,
         derivePreviousShareholding(shareholdingBase)

@@ -3,7 +3,7 @@
  * All indicators are computed from OHLCV candles via MarketDataService.
  */
 
-import type { PricePoint } from "@/types";
+import type { OhlcBar } from "@/lib/providers/types";
 import {
   buildTechnicalAnalysisFromMarketData,
   calculateTechnicalScoreFromAnalysis,
@@ -14,7 +14,7 @@ import type { CompanyProfile, TechnicalAnalysis, TradingData } from "@/types";
 export type { TechnicalBuildResult };
 
 export interface TechnicalAnalysisOptions {
-  priceHistory?: PricePoint[];
+  candles?: OhlcBar[];
 }
 
 /**
@@ -28,7 +28,7 @@ export function buildTechnicalAnalysis(
   return buildTechnicalAnalysisFromMarketData({
     profile,
     trading,
-    priceHistory: options?.priceHistory,
+    candles: options?.candles,
   });
 }
 

@@ -11,6 +11,8 @@ export {
   getQuotes,
   getEnrichedQuote,
   getEnrichedQuotes,
+  getProviderChain,
+  getMarketDataProviderHealth,
 } from "@/lib/market-data/service";
 export type { QuoteResult } from "@/lib/market-data/service";
 export type { EnrichedQuote, QuoteAvailability } from "@/lib/market-data/enriched-quote";
@@ -44,8 +46,10 @@ export {
 
 export {
   fetchMarketDataWithFailover,
+  fetchIndexWithFailover,
   fetchQuoteWithFailover,
+  getProductionProviderChain,
   getActiveMarketDataProviders,
 } from "@/lib/market-data/fallback";
-
-export { freeProvider } from "@/lib/market-data/providers/free-provider";
+export { getProviderHealth } from "@/lib/market-data/provider-health";
+export type { ProviderHealth } from "@/lib/market-data/provider-health";

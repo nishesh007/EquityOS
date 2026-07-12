@@ -4,12 +4,12 @@ import type {
   CompanyProfile,
   CompanyResearch,
   ConvictionLevel,
-  PricePoint,
   ResultsSummary,
   RiskLevel,
   Signal,
   TradingData,
 } from "@/types";
+import type { OhlcBar } from "@/lib/providers/types";
 import { fetchCompanyProfile } from "@/services/companyData";
 import { EquityIntelligenceEngine } from "@/lib/engine";
 import { round } from "@/lib/engine/utils";
@@ -273,7 +273,7 @@ function buildNews(profile: CompanyProfile): CompanyNews[] {
 function buildResearch(
   profile: CompanyProfile,
   liveQuote?: Awaited<ReturnType<typeof marketDataService.getQuote>>["data"],
-  priceHistory?: PricePoint[]
+  candles?: OhlcBar[]
 ): CompanyResearch {
   const rng = createRng(hashSeed(profile.symbol));
   const trading = buildTradingData(profile, rng, liveQuote
@@ -290,7 +290,7 @@ function buildResearch(
   const { analysis: technicals } = EquityIntelligenceEngine.buildTechnicalAnalysis(
     profile,
     trading,
-    { priceHistory }
+    { candles }
   );
   const { setup: swing } = EquityIntelligenceEngine.buildSwingSetup(
     profile.price,
@@ -324,7 +324,7 @@ export async function fetchCompanyResearch(
       if (!profile) return null;
 
       let liveQuote: Awaited<ReturnType<typeof marketDataService.getQuote>>["data"] | undefined;
-      let priceHistory: PricePoint[] | undefined;
+      let candles: OhlcBar[] | undefined;
 
       try {
         const result = await marketDataService.getQuote(symbol);
@@ -335,12 +335,12 @@ export async function fetchCompanyResearch(
 
       try {
         const ohlcResult = await marketDataService.getOhlcCandles(symbol, "1Y");
-        priceHistory = ohlcResult.data;
+        candles = ohlcResult.data;
       } catch {
-        priceHistory = undefined;
+        candles = undefined;
       }
 
-      return buildResearch(profile, liveQuote, priceHistory);
+      return buildResearch(profile, liveQuote, candles);
     }
   );
 }

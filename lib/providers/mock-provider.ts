@@ -3,13 +3,12 @@
  * Returns deterministic seed data so the UI never breaks.
  */
 
-import type { ChartTimeframe, PricePoint } from "@/types";
+import type { ChartTimeframe } from "@/types";
 import {
-  buildMockOhlc,
   getMockQuote,
   type MockQuoteSeed,
 } from "@/lib/providers/mock-data";
-import type { LiveQuote, MarketDataProvider } from "@/lib/providers/types";
+import type { LiveQuote, MarketDataProvider, OhlcBar } from "@/lib/providers/types";
 
 function seedToQuote(seed: MockQuoteSeed): LiveQuote {
   return {
@@ -53,13 +52,8 @@ export class MockProvider implements MarketDataProvider {
     return this.fetchQuote(indexSymbol);
   }
 
-  async fetchOhlc(symbol: string, timeframe: ChartTimeframe): Promise<PricePoint[]> {
-    const seed = getMockQuote(symbol);
-    if (!seed) {
-      throw new Error(`Mock provider: unknown symbol ${symbol}`);
-    }
-    const history = buildMockOhlc(seed.ltp, seed.changePercent);
-    return history[timeframe] ?? history["1D"];
+  async fetchOhlc(_symbol: string, _timeframe: ChartTimeframe): Promise<OhlcBar[]> {
+    throw new Error("Historical data unavailable");
   }
 }
 

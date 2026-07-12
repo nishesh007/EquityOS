@@ -8,7 +8,6 @@ export type {
 } from "@/lib/providers/types";
 export { INDEX_SYMBOLS } from "@/lib/providers/types";
 export { loadProviderConfig, isProviderConfigured } from "@/lib/providers/config";
-export { mockProvider } from "@/lib/providers/mock-provider";
 export {
   fetchQuoteWithFailover,
   fetchIndexWithFailover,

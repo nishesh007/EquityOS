@@ -1,13 +1,12 @@
 /**
- * Provider failover chain: Primary → Secondary → Mock.
- * Ensures the UI always receives data without runtime errors.
+ * Provider failover chain for legacy consumers.
+ * Production quotes use NSE → Yahoo → Finnhub only.
  */
 
-import { loadProviderConfig } from "@/lib/providers/config";
-import { mockProvider } from "@/lib/providers/mock-provider";
 import { createProviderByName } from "@/lib/providers/adapter-providers";
 import type { LiveQuote, MarketDataProvider } from "@/lib/providers/types";
-import type { ChartTimeframe, PricePoint } from "@/types";
+import type { ChartTimeframe } from "@/types";
+import type { OhlcBar } from "@/lib/providers/types";
 
 export interface FailoverResult<T> {
   data: T;
@@ -16,37 +15,33 @@ export interface FailoverResult<T> {
   attempted: string[];
 }
 
+function isDevelopmentMode(): boolean {
+  return process.env.NODE_ENV === "development";
+}
+
 function buildQuoteChain(): MarketDataProvider[] {
-  const config = loadProviderConfig();
   const chain: MarketDataProvider[] = [];
 
-  const primary = createProviderByName(config.primary, "primary");
-  if (primary?.isAvailable()) chain.push(primary);
+  const nse = createProviderByName("nse", "primary");
+  if (nse?.isAvailable()) chain.push(nse);
+  const yahoo = createProviderByName("yahoo", "secondary");
+  if (yahoo?.isAvailable()) chain.push(yahoo);
+  const finnhub = createProviderByName("finnhub", "secondary");
+  if (finnhub?.isAvailable()) chain.push(finnhub);
 
-  const secondary = createProviderByName(config.secondary, "secondary");
-  if (secondary?.isAvailable() && secondary.name !== primary?.name) {
-    chain.push(secondary);
-  }
-
-  // BSE as automatic tertiary for NSE stocks when enabled
-  if (config.primary === "nse" && config.bse.enabled) {
-    const bse = createProviderByName("bse", "secondary");
-    if (bse?.isAvailable() && !chain.some((p) => p.name === "BSE")) {
-      chain.push(bse);
-    }
-  }
-
-  chain.push(mockProvider);
   return chain;
 }
 
-function buildOhlcChain(): MarketDataProvider[] {
+async function buildOhlcChain(): Promise<MarketDataProvider[]> {
   const chain: MarketDataProvider[] = [];
   const polygon = createProviderByName("polygon", "primary");
   if (polygon?.isAvailable()) chain.push(polygon);
   const alphaVantage = createProviderByName("alphavantage", "secondary");
   if (alphaVantage?.isAvailable()) chain.push(alphaVantage);
-  chain.push(mockProvider);
+  if (isDevelopmentMode()) {
+    const { mockProvider } = await import("@/lib/providers/mock-provider");
+    chain.push(mockProvider);
+  }
   return chain;
 }
 
@@ -72,7 +67,7 @@ async function executeWithFailover<T>(
   }
 
   throw new Error(
-    `All providers failed (${attempted.join(" → ")}). This should not happen — mock is terminal.`
+    `All providers failed (${attempted.join(" → ")}).`
   );
 }
 
@@ -91,8 +86,8 @@ export async function fetchIndexWithFailover(
 export async function fetchOhlcWithFailover(
   symbol: string,
   timeframe: ChartTimeframe
-): Promise<FailoverResult<PricePoint[]>> {
-  return executeWithFailover(buildOhlcChain(), (p) =>
+): Promise<FailoverResult<OhlcBar[]>> {
+  return executeWithFailover(await buildOhlcChain(), (p) =>
     p.fetchOhlc(symbol, timeframe)
   );
 }
@@ -103,6 +98,6 @@ export function getActiveProviders(): {
 } {
   return {
     quote: buildQuoteChain().map((p) => p.name),
-    ohlc: buildOhlcChain().map((p) => p.name),
+    ohlc: [],
   };
 }

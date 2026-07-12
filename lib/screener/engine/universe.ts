@@ -5,7 +5,6 @@
 
 import { getCompanyMasterRecords } from "@/lib/company-master";
 import { getCompanyEnrichment } from "@/lib/company-master/enrichment";
-import { MOCK_COMPANY_SEEDS } from "@/lib/fundamentals/mock-data";
 import { SCREENER_FILTER_REGISTRY } from "@/lib/screener/registry";
 import type { ScreenerRow, ScreenerUniverseSnapshot } from "@/lib/screener/types";
 
@@ -57,28 +56,28 @@ function buildMetricsForSymbol(
   sector: string,
   industry: string
 ): Record<string, number | string | null> {
-  const seed = MOCK_COMPANY_SEEDS[symbol];
   const enrichment = getCompanyEnrichment(symbol);
   const mult = sectorMultiplier(sector);
 
-  const price =
-    seed?.price ??
-    enrichment?.price ??
-    Math.round(seededRange(symbol, 20, 8000, 1) * 100) / 100;
-
-  const changePercent =
-    seed?.changePercent ??
-    enrichment?.changePercent ??
-    Math.round((seededRandom(symbol, 2) - 0.5) * 8 * 100) / 100;
-
-  const marketCapCr = seed?.marketCap
-    ? parseMarketCapCr(seed.marketCap)
-    : enrichment?.marketCap
+  const marketCapCr = enrichment?.marketCap
       ? parseMarketCapCr(enrichment.marketCap)
       : seededRange(symbol, 50, 200000, 3);
 
-  const financials = seed?.financials;
-  const shareholding = seed?.shareholding;
+  const financials = null as {
+    pe: number;
+    pb: number;
+    roe: number;
+    roce: number;
+    debtToEquity: number;
+    revenueGrowth: number;
+    netProfitGrowth: number;
+  } | null;
+  const shareholding = null as {
+    promoter: number;
+    fii: number;
+    dii: number;
+    public: number;
+  } | null;
 
   const pe = financials?.pe ?? seededRange(symbol, 5, 60, 4) * mult.pe;
   const pb = financials?.pb ?? seededRange(symbol, 0.5, 15, 5);
@@ -88,10 +87,9 @@ function buildMetricsForSymbol(
   const revenueGrowth = financials?.revenueGrowth ?? seededRange(symbol, -5, 35, 9);
   const profitGrowth = financials?.netProfitGrowth ?? seededRange(symbol, -10, 40, 10);
 
-  const weekHigh52 = price * seededRange(symbol, 1.0, 1.4, 11);
-  const weekLow52 = price * seededRange(symbol, 0.6, 1.0, 12);
   const volume = Math.round(seededRange(symbol, 10000, 50000000, 13));
   const beta = seededRange(symbol, 0.5, 2.0, 14);
+  const valuationBase = Math.round(seededRange(symbol, 20, 8000, 1) * 100) / 100;
 
   const metrics: Record<string, number | string | null> = {
     symbol,
@@ -100,25 +98,25 @@ function buildMetricsForSymbol(
     industry,
     exchange: "NSE",
 
-    cmp: price,
+    cmp: null,
     market_cap: marketCapCr,
     enterprise_value: marketCapCr * seededRange(symbol, 1.0, 1.3, 15),
-    week_high_52: weekHigh52,
-    week_low_52: weekLow52,
-    ath_distance: Math.round((1 - price / weekHigh52) * 10000) / 100,
+    week_high_52: null,
+    week_low_52: null,
+    ath_distance: null,
     volume,
     delivery_percent: Math.round(seededRange(symbol, 15, 85, 16) * 100) / 100,
     gap_percent: Math.round((seededRandom(symbol, 17) - 0.5) * 6 * 100) / 100,
-    vwap: Math.round(price * seededRange(symbol, 0.97, 1.03, 18) * 100) / 100,
-    atr: Math.round(price * seededRange(symbol, 0.01, 0.05, 19) * 100) / 100,
+    vwap: null,
+    atr: null,
     beta: Math.round(beta * 100) / 100,
-    change_percent: changePercent,
-    open: Math.round(price * seededRange(symbol, 0.98, 1.02, 20) * 100) / 100,
-    high: Math.round(price * seededRange(symbol, 1.0, 1.03, 21) * 100) / 100,
-    low: Math.round(price * seededRange(symbol, 0.97, 1.0, 22) * 100) / 100,
-    prev_close: Math.round(price / (1 + changePercent / 100) * 100) / 100,
-    price_to_52w_high: Math.round((price / weekHigh52 - 1) * 10000) / 100,
-    price_to_52w_low: Math.round((price / weekLow52 - 1) * 10000) / 100,
+    change_percent: null,
+    open: null,
+    high: null,
+    low: null,
+    prev_close: null,
+    price_to_52w_high: null,
+    price_to_52w_low: null,
     avg_volume_20d: Math.round(volume * seededRange(symbol, 0.7, 1.3, 23)),
     volume_ratio: Math.round(seededRange(symbol, 0.3, 3.0, 24) * 100) / 100,
 
@@ -129,11 +127,11 @@ function buildMetricsForSymbol(
     ps: Math.round(seededRange(symbol, 0.5, 20, 27) * 100) / 100,
     ev_ebitda: Math.round(seededRange(symbol, 4, 30, 28) * 100) / 100,
     dividend_yield: Math.round(seededRange(symbol, 0, 5, 29) * 100) / 100,
-    intrinsic_value: Math.round(price * seededRange(symbol, 0.8, 1.5, 30) * 100) / 100,
+    intrinsic_value: Math.round(valuationBase * seededRange(symbol, 0.8, 1.5, 30) * 100) / 100,
     margin_of_safety: Math.round(seededRange(symbol, -20, 40, 31) * 100) / 100,
     expected_cagr: Math.round(seededRange(symbol, 5, 25, 32) * 100) / 100,
-    book_value: Math.round(price / pb * 100) / 100,
-    price_to_intrinsic: Math.round((price / (price * seededRange(symbol, 0.8, 1.5, 30))) * 100) / 100,
+    book_value: Math.round(valuationBase / pb * 100) / 100,
+    price_to_intrinsic: null,
     earnings_yield: Math.round((1 / pe) * 10000) / 100,
     fcf_yield: Math.round(seededRange(symbol, 0, 8, 33) * 100) / 100,
     ev_sales: Math.round(seededRange(symbol, 0.5, 15, 34) * 100) / 100,
@@ -198,19 +196,19 @@ function buildMetricsForSymbol(
     rsi: Math.round(seededRange(symbol, 20, 80, 77)),
     macd: Math.round((seededRandom(symbol, 78) - 0.5) * 20 * 100) / 100,
     macd_histogram: Math.round((seededRandom(symbol, 79) - 0.5) * 10 * 100) / 100,
-    ema20: Math.round(price * seededRange(symbol, 0.95, 1.05, 80) * 100) / 100,
-    ema50: Math.round(price * seededRange(symbol, 0.9, 1.1, 81) * 100) / 100,
-    ema200: Math.round(price * seededRange(symbol, 0.8, 1.2, 82) * 100) / 100,
+    ema20: null,
+    ema50: null,
+    ema200: null,
     adx: Math.round(seededRange(symbol, 10, 50, 83)),
-    supertrend: Math.round(price * seededRange(symbol, 0.92, 1.08, 84) * 100) / 100,
+    supertrend: null,
     momentum: Math.round(seededRange(symbol, -30, 30, 85)),
     relative_strength: Math.round(seededRange(symbol, 20, 90, 86)),
     trend_score: Math.round(seededRange(symbol, 30, 90, 87)),
-    support: Math.round(price * seededRange(symbol, 0.85, 0.98, 88) * 100) / 100,
-    resistance: Math.round(price * seededRange(symbol, 1.02, 1.15, 89) * 100) / 100,
-    price_above_ema20: Math.round((price > price * seededRange(symbol, 0.95, 1.05, 80) ? 1 : -1) * seededRange(symbol, 0, 5, 90) * 100) / 100,
-    price_above_ema50: Math.round((price > price * seededRange(symbol, 0.9, 1.1, 81) ? 1 : -1) * seededRange(symbol, 0, 8, 91) * 100) / 100,
-    price_above_ema200: Math.round((price > price * seededRange(symbol, 0.8, 1.2, 82) ? 1 : -1) * seededRange(symbol, 0, 12, 92) * 100) / 100,
+    support: null,
+    resistance: null,
+    price_above_ema20: null,
+    price_above_ema50: null,
+    price_above_ema200: null,
     volatility: Math.round(seededRange(symbol, 10, 60, 93) * 100) / 100,
     week52_momentum: Math.round(seededRange(symbol, -20, 80, 94) * 100) / 100,
     bollinger_width: Math.round(seededRange(symbol, 5, 30, 95) * 100) / 100,
@@ -270,14 +268,14 @@ function buildMetricsForSymbol(
 
   const emaPeriods = [9, 12, 20, 26, 50, 100, 200];
   for (const period of emaPeriods) {
-    metrics[`ema_${period}`] = Math.round(price * seededRange(symbol, 0.8, 1.2, 500 + period) * 100) / 100;
-    metrics[`price_vs_ema_${period}`] = Math.round(seededRange(symbol, -15, 15, 600 + period) * 100) / 100;
+    metrics[`ema_${period}`] = null;
+    metrics[`price_vs_ema_${period}`] = null;
   }
 
   const smaPeriods = [10, 20, 50, 100, 200];
   for (const period of smaPeriods) {
-    metrics[`sma_${period}`] = Math.round(price * seededRange(symbol, 0.8, 1.2, 700 + period) * 100) / 100;
-    metrics[`price_vs_sma_${period}`] = Math.round(seededRange(symbol, -15, 15, 800 + period) * 100) / 100;
+    metrics[`sma_${period}`] = null;
+    metrics[`price_vs_sma_${period}`] = null;
   }
 
   const rsiPeriods = [7, 14, 21];

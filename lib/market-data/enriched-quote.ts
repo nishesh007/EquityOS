@@ -35,9 +35,13 @@ export interface EnrichedQuote {
   volume?: number;
 }
 
-function resolveAvailability(source: DataSource, price: number | null): QuoteAvailability {
+function resolveAvailability(
+  source: DataSource,
+  price: number | null,
+  marketStatus: MarketStatus
+): QuoteAvailability {
   if (!isValidMarketPrice(price)) return "unavailable";
-  if (source === "live") return "live";
+  if (source === "live") return marketStatus === "open" ? "live" : "delayed";
   if (source === "cached") return "delayed";
   return "unavailable";
 }
@@ -99,7 +103,7 @@ export function toEnrichedQuote(
 
   const { data } = result;
   const price = isValidMarketPrice(data.ltp) ? data.ltp : null;
-  const availability = resolveAvailability(result.source, price);
+  const availability = resolveAvailability(result.source, price, marketStatus);
   const lastTradeTime = resolveLastTradeTime(data.fetchedAt, marketStatus);
 
   return {

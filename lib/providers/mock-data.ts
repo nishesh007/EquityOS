@@ -3,7 +3,7 @@
  * Keeps UI functional when no API keys are configured.
  */
 
-import type { ChartTimeframe, MarketIndex, PricePoint } from "@/types";
+import type { MarketIndex } from "@/types";
 import { getNseSymbolMeta } from "@/lib/fundamentals/nse-registry";
 import { isValidNseSymbol, normalizeNseSymbol } from "@/lib/fundamentals/symbols";
 import { createRng, hashSeed } from "@/lib/random";
@@ -270,49 +270,6 @@ export const MOCK_STOCK_QUOTES: Record<string, MockQuoteSeed> = {
     industry: "Passenger Vehicles",
   },
 };
-
-function generatePriceHistory(
-  basePrice: number,
-  points: number,
-  volatility: number,
-  trend: number
-): PricePoint[] {
-  const history: PricePoint[] = [];
-  let price = basePrice * (1 - trend * 0.15);
-  const referenceTime = Date.UTC(2026, 6, 11, 15, 30);
-
-  for (let i = points - 1; i >= 0; i--) {
-    const drift = trend * volatility * 0.3;
-    const noise = (Math.sin(i * 0.7) + Math.cos(i * 1.3)) * volatility * 0.5;
-    price = Math.max(price * (1 + drift + noise * 0.02), basePrice * 0.6);
-    history.push({
-      timestamp: new Date(referenceTime - i * 3600000).toISOString(),
-      price: Math.round(price * 100) / 100,
-      volume: Math.round(
-        1e6 + ((Math.sin(basePrice * 0.01 + i * 1.7) + 1) / 2) * 5e6
-      ),
-    });
-  }
-
-  history[history.length - 1].price = basePrice;
-  return history;
-}
-
-export function buildMockOhlc(
-  basePrice: number,
-  changePercent: number
-): Record<ChartTimeframe, PricePoint[]> {
-  const trend = changePercent >= 0 ? 1 : -1;
-  return {
-    "1D": generatePriceHistory(basePrice, 24, 0.3, trend),
-    "1W": generatePriceHistory(basePrice, 35, 0.5, trend),
-    "1M": generatePriceHistory(basePrice, 30, 0.8, trend),
-    "3M": generatePriceHistory(basePrice, 28, 1.0, trend),
-    "6M": generatePriceHistory(basePrice, 26, 1.2, trend),
-    "1Y": generatePriceHistory(basePrice, 52, 1.5, trend),
-    "5Y": generatePriceHistory(basePrice, 60, 2.0, trend),
-  };
-}
 
 export function mockQuoteToIndex(seed: MockQuoteSeed, meta: Partial<MarketIndex>): MarketIndex {
   return {

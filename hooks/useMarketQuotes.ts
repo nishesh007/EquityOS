@@ -48,7 +48,7 @@ export function useMarketQuotes(
   options: UseMarketQuotesOptions = {}
 ): UseMarketQuotesResult {
   const { initialQuotes = {}, enabled = true } = options;
-  const normalized = useMemo(() => normalizeSymbols(symbols), [symbols.join(",")]);
+  const normalized = useMemo(() => normalizeSymbols(symbols), [symbols]);
   const symbolsKey = normalized.join(",");
 
   const [quotes, setQuotes] = useState<Map<string, EnrichedQuote>>(() => {
@@ -116,7 +116,7 @@ export function useMarketQuotes(
     return () => {
       abortRef.current?.abort();
     };
-  }, [enabled, fetchQuotes, symbolsKey]);
+  }, [enabled, fetchQuotes, normalized.length]);
 
   useEffect(() => {
     if (!enabled || !marketOpen || pollIntervalMs <= 0 || normalized.length === 0) {

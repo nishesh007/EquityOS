@@ -4,12 +4,10 @@
 
 import { CACHE_TTL, cacheKey, getCached, getStaleCachedSync } from "@/lib/cache";
 import { fetchFundamentalsWithFailover } from "@/lib/fundamentals/failover";
-import { mockSeedToBundle } from "@/lib/fundamentals/mock-provider";
 import { normalizeNseSymbol } from "@/lib/fundamentals/symbols";
 import { toUiQuarterlyResults } from "@/lib/fundamentals/quarterly-engine";
 import type { FundamentalsBundle, FundamentalsFailoverResult } from "@/lib/fundamentals/types";
 import type { CompanyProfile, ShareholdingPattern } from "@/types";
-import { buildMockOhlc } from "@/lib/providers/mock-data";
 
 export {
   computeFinancialFundamentals,
@@ -73,7 +71,12 @@ export async function fetchFundamentalsBundle(
     );
     if (stale) return stale;
 
+    if (process.env.NODE_ENV !== "development") {
+      return null;
+    }
+
     try {
+      const { mockSeedToBundle } = await import("@/lib/fundamentals/mock-provider");
       const data = mockSeedToBundle(normalized);
       return { data, provider: "Mock", source: "mock", attempted: ["cache-miss"] };
     } catch {
@@ -127,10 +130,18 @@ export async function fetchCorporateActions(
 }
 
 export function buildFallbackPriceHistory(
-  price: number,
-  changePercent: number
+  _price: number,
+  _changePercent: number
 ): CompanyProfile["priceHistory"] {
-  return buildMockOhlc(price, changePercent);
+  return {
+    "1D": [],
+    "1W": [],
+    "1M": [],
+    "3M": [],
+    "6M": [],
+    "1Y": [],
+    "5Y": [],
+  };
 }
 
 export type { FundamentalsBundle, FundamentalsFailoverResult };

@@ -3,13 +3,14 @@
  * Wraps low-level adapters into the unified MarketDataProvider interface.
  */
 
-import type { ChartTimeframe, PricePoint } from "@/types";
+import type { ChartTimeframe } from "@/types";
 import { nseAdapter, type NSEQuoteResult } from "@/lib/adapters/nse";
 import { bseAdapter, type BSEQuoteResult } from "@/lib/adapters/bse";
 import { finnhubAdapter, type FinnhubQuoteResult } from "@/lib/adapters/finnhub";
+import { yahooAdapter, type YahooQuoteResult } from "@/lib/adapters/yahoo";
 import { polygonAdapter } from "@/lib/adapters/polygon";
 import { alphaVantageAdapter } from "@/lib/adapters/alphavantage";
-import type { LiveQuote, MarketDataProvider, ProviderTier } from "@/lib/providers/types";
+import type { LiveQuote, MarketDataProvider, OhlcBar, ProviderTier } from "@/lib/providers/types";
 
 function nseToQuote(result: NSEQuoteResult): LiveQuote {
   return {
@@ -64,6 +65,23 @@ function finnhubToQuote(result: FinnhubQuoteResult): LiveQuote {
   };
 }
 
+function yahooToQuote(result: YahooQuoteResult): LiveQuote {
+  return {
+    symbol: result.symbol,
+    ltp: result.price,
+    open: result.open,
+    high: result.high,
+    low: result.low,
+    previousClose: result.previousClose,
+    change: result.change,
+    changePercent: result.changePercent,
+    volume: result.volume,
+    provider: "Yahoo",
+    source: "live",
+    fetchedAt: new Date().toISOString(),
+  };
+}
+
 export class NSEProvider implements MarketDataProvider {
   readonly name = "NSE";
   readonly tier: ProviderTier;
@@ -85,7 +103,7 @@ export class NSEProvider implements MarketDataProvider {
     return this.fetchQuote(indexSymbol);
   }
 
-  async fetchOhlc(_symbol: string, _timeframe: ChartTimeframe): Promise<PricePoint[]> {
+  async fetchOhlc(_symbol: string, _timeframe: ChartTimeframe): Promise<OhlcBar[]> {
     throw new Error("NSE provider does not serve OHLC — use Polygon or mock fallback");
   }
 }
@@ -111,7 +129,7 @@ export class BSEProvider implements MarketDataProvider {
     throw new Error("BSE provider does not serve index quotes");
   }
 
-  async fetchOhlc(_symbol: string, _timeframe: ChartTimeframe): Promise<PricePoint[]> {
+  async fetchOhlc(_symbol: string, _timeframe: ChartTimeframe): Promise<OhlcBar[]> {
     throw new Error("BSE provider does not serve OHLC");
   }
 }
@@ -137,8 +155,34 @@ export class FinnhubProvider implements MarketDataProvider {
     return this.fetchQuote(indexSymbol);
   }
 
-  async fetchOhlc(_symbol: string, _timeframe: ChartTimeframe): Promise<PricePoint[]> {
+  async fetchOhlc(_symbol: string, _timeframe: ChartTimeframe): Promise<OhlcBar[]> {
     throw new Error("Finnhub provider does not serve OHLC in this tier");
+  }
+}
+
+export class YahooProvider implements MarketDataProvider {
+  readonly name = "Yahoo";
+  readonly tier: ProviderTier;
+
+  constructor(tier: ProviderTier = "secondary") {
+    this.tier = tier;
+  }
+
+  isAvailable(): boolean {
+    return yahooAdapter.status === "ready";
+  }
+
+  async fetchQuote(symbol: string): Promise<LiveQuote> {
+    const result = await yahooAdapter.fetch({ symbol });
+    return yahooToQuote(result);
+  }
+
+  async fetchIndex(indexSymbol: string): Promise<LiveQuote> {
+    return this.fetchQuote(indexSymbol);
+  }
+
+  async fetchOhlc(_symbol: string, _timeframe: ChartTimeframe): Promise<OhlcBar[]> {
+    throw new Error("Yahoo provider serves quotes only");
   }
 }
 
@@ -158,13 +202,13 @@ export class PolygonOhlcProvider implements MarketDataProvider {
     throw new Error("Polygon provider serves OHLC only");
   }
 
-  async fetchOhlc(symbol: string, timeframe: ChartTimeframe): Promise<PricePoint[]> {
+  async fetchOhlc(symbol: string, timeframe: ChartTimeframe): Promise<OhlcBar[]> {
     const result = await polygonAdapter.fetch({
       symbol,
       endpoint: "aggregates",
       timeframe,
     });
-    return (result.data.bars as PricePoint[]) ?? [];
+    return (result.data.bars as OhlcBar[]) ?? [];
   }
 }
 
@@ -184,13 +228,13 @@ export class AlphaVantageOhlcProvider implements MarketDataProvider {
     throw new Error("Alpha Vantage provider serves OHLC only");
   }
 
-  async fetchOhlc(symbol: string, timeframe: ChartTimeframe): Promise<PricePoint[]> {
+  async fetchOhlc(symbol: string, timeframe: ChartTimeframe): Promise<OhlcBar[]> {
     const result = await alphaVantageAdapter.fetch({
       symbol,
       function: "TIME_SERIES_DAILY",
       timeframe,
     });
-    return (result.data.bars as PricePoint[]) ?? [];
+    return (result.data.bars as OhlcBar[]) ?? [];
   }
 }
 
@@ -203,6 +247,8 @@ export function createProviderByName(
       return new NSEProvider(tier);
     case "bse":
       return new BSEProvider(tier);
+    case "yahoo":
+      return new YahooProvider(tier);
     case "finnhub":
       return new FinnhubProvider(tier);
     case "polygon":

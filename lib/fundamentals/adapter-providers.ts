@@ -6,7 +6,6 @@ import { createAlphaVantageFundamentalsProvider } from "@/lib/fundamentals/provi
 import { createFMPFundamentalsProvider } from "@/lib/fundamentals/providers/fmp-provider";
 import type { FundamentalsProvider } from "@/lib/fundamentals/types";
 import type { ProviderTier } from "@/lib/providers/types";
-import { mockFundamentalsProvider } from "@/lib/fundamentals/mock-provider";
 
 export function createFundamentalsProviderByName(
   name: string,
@@ -20,8 +19,6 @@ export function createFundamentalsProviderByName(
     case "alpha_vantage":
     case "av":
       return createAlphaVantageFundamentalsProvider(tier === "mock" ? "secondary" : tier);
-    case "mock":
-      return mockFundamentalsProvider;
     default:
       return null;
   }

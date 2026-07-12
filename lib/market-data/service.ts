@@ -13,10 +13,13 @@ import {
   getStaleCachedSync,
 } from "@/lib/cache";
 import {
+  fetchIndexWithFailover,
   fetchMarketDataWithFailover,
   fetchQuoteWithFailover,
   getActiveMarketDataProviders,
+  getProductionProviderChain,
 } from "@/lib/market-data/fallback";
+import { getProviderHealth } from "@/lib/market-data/provider-health";
 import {
   toEnrichedQuote,
   type EnrichedQuote,
@@ -29,9 +32,11 @@ import type {
   MarketDataResult,
   NormalizedSymbol,
 } from "@/lib/market-data/types";
+import type { ProviderHealth } from "@/lib/market-data/provider-health";
 import { getOhlcCandles, type OhlcResult } from "@/lib/market/ohlc-engine";
-import type { ChartTimeframe, PricePoint } from "@/types";
+import type { ChartTimeframe } from "@/types";
 import type { LiveQuote } from "@/lib/providers/types";
+import type { OhlcBar } from "@/lib/providers/types";
 
 export interface QuoteResult {
   data: LiveQuote;
@@ -47,6 +52,35 @@ function toQuoteResult(result: MarketDataResult): QuoteResult {
     source: result.source,
     attempted: result.attempted,
   };
+}
+
+function unavailableQuoteResult(symbol: string, attempted: string[] = []): QuoteResult {
+  const normalized = normalizeSymbol(symbol);
+  const now = new Date().toISOString();
+  return {
+    data: {
+      symbol: normalized.internal,
+      ltp: 0,
+      open: 0,
+      high: 0,
+      low: 0,
+      previousClose: 0,
+      change: 0,
+      changePercent: 0,
+      volume: 0,
+      provider: "unavailable",
+      source: "unavailable",
+      fetchedAt: now,
+    },
+    provider: "unavailable",
+    source: "unavailable",
+    attempted,
+  };
+}
+
+function rejectMockQuote(symbol: string, result: QuoteResult): QuoteResult {
+  if (result.source !== "mock") return result;
+  return unavailableQuoteResult(symbol, result.attempted);
 }
 
 class MarketDataServiceImpl {
@@ -69,7 +103,7 @@ class MarketDataServiceImpl {
       },
       () => fetchQuoteWithFailover(normalized.internal)
     );
-    return toQuoteResult(result);
+    return rejectMockQuote(normalized.internal, toQuoteResult(result));
   }
 
   /** Enriched quote with exchange, market status, and IST timestamps */
@@ -98,9 +132,9 @@ class MarketDataServiceImpl {
         key: cacheKey("index", normalized),
         ttlMs: getQuoteCacheTtlMs(),
       },
-      () => fetchQuoteWithFailover(normalized)
+      () => fetchIndexWithFailover(normalized)
     );
-    return toQuoteResult(result);
+    return rejectMockQuote(normalized, toQuoteResult(result));
   }
 
   /** Enriched index quote */
@@ -184,7 +218,7 @@ class MarketDataServiceImpl {
   async getPriceHistory(
     symbol: string,
     timeframe: ChartTimeframe = "1Y"
-  ): Promise<PricePoint[]> {
+  ): Promise<OhlcBar[]> {
     const result = await this.getOhlcCandles(symbol, timeframe);
     return result.data;
   }
@@ -192,6 +226,14 @@ class MarketDataServiceImpl {
   /** Active provider chain for diagnostics */
   getActiveProviders(): string[] {
     return getActiveMarketDataProviders();
+  }
+
+  getProviderChain(): string[] {
+    return getProductionProviderChain();
+  }
+
+  getProviderHealth(): ProviderHealth[] {
+    return getProviderHealth();
   }
 }
 
@@ -205,3 +247,5 @@ export const getIndex = marketDataService.getIndex.bind(marketDataService);
 export const getQuotes = marketDataService.getQuotes.bind(marketDataService);
 export const getEnrichedQuote = marketDataService.getEnrichedQuote.bind(marketDataService);
 export const getEnrichedQuotes = marketDataService.getEnrichedQuotes.bind(marketDataService);
+export const getProviderChain = marketDataService.getProviderChain.bind(marketDataService);
+export const getMarketDataProviderHealth = marketDataService.getProviderHealth.bind(marketDataService);

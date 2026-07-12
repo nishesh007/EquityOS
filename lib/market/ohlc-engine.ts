@@ -1,38 +1,91 @@
 /**
- * OHLC candle engine — serves historical price data for local chart fallback.
- * TradingView remains isolated; this engine powers the local candlestick chart.
+ * Historical OHLC candle engine.
+ * Yahoo Finance → Finnhub → cached historical candles → unavailable.
  */
 
-import type { ChartTimeframe, PricePoint } from "@/types";
+import { yahooAdapter } from "@/lib/adapters/yahoo";
+import { finnhubAdapter } from "@/lib/adapters/finnhub";
+import type { ChartTimeframe } from "@/types";
+import type { OhlcBar } from "@/lib/providers/types";
 import {
   CACHE_TTL,
   cacheKey,
   getCached,
+  getStaleCachedSync,
 } from "@/lib/cache";
-import {
-  fetchOhlcWithFailover,
-  type FailoverResult,
-} from "@/lib/providers/failover";
 
-export type OhlcResult = FailoverResult<PricePoint[]>;
+export type HistoricalDataSource = "live" | "cached" | "unavailable";
+
+export interface OhlcResult {
+  data: OhlcBar[];
+  provider: "Yahoo" | "Finnhub" | "cache" | "unavailable";
+  source: HistoricalDataSource;
+  attempted: string[];
+}
+
+function unavailableResult(attempted: string[]): OhlcResult {
+  return {
+    data: [],
+    provider: "unavailable",
+    source: "unavailable",
+    attempted,
+  };
+}
+
+async function fetchHistoricalCandles(
+  symbol: string,
+  timeframe: ChartTimeframe,
+  key: string
+): Promise<OhlcResult> {
+  const attempted: string[] = [];
+
+  attempted.push("Yahoo");
+  try {
+    const data = await yahooAdapter.fetchCandles(symbol, timeframe);
+    return { data, provider: "Yahoo", source: "live", attempted };
+  } catch {
+    // Continue to Finnhub; do not reconstruct missing candles.
+  }
+
+  attempted.push("Finnhub");
+  try {
+    const data = await finnhubAdapter.fetchCandles(symbol, timeframe);
+    return { data, provider: "Finnhub", source: "live", attempted };
+  } catch {
+    // Continue to stale cache; do not reconstruct missing candles.
+  }
+
+  const stale = getStaleCachedSync<OhlcResult>(key);
+  if (stale && stale.data.length > 0 && stale.source !== "unavailable") {
+    return {
+      data: stale.data,
+      provider: "cache",
+      source: "cached",
+      attempted,
+    };
+  }
+
+  return unavailableResult(attempted);
+}
 
 export async function getOhlcCandles(
   symbol: string,
   timeframe: ChartTimeframe
 ): Promise<OhlcResult> {
   const normalized = symbol.toUpperCase();
+  const key = cacheKey("ohlc", normalized, timeframe);
   return getCached(
     {
-      key: cacheKey("ohlc", normalized, timeframe),
+      key,
       ttlMs: CACHE_TTL.CANDLES,
     },
-    () => fetchOhlcWithFailover(normalized, timeframe)
+    () => fetchHistoricalCandles(normalized, timeframe, key)
   );
 }
 
 export async function getFullPriceHistory(
   symbol: string
-): Promise<Record<ChartTimeframe, PricePoint[]>> {
+): Promise<Record<ChartTimeframe, OhlcBar[]>> {
   const timeframes: ChartTimeframe[] = [
     "1D",
     "1W",
@@ -50,5 +103,5 @@ export async function getFullPriceHistory(
     })
   );
 
-  return Object.fromEntries(entries) as Record<ChartTimeframe, PricePoint[]>;
+  return Object.fromEntries(entries) as Record<ChartTimeframe, OhlcBar[]>;
 }
