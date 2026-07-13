@@ -5,9 +5,11 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { StockLink } from "@/components/ui/StockLink";
 import { bestCallStarRating, buildBestCallScoreBreakdown } from "@/lib/opportunity-engine/best-call";
 import {
-  CONVICTION_DISPLAY_LABELS,
+  CONVICTION_POSITIVE_DRIVER_LABELS,
   resolveConvictionDisplayBreakdown,
+  resolveConvictionRiskAdjustments,
 } from "@/lib/opportunity-engine/conviction-display";
+import type { ConfidenceReasonContribution } from "@/lib/opportunity-engine/reasons";
 import {
   CATEGORY_EMPTY_HEADLINE,
   deriveCategoryCandidates,
@@ -138,11 +140,91 @@ function writeStoredSymbols(key: string, symbols: Set<string>): void {
   window.localStorage.setItem(key, JSON.stringify([...symbols]));
 }
 
+function splitDriverContributions(contributions: ConfidenceReasonContribution[]): {
+  positives: ConfidenceReasonContribution[];
+  riskAdjustments: ConfidenceReasonContribution[];
+} {
+  return {
+    positives: contributions.filter((item) => item.contribution > 0),
+    riskAdjustments: contributions.filter((item) => item.contribution < 0),
+  };
+}
+
+function DriverBreakdownSections({
+  positives,
+  riskAdjustments,
+  finalLabel,
+  finalValue,
+  compact = false,
+}: {
+  positives: Array<{ label: string; contribution: number }>;
+  riskAdjustments: Array<{ label: string; contribution: number }>;
+  finalLabel: string;
+  finalValue: number;
+  compact?: boolean;
+}) {
+  const textSize = compact ? "text-[10px]" : "text-[11px]";
+  const sectionLabelClass = "mb-1 text-[9px] font-medium uppercase tracking-wider text-text-faint";
+
+  return (
+    <div className="space-y-2">
+      {positives.length > 0 && (
+        <div>
+          <p className={sectionLabelClass}>Positive Drivers</p>
+          <div className="space-y-0.5">
+            {positives.map((item) => (
+              <div key={item.label} className={`flex items-center justify-between ${textSize}`}>
+                <span className="flex items-center gap-1 text-text-muted">
+                  <span className="text-gain">✓</span>
+                  <span>{item.label}</span>
+                </span>
+                <span className="font-mono text-gain tabular-nums">+{item.contribution}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {riskAdjustments.length > 0 && (
+        <div>
+          <p className={sectionLabelClass}>Risk Adjustments</p>
+          <div className="space-y-0.5">
+            {riskAdjustments.map((item) => (
+              <div key={item.label} className={`flex items-center justify-between ${textSize}`}>
+                <span className="flex items-center gap-1 text-text-muted">
+                  <span className="text-loss">⚠</span>
+                  <span>{item.label}</span>
+                </span>
+                <span className="font-mono text-loss tabular-nums">{item.contribution}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div
+        className={`flex items-center justify-between border-t border-surface-border-subtle/60 pt-1.5 ${textSize} font-semibold`}
+      >
+        <span className="text-text-secondary">{finalLabel}</span>
+        <span className="font-mono text-gain tabular-nums">{finalValue}</span>
+      </div>
+    </div>
+  );
+}
+
 function ConvictionPopup({ candidate }: { candidate: OpportunityCandidate }) {
   const [open, setOpen] = useState(false);
   const popupRef = useRef<HTMLDivElement>(null);
   const breakdown = resolveConvictionDisplayBreakdown(candidate);
-  const breakdownKeys = Object.keys(CONVICTION_DISPLAY_LABELS) as (keyof typeof CONVICTION_DISPLAY_LABELS)[];
+  const riskAdjustments = resolveConvictionRiskAdjustments(candidate);
+  const positiveDrivers = (
+    Object.keys(CONVICTION_POSITIVE_DRIVER_LABELS) as (keyof typeof CONVICTION_POSITIVE_DRIVER_LABELS)[]
+  )
+    .map((key) => ({
+      label: CONVICTION_POSITIVE_DRIVER_LABELS[key],
+      contribution: breakdown[key],
+    }))
+    .filter((item) => item.contribution > 0);
 
   useEffect(() => {
     if (!open) return;
@@ -171,28 +253,16 @@ function ConvictionPopup({ candidate }: { candidate: OpportunityCandidate }) {
         </span>
       </button>
       {open && (
-        <div className="absolute right-0 z-30 mt-1 w-52 rounded-lg border border-surface-border bg-surface-raised p-3 shadow-lg">
+        <div className="absolute right-0 z-30 mt-1 w-56 rounded-lg border border-surface-border bg-surface-raised p-3 shadow-lg">
           <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-text-faint">
             AI Conviction Breakdown
           </p>
-          <div className="space-y-1">
-            {breakdownKeys.map((key) => (
-              <div key={key} className="flex items-center justify-between text-[11px]">
-                <span className="text-text-muted">{CONVICTION_DISPLAY_LABELS[key]}</span>
-                <span
-                  className={`font-mono tabular-nums ${
-                    key === "penalty" ? "text-loss" : "text-text-secondary"
-                  }`}
-                >
-                  {key === "penalty" ? `-${breakdown.penalty}` : breakdown[key]}
-                </span>
-              </div>
-            ))}
-            <div className="mt-1 flex items-center justify-between border-t border-surface-border-subtle/60 pt-1.5 text-[11px] font-semibold">
-              <span className="text-text-secondary">Final</span>
-              <span className="font-mono text-gain tabular-nums">{breakdown.total}</span>
-            </div>
-          </div>
+          <DriverBreakdownSections
+            positives={positiveDrivers}
+            riskAdjustments={riskAdjustments}
+            finalLabel="Final Conviction"
+            finalValue={breakdown.total}
+          />
         </div>
       )}
     </div>
@@ -202,10 +272,9 @@ function ConvictionPopup({ candidate }: { candidate: OpportunityCandidate }) {
 function ConfidenceBreakdown({ candidate }: { candidate: OpportunityCandidate }) {
   const [open, setOpen] = useState(false);
   const popupRef = useRef<HTMLDivElement>(null);
-  const contributions = resolveConfidenceContributions(candidate);
-  const positives = contributions.filter((item) => item.contribution > 0);
-  const penalty = contributions.find((item) => item.label === "Penalty");
-  const finalConviction = candidate.aiConvictionScore;
+  const { positives, riskAdjustments } = splitDriverContributions(
+    resolveConfidenceContributions(candidate)
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -229,25 +298,13 @@ function ConfidenceBreakdown({ candidate }: { candidate: OpportunityCandidate })
         {candidate.confidencePercent}
       </button>
       {open && (
-        <div className="absolute right-0 z-30 mt-1 w-52 rounded-lg border border-surface-border bg-surface-raised p-3 shadow-lg">
-          <div className="space-y-1">
-            {positives.map((item) => (
-              <div key={item.label} className="flex items-center justify-between text-[11px]">
-                <span className="text-text-muted">{item.label}</span>
-                <span className="font-mono text-gain tabular-nums">+{item.contribution}</span>
-              </div>
-            ))}
-            {penalty && (
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-text-muted">Penalty</span>
-                <span className="font-mono text-loss tabular-nums">{penalty.contribution}</span>
-              </div>
-            )}
-            <div className="mt-1 flex items-center justify-between border-t border-surface-border-subtle/60 pt-1.5 text-[11px] font-semibold">
-              <span className="text-text-secondary">Final Conviction</span>
-              <span className="font-mono text-gain tabular-nums">{finalConviction}</span>
-            </div>
-          </div>
+        <div className="absolute right-0 z-30 mt-1 w-56 rounded-lg border border-surface-border bg-surface-raised p-3 shadow-lg">
+          <DriverBreakdownSections
+            positives={positives}
+            riskAdjustments={riskAdjustments}
+            finalLabel="Final Conviction"
+            finalValue={candidate.aiConvictionScore}
+          />
         </div>
       )}
     </div>
@@ -255,43 +312,24 @@ function ConfidenceBreakdown({ candidate }: { candidate: OpportunityCandidate })
 }
 
 function ReasonCell({ candidate }: { candidate: OpportunityCandidate }) {
-  const contributions = resolveConfidenceContributions(candidate);
-  const positives = contributions.filter((item) => item.contribution > 0);
-  const penalty = contributions.find((item) => item.label === "Penalty");
+  const { positives, riskAdjustments } = splitDriverContributions(
+    resolveConfidenceContributions(candidate)
+  );
 
-  if (positives.length === 0 && !penalty) {
+  if (positives.length === 0 && riskAdjustments.length === 0) {
     return <span className="text-[11px] text-text-muted">—</span>;
   }
 
   return (
-    <ul className="max-w-[240px] space-y-0.5 text-[11px] leading-relaxed text-text-muted">
-      {positives.slice(0, 5).map((item) => (
-        <li key={item.label} className="flex items-start justify-between gap-2">
-          <span className="flex items-start gap-1">
-            <span className="mt-px text-gain">✓</span>
-            <span>{item.label}</span>
-          </span>
-          <span className="shrink-0 font-mono text-[10px] text-gain tabular-nums">
-            +{item.contribution}
-          </span>
-        </li>
-      ))}
-      {penalty && (
-        <li className="flex items-start justify-between gap-2">
-          <span className="flex items-start gap-1">
-            <span className="mt-px text-loss">✗</span>
-            <span>Penalty</span>
-          </span>
-          <span className="shrink-0 font-mono text-[10px] text-loss tabular-nums">
-            {penalty.contribution}
-          </span>
-        </li>
-      )}
-      <li className="flex items-center justify-between border-t border-surface-border-subtle/50 pt-1 font-semibold text-text-secondary">
-        <span>Final Conviction</span>
-        <span className="font-mono text-gain tabular-nums">{candidate.aiConvictionScore}</span>
-      </li>
-    </ul>
+    <div className="max-w-[260px]">
+      <DriverBreakdownSections
+        positives={positives.slice(0, 5)}
+        riskAdjustments={riskAdjustments}
+        finalLabel="Final Conviction"
+        finalValue={candidate.aiConvictionScore}
+        compact
+      />
+    </div>
   );
 }
 
@@ -299,6 +337,10 @@ function BestCallScoreCell({ candidate }: { candidate: OpportunityCandidate }) {
   const [hovered, setHovered] = useState(false);
   const score = candidate.bestCallScore ?? candidate.aiConvictionScore;
   const breakdown = buildBestCallScoreBreakdown(candidate);
+  const positives = breakdown.filter((item) => item.contribution >= 0);
+  const riskAdjustments = breakdown
+    .filter((item) => item.contribution < 0)
+    .map((item) => ({ label: item.label, contribution: item.contribution }));
 
   return (
     <div
@@ -311,28 +353,19 @@ function BestCallScoreCell({ candidate }: { candidate: OpportunityCandidate }) {
       </p>
       <p className="font-mono text-[10px] text-text-muted tabular-nums">Best Call Score {score}</p>
       {hovered && (
-        <div className="absolute right-0 z-30 mt-1 w-52 rounded-lg border border-surface-border bg-surface-raised p-3 shadow-lg">
+        <div className="absolute right-0 z-30 mt-1 w-56 rounded-lg border border-surface-border bg-surface-raised p-3 shadow-lg">
           <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-text-faint">
             Best Call Score Breakdown
           </p>
-          <div className="space-y-1">
-            {breakdown.map((item) => (
-              <div key={item.label} className="flex items-center justify-between text-[11px]">
-                <span className="text-text-muted">{item.label}</span>
-                <span
-                  className={`font-mono tabular-nums ${
-                    item.contribution < 0 ? "text-loss" : "text-text-secondary"
-                  }`}
-                >
-                  {item.contribution < 0 ? item.contribution : `+${item.contribution}`}
-                </span>
-              </div>
-            ))}
-            <div className="mt-1 flex items-center justify-between border-t border-surface-border-subtle/60 pt-1.5 text-[11px] font-semibold">
-              <span className="text-text-secondary">Best Call Score</span>
-              <span className="font-mono text-gain tabular-nums">{score}</span>
-            </div>
-          </div>
+          <DriverBreakdownSections
+            positives={positives.map((item) => ({
+              label: item.label,
+              contribution: item.contribution,
+            }))}
+            riskAdjustments={riskAdjustments}
+            finalLabel="Best Call Score"
+            finalValue={score}
+          />
         </div>
       )}
     </div>

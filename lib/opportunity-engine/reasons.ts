@@ -1,4 +1,9 @@
 import type { OpportunityCategory } from "@/lib/opportunity-engine/types";
+import {
+  buildReasonRiskAdjustments,
+  isLegacyPenaltyLabel,
+  RISK_ADJUSTMENT_FALLBACK_LABEL,
+} from "@/lib/opportunity-engine/risk-adjustments";
 
 function num(
   metrics: Record<string, number | string | null>,
@@ -20,28 +25,6 @@ function pushReason(
 ): void {
   if (contribution <= 0) return;
   reasons.push({ label, contribution: Math.round(contribution) });
-}
-
-function computePenaltyContribution(
-  metrics: Record<string, number | string | null>,
-  category: OpportunityCategory,
-  side: "Long" | "Short",
-  riskReward: number
-): number {
-  const volatility = num(metrics, "volatility") ?? 0;
-  const rsi = num(metrics, "rsi") ?? 50;
-  let penalty = 0;
-  if (volatility > 50) penalty += 5;
-  else if (volatility > 45) penalty += 3;
-  if (side === "Long" && rsi > 78) penalty += 4;
-  if (side === "Short" && rsi < 22) penalty += 4;
-  if (riskReward < 1.5) penalty += 3;
-  if (category === "mean_reversion" && Math.abs(rsi - 50) < 8) penalty += 2;
-  const volumeRatio = num(metrics, "volume_ratio") ?? 0;
-  if (volumeRatio < 1.1) penalty += 2;
-  const adx = num(metrics, "adx") ?? 0;
-  if (adx < 18 && category !== "mean_reversion") penalty += 2;
-  return Math.round(penalty);
 }
 
 /**
@@ -203,19 +186,15 @@ export function buildConfidenceReasonContributions(
     pushReason(reasons, "Swing Fundamentals", 8);
   }
 
-  const penalty = computePenaltyContribution(metrics, category, side, riskReward);
-  if (penalty > 0) {
-    reasons.push({ label: "Penalty", contribution: -penalty });
-  }
+  reasons.push(...buildReasonRiskAdjustments(metrics, category, side, riskReward));
 
   return reasons
-    .filter((item) => item.label !== "Penalty" || item.contribution < 0)
     .sort((a, b) => {
       if (a.contribution < 0) return 1;
       if (b.contribution < 0) return -1;
       return b.contribution - a.contribution;
     })
-    .slice(0, 8);
+    .slice(0, 10);
 }
 
 export function buildConfidenceReasons(
@@ -251,7 +230,12 @@ export function resolveConfidenceContributions(candidate: {
   riskReward?: number;
 }): ConfidenceReasonContribution[] {
   if (candidate.confidenceReasonContributions?.length) {
-    return candidate.confidenceReasonContributions;
+    const hasLegacyPenalty = candidate.confidenceReasonContributions.some((item) =>
+      isLegacyPenaltyLabel(item.label)
+    );
+    if (!hasLegacyPenalty) {
+      return normalizeContributionLabels(candidate.confidenceReasonContributions);
+    }
   }
 
   if (candidate.scanMetrics) {
@@ -265,7 +249,17 @@ export function resolveConfidenceContributions(candidate: {
   }
 
   return (candidate.confidenceReasons ?? []).map((label, index) => ({
-    label,
+    label: isLegacyPenaltyLabel(label) ? RISK_ADJUSTMENT_FALLBACK_LABEL : label,
     contribution: Math.max(1, Math.round(candidate.confidencePercent / Math.max(1, (candidate.confidenceReasons?.length ?? 1))) - index),
   }));
+}
+
+function normalizeContributionLabels(
+  contributions: ConfidenceReasonContribution[]
+): ConfidenceReasonContribution[] {
+  return contributions.map((item) =>
+    isLegacyPenaltyLabel(item.label)
+      ? { ...item, label: RISK_ADJUSTMENT_FALLBACK_LABEL }
+      : item
+  );
 }

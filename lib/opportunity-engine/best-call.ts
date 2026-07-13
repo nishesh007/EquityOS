@@ -1,4 +1,5 @@
 import type { OpportunityCandidate } from "@/lib/opportunity-engine/types";
+import { buildBestCallRiskAdjustments } from "@/lib/opportunity-engine/risk-adjustments";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -159,12 +160,28 @@ export function buildBestCallScoreBreakdown(
     entry.contribution = Math.round(entry.score * entry.weight);
   }
 
-  if (factors.penalty > 0) {
-    entries.push({
-      label: "Penalty",
-      weight: BEST_CALL_WEIGHTS.penalty,
-      score: factors.penalty,
-      contribution: -Math.round(factors.penalty * BEST_CALL_WEIGHTS.penalty),
+  const rawAdjustments = buildBestCallRiskAdjustments(
+    candidate.scanMetrics,
+    candidate.side,
+    candidate.riskReward
+  );
+  const rawTotal = rawAdjustments.reduce((sum, item) => sum + Math.abs(item.contribution), 0);
+  const weightedTotal = Math.round(factors.penalty * BEST_CALL_WEIGHTS.penalty);
+
+  if (rawTotal > 0 && weightedTotal > 0) {
+    let allocated = 0;
+    rawAdjustments.forEach((adjustment, index) => {
+      const isLast = index === rawAdjustments.length - 1;
+      const share = isLast
+        ? weightedTotal - allocated
+        : Math.round((Math.abs(adjustment.contribution) / rawTotal) * weightedTotal);
+      allocated += share;
+      entries.push({
+        label: adjustment.label,
+        weight: BEST_CALL_WEIGHTS.penalty,
+        score: Math.abs(adjustment.contribution),
+        contribution: -share,
+      });
     });
   }
 

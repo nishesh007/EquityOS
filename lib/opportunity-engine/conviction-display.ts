@@ -1,5 +1,6 @@
 import type { ConvictionComponents } from "@/lib/opportunity-engine/conviction";
 import { computeConvictionComponents } from "@/lib/opportunity-engine/conviction";
+import { buildConvictionRiskAdjustments } from "@/lib/opportunity-engine/risk-adjustments";
 import type { OpportunityCategory } from "@/lib/opportunity-engine/types";
 
 export interface ConvictionDisplayBreakdown {
@@ -15,8 +16,8 @@ export interface ConvictionDisplayBreakdown {
   total: number;
 }
 
-export const CONVICTION_DISPLAY_LABELS: Record<
-  keyof Omit<ConvictionDisplayBreakdown, "total">,
+export const CONVICTION_POSITIVE_DRIVER_LABELS: Record<
+  keyof Omit<ConvictionDisplayBreakdown, "total" | "penalty">,
   string
 > = {
   technical: "Technical",
@@ -27,7 +28,6 @@ export const CONVICTION_DISPLAY_LABELS: Record<
   sector: "Sector",
   institutional: "Institutional",
   riskReward: "Risk Reward",
-  penalty: "Penalty",
 };
 
 function num(metrics: Record<string, number | string | null>, key: string): number | null {
@@ -130,5 +130,22 @@ export function resolveConvictionDisplayBreakdown(
     candidate.side,
     candidate.riskReward,
     candidate.aiConvictionScore
+  );
+}
+
+export function resolveConvictionRiskAdjustments(
+  candidate: {
+    scanMetrics?: Record<string, number | string | null>;
+    category: OpportunityCategory;
+    side: "Long" | "Short";
+    riskReward: number;
+  }
+) {
+  const metrics = candidate.scanMetrics ?? {};
+  return buildConvictionRiskAdjustments(
+    metrics,
+    candidate.category,
+    candidate.side,
+    candidate.riskReward
   );
 }
