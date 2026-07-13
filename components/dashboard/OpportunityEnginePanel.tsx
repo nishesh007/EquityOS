@@ -4,7 +4,12 @@ import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { StockLink } from "@/components/ui/StockLink";
 import {
-  CATEGORY_LABELS,
+  deriveCategoryCandidates,
+  getCategoryLabel,
+  getCategorySubtitle,
+  POST_MARKET_SUBTITLES,
+} from "@/lib/opportunity-engine/presentation";
+import {
   OPPORTUNITY_CATEGORIES,
   type OpportunityCandidate,
   type OpportunityCategory,
@@ -18,6 +23,7 @@ import {
   Radar,
   RefreshCw,
   Sparkles,
+  TrendingDown,
   TrendingUp,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -64,19 +70,44 @@ function ScoreBar({ score, tone = "accent" }: { score: number; tone?: "accent" |
   );
 }
 
+function ReasonCell({ candidate }: { candidate: OpportunityCandidate }) {
+  const reasons =
+    candidate.confidenceReasons && candidate.confidenceReasons.length > 0
+      ? candidate.confidenceReasons
+      : candidate.reason
+          .split("\n")
+          .map((line) => line.replace(/^✓\s*/, "").trim())
+          .filter(Boolean);
+
+  if (reasons.length === 0) {
+    return <span className="text-[11px] text-text-muted">—</span>;
+  }
+
+  return (
+    <ul className="max-w-[240px] space-y-0.5 text-[11px] leading-relaxed text-text-muted">
+      {reasons.map((reason) => (
+        <li key={reason} className="flex items-start gap-1">
+          <span className="mt-px text-gain">✓</span>
+          <span>{reason}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 const headerClass =
   "whitespace-nowrap pb-2 text-[10px] font-medium uppercase tracking-wider text-text-faint";
 const cellClass = "whitespace-nowrap py-3 align-top";
 
-function OpportunityTable({ candidates }: { candidates: OpportunityCandidate[] }) {
-  if (candidates.length === 0) {
-    return (
-      <p className="py-8 text-center text-sm text-text-muted">
-        No opportunities in this category yet. The next scan may surface candidates.
-      </p>
-    );
-  }
+function EmptySection({ message }: { message: string }) {
+  return (
+    <div className="rounded-lg border border-surface-border-subtle/80 bg-surface-hover/20 px-4 py-6 text-center">
+      <p className="text-sm text-text-muted">{message}</p>
+    </div>
+  );
+}
 
+function OpportunityTable({ candidates }: { candidates: OpportunityCandidate[] }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[960px]">
@@ -148,9 +179,7 @@ function OpportunityTable({ candidates }: { candidates: OpportunityCandidate[] }
                 <ScoreBar score={candidate.confidencePercent} />
               </td>
               <td className={cellClass}>
-                <p className="max-w-[220px] text-[11px] leading-relaxed text-text-muted">
-                  {candidate.reason}
-                </p>
+                <ReasonCell candidate={candidate} />
               </td>
               <td className={`${cellClass} text-right`}>
                 <span className="inline-flex items-center gap-1 text-[10px] text-text-muted">
@@ -176,10 +205,12 @@ function PostMarketSection({
   title,
   subtitle,
   candidates,
+  emptyNote,
 }: {
   title: string;
   subtitle: string;
   candidates: OpportunityCandidate[];
+  emptyNote?: string;
 }) {
   return (
     <Card padding="md" className="border-surface-border-subtle/80">
@@ -187,7 +218,122 @@ function PostMarketSection({
         <h3 className="text-sm font-semibold text-text-primary">{title}</h3>
         <p className="text-xs text-text-muted">{subtitle}</p>
       </div>
-      <OpportunityTable candidates={candidates} />
+      {candidates.length > 0 ? (
+        <OpportunityTable candidates={candidates} />
+      ) : (
+        <EmptySection
+          message={
+            emptyNote ??
+            "No stocks satisfied today's strict institutional filters."
+          }
+        />
+      )}
+    </Card>
+  );
+}
+
+function MarketSummaryHighlights({ report }: { report: PostMarketReport }) {
+  const summary = report.marketSummary;
+  if (!summary) return null;
+
+  return (
+    <Card padding="md" className="border-surface-border-subtle/80">
+      <div className="mb-4">
+        <h3 className="text-sm font-semibold text-text-primary">Market Summary</h3>
+        <p className="mt-1 text-xs leading-relaxed text-text-muted">{summary.narrative}</p>
+      </div>
+
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-lg border border-surface-border-subtle/80 px-3 py-2">
+          <p className="text-[10px] uppercase tracking-wider text-text-faint">Strongest Sector</p>
+          <p className="mt-1 flex items-center gap-1 text-xs font-medium text-gain">
+            <TrendingUp className="h-3.5 w-3.5" />
+            {summary.strongestSector.name} (+{summary.strongestSector.changePercent.toFixed(2)}%)
+          </p>
+        </div>
+        <div className="rounded-lg border border-surface-border-subtle/80 px-3 py-2">
+          <p className="text-[10px] uppercase tracking-wider text-text-faint">Weakest Sector</p>
+          <p className="mt-1 flex items-center gap-1 text-xs font-medium text-loss">
+            <TrendingDown className="h-3.5 w-3.5" />
+            {summary.weakestSector.name} ({summary.weakestSector.changePercent.toFixed(2)}%)
+          </p>
+        </div>
+        <div className="rounded-lg border border-surface-border-subtle/80 px-3 py-2">
+          <p className="text-[10px] uppercase tracking-wider text-text-faint">Breadth</p>
+          <p className="mt-1 text-xs font-medium text-text-secondary">
+            {summary.breadth.advances}↑ / {summary.breadth.declines}↓ / {summary.breadth.unchanged}→
+            <span className="ml-1 text-text-muted">({summary.breadth.advanceRatio}% adv)</span>
+          </p>
+        </div>
+        <div className="rounded-lg border border-surface-border-subtle/80 px-3 py-2">
+          <p className="text-[10px] uppercase tracking-wider text-text-faint">FII / DII</p>
+          <p className="mt-1 text-xs font-medium text-text-secondary">
+            FII ₹{summary.institutionalFlow.fii.toLocaleString("en-IN")} Cr · DII ₹
+            {summary.institutionalFlow.dii.toLocaleString("en-IN")} Cr
+            <span className="ml-1 text-text-muted">({summary.institutionalFlow.asOf})</span>
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div>
+          <h4 className="mb-2 text-[10px] font-medium uppercase tracking-wider text-text-faint">
+            Top Breakouts
+          </h4>
+          {summary.topBreakouts.length > 0 ? (
+            <ul className="space-y-1 text-xs text-text-secondary">
+              {summary.topBreakouts.map((c) => (
+                <li key={c.id}>
+                  <StockLink symbol={c.symbol} className="hover:text-accent">
+                    {c.symbol}
+                  </StockLink>
+                  <span className="text-text-muted"> · conviction {c.aiConvictionScore}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-xs text-text-muted">No breakout candidates in final scan.</p>
+          )}
+        </div>
+        <div>
+          <h4 className="mb-2 text-[10px] font-medium uppercase tracking-wider text-text-faint">
+            Top Breakdowns
+          </h4>
+          {summary.topBreakdowns.length > 0 ? (
+            <ul className="space-y-1 text-xs text-text-secondary">
+              {summary.topBreakdowns.map((c) => (
+                <li key={c.id}>
+                  <StockLink symbol={c.symbol} className="hover:text-accent">
+                    {c.symbol}
+                  </StockLink>
+                  <span className="text-text-muted"> · conviction {c.aiConvictionScore}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-xs text-text-muted">No breakdown candidates in final scan.</p>
+          )}
+        </div>
+        <div>
+          <h4 className="mb-2 text-[10px] font-medium uppercase tracking-wider text-text-faint">
+            Top Volume Shock
+          </h4>
+          {summary.topVolumeShock.length > 0 ? (
+            <ul className="space-y-1 text-xs text-text-secondary">
+              {summary.topVolumeShock.map((c) => (
+                <li key={c.id}>
+                  <StockLink symbol={c.symbol} className="hover:text-accent">
+                    {c.symbol}
+                  </StockLink>
+                  <span className="text-text-muted"> · conviction {c.aiConvictionScore}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-xs text-text-muted">No volume shock candidates in final scan.</p>
+          )}
+        </div>
+      </div>
     </Card>
   );
 }
@@ -202,21 +348,27 @@ function PostMarketReports({ report }: { report: PostMarketReport }) {
           Generated {formatTimestamp(report.generatedAt)}
         </span>
       </div>
+
+      {report.marketSummary && <MarketSummaryHighlights report={report} />}
+
       <div className="grid gap-4 xl:grid-cols-1">
         <PostMarketSection
           title="Tomorrow Watchlist"
-          subtitle="High-conviction setups to monitor at open"
+          subtitle={POST_MARKET_SUBTITLES.tomorrowWatchlist}
           candidates={report.tomorrowWatchlist}
+          emptyNote={report.sectionNotes?.tomorrowWatchlist}
         />
         <PostMarketSection
           title="Missed Opportunities"
-          subtitle="Strong signals that appeared earlier in the session"
+          subtitle={POST_MARKET_SUBTITLES.missedOpportunities}
           candidates={report.missedOpportunities}
+          emptyNote={report.sectionNotes?.missedOpportunities}
         />
         <PostMarketSection
           title="Best Calls of the Day"
-          subtitle="Top AI-ranked opportunities from today's final scan"
+          subtitle={POST_MARKET_SUBTITLES.bestCallsOfDay}
           candidates={report.bestCallsOfDay}
+          emptyNote={report.sectionNotes?.bestCallsOfDay}
         />
       </div>
     </div>
@@ -228,9 +380,9 @@ export function OpportunityEnginePanel({ initialState }: OpportunityEnginePanelP
   const [activeCategory, setActiveCategory] = useState<OpportunityCategory>("intraday");
   const [scanning, setScanning] = useState(false);
 
-  const activeCandidates = useMemo(
-    () => state.categories[activeCategory] ?? [],
-    [state.categories, activeCategory]
+  const { candidates: activeCandidates, emptyNote } = useMemo(
+    () => deriveCategoryCandidates(state, activeCategory),
+    [state, activeCategory]
   );
 
   const refreshState = useCallback(async () => {
@@ -342,7 +494,10 @@ export function OpportunityEnginePanel({ initialState }: OpportunityEnginePanelP
 
       <div className="mb-4 flex flex-wrap gap-1.5">
         {OPPORTUNITY_CATEGORIES.map((category) => {
-          const count = state.categories[category]?.length ?? 0;
+          const count =
+            category === "intraday"
+              ? deriveCategoryCandidates(state, "intraday").candidates.length
+              : (state.categories[category]?.length ?? 0);
           const isActive = activeCategory === category;
           return (
             <button
@@ -355,7 +510,7 @@ export function OpportunityEnginePanel({ initialState }: OpportunityEnginePanelP
                   : "bg-surface-hover/50 text-text-muted hover:bg-surface-hover hover:text-text-secondary"
               }`}
             >
-              {CATEGORY_LABELS[category]}
+              {getCategoryLabel(category)}
               <span className="ml-1.5 font-mono text-[10px] opacity-70">({count})</span>
             </button>
           );
@@ -364,10 +519,24 @@ export function OpportunityEnginePanel({ initialState }: OpportunityEnginePanelP
 
       <div className="mb-2 flex items-center gap-2">
         <Sparkles className="h-3.5 w-3.5 text-accent" />
-        <h3 className="text-sm font-medium text-text-primary">{CATEGORY_LABELS[activeCategory]}</h3>
+        <div>
+          <h3 className="text-sm font-medium text-text-primary">
+            {getCategoryLabel(activeCategory)}
+          </h3>
+          <p className="text-xs text-text-muted">{getCategorySubtitle(activeCategory)}</p>
+        </div>
       </div>
 
-      <OpportunityTable candidates={activeCandidates} />
+      {activeCandidates.length > 0 ? (
+        <OpportunityTable candidates={activeCandidates} />
+      ) : (
+        <EmptySection
+          message={
+            emptyNote ??
+            "No opportunities in this category yet. The next scan may surface candidates."
+          }
+        />
+      )}
 
       {state.postMarket && <PostMarketReports report={state.postMarket} />}
     </Card>

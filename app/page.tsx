@@ -6,10 +6,6 @@ import { LatestMarketNews } from "@/components/dashboard/LatestMarketNews";
 import { UpcomingResultsCalendar } from "@/components/dashboard/UpcomingResultsCalendar";
 import { MarketPulse } from "@/components/dashboard/MarketPulse";
 import { MarketBreadth } from "@/components/dashboard/MarketBreadth";
-import {
-  AIIntradayIdeas,
-  AISwingTradeIdeas,
-} from "@/components/dashboard/AITradeIdeas";
 import { OpportunityEnginePanel } from "@/components/dashboard/OpportunityEnginePanel";
 import {
   fetchMarketIndices,
@@ -20,10 +16,8 @@ import {
   fetchUpcomingResults,
 } from "@/services/marketData";
 import {
-  fetchIntradayIdeas,
   fetchMarketBreadth,
   fetchMarketPulse,
-  fetchSwingTradeIdeas,
 } from "@/services/researchDashboardData";
 import { fetchOpportunityEngineState } from "@/services/opportunityEngine";
 
@@ -37,8 +31,6 @@ export default async function DashboardPage() {
     results,
     pulse,
     breadth,
-    intradayIdeas,
-    swingIdeas,
     opportunityState,
   ] = await Promise.all([
     fetchMarketIndices(),
@@ -49,8 +41,6 @@ export default async function DashboardPage() {
     fetchUpcomingResults(),
     fetchMarketPulse(),
     fetchMarketBreadth(),
-    fetchIntradayIdeas(),
-    fetchSwingTradeIdeas(),
     fetchOpportunityEngineState(),
   ]);
 
@@ -87,24 +77,16 @@ export default async function DashboardPage() {
         <OpportunityEnginePanel initialState={opportunityState} />
       </section>
 
-      <section className="mb-6 animate-fade-in-up [animation-delay:300ms]">
-        <AIIntradayIdeas ideas={intradayIdeas} />
-      </section>
-
-      <section className="mb-6 animate-fade-in-up [animation-delay:360ms]">
-        <AISwingTradeIdeas ideas={swingIdeas} />
-      </section>
-
-      <section className="mb-6 grid animate-fade-in-up grid-cols-1 gap-6 [animation-delay:420ms] xl:grid-cols-2">
+      <section className="mb-6 grid animate-fade-in-up grid-cols-1 gap-6 [animation-delay:300ms] xl:grid-cols-2">
         <PortfolioSummary portfolio={portfolio} />
         <Watchlist initialItems={watchlist} />
       </section>
 
-      <section className="mb-6 animate-fade-in-up [animation-delay:480ms]">
+      <section className="mb-6 animate-fade-in-up [animation-delay:360ms]">
         <AIMarketSummary summary={aiSummary} />
       </section>
 
-      <section className="grid animate-fade-in-up grid-cols-1 gap-6 [animation-delay:540ms] xl:grid-cols-2">
+      <section className="grid animate-fade-in-up grid-cols-1 gap-6 [animation-delay:420ms] xl:grid-cols-2">
         <LatestMarketNews news={news} />
         <UpcomingResultsCalendar results={results} />
       </section>
