@@ -8,7 +8,6 @@ import {
   createUnavailableQuote,
   type EnrichedQuote,
 } from "@/lib/market-data/enriched-quote";
-import { isValidMarketPrice } from "@/lib/utils";
 import type { IntradayIdea, SwingTradeIdea } from "@/types";
 import { Bot, Clock3, Sparkles } from "lucide-react";
 import { useCallback, useMemo } from "react";
@@ -33,12 +32,10 @@ function buildInitialQuotes(
   return map;
 }
 
-function swingEntryZone(price: number | null): { entryLow: number; entryHigh: number } | null {
-  if (!isValidMarketPrice(price)) return null;
-  return {
-    entryLow: Math.round(price * 0.985 * 100) / 100,
-    entryHigh: Math.round(price * 1.015 * 100) / 100,
-  };
+function swingEntryZone(
+  idea: SwingTradeIdea
+): { entryLow: number; entryHigh: number } {
+  return { entryLow: idea.entryLow, entryHigh: idea.entryHigh };
 }
 
 function Price({ value }: { value: number }) {
@@ -47,14 +44,6 @@ function Price({ value }: { value: number }) {
       ₹{value.toLocaleString("en-IN")}
     </span>
   );
-}
-
-function LiveEntryPrice({ value }: { value: number | null }) {
-  if (!isValidMarketPrice(value)) {
-    return <span className="text-xs text-text-muted">Unavailable</span>;
-  }
-
-  return <Price value={value} />;
 }
 
 function DirectionBadge({ side }: { side: "Long" | "Short" }) {
@@ -112,7 +101,7 @@ export function AIIntradayIdeas({ ideas }: IntradayIdeasProps) {
       <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-accent/5 blur-2xl" />
       <CardHeader
         title="AI Intraday Ideas"
-        subtitle="Top 5 model-ranked setups for the current session"
+        subtitle="From Continuous Opportunity Engine · intraday category"
         action={
           <div className="flex items-center gap-2 rounded-lg border border-accent/10 bg-accent/5 px-2.5 py-1.5">
             <Sparkles className="h-3.5 w-3.5 text-accent" />
@@ -158,7 +147,7 @@ export function AIIntradayIdeas({ ideas }: IntradayIdeasProps) {
                     <DirectionBadge side={idea.side} />
                   </td>
                   <td className={`${cellClass} text-right`}>
-                    <LiveEntryPrice value={quote.price} />
+                    <Price value={idea.entry} />
                   </td>
                   <td className={`${cellClass} text-right`}>
                     <Price value={idea.stopLoss} />
@@ -213,7 +202,7 @@ export function AISwingTradeIdeas({ ideas }: SwingIdeasProps) {
       <div className="pointer-events-none absolute -left-10 bottom-0 h-28 w-28 rounded-full bg-gain/5 blur-2xl" />
       <CardHeader
         title="AI Swing Trade Ideas"
-        subtitle="Top 10 opportunities · 2–8 week holding horizon"
+        subtitle="From Continuous Opportunity Engine · swing category · 2–8 week horizon"
         action={
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/10">
             <Bot className="h-4 w-4 text-accent" />
@@ -237,7 +226,7 @@ export function AISwingTradeIdeas({ ideas }: SwingIdeasProps) {
           <tbody>
             {ideas.map((idea, index) => {
               const quote = resolveQuote(idea.symbol, idea.quote);
-              const entryZone = swingEntryZone(quote.price);
+              const entryZone = swingEntryZone(idea);
 
               return (
                 <tr
@@ -261,14 +250,10 @@ export function AISwingTradeIdeas({ ideas }: SwingIdeasProps) {
                     <DirectionBadge side={idea.side} />
                   </td>
                   <td className={`${cellClass} text-right`}>
-                    {entryZone ? (
-                      <span className="font-mono text-xs text-text-secondary tabular-nums">
-                        ₹{entryZone.entryLow.toLocaleString("en-IN")}–
-                        {entryZone.entryHigh.toLocaleString("en-IN")}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-text-muted">Unavailable</span>
-                    )}
+                    <span className="font-mono text-xs text-text-secondary tabular-nums">
+                      ₹{entryZone.entryLow.toLocaleString("en-IN")}–
+                      {entryZone.entryHigh.toLocaleString("en-IN")}
+                    </span>
                   </td>
                   <td className={`${cellClass} text-right`}>
                     <Price value={idea.stopLoss} />

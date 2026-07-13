@@ -1,16 +1,17 @@
 import type {
-  IntradayIdea,
   MarketBreadth,
   MarketMover,
   MarketPulse,
-  SwingTradeIdea,
 } from "@/types";
 import { EquityIntelligenceEngine } from "@/lib/engine";
 import { marketDataService } from "@/lib/market-data";
 import { formatVolume } from "@/lib/utils";
-import { fetchCompanyProfile } from "@/services/companyData";
-import { fetchCompanyResearch } from "@/services/researchData";
 import { getCached, cacheKey, CACHE_TTL } from "@/lib/cache";
+import {
+  fetchEngineIntradayIdeas,
+  fetchEngineSwingTradeIdeas,
+} from "@/services/opportunityEngine";
+import type { IntradayIdea, SwingTradeIdea } from "@/types";
 
 export const marketBreadth: MarketBreadth = {
   advances: 1328,
@@ -61,74 +62,39 @@ export const marketBreadth: MarketBreadth = {
   ],
 };
 
-const FALLBACK_SWING_SCORES: Record<string, { technicalScore: number; fundamentalScore: number }> = {
-  BHARTIARTL: { technicalScore: 91, fundamentalScore: 88 },
-  LT: { technicalScore: 89, fundamentalScore: 92 },
-  ICICIBANK: { technicalScore: 87, fundamentalScore: 94 },
-  TCS: { technicalScore: 86, fundamentalScore: 93 },
-  "M&M": { technicalScore: 85, fundamentalScore: 89 },
-  SUNPHARMA: { technicalScore: 82, fundamentalScore: 91 },
-  HINDALCO: { technicalScore: 84, fundamentalScore: 81 },
-  ASIANPAINT: { technicalScore: 78, fundamentalScore: 74 },
-  SBILIFE: { technicalScore: 81, fundamentalScore: 86 },
-  TATAPOWER: { technicalScore: 79, fundamentalScore: 80 },
-};
+export async function fetchIntradayIdeas(): Promise<IntradayIdea[]> {
+  return fetchEngineIntradayIdeas();
+}
 
-const swingTradeIdeasBase: Omit<
-  SwingTradeIdea,
-  "entryLow" | "entryHigh" | "stopLoss" | "targets" | "technicalScore" | "fundamentalScore"
->[] = [
-  { symbol: "BHARTIARTL", company: "Bharti Airtel", side: "Long" },
-  { symbol: "LT", company: "Larsen & Toubro", side: "Long" },
-  { symbol: "ICICIBANK", company: "ICICI Bank", side: "Long" },
-  { symbol: "TCS", company: "Tata Consultancy", side: "Long" },
-  { symbol: "M&M", company: "Mahindra & Mahindra", side: "Long" },
-  { symbol: "SUNPHARMA", company: "Sun Pharma", side: "Long" },
-  { symbol: "HINDALCO", company: "Hindalco Industries", side: "Long" },
-  { symbol: "ASIANPAINT", company: "Asian Paints", side: "Short" },
-  { symbol: "SBILIFE", company: "SBI Life Insurance", side: "Long" },
-  { symbol: "TATAPOWER", company: "Tata Power", side: "Long" },
-];
-
-const intradayIdeasBase: Omit<IntradayIdea, "conviction" | "entry" | "stopLoss" | "target">[] = [
-  { symbol: "RELIANCE", company: "Reliance Industries", side: "Long", riskReward: 2, timeHorizon: "2–4 hours" },
-  { symbol: "INFY", company: "Infosys", side: "Long", riskReward: 2.1, timeHorizon: "1–3 hours" },
-  { symbol: "SBIN", company: "State Bank of India", side: "Short", riskReward: 2, timeHorizon: "2–5 hours" },
-  { symbol: "TATASTEEL", company: "Tata Steel", side: "Long", riskReward: 2, timeHorizon: "1–2 hours" },
-  { symbol: "MARUTI", company: "Maruti Suzuki", side: "Long", riskReward: 2.1, timeHorizon: "3–5 hours" },
-];
-
-const FALLBACK_CONVICTION: Record<string, number> = {
-  RELIANCE: 88,
-  INFY: 84,
-  SBIN: 79,
-  TATASTEEL: 76,
-  MARUTI: 73,
-};
-
-async function resolveMover(
-  mover: MarketMover,
-  volumeLabel?: "shares" | "turnover"
-): Promise<MarketMover> {
-  const quote = await marketDataService.getEnrichedQuote(mover.symbol);
-  return {
-    ...mover,
-    price: quote.price ?? 0,
-    changePercent: quote.changePercent ?? 0,
-    volume:
-      volumeLabel === "turnover"
-        ? quote.volume
-          ? `₹${formatVolume(quote.volume)}`
-          : "—"
-        : quote.volume
-          ? formatVolume(quote.volume)
-          : "—",
-    quote,
-  };
+export async function fetchSwingTradeIdeas(): Promise<SwingTradeIdea[]> {
+  return fetchEngineSwingTradeIdeas();
 }
 
 async function enrichMovers(movers: MarketMover[], volumeLabel?: "shares" | "turnover") {
-  return Promise.all(movers.map((m) => resolveMover(m, volumeLabel)));
+  const quoteMap = await marketDataService.getEnrichedQuotes(
+    movers.map((mover) => mover.symbol)
+  );
+
+  return movers.map((mover) => {
+    const quote =
+      quoteMap.get(mover.symbol) ?? quoteMap.get(mover.symbol.toUpperCase());
+    if (!quote) return mover;
+
+    return {
+      ...mover,
+      price: quote.price ?? 0,
+      changePercent: quote.changePercent ?? 0,
+      volume:
+        volumeLabel === "turnover"
+          ? quote.volume
+            ? `₹${formatVolume(quote.volume)}`
+            : "—"
+          : quote.volume
+            ? formatVolume(quote.volume)
+            : "—",
+      quote,
+    };
+  });
 }
 
 async function buildLiveMarketBreadth(): Promise<MarketBreadth> {
@@ -150,70 +116,6 @@ async function buildLiveMarketBreadth(): Promise<MarketBreadth> {
   };
 }
 
-
-function resolveIntradayLevels(
-  price: number,
-  side: "Long" | "Short"
-): Pick<IntradayIdea, "entry" | "stopLoss" | "target"> {
-  if (price <= 0) return { entry: 0, stopLoss: 0, target: 0 };
-  const stopLossFactor = side === "Long" ? 0.99 : 1.01;
-  const targetFactor = side === "Long" ? 1.02 : 0.98;
-  return {
-    entry: price,
-    stopLoss: Math.round(price * stopLossFactor * 100) / 100,
-    target: Math.round(price * targetFactor * 100) / 100,
-  };
-}
-
-function resolveSwingLevels(
-  price: number,
-  side: "Long" | "Short"
-): Pick<SwingTradeIdea, "entryLow" | "entryHigh" | "stopLoss" | "targets"> {
-  if (price <= 0) return { entryLow: 0, entryHigh: 0, stopLoss: 0, targets: [] };
-  const entryLow = Math.round(price * 0.985 * 100) / 100;
-  const entryHigh = Math.round(price * 1.015 * 100) / 100;
-  const stopLoss = Math.round(price * (side === "Long" ? 0.96 : 1.04) * 100) / 100;
-  const targetFactors = side === "Long" ? [1.03, 1.06, 1.1] : [0.97, 0.94, 0.9];
-  return {
-    entryLow,
-    entryHigh,
-    stopLoss,
-    targets: targetFactors.map((factor) => Math.round(price * factor * 100) / 100),
-  };
-}
-
-async function resolveSwingScores(
-  symbol: string
-): Promise<{ technicalScore: number; fundamentalScore: number }> {
-  const profile = await fetchCompanyProfile(symbol);
-  if (!profile) return FALLBACK_SWING_SCORES[symbol] ?? { technicalScore: 75, fundamentalScore: 75 };
-
-  const research = await fetchCompanyResearch(symbol);
-  if (!research) return FALLBACK_SWING_SCORES[symbol] ?? { technicalScore: 75, fundamentalScore: 75 };
-
-  const scores = EquityIntelligenceEngine.calculateTradeIdeaScores(profile, research.technicals);
-  return {
-    technicalScore: scores.technical.normalizedScore,
-    fundamentalScore: scores.fundamental.normalizedScore,
-  };
-}
-
-async function resolveConviction(
-  symbol: string,
-  side: "Long" | "Short"
-): Promise<number> {
-  const profile = await fetchCompanyProfile(symbol);
-  if (!profile) return FALLBACK_CONVICTION[symbol] ?? 75;
-
-  const research = await fetchCompanyResearch(symbol);
-  if (!research) return FALLBACK_CONVICTION[symbol] ?? 75;
-
-  return EquityIntelligenceEngine.calculateConviction(
-    profile,
-    research.technicals.score,
-    side
-  ).normalizedScore;
-}
 
 function buildMarketPulse(): MarketPulse {
   const breadthScore = EquityIntelligenceEngine.calculateBreadthScore(marketBreadth).breadth
@@ -259,41 +161,4 @@ export async function fetchMarketPulse(): Promise<MarketPulse> {
     { key: cacheKey("market-pulse"), ttlMs: CACHE_TTL.QUOTE },
     buildLiveMarketPulse
   );
-}
-
-export async function fetchIntradayIdeas(): Promise<IntradayIdea[]> {
-  return getCached({ key: cacheKey("intraday-ideas"), ttlMs: CACHE_TTL.QUOTE }, async () => {
-    const ideas = await Promise.all(
-      intradayIdeasBase.map(async (idea) => {
-        const quote = await marketDataService.getEnrichedQuote(idea.symbol);
-        const price = quote.price ?? 0;
-        return {
-          ...idea,
-          ...resolveIntradayLevels(price, idea.side),
-          conviction: await resolveConviction(idea.symbol, idea.side),
-          quote,
-        };
-      })
-    );
-    return ideas;
-  });
-}
-
-export async function fetchSwingTradeIdeas(): Promise<SwingTradeIdea[]> {
-  return getCached({ key: cacheKey("swing-ideas"), ttlMs: CACHE_TTL.QUOTE }, async () => {
-    const ideas = await Promise.all(
-      swingTradeIdeasBase.map(async (idea) => {
-        const quote = await marketDataService.getEnrichedQuote(idea.symbol);
-        const price = quote.price ?? 0;
-        const scores = await resolveSwingScores(idea.symbol);
-        return {
-          ...idea,
-          ...scores,
-          ...resolveSwingLevels(price, idea.side),
-          quote,
-        };
-      })
-    );
-    return ideas;
-  });
 }
