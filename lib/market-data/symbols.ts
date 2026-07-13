@@ -7,6 +7,7 @@ import { getNseSymbolMeta } from "@/lib/fundamentals/nse-registry";
 import {
   isValidNseSymbol,
   normalizeNseSymbol,
+  resolveMarketDataSymbol,
   toAlphaVantageSymbol,
   toFinnhubNseSymbol,
   toFmpSymbol,
@@ -22,7 +23,7 @@ const YAHOO_SUFFIX = /\.(NS|BO)$/i;
 
 /** Yahoo Finance ticker for Indian equities */
 export function toYahooSymbol(symbol: string): string {
-  const normalized = normalizeNseSymbol(stripExchangeSuffix(symbol));
+  const normalized = resolveMarketDataSymbol(stripExchangeSuffix(symbol));
   if (INDEX_SYMBOLS.has(normalized)) {
     if (normalized === "NIFTY") return "^NSEI";
     if (normalized === "SENSEX") return "^BSESN";

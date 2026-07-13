@@ -1,4 +1,5 @@
 import { adapterFetch } from "@/lib/adapters/http";
+import { resolveMarketDataSymbol } from "@/lib/fundamentals/symbols";
 import { loadProviderConfig } from "@/lib/providers/config";
 import { BaseDataAdapter, type AdapterConfig } from "@/lib/adapters/types";
 
@@ -39,11 +40,6 @@ interface NSEEquityResponse {
   preOpenMarket?: { data?: Array<{ totalTradedVolume?: number }> };
 }
 
-function round(n: number, d = 2): number {
-  const f = 10 ** d;
-  return Math.round(n * f) / f;
-}
-
 export class NSEAdapter extends BaseDataAdapter<NSEQuoteParams, NSEQuoteResult> {
   readonly provider = "NSE";
 
@@ -80,8 +76,9 @@ export class NSEAdapter extends BaseDataAdapter<NSEQuoteParams, NSEQuoteResult> 
     }
 
     const baseUrl = this.config.baseUrl ?? "https://www.nseindia.com/api";
-    const symbol = params.symbol.toUpperCase();
-    const url = `${baseUrl}/quote-equity?symbol=${encodeURIComponent(symbol)}`;
+    const canonical = params.symbol.toUpperCase();
+    const quoteSymbol = resolveMarketDataSymbol(canonical);
+    const url = `${baseUrl}/quote-equity?symbol=${encodeURIComponent(quoteSymbol)}`;
 
     const data = await adapterFetch<NSEEquityResponse>(url, {
       timeout: this.config.timeout,
@@ -93,7 +90,7 @@ export class NSEAdapter extends BaseDataAdapter<NSEQuoteParams, NSEQuoteResult> 
 
     const priceInfo = data.priceInfo;
     if (!priceInfo?.lastPrice) {
-      throw new Error(`NSE: no price data for ${symbol}`);
+      throw new Error(`NSE: no price data for ${canonical}`);
     }
 
     const price = priceInfo.lastPrice;
@@ -101,14 +98,14 @@ export class NSEAdapter extends BaseDataAdapter<NSEQuoteParams, NSEQuoteResult> 
     const changePercent = priceInfo.pChange ?? 0;
 
     return {
-      symbol,
+      symbol: canonical,
       price,
       change,
       changePercent,
       open: priceInfo.open ?? price,
       high: priceInfo.intraDayHighLow?.max ?? price,
       low: priceInfo.intraDayHighLow?.min ?? price,
-      previousClose: priceInfo.previousClose ?? round(price - change),
+      previousClose: priceInfo.previousClose ?? price - change,
       volume: priceInfo.totalTradedVolume ?? 0,
       vwap: priceInfo.vwap,
       deliveryPercent: undefined,

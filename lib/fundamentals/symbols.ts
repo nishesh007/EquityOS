@@ -5,6 +5,8 @@
 /** Known symbol aliases → canonical NSE ticker. */
 const SYMBOL_ALIASES: Record<string, string> = {
   "TATA MOTORS": "TATAMOTORS",
+  "TATA MOTORS PASSENGER": "TMPV",
+  "TATA MOTORS COMMERCIAL": "TMCV",
   "HDFC BANK": "HDFCBANK",
   "ICICI BANK": "ICICIBANK",
   PIDILITE: "PIDILITIND",
@@ -23,6 +25,30 @@ const SYMBOL_ALIASES: Record<string, string> = {
   "PUNJAB NATIONAL BANK": "PNB",
   VEDANTA: "VEDL",
 };
+
+/**
+ * Canonical symbols that no longer trade under their original NSE code
+ * (demergers, renames). Maps internal symbol → live quote ticker used by
+ * market data providers. Display/search URLs keep the canonical symbol.
+ */
+export const MARKET_DATA_SYMBOL_OVERRIDES: Readonly<Record<string, string>> = {
+  TATAMOTORS: "TMPV",
+};
+
+/** Resolve the ticker used for live quotes/OHLC against external providers. */
+export function resolveMarketDataSymbol(symbol: string): string {
+  const normalized = normalizeNseSymbol(symbol);
+  return MARKET_DATA_SYMBOL_OVERRIDES[normalized] ?? normalized;
+}
+
+/** Reverse lookup: live ticker → canonical symbol when overridden. */
+export function canonicalizeMarketDataSymbol(symbol: string): string {
+  const normalized = normalizeNseSymbol(symbol);
+  for (const [canonical, live] of Object.entries(MARKET_DATA_SYMBOL_OVERRIDES)) {
+    if (live === normalized) return canonical;
+  }
+  return normalized;
+}
 
 /** Reverse lookup for display tickers that differ from API tickers. */
 const API_TO_NSE: Record<string, string> = {};
@@ -46,14 +72,14 @@ export function isValidNseSymbol(symbol: string): boolean {
 
 /** FMP uses NSE `.NS` suffix for Indian equities. */
 export function toFmpSymbol(symbol: string): string {
-  const normalized = normalizeNseSymbol(symbol);
+  const normalized = resolveMarketDataSymbol(symbol);
   if (normalized.includes(".")) return normalized;
   return `${normalized}.NS`;
 }
 
 /** Alpha Vantage Indian listings use `.BSE` suffix in this codebase. */
 export function toAlphaVantageSymbol(symbol: string): string {
-  const normalized = normalizeNseSymbol(symbol);
+  const normalized = resolveMarketDataSymbol(symbol);
   if (normalized === "NIFTY") return "NSEI.BSE";
   if (normalized === "SENSEX") return "BSESN.BSE";
   if (normalized === "BANKNIFTY") return "NSEBANK.BSE";
@@ -63,7 +89,7 @@ export function toAlphaVantageSymbol(symbol: string): string {
 
 /** Finnhub uses `.NS` for NSE-listed equities. */
 export function toFinnhubNseSymbol(symbol: string): string {
-  const normalized = normalizeNseSymbol(symbol);
+  const normalized = resolveMarketDataSymbol(symbol);
   if (normalized.includes(".")) return normalized;
   return `${normalized}.NS`;
 }

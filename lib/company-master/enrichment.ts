@@ -26,6 +26,15 @@ export const COMPANY_ENRICHMENT: Record<string, CompanyEnrichment> = {
   WIPRO: { sector: "IT", industry: "IT Services & Consulting", marketCap: "₹1.5L Cr", website: "wipro.com" },
   ADANIENT: { sector: "Conglomerate", industry: "Infrastructure & Energy", marketCap: "₹3.2L Cr", website: "adani.com" },
   MARUTI: { sector: "Auto", industry: "Passenger Vehicles", marketCap: "₹3.9L Cr", website: "marutisuzuki.com" },
+  TATAMOTORS: {
+    sector: "Auto",
+    industry: "Passenger Vehicles",
+    marketCap: "₹3.4L Cr",
+    website: "tatamotors.com",
+    description:
+      "Tata Motors passenger vehicles (listed as TMPV after the 2025 demerger).",
+  },
+  TMPV: { sector: "Auto", industry: "Passenger Vehicles", marketCap: "₹3.4L Cr", website: "tatamotors.com" },
   ABB: { sector: "Capital Goods", industry: "Electrical Equipment", marketCap: "₹1.5L Cr", website: "abb.co.in" },
   ADANIPORTS: { sector: "Infrastructure", industry: "Port Operations", marketCap: "₹3.2L Cr", website: "adaniports.com" },
   ASIANPAINT: { sector: "Consumer", industry: "Paints & Coatings", marketCap: "₹2.8L Cr", website: "asianpaints.com" },

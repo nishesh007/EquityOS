@@ -1,4 +1,5 @@
 import { adapterFetch, hasApiKey } from "@/lib/adapters/http";
+import { resolveMarketDataSymbol } from "@/lib/fundamentals/symbols";
 import { loadProviderConfig } from "@/lib/providers/config";
 import { BaseDataAdapter, type AdapterConfig } from "@/lib/adapters/types";
 import type { ChartTimeframe } from "@/types";
@@ -61,7 +62,7 @@ const INDEX_SYMBOL_MAP: Record<string, string> = {
 };
 
 export function toFinnhubSymbol(symbol: string): string {
-  const upper = symbol.toUpperCase();
+  const upper = resolveMarketDataSymbol(symbol);
   if (INDEX_SYMBOL_MAP[upper]) return INDEX_SYMBOL_MAP[upper];
   if (upper.includes(".")) return upper;
   return `${upper}.NS`;
