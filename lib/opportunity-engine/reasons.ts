@@ -22,13 +22,36 @@ function pushReason(
   reasons.push({ label, contribution: Math.round(contribution) });
 }
 
+function computePenaltyContribution(
+  metrics: Record<string, number | string | null>,
+  category: OpportunityCategory,
+  side: "Long" | "Short",
+  riskReward: number
+): number {
+  const volatility = num(metrics, "volatility") ?? 0;
+  const rsi = num(metrics, "rsi") ?? 50;
+  let penalty = 0;
+  if (volatility > 50) penalty += 5;
+  else if (volatility > 45) penalty += 3;
+  if (side === "Long" && rsi > 78) penalty += 4;
+  if (side === "Short" && rsi < 22) penalty += 4;
+  if (riskReward < 1.5) penalty += 3;
+  if (category === "mean_reversion" && Math.abs(rsi - 50) < 8) penalty += 2;
+  const volumeRatio = num(metrics, "volume_ratio") ?? 0;
+  if (volumeRatio < 1.1) penalty += 2;
+  const adx = num(metrics, "adx") ?? 0;
+  if (adx < 18 && category !== "mean_reversion") penalty += 2;
+  return Math.round(penalty);
+}
+
 /**
  * Builds explainable confidence reasons with point contributions from live metrics.
  */
 export function buildConfidenceReasonContributions(
   metrics: Record<string, number | string | null>,
   category: OpportunityCategory,
-  side: "Long" | "Short"
+  side: "Long" | "Short",
+  riskReward = 2
 ): ConfidenceReasonContribution[] {
   const reasons: ConfidenceReasonContribution[] = [];
 
@@ -69,9 +92,9 @@ export function buildConfidenceReasonContributions(
 
   if (rsi !== null && rsiPrev !== null) {
     if (side === "Long" && rsiPrev <= 35 && rsi > rsiPrev && rsi <= 55) {
-      pushReason(reasons, "RSI rising from oversold", 12);
+      pushReason(reasons, "RSI Recovery", 12);
     } else if (side === "Short" && rsiPrev >= 65 && rsi < rsiPrev && rsi >= 45) {
-      pushReason(reasons, "RSI falling from overbought", 12);
+      pushReason(reasons, "RSI Recovery", 12);
     } else if (side === "Long" && rsi >= 50 && rsi <= 72 && momentumValue > 0) {
       pushReason(reasons, `RSI ${Math.round(rsi)} momentum`, 8);
     }
@@ -81,7 +104,7 @@ export function buildConfidenceReasonContributions(
   }
 
   if (adx !== null && adx >= 25) {
-    pushReason(reasons, adx >= 30 ? "ADX Trend" : "ADX Trend", adx >= 30 ? 12 : 8);
+    pushReason(reasons, "ADX Trend", adx >= 30 ? 11 : 8);
   }
 
   if (macdHist !== null && macdLine !== null && macdSignal !== null) {
@@ -109,13 +132,13 @@ export function buildConfidenceReasonContributions(
     volumeRatio !== null &&
     volumeRatio >= 1.3
   ) {
-    pushReason(reasons, "Institutional Accumulation", 14);
+    pushReason(reasons, "Institutional Buying", 14);
   }
 
   if (relativeStrength !== null && relativeStrength >= 58 && side === "Long") {
-    pushReason(reasons, "Relative Strength", 15);
+    pushReason(reasons, "Relative Strength", 14);
   } else if (relativeStrength !== null && relativeStrength <= 42 && side === "Short") {
-    pushReason(reasons, "Relative Weakness", 15);
+    pushReason(reasons, "Relative Weakness", 14);
   }
 
   if (closingStrength !== null && closingStrength >= 75 && side === "Long") {
@@ -173,24 +196,37 @@ export function buildConfidenceReasonContributions(
   }
 
   if (relativeStrength !== null && relativeStrength >= 55 && side === "Long") {
-    pushReason(reasons, "Sector Momentum", 9);
+    pushReason(reasons, "Sector Momentum", 12);
   }
 
   if (category === "swing" && fundamentalScore !== null && fundamentalScore >= 55) {
     pushReason(reasons, "Swing Fundamentals", 8);
   }
 
+  const penalty = computePenaltyContribution(metrics, category, side, riskReward);
+  if (penalty > 0) {
+    reasons.push({ label: "Penalty", contribution: -penalty });
+  }
+
   return reasons
-    .sort((a, b) => b.contribution - a.contribution)
-    .slice(0, 7);
+    .filter((item) => item.label !== "Penalty" || item.contribution < 0)
+    .sort((a, b) => {
+      if (a.contribution < 0) return 1;
+      if (b.contribution < 0) return -1;
+      return b.contribution - a.contribution;
+    })
+    .slice(0, 8);
 }
 
 export function buildConfidenceReasons(
   metrics: Record<string, number | string | null>,
   category: OpportunityCategory,
-  side: "Long" | "Short"
+  side: "Long" | "Short",
+  riskReward = 2
 ): string[] {
-  return buildConfidenceReasonContributions(metrics, category, side).map((reason) => reason.label);
+  return buildConfidenceReasonContributions(metrics, category, side, riskReward)
+    .filter((reason) => reason.contribution > 0)
+    .map((reason) => reason.label);
 }
 
 export function formatConfidenceReasons(reasons: string[]): string {
@@ -211,6 +247,8 @@ export function resolveConfidenceContributions(candidate: {
   category: OpportunityCategory;
   side: "Long" | "Short";
   confidencePercent: number;
+  aiConvictionScore?: number;
+  riskReward?: number;
 }): ConfidenceReasonContribution[] {
   if (candidate.confidenceReasonContributions?.length) {
     return candidate.confidenceReasonContributions;
@@ -220,7 +258,8 @@ export function resolveConfidenceContributions(candidate: {
     const computed = buildConfidenceReasonContributions(
       candidate.scanMetrics,
       candidate.category,
-      candidate.side
+      candidate.side,
+      candidate.riskReward ?? 2
     );
     if (computed.length > 0) return computed;
   }

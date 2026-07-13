@@ -11,19 +11,19 @@ import type {
 import { CATEGORY_LABELS, OPPORTUNITY_CATEGORIES } from "@/lib/opportunity-engine/types";
 
 export const SECTION_SUBTITLES: Record<OpportunityCategory, string> = {
-  intraday: "What should I trade now?",
-  swing: "What should I hold?",
-  breakout: "Which stocks are breaking out?",
-  momentum: "Who is leading today's momentum?",
-  relative_volume: "Where is unusual volume activity?",
+  intraday: "Trade now — highest composite score for today's session",
+  swing: "Hold for days — trend + fundamentals aligned",
+  breakout: "Fresh breakout — near 52-week highs with volume",
+  momentum: "Strong continuation — leaders with momentum intact",
+  relative_volume: "Abnormal participation — unusual volume activity",
   mean_reversion: "Which extremes are reverting?",
-  ai_high_conviction: "What are today's highest conviction trades?",
+  ai_high_conviction: "Highest AI confidence — top conviction across factors",
 };
 
 export const POST_MARKET_SUBTITLES = {
   tomorrowWatchlist: "What should I monitor tomorrow?",
   missedOpportunities: "Signals that weakened before completion.",
-  bestCallsOfDay: "What are today's highest probability trades?",
+  bestCallsOfDay: "Highest institutional quality — independent of intraday ranking",
 } as const;
 
 export const CATEGORY_EMPTY_HEADLINE =
@@ -63,8 +63,10 @@ function inferFilterFailures(
     num(metrics, "price_to_52w_high") ?? 0;
 
   if (candidate.aiConvictionScore < 65) failures.push("Conviction below threshold");
-  if (volumeRatio < 1.2) failures.push("Volume below 1.2x average");
-  if (adx < 20 && category !== "mean_reversion") failures.push("ADX trend too weak");
+  if (volumeRatio < 1.2) failures.push("Weak volume");
+  const liquidityScore = volumeRatio * 25 + delivery * 0.4;
+  if (liquidityScore < 40 && category !== "intraday") failures.push("Poor liquidity");
+  if (adx < 20 && category !== "mean_reversion") failures.push("Weak trend");
   if (delivery < 30 && category !== "intraday") failures.push("Delivery below institutional bar");
   if (category === "ai_high_conviction" && candidate.aiConvictionScore < 75) {
     failures.push("AI conviction below 75");
@@ -146,6 +148,22 @@ export function deriveNearestCandidates(
       conviction: candidate.aiConvictionScore,
       filterFailures: inferFilterFailures(candidate, category),
     }));
+}
+
+export const POST_MARKET_NEAREST_CATEGORY: Record<
+  "tomorrowWatchlist" | "missedOpportunities" | "bestCallsOfDay",
+  OpportunityCategory
+> = {
+  tomorrowWatchlist: "swing",
+  missedOpportunities: "momentum",
+  bestCallsOfDay: "ai_high_conviction",
+};
+
+export function derivePostMarketNearestCandidates(
+  state: OpportunityEngineState,
+  section: keyof typeof POST_MARKET_NEAREST_CATEGORY
+): NearestCandidate[] {
+  return deriveNearestCandidates(state, POST_MARKET_NEAREST_CATEGORY[section], []);
 }
 
 export function getCategoryLabel(category: OpportunityCategory): string {

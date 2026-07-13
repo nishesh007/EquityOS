@@ -6,13 +6,20 @@ import type { EnrichedQuote } from "@/lib/market-data/enriched-quote";
 
 export type ExpiredSetupOutcome =
   | "Target Hit"
+  | "Target1 Hit"
   | "Stopped Out"
-  | "Momentum Faded"
+  | "Failed Breakout"
+  | "Trend Reversed"
+  | "Volume Disappeared"
   | "Range Bound"
+  | "Never Triggered"
   | "Rejected at Resistance"
+  | "Momentum Faded"
+  | "Conviction Dropped"
   | "Breakout Failed"
-  | "Target Never Triggered"
-  | "Conviction Dropped";
+  | "Target Never Triggered";
+
+export type GapProbabilityLevel = "High" | "Medium" | "Low";
 
 export type OpportunityCategory =
   | "intraday"
@@ -82,9 +89,13 @@ export interface OpportunityCandidate {
   expiredReason?: string;
   peakTime?: string;
   gapProbability?: number;
+  gapProbabilityLevel?: GapProbabilityLevel;
   openingBias?: string;
   expectedCatalyst?: string;
   sectorStrength?: number;
+  maximumGainAfterSignal?: number;
+  maximumDrawdownAfterSignal?: number;
+  setupDurationHours?: number;
   nearestFilterFailures?: string[];
   firstDetectedAt: string;
   lastDetectedAt: string;

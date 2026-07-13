@@ -4,6 +4,7 @@ import {
 } from "@/lib/opportunity-engine/best-call";
 import type {
   ExpiredSetupOutcome,
+  GapProbabilityLevel,
   OpportunityCandidate,
   OpportunityEngineState,
   ScanHistoryEntry,
@@ -13,6 +14,7 @@ import { collectExcludedSymbols } from "@/lib/opportunity-engine/deduplication";
 
 export const INTRADAY_DISPLAY_LIMIT = 18;
 export const BEST_CALLS_LIMIT = 5;
+export const BEST_CALLS_INTRADAY_OVERLAP_LIMIT = 2;
 export const TOMORROW_WATCHLIST_LIMIT = 15;
 export const EXPIRED_SETUPS_LIMIT = 10;
 /** @deprecated Use EXPIRED_SETUPS_LIMIT */
@@ -109,6 +111,12 @@ function gapProbabilityScore(candidate: OpportunityCandidate): number {
   return clamp(score, 0, 100);
 }
 
+function gapProbabilityLevel(score: number): GapProbabilityLevel {
+  if (score >= 70) return "High";
+  if (score >= 45) return "Medium";
+  return "Low";
+}
+
 function openingBias(candidate: OpportunityCandidate): string {
   const closingStrength = num(candidate.scanMetrics, "closing_strength") ?? 50;
   const changePercent = num(candidate.scanMetrics, "change_percent") ?? 0;
@@ -127,13 +135,22 @@ function expectedCatalyst(candidate: OpportunityCandidate): string {
   const fundamentalScore = num(candidate.scanMetrics, "fundamental_score") ?? 0;
   const volumeRatio = num(candidate.scanMetrics, "volume_ratio") ?? 0;
   const priceToHigh = num(candidate.scanMetrics, "price_to_52w_high") ?? 0;
+  const delivery = num(candidate.scanMetrics, "delivery_percent") ?? 0;
+  const relativeStrength = num(candidate.scanMetrics, "relative_strength") ?? 50;
+  const adx = num(candidate.scanMetrics, "adx") ?? 0;
 
-  if (revenueGrowth >= 15 && fundamentalScore >= 55) return "Earnings momentum";
-  if (priceToHigh >= 95) return "52-week breakout watch";
-  if (volumeRatio >= 2) return "Volume continuation";
-  if (candidate.category === "breakout") return "Breakout follow-through";
-  if (candidate.category === "momentum") return "Momentum extension";
-  return "Technical continuation";
+  if (revenueGrowth >= 15 && fundamentalScore >= 55) return "Earnings";
+  if (revenueGrowth >= 10 && fundamentalScore >= 50) return "Results";
+  if (priceToHigh >= 95) return "Breakout";
+  if (relativeStrength >= 62 && adx >= 25) return "Relative Strength";
+  if (delivery >= 40 && volumeRatio >= 1.5) return "Institutional Buying";
+  if (volumeRatio >= 2.2) return "Delivery";
+  if (volumeRatio >= 1.8) return "Sector Rotation";
+  if (candidate.category === "breakout") return "Breakout";
+  if (candidate.category === "momentum") return "Relative Strength";
+  if (relativeStrength >= 58) return "Sector Rotation";
+  if (adx >= 28) return "Breakout";
+  return "Sector Rotation";
 }
 
 /**
@@ -201,6 +218,36 @@ export function buildIntradayOpportunities(
   return withRanks(ranked);
 }
 
+function selectBestCallsWithOverlapLimit(
+  scored: { candidate: RankedCandidate; score: number }[],
+  intradaySymbols: Set<string>,
+  limit: number
+): { candidate: RankedCandidate; score: number }[] {
+  const selected: { candidate: RankedCandidate; score: number }[] = [];
+  let intradayOverlap = 0;
+
+  for (const entry of scored) {
+    if (selected.length >= limit) break;
+    const isIntraday = intradaySymbols.has(entry.candidate.symbol.toUpperCase());
+    if (isIntraday && intradayOverlap >= BEST_CALLS_INTRADAY_OVERLAP_LIMIT) {
+      continue;
+    }
+    selected.push(entry);
+    if (isIntraday) intradayOverlap += 1;
+  }
+
+  if (selected.length < limit) {
+    const used = new Set(selected.map((entry) => entry.candidate.symbol.toUpperCase()));
+    for (const entry of scored) {
+      if (selected.length >= limit) break;
+      if (used.has(entry.candidate.symbol.toUpperCase())) continue;
+      selected.push(entry);
+    }
+  }
+
+  return selected;
+}
+
 export function buildBestCalls(
   pool: RankedCandidate[],
   intraday: OpportunityCandidate[],
@@ -209,41 +256,19 @@ export function buildBestCalls(
   const intradaySymbols = new Set(intraday.map((c) => c.symbol.toUpperCase()));
 
   const scored = pool
-    .filter((c) => !intradaySymbols.has(c.symbol.toUpperCase()))
     .map((candidate) => ({
       candidate,
       score: computeBestCallScore(candidate),
     }))
-    .sort((a, b) => b.score - a.score);
+    .sort((a, b) => b.score - a.score || b.candidate.aiConvictionScore - a.candidate.aiConvictionScore);
 
-  const top = scored.slice(0, limit);
+  const top = selectBestCallsWithOverlapLimit(scored, intradaySymbols, limit);
 
-  if (top.length >= limit) {
-    return withRanks(
-      top.map(({ candidate, score }) => ({
-        ...candidate,
-        bestCallScore: score,
-        bestCallReasons: buildBestCallReasons(candidate, scored),
-      }))
-    );
-  }
-
-  const used = new Set(top.map((entry) => entry.candidate.symbol.toUpperCase()));
-  const fallback = pool
-    .filter((c) => !intradaySymbols.has(c.symbol.toUpperCase()) && !used.has(c.symbol.toUpperCase()))
-    .filter((c) => c.category !== "intraday")
-    .sort((a, b) => b.aiConvictionScore - a.aiConvictionScore)
-    .map((candidate) => ({
-      candidate,
-      score: computeBestCallScore(candidate),
-    }));
-
-  const blended = [...top, ...fallback].slice(0, limit);
   return withRanks(
-    blended.map(({ candidate, score }) => ({
+    top.map(({ candidate, score }) => ({
       ...candidate,
       bestCallScore: score,
-      bestCallReasons: buildBestCallReasons(candidate, [...scored, ...fallback]),
+      bestCallReasons: buildBestCallReasons(candidate, scored),
     }))
   );
 }
@@ -259,11 +284,15 @@ export function buildTomorrowWatchlist(
   const finalPool = source.length > 0 ? source : pool;
 
   const ranked = [...finalPool]
-    .map((candidate) => ({
-      candidate,
-      gapProbability: gapProbabilityScore(candidate),
-      sectorStrength: sectorStrengthScore(candidate),
-    }))
+    .map((candidate) => {
+      const gapProbability = gapProbabilityScore(candidate);
+      return {
+        candidate,
+        gapProbability,
+        gapProbabilityLevel: gapProbabilityLevel(gapProbability),
+        sectorStrength: sectorStrengthScore(candidate),
+      };
+    })
     .sort(
       (a, b) =>
         b.gapProbability - a.gapProbability ||
@@ -271,9 +300,10 @@ export function buildTomorrowWatchlist(
         b.sectorStrength - a.sectorStrength
     )
     .slice(0, TOMORROW_WATCHLIST_LIMIT)
-    .map(({ candidate, gapProbability, sectorStrength }) => ({
+    .map(({ candidate, gapProbability, gapProbabilityLevel: level, sectorStrength }) => ({
       ...candidate,
       gapProbability,
+      gapProbabilityLevel: level,
       sectorStrength,
       openingBias: openingBias(candidate),
       expectedCatalyst: expectedCatalyst(candidate),
@@ -297,6 +327,19 @@ function moveAfterSignal(candidate: OpportunityCandidate): number {
   return candidate.side === "Long" ? changePercent : -changePercent;
 }
 
+function estimateMaximumGain(candidate: OpportunityCandidate, move: number): number {
+  const closingStrength = num(candidate.scanMetrics, "closing_strength") ?? 50;
+  const volumeRatio = num(candidate.scanMetrics, "volume_ratio") ?? 1;
+  const peakEstimate = move + Math.max(0, (closingStrength - 50) * 0.02 + (volumeRatio - 1) * 0.5);
+  return Math.round(Math.max(move, peakEstimate) * 100) / 100;
+}
+
+function estimateMaximumDrawdown(candidate: OpportunityCandidate, move: number): number {
+  const volatility = num(candidate.scanMetrics, "volatility") ?? 20;
+  const adverse = move < 0 ? move : -Math.min(volatility * 0.15, 3);
+  return Math.round(adverse * 100) / 100;
+}
+
 function deriveExpiredOutcome(
   candidate: OpportunityCandidate,
   scannedAt: Date
@@ -307,37 +350,51 @@ function deriveExpiredOutcome(
   const adx = num(candidate.scanMetrics, "adx") ?? 0;
   const volumeRatio = num(candidate.scanMetrics, "volume_ratio") ?? 0;
   const priceToHigh = num(candidate.scanMetrics, "price_to_52w_high") ?? 0;
+  const rsi = num(candidate.scanMetrics, "rsi") ?? 50;
+  const activeHours = hoursActive(candidate, scannedAt);
 
-  if (move >= candidate.riskReward * 1.5 && candidate.side === "Long") {
-    return { outcome: "Target Hit", reason: "Target zone reached before signal weakened" };
+  if (move >= candidate.riskReward * 2 && candidate.side === "Long") {
+    return { outcome: "Target Hit", reason: "Full target zone reached before signal weakened" };
+  }
+  if (move >= candidate.riskReward && candidate.side === "Long") {
+    return { outcome: "Target1 Hit", reason: "Target 1 reached — partial profit captured" };
   }
   if (move <= -2.5) {
-    return { outcome: "Stopped Out", reason: "Stop loss hit" };
+    return { outcome: "Stopped Out", reason: "Stop loss level breached" };
   }
   if (peak - current >= 12) {
-    return { outcome: "Conviction Dropped", reason: "Conviction dropped" };
-  }
-  if (adx < 20 && Math.abs(move) < 0.8) {
-    return { outcome: "Range Bound", reason: "Range bound — no follow-through" };
+    return { outcome: "Conviction Dropped", reason: "AI conviction fell sharply after signal" };
   }
   if (
     candidate.category === "breakout" &&
     priceToHigh < 90 &&
     move < 0.5
   ) {
-    return { outcome: "Breakout Failed", reason: "Breakout failed" };
+    return { outcome: "Failed Breakout", reason: "Breakout lacked follow-through volume" };
+  }
+  if (adx < 20 && Math.abs(move) < 0.8) {
+    return { outcome: "Range Bound", reason: "Price consolidated without directional follow-through" };
   }
   if (priceToHigh >= 95 && move < 0.3 && candidate.side === "Long") {
-    return { outcome: "Rejected at Resistance", reason: "Rejected at resistance" };
+    return { outcome: "Rejected at Resistance", reason: "Rejected at key resistance zone" };
   }
-  if (Math.abs(move) < 0.5 && volumeRatio < 1.1) {
-    return { outcome: "Target Never Triggered", reason: "Target never triggered" };
+  if (volumeRatio < 1.05 && activeHours >= 1.5) {
+    return { outcome: "Volume Disappeared", reason: "Participation dried up after initial signal" };
   }
-  if (hoursActive(candidate, scannedAt) >= 2 && move < 1) {
-    return { outcome: "Momentum Faded", reason: "Momentum faded" };
+  if (
+    (candidate.side === "Long" && rsi < 45 && move < 0) ||
+    (candidate.side === "Short" && rsi > 55 && move > 0)
+  ) {
+    return { outcome: "Trend Reversed", reason: "Trend reversed against the original bias" };
+  }
+  if (Math.abs(move) < 0.5 && activeHours >= 2) {
+    return { outcome: "Never Triggered", reason: "Entry zone never triggered during session" };
+  }
+  if (activeHours >= 2 && move < 1) {
+    return { outcome: "Momentum Faded", reason: "Momentum faded without reaching targets" };
   }
 
-  return { outcome: "Momentum Faded", reason: "Momentum faded" };
+  return { outcome: "Momentum Faded", reason: "Momentum faded without reaching targets" };
 }
 
 export function buildExpiredSetups(
@@ -350,11 +407,16 @@ export function buildExpiredSetups(
   const exclude = collectExcludedSymbols([bestCalls, intraday.slice(0, 5)]);
 
   const enrich = (candidate: RankedCandidate): OpportunityCandidate => {
+    const move = moveAfterSignal(candidate);
     const { outcome, reason } = deriveExpiredOutcome(candidate, scannedAt);
+    const duration = hoursActive(candidate, scannedAt);
     return {
       ...candidate,
       highestConviction: peakConviction(candidate),
-      moveAfterSignalPercent: moveAfterSignal(candidate),
+      moveAfterSignalPercent: move,
+      maximumGainAfterSignal: estimateMaximumGain(candidate, move),
+      maximumDrawdownAfterSignal: estimateMaximumDrawdown(candidate, move),
+      setupDurationHours: Math.round(duration * 10) / 10,
       peakTime: candidate.lastDetectedAt,
       expiredOutcome: outcome,
       expiredReason: reason,

@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { StockLink } from "@/components/ui/StockLink";
-import { bestCallStarRating } from "@/lib/opportunity-engine/best-call";
+import { bestCallStarRating, buildBestCallScoreBreakdown } from "@/lib/opportunity-engine/best-call";
 import {
   CONVICTION_DISPLAY_LABELS,
   resolveConvictionDisplayBreakdown,
@@ -12,17 +12,19 @@ import {
   CATEGORY_EMPTY_HEADLINE,
   deriveCategoryCandidates,
   deriveCategoryCount,
+  derivePostMarketNearestCandidates,
   getCategoryLabel,
   getCategorySubtitle,
   POST_MARKET_SUBTITLES,
   type NearestCandidate,
 } from "@/lib/opportunity-engine/presentation";
 import {
-  confidenceContributionsTotal,
   resolveConfidenceContributions,
 } from "@/lib/opportunity-engine/reasons";
 import {
   OPPORTUNITY_CATEGORIES,
+  type ExpiredSetupOutcome,
+  type GapProbabilityLevel,
   type OpportunityCandidate,
   type OpportunityCategory,
   type OpportunityEngineState,
@@ -36,6 +38,7 @@ import {
   ArrowUpDown,
   Bookmark,
   Clock3,
+  Copy,
   Loader2,
   PauseCircle,
   Pin,
@@ -75,7 +78,10 @@ type SortKey =
   | "aiConvictionScore"
   | "confidencePercent"
   | "bestCallScore"
-  | "gapProbability";
+  | "gapProbability"
+  | "highestConviction"
+  | "maximumGainAfterSignal"
+  | "setupDurationHours";
 
 function formatTimestamp(iso: string | null): string {
   if (!iso) return "Never";
@@ -136,6 +142,7 @@ function ConvictionPopup({ candidate }: { candidate: OpportunityCandidate }) {
   const [open, setOpen] = useState(false);
   const popupRef = useRef<HTMLDivElement>(null);
   const breakdown = resolveConvictionDisplayBreakdown(candidate);
+  const breakdownKeys = Object.keys(CONVICTION_DISPLAY_LABELS) as (keyof typeof CONVICTION_DISPLAY_LABELS)[];
 
   useEffect(() => {
     if (!open) return;
@@ -153,28 +160,36 @@ function ConvictionPopup({ candidate }: { candidate: OpportunityCandidate }) {
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="rounded px-1 py-0.5 font-mono text-xs font-medium text-gain tabular-nums transition hover:bg-surface-hover/60"
+        title="Tap for conviction breakdown"
+        className="group/conviction rounded px-1 py-0.5 transition hover:bg-surface-hover/60"
       >
-        {candidate.aiConvictionScore}
+        <span className="font-mono text-xs font-medium text-gain tabular-nums">
+          {candidate.aiConvictionScore}
+        </span>
+        <span className="block text-[9px] text-text-faint group-hover/conviction:text-text-muted">
+          Tap for Breakdown
+        </span>
       </button>
       {open && (
-        <div className="absolute right-0 z-30 mt-1 w-48 rounded-lg border border-surface-border bg-surface-raised p-3 shadow-lg">
+        <div className="absolute right-0 z-30 mt-1 w-52 rounded-lg border border-surface-border bg-surface-raised p-3 shadow-lg">
           <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-text-faint">
-            Conviction = {candidate.aiConvictionScore}
+            AI Conviction Breakdown
           </p>
           <div className="space-y-1">
-            {(Object.keys(CONVICTION_DISPLAY_LABELS) as (keyof typeof CONVICTION_DISPLAY_LABELS)[]).map(
-              (key) => (
-                <div key={key} className="flex items-center justify-between text-[11px]">
-                  <span className="text-text-muted">{CONVICTION_DISPLAY_LABELS[key]}</span>
-                  <span className="font-mono tabular-nums text-text-secondary">
-                    {key === "penalty" ? `-${breakdown.penalty}` : breakdown[key]}
-                  </span>
-                </div>
-              )
-            )}
+            {breakdownKeys.map((key) => (
+              <div key={key} className="flex items-center justify-between text-[11px]">
+                <span className="text-text-muted">{CONVICTION_DISPLAY_LABELS[key]}</span>
+                <span
+                  className={`font-mono tabular-nums ${
+                    key === "penalty" ? "text-loss" : "text-text-secondary"
+                  }`}
+                >
+                  {key === "penalty" ? `-${breakdown.penalty}` : breakdown[key]}
+                </span>
+              </div>
+            ))}
             <div className="mt-1 flex items-center justify-between border-t border-surface-border-subtle/60 pt-1.5 text-[11px] font-semibold">
-              <span className="text-text-secondary">TOTAL</span>
+              <span className="text-text-secondary">Final</span>
               <span className="font-mono text-gain tabular-nums">{breakdown.total}</span>
             </div>
           </div>
@@ -188,7 +203,9 @@ function ConfidenceBreakdown({ candidate }: { candidate: OpportunityCandidate })
   const [open, setOpen] = useState(false);
   const popupRef = useRef<HTMLDivElement>(null);
   const contributions = resolveConfidenceContributions(candidate);
-  const total = confidenceContributionsTotal(contributions);
+  const positives = contributions.filter((item) => item.contribution > 0);
+  const penalty = contributions.find((item) => item.label === "Penalty");
+  const finalConviction = candidate.aiConvictionScore;
 
   useEffect(() => {
     if (!open) return;
@@ -206,6 +223,7 @@ function ConfidenceBreakdown({ candidate }: { candidate: OpportunityCandidate })
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
+        title="View confidence factor breakdown"
         className="rounded px-1 py-0.5 font-mono text-xs text-text-secondary tabular-nums transition hover:bg-surface-hover/60"
       >
         {candidate.confidencePercent}
@@ -213,17 +231,21 @@ function ConfidenceBreakdown({ candidate }: { candidate: OpportunityCandidate })
       {open && (
         <div className="absolute right-0 z-30 mt-1 w-52 rounded-lg border border-surface-border bg-surface-raised p-3 shadow-lg">
           <div className="space-y-1">
-            {contributions.map((item) => (
+            {positives.map((item) => (
               <div key={item.label} className="flex items-center justify-between text-[11px]">
                 <span className="text-text-muted">{item.label}</span>
                 <span className="font-mono text-gain tabular-nums">+{item.contribution}</span>
               </div>
             ))}
+            {penalty && (
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-text-muted">Penalty</span>
+                <span className="font-mono text-loss tabular-nums">{penalty.contribution}</span>
+              </div>
+            )}
             <div className="mt-1 flex items-center justify-between border-t border-surface-border-subtle/60 pt-1.5 text-[11px] font-semibold">
-              <span className="text-text-secondary">TOTAL</span>
-              <span className="font-mono text-text-primary tabular-nums">
-                {total || candidate.confidencePercent}
-              </span>
+              <span className="text-text-secondary">Final Conviction</span>
+              <span className="font-mono text-gain tabular-nums">{finalConviction}</span>
             </div>
           </div>
         </div>
@@ -234,14 +256,16 @@ function ConfidenceBreakdown({ candidate }: { candidate: OpportunityCandidate })
 
 function ReasonCell({ candidate }: { candidate: OpportunityCandidate }) {
   const contributions = resolveConfidenceContributions(candidate);
+  const positives = contributions.filter((item) => item.contribution > 0);
+  const penalty = contributions.find((item) => item.label === "Penalty");
 
-  if (contributions.length === 0) {
+  if (positives.length === 0 && !penalty) {
     return <span className="text-[11px] text-text-muted">—</span>;
   }
 
   return (
     <ul className="max-w-[240px] space-y-0.5 text-[11px] leading-relaxed text-text-muted">
-      {contributions.slice(0, 4).map((item) => (
+      {positives.slice(0, 5).map((item) => (
         <li key={item.label} className="flex items-start justify-between gap-2">
           <span className="flex items-start gap-1">
             <span className="mt-px text-gain">✓</span>
@@ -252,8 +276,86 @@ function ReasonCell({ candidate }: { candidate: OpportunityCandidate }) {
           </span>
         </li>
       ))}
+      {penalty && (
+        <li className="flex items-start justify-between gap-2">
+          <span className="flex items-start gap-1">
+            <span className="mt-px text-loss">✗</span>
+            <span>Penalty</span>
+          </span>
+          <span className="shrink-0 font-mono text-[10px] text-loss tabular-nums">
+            {penalty.contribution}
+          </span>
+        </li>
+      )}
+      <li className="flex items-center justify-between border-t border-surface-border-subtle/50 pt-1 font-semibold text-text-secondary">
+        <span>Final Conviction</span>
+        <span className="font-mono text-gain tabular-nums">{candidate.aiConvictionScore}</span>
+      </li>
     </ul>
   );
+}
+
+function BestCallScoreCell({ candidate }: { candidate: OpportunityCandidate }) {
+  const [hovered, setHovered] = useState(false);
+  const score = candidate.bestCallScore ?? candidate.aiConvictionScore;
+  const breakdown = buildBestCallScoreBreakdown(candidate);
+
+  return (
+    <div
+      className="relative inline-block text-right"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <p className="text-sm tracking-wider text-gain" title={`Best Call Score ${score}/100`}>
+        {bestCallStarRating(score)}
+      </p>
+      <p className="font-mono text-[10px] text-text-muted tabular-nums">Best Call Score {score}</p>
+      {hovered && (
+        <div className="absolute right-0 z-30 mt-1 w-52 rounded-lg border border-surface-border bg-surface-raised p-3 shadow-lg">
+          <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-text-faint">
+            Best Call Score Breakdown
+          </p>
+          <div className="space-y-1">
+            {breakdown.map((item) => (
+              <div key={item.label} className="flex items-center justify-between text-[11px]">
+                <span className="text-text-muted">{item.label}</span>
+                <span
+                  className={`font-mono tabular-nums ${
+                    item.contribution < 0 ? "text-loss" : "text-text-secondary"
+                  }`}
+                >
+                  {item.contribution < 0 ? item.contribution : `+${item.contribution}`}
+                </span>
+              </div>
+            ))}
+            <div className="mt-1 flex items-center justify-between border-t border-surface-border-subtle/60 pt-1.5 text-[11px] font-semibold">
+              <span className="text-text-secondary">Best Call Score</span>
+              <span className="font-mono text-gain tabular-nums">{score}</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function gapLevelVariant(level: GapProbabilityLevel | undefined): "gain" | "default" | "loss" {
+  if (level === "High") return "gain";
+  if (level === "Medium") return "default";
+  return "loss";
+}
+
+function expiredOutcomeVariant(outcome: ExpiredSetupOutcome): "gain" | "loss" | "default" {
+  if (outcome === "Target Hit" || outcome === "Target1 Hit") return "gain";
+  if (
+    outcome === "Stopped Out" ||
+    outcome === "Failed Breakout" ||
+    outcome === "Trend Reversed" ||
+    outcome === "Rejected at Resistance"
+  ) {
+    return "loss";
+  }
+  return "default";
 }
 
 function BestCallReasonCell({ candidate }: { candidate: OpportunityCandidate }) {
@@ -281,7 +383,7 @@ function BestCallReasonCell({ candidate }: { candidate: OpportunityCandidate }) 
 }
 
 const headerClass =
-  "sticky top-0 z-10 whitespace-nowrap bg-surface-raised pb-2 text-[10px] font-medium uppercase tracking-wider text-text-faint";
+  "sticky top-0 z-10 whitespace-nowrap bg-surface-raised/95 pb-2 text-[10px] font-medium uppercase tracking-wider text-text-faint backdrop-blur-sm";
 const cellClass = "whitespace-nowrap py-3 align-top";
 
 function SortButton({
@@ -336,15 +438,25 @@ function StockActions({
   watchlisted,
   onPin,
   onWatchlist,
+  onCopy,
 }: {
   symbol: string;
   pinned: boolean;
   watchlisted: boolean;
   onPin: (symbol: string) => void;
   onWatchlist: (symbol: string) => void;
+  onCopy?: (symbol: string) => void;
 }) {
   return (
     <div className="mt-1 flex items-center gap-1 opacity-0 transition group-hover:opacity-100">
+      <button
+        type="button"
+        title="Copy symbol"
+        onClick={() => onCopy?.(symbol)}
+        className="rounded p-0.5 text-text-faint transition hover:bg-surface-hover hover:text-accent"
+      >
+        <Copy className="h-3 w-3" />
+      </button>
       <button
         type="button"
         title={pinned ? "Unpin" : "Pin stock"}
@@ -414,6 +526,17 @@ function sortCandidates(
         break;
       case "gapProbability":
         cmp = (a.gapProbability ?? 0) - (b.gapProbability ?? 0);
+        break;
+      case "highestConviction":
+        cmp =
+          (a.highestConviction ?? a.aiConvictionScore) -
+          (b.highestConviction ?? b.aiConvictionScore);
+        break;
+      case "maximumGainAfterSignal":
+        cmp = (a.maximumGainAfterSignal ?? 0) - (b.maximumGainAfterSignal ?? 0);
+        break;
+      case "setupDurationHours":
+        cmp = (a.setupDurationHours ?? 0) - (b.setupDurationHours ?? 0);
         break;
       default:
         cmp = a.rank - b.rank;
@@ -514,6 +637,7 @@ function OpportunityTable({
   watchlisted,
   onPin,
   onWatchlist,
+  onCopy,
 }: {
   candidates: OpportunityCandidate[];
   variant?: "default" | "bestCall" | "watchlist";
@@ -521,6 +645,7 @@ function OpportunityTable({
   watchlisted: Set<string>;
   onPin: (symbol: string) => void;
   onWatchlist: (symbol: string) => void;
+  onCopy?: (symbol: string) => void;
 }) {
   const defaultSort: SortKey =
     variant === "bestCall" ? "bestCallScore" : variant === "watchlist" ? "gapProbability" : "rank";
@@ -610,6 +735,7 @@ function OpportunityTable({
                     watchlisted={watchlisted.has(candidate.symbol.toUpperCase())}
                     onPin={onPin}
                     onWatchlist={onWatchlist}
+                    onCopy={onCopy}
                   />
                 </td>
                 <td className={`${cellClass} text-right`}>
@@ -626,14 +752,21 @@ function OpportunityTable({
                   <span className="mx-1 text-text-faint">/</span>
                   <Price value={candidate.target2} />
                 </td>
-                <td className={`${cellClass} text-right font-mono text-xs text-gain tabular-nums`}>
-                  {candidate.gapProbability ?? "—"}%
+                <td className={`${cellClass} text-right`}>
+                  <div className="flex flex-col items-end gap-0.5">
+                    <Badge variant={gapLevelVariant(candidate.gapProbabilityLevel)}>
+                      {candidate.gapProbabilityLevel ?? "Low"}
+                    </Badge>
+                    <span className="font-mono text-[10px] text-text-muted tabular-nums">
+                      {candidate.gapProbability ?? 0}%
+                    </span>
+                  </div>
                 </td>
                 <td className={`${cellClass} text-[11px] text-text-muted`}>
-                  {candidate.openingBias ?? "—"}
+                  {candidate.openingBias ?? "Neutral open"}
                 </td>
                 <td className={`${cellClass} text-[11px] text-text-muted`}>
-                  {candidate.expectedCatalyst ?? "—"}
+                  {candidate.expectedCatalyst ?? "Sector Rotation"}
                 </td>
                 <td className={`${cellClass} text-right`}>
                   <ConfidenceBreakdown candidate={candidate} />
@@ -687,9 +820,7 @@ function OpportunityTable({
             </tr>
           </thead>
           <tbody>
-            {sorted.map((candidate) => {
-              const score = candidate.bestCallScore ?? candidate.aiConvictionScore;
-              return (
+            {sorted.map((candidate) => (
                 <tr
                   key={candidate.id}
                   className="group border-b border-surface-border-subtle/50 transition-colors last:border-0 hover:bg-surface-hover/40"
@@ -712,6 +843,7 @@ function OpportunityTable({
                       watchlisted={watchlisted.has(candidate.symbol.toUpperCase())}
                       onPin={onPin}
                       onWatchlist={onWatchlist}
+                      onCopy={onCopy}
                     />
                   </td>
                   <td className={cellClass}>
@@ -738,17 +870,13 @@ function OpportunityTable({
                     </span>
                   </td>
                   <td className={`${cellClass} text-right`}>
-                    <p className="text-sm tracking-wider text-gain">{bestCallStarRating(score)}</p>
-                    <p className="font-mono text-[10px] text-text-muted tabular-nums">
-                      Best Call Score {score}
-                    </p>
+                    <BestCallScoreCell candidate={candidate} />
                   </td>
                   <td className={cellClass}>
                     <BestCallReasonCell candidate={candidate} />
                   </td>
                 </tr>
-              );
-            })}
+              ))}
           </tbody>
         </table>
       </ScrollTableWrapper>
@@ -868,6 +996,7 @@ function OpportunityTable({
                   watchlisted={watchlisted.has(candidate.symbol.toUpperCase())}
                   onPin={onPin}
                   onWatchlist={onWatchlist}
+                  onCopy={onCopy}
                 />
               </td>
               <td className={cellClass}>
@@ -928,12 +1057,14 @@ function ExpiredSetupsTable({
   watchlisted,
   onPin,
   onWatchlist,
+  onCopy,
 }: {
   candidates: OpportunityCandidate[];
   pinned: Set<string>;
   watchlisted: Set<string>;
   onPin: (symbol: string) => void;
   onWatchlist: (symbol: string) => void;
+  onCopy?: (symbol: string) => void;
 }) {
   const { sortKey, sortDirection, toggleSort } = useTableSort("rank");
   const sorted = useMemo(
@@ -943,7 +1074,7 @@ function ExpiredSetupsTable({
 
   return (
     <ScrollTableWrapper>
-      <table className="w-full min-w-[900px]">
+      <table className="w-full min-w-[1080px]">
         <thead>
           <tr className="border-b border-surface-border-subtle text-left">
             <th className={headerClass}>
@@ -965,55 +1096,87 @@ function ExpiredSetupsTable({
             <th className={`${headerClass} text-right`}>
               <SortButton
                 label="Highest Conviction"
-                active={sortKey === "aiConvictionScore"}
+                active={sortKey === "highestConviction"}
                 direction={sortDirection}
-                onClick={() => toggleSort("aiConvictionScore")}
+                onClick={() => toggleSort("highestConviction")}
                 align="right"
               />
             </th>
             <th className={`${headerClass} text-right`}>Peak Time</th>
             <th className={headerClass}>Outcome</th>
+            <th className={`${headerClass} text-right`}>
+              <SortButton
+                label="Max Gain"
+                active={sortKey === "maximumGainAfterSignal"}
+                direction={sortDirection}
+                onClick={() => toggleSort("maximumGainAfterSignal")}
+                align="right"
+              />
+            </th>
+            <th className={`${headerClass} text-right`}>Max Drawdown</th>
+            <th className={`${headerClass} text-right`}>
+              <SortButton
+                label="Duration"
+                active={sortKey === "setupDurationHours"}
+                direction={sortDirection}
+                onClick={() => toggleSort("setupDurationHours")}
+                align="right"
+              />
+            </th>
             <th className={headerClass}>Reason</th>
           </tr>
         </thead>
         <tbody>
-          {sorted.map((candidate) => (
-            <tr
-              key={candidate.id}
-              className="group border-b border-surface-border-subtle/50 transition-colors last:border-0 hover:bg-surface-hover/40"
-            >
-              <td className={cellClass}>
-                <RankBadge rank={candidate.rank} />
-              </td>
-              <td className={cellClass}>
-                <StockLink symbol={candidate.symbol}>
-                  <p className="text-xs font-semibold text-text-primary group-hover:text-accent">
-                    {candidate.symbol}
-                  </p>
-                  <p className="text-[10px] text-text-muted">{candidate.company}</p>
-                </StockLink>
-                <StockActions
-                  symbol={candidate.symbol}
-                  pinned={pinned.has(candidate.symbol.toUpperCase())}
-                  watchlisted={watchlisted.has(candidate.symbol.toUpperCase())}
-                  onPin={onPin}
-                  onWatchlist={onWatchlist}
-                />
-              </td>
-              <td className={`${cellClass} text-right font-mono text-xs text-gain tabular-nums`}>
-                {candidate.highestConviction ?? candidate.aiConvictionScore}
-              </td>
-              <td className={`${cellClass} text-right text-[10px] text-text-muted`}>
-                {formatTimeOnly(candidate.peakTime ?? candidate.lastDetectedAt)}
-              </td>
-              <td className={`${cellClass} text-[11px] font-medium text-text-secondary`}>
-                {candidate.expiredOutcome ?? "Momentum Faded"}
-              </td>
-              <td className={`${cellClass} text-[11px] text-text-muted`}>
-                {candidate.expiredReason ?? candidate.reasonMissed ?? candidate.reason}
-              </td>
-            </tr>
-          ))}
+          {sorted.map((candidate) => {
+            const outcome = (candidate.expiredOutcome ?? "Momentum Faded") as ExpiredSetupOutcome;
+            return (
+              <tr
+                key={candidate.id}
+                className="group border-b border-surface-border-subtle/50 transition-colors last:border-0 hover:bg-surface-hover/40"
+              >
+                <td className={cellClass}>
+                  <RankBadge rank={candidate.rank} />
+                </td>
+                <td className={cellClass}>
+                  <StockLink symbol={candidate.symbol}>
+                    <p className="text-xs font-semibold text-text-primary group-hover:text-accent">
+                      {candidate.symbol}
+                    </p>
+                    <p className="text-[10px] text-text-muted">{candidate.company}</p>
+                  </StockLink>
+                  <StockActions
+                    symbol={candidate.symbol}
+                    pinned={pinned.has(candidate.symbol.toUpperCase())}
+                    watchlisted={watchlisted.has(candidate.symbol.toUpperCase())}
+                    onPin={onPin}
+                    onWatchlist={onWatchlist}
+                    onCopy={onCopy}
+                  />
+                </td>
+                <td className={`${cellClass} text-right font-mono text-xs text-gain tabular-nums`}>
+                  {candidate.highestConviction ?? candidate.aiConvictionScore}
+                </td>
+                <td className={`${cellClass} text-right text-[10px] text-text-muted`}>
+                  {formatTimeOnly(candidate.peakTime ?? candidate.lastDetectedAt)}
+                </td>
+                <td className={cellClass}>
+                  <Badge variant={expiredOutcomeVariant(outcome)}>{outcome}</Badge>
+                </td>
+                <td className={`${cellClass} text-right font-mono text-xs text-gain tabular-nums`}>
+                  +{(candidate.maximumGainAfterSignal ?? 0).toFixed(2)}%
+                </td>
+                <td className={`${cellClass} text-right font-mono text-xs text-loss tabular-nums`}>
+                  {(candidate.maximumDrawdownAfterSignal ?? 0).toFixed(2)}%
+                </td>
+                <td className={`${cellClass} text-right font-mono text-xs text-text-muted tabular-nums`}>
+                  {(candidate.setupDurationHours ?? 0).toFixed(1)}h
+                </td>
+                <td className={`${cellClass} text-[11px] text-text-muted`}>
+                  {candidate.expiredReason ?? candidate.reasonMissed ?? candidate.reason}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </ScrollTableWrapper>
@@ -1157,20 +1320,24 @@ function PostMarketSection({
   candidates,
   emptyNote,
   variant = "default",
+  nearestCandidates,
   pinned,
   watchlisted,
   onPin,
   onWatchlist,
+  onCopy,
 }: {
   title: string;
   subtitle: string;
   candidates: OpportunityCandidate[];
   emptyNote?: string;
   variant?: "default" | "expired" | "bestCall" | "watchlist";
+  nearestCandidates?: NearestCandidate[];
   pinned: Set<string>;
   watchlisted: Set<string>;
   onPin: (symbol: string) => void;
   onWatchlist: (symbol: string) => void;
+  onCopy?: (symbol: string) => void;
 }) {
   return (
     <Card padding="md" className="border-surface-border-subtle/80">
@@ -1191,6 +1358,7 @@ function PostMarketSection({
             watchlisted={watchlisted}
             onPin={onPin}
             onWatchlist={onWatchlist}
+            onCopy={onCopy}
           />
         ) : (
           <OpportunityTable
@@ -1200,12 +1368,14 @@ function PostMarketSection({
             watchlisted={watchlisted}
             onPin={onPin}
             onWatchlist={onWatchlist}
+            onCopy={onCopy}
           />
         )
       ) : (
         <EmptySection
           headline={CATEGORY_EMPTY_HEADLINE}
           message={emptyNote ?? CATEGORY_EMPTY_HEADLINE}
+          nearestCandidates={nearestCandidates}
         />
       )}
     </Card>
@@ -1320,17 +1490,43 @@ function MarketSummaryHighlights({ report }: { report: PostMarketReport }) {
 
 function PostMarketReports({
   report,
+  engineState,
   pinned,
   watchlisted,
   onPin,
   onWatchlist,
+  onCopy,
 }: {
   report: PostMarketReport;
+  engineState: OpportunityEngineState;
   pinned: Set<string>;
   watchlisted: Set<string>;
   onPin: (symbol: string) => void;
   onWatchlist: (symbol: string) => void;
+  onCopy?: (symbol: string) => void;
 }) {
+  const tomorrowNearest = useMemo(
+    () =>
+      report.tomorrowWatchlist.length === 0
+        ? derivePostMarketNearestCandidates(engineState, "tomorrowWatchlist")
+        : [],
+    [engineState, report.tomorrowWatchlist.length]
+  );
+  const expiredNearest = useMemo(
+    () =>
+      report.missedOpportunities.length === 0
+        ? derivePostMarketNearestCandidates(engineState, "missedOpportunities")
+        : [],
+    [engineState, report.missedOpportunities.length]
+  );
+  const bestCallNearest = useMemo(
+    () =>
+      report.bestCallsOfDay.length === 0
+        ? derivePostMarketNearestCandidates(engineState, "bestCallsOfDay")
+        : [],
+    [engineState, report.bestCallsOfDay.length]
+  );
+
   return (
     <div className="mt-6 space-y-4 border-t border-surface-border-subtle pt-6">
       <div className="flex items-center gap-2">
@@ -1349,33 +1545,39 @@ function PostMarketReports({
           subtitle={POST_MARKET_SUBTITLES.tomorrowWatchlist}
           candidates={report.tomorrowWatchlist}
           emptyNote={report.sectionNotes?.tomorrowWatchlist}
+          nearestCandidates={tomorrowNearest}
           variant="watchlist"
           pinned={pinned}
           watchlisted={watchlisted}
           onPin={onPin}
           onWatchlist={onWatchlist}
+          onCopy={onCopy}
         />
         <PostMarketSection
           title="Expired Setups"
           subtitle={POST_MARKET_SUBTITLES.missedOpportunities}
           candidates={report.missedOpportunities}
           emptyNote={report.sectionNotes?.missedOpportunities}
+          nearestCandidates={expiredNearest}
           variant="expired"
           pinned={pinned}
           watchlisted={watchlisted}
           onPin={onPin}
           onWatchlist={onWatchlist}
+          onCopy={onCopy}
         />
         <PostMarketSection
           title="Best Calls of the Day"
           subtitle={POST_MARKET_SUBTITLES.bestCallsOfDay}
           candidates={report.bestCallsOfDay}
           emptyNote={report.sectionNotes?.bestCallsOfDay}
+          nearestCandidates={bestCallNearest}
           variant="bestCall"
           pinned={pinned}
           watchlisted={watchlisted}
           onPin={onPin}
           onWatchlist={onWatchlist}
+          onCopy={onCopy}
         />
         {(report.tradeOutcomes?.length ?? 0) > 0 && (
           <Card padding="md" className="border-surface-border-subtle/80">
@@ -1434,6 +1636,16 @@ export function OpportunityEnginePanel({ initialState }: OpportunityEnginePanelP
       writeStoredSymbols(WATCHLIST_STORAGE_KEY, next);
       return next;
     });
+  }, []);
+
+  const copySymbol = useCallback(async (symbol: string) => {
+    const key = symbol.toUpperCase();
+    try {
+      await navigator.clipboard.writeText(key);
+      setToast(`${key} copied to clipboard`);
+    } catch {
+      setToast(`Could not copy ${key}`);
+    }
   }, []);
 
   useEffect(() => {
@@ -1600,6 +1812,7 @@ export function OpportunityEnginePanel({ initialState }: OpportunityEnginePanelP
           watchlisted={watchlisted}
           onPin={togglePin}
           onWatchlist={toggleWatchlist}
+          onCopy={copySymbol}
         />
       ) : (
         <EmptySection
@@ -1615,10 +1828,12 @@ export function OpportunityEnginePanel({ initialState }: OpportunityEnginePanelP
       {state.postMarket && (
         <PostMarketReports
           report={state.postMarket}
+          engineState={state}
           pinned={pinned}
           watchlisted={watchlisted}
           onPin={togglePin}
           onWatchlist={toggleWatchlist}
+          onCopy={copySymbol}
         />
       )}
     </Card>

@@ -31,27 +31,21 @@ function flowPhrase(fii: number, dii: number): string {
   return "Institutional flows turned cautious with net selling.";
 }
 
-function breadthPhrase(advanceRatio: number, advances: number, declines: number): string {
-  if (advanceRatio >= 62) {
-    return `Breadth stayed healthy with ${advances} advancers vs ${declines} decliners, suggesting bullish continuation into tomorrow unless global weakness emerges.`;
+function momentumOutlookPhrase(
+  advanceRatio: number,
+  strongestChange: number,
+  _weakestChange: number
+): string {
+  if (advanceRatio >= 60 && strongestChange > 0.8) {
+    return "Momentum continues to favor long setups although several sectors appear extended after today's move.";
   }
-  if (advanceRatio >= 52) {
-    return `Breadth was balanced (${advances}↑ / ${declines}↓), keeping the tape constructive but selective.`;
+  if (advanceRatio >= 55) {
+    return "Momentum remains constructive for selective long setups into the next session.";
   }
-  if (advanceRatio >= 45) {
-    return `Breadth narrowed (${advances}↑ / ${declines}↓), signaling a more stock-specific session ahead.`;
+  if (advanceRatio < 45) {
+    return "Momentum has shifted defensive — stock selection over index exposure is warranted.";
   }
-  return `Breadth weakened with ${declines} decliners outpacing ${advances} gainers, warranting tighter risk into the next session.`;
-}
-
-function trendPhrase(trend: string, breadthScore: number): string {
-  if (trend === "Bullish" && breadthScore >= 60) {
-    return "The broader trend remains bullish with participation broadening across leaders.";
-  }
-  if (trend === "Bearish") {
-    return "The broader trend stayed defensive with leadership concentrated in pockets.";
-  }
-  return "The broader trend stayed mixed with leadership rotating sector by sector.";
+  return "Momentum is mixed — leadership is rotating and setups require tighter confirmation.";
 }
 
 function buildMarketSummary(state: OpportunityEngineState): PostMarketMarketSummary {
@@ -84,8 +78,6 @@ function buildMarketSummary(state: OpportunityEngineState): PostMarketMarketSumm
 
   const fii = marketPulse.institutionalFlow.fii;
   const dii = marketPulse.institutionalFlow.dii;
-  const marketTone =
-    advanceRatio >= 55 && strongest.changePercent > 0 ? "broadly bullish" : "mixed";
 
   const leaderText =
     leaders.length >= 2
@@ -96,11 +88,24 @@ function buildMarketSummary(state: OpportunityEngineState): PostMarketMarketSumm
   const laggardText =
     laggards.length > 0 ? laggards.join(" and ") : sectorShortName(weakest.name);
 
+  const rallyVerb = strongest.changePercent > 1 ? "rally" : "session";
+  const leaderClause =
+    leaders.length >= 2
+      ? `Today's ${rallyVerb} was led by ${leaderText} while ${laggardText} remained weak.`
+      : `Today's ${rallyVerb} was led by ${leaderText} while ${laggardText} lagged.`;
+
+  const breadthClause =
+    advanceRatio >= 55
+      ? `Market breadth remained healthy with ${advanceRatio}% advancing stocks.`
+      : advanceRatio >= 45
+        ? `Market breadth was balanced with ${advanceRatio}% advancing stocks.`
+        : `Market breadth narrowed to ${advanceRatio}% advancing stocks.`;
+
   const narrative = [
-    `Market remained ${marketTone} led by ${leaderText} while ${laggardText} continued to underperform.`,
+    leaderClause,
+    breadthClause,
     flowPhrase(fii, dii),
-    breadthPhrase(advanceRatio, marketBreadth.advances, marketBreadth.declines),
-    trendPhrase(marketPulse.marketTrend, marketPulse.breadthScore),
+    momentumOutlookPhrase(advanceRatio, strongest.changePercent, weakest.changePercent),
   ].join(" ");
 
   return {
@@ -124,10 +129,7 @@ function buildMarketSummary(state: OpportunityEngineState): PostMarketMarketSumm
   };
 }
 
-function sectionNoteIfEmpty(
-  candidates: OpportunityCandidate[],
-  key: "tomorrowWatchlist" | "missedOpportunities" | "bestCallsOfDay"
-): string | undefined {
+function sectionNoteIfEmpty(candidates: OpportunityCandidate[]): string | undefined {
   if (candidates.length > 0) return undefined;
   return EMPTY_SECTION_NOTE;
 }
@@ -179,9 +181,9 @@ export function generatePostMarketReport(
   const aiReviews = buildAISelfReviews(tradeCandidates, tradeOutcomes);
 
   const sectionNotes: PostMarketReport["sectionNotes"] = {};
-  const tomorrowNote = sectionNoteIfEmpty(tomorrowWatchlist, "tomorrowWatchlist");
-  const missedNote = sectionNoteIfEmpty(missedOpportunities, "missedOpportunities");
-  const bestNote = sectionNoteIfEmpty(bestCallsOfDay, "bestCallsOfDay");
+  const tomorrowNote = sectionNoteIfEmpty(tomorrowWatchlist);
+  const missedNote = sectionNoteIfEmpty(missedOpportunities);
+  const bestNote = sectionNoteIfEmpty(bestCallsOfDay);
   if (tomorrowNote) sectionNotes.tomorrowWatchlist = tomorrowNote;
   if (missedNote) sectionNotes.missedOpportunities = missedNote;
   if (bestNote) sectionNotes.bestCallsOfDay = bestNote;

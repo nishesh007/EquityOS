@@ -3,6 +3,7 @@ import { marketDataService } from "@/lib/market-data";
 import { isMarketOpen, getMarketStatus } from "@/lib/market/session";
 import { buildTradeLevels } from "@/lib/opportunity-engine/levels";
 import {
+  buildConfidenceReasonContributions,
   buildConfidenceReasons,
   formatConfidenceReasons,
 } from "@/lib/opportunity-engine/reasons";
@@ -159,7 +160,14 @@ function toOpportunityCandidate(
   const confidenceReasons = buildConfidenceReasons(
     metrics,
     candidate.category,
-    candidate.side
+    candidate.side,
+    levels.riskReward
+  );
+  const confidenceReasonContributions = buildConfidenceReasonContributions(
+    metrics,
+    candidate.category,
+    candidate.side,
+    levels.riskReward
   );
   const reason =
     confidenceReasons.length > 0
@@ -183,6 +191,7 @@ function toOpportunityCandidate(
     confidencePercent: candidate.confidencePercent,
     reason,
     confidenceReasons,
+    confidenceReasonContributions,
     convictionComponents: conviction.components,
     scanMetrics: metrics,
     firstDetectedAt: now,

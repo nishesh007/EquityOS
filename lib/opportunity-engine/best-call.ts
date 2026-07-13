@@ -49,6 +49,18 @@ function momentumScore(candidate: OpportunityCandidate): number {
   return clamp(50 + direction * (momentum * 8 + changePercent * 3), 0, 100);
 }
 
+function downsideRiskScore(candidate: OpportunityCandidate): number {
+  const volatility = num(candidate.scanMetrics, "volatility") ?? 0;
+  const rsi = num(candidate.scanMetrics, "rsi") ?? 50;
+  let risk = 50;
+  if (volatility > 50) risk += 25;
+  else if (volatility > 40) risk += 15;
+  if (candidate.side === "Long" && rsi > 78) risk += 15;
+  if (candidate.side === "Short" && rsi < 22) risk += 15;
+  if (candidate.riskReward < 1.5) risk += 12;
+  return clamp(100 - risk, 0, 100);
+}
+
 function penaltyScore(candidate: OpportunityCandidate): number {
   const volatility = num(candidate.scanMetrics, "volatility") ?? 0;
   const rsi = num(candidate.scanMetrics, "rsi") ?? 50;
@@ -69,18 +81,20 @@ export interface BestCallFactors {
   sectorStrength: number;
   fundamentalQuality: number;
   momentum: number;
+  downsideRisk: number;
   penalty: number;
 }
 
 const BEST_CALL_WEIGHTS = {
-  conviction: 0.22,
+  conviction: 0.2,
   riskReward: 0.14,
   trendStrength: 0.12,
   volumeQuality: 0.12,
   sectorStrength: 0.1,
   fundamentalQuality: 0.1,
-  momentum: 0.12,
-  penalty: 0.08,
+  momentum: 0.1,
+  downsideRisk: 0.08,
+  penalty: 0.04,
 } as const;
 
 export function computeBestCallFactors(candidate: OpportunityCandidate): BestCallFactors {
@@ -93,6 +107,7 @@ export function computeBestCallFactors(candidate: OpportunityCandidate): BestCal
     sectorStrength: sectorStrengthScore(candidate),
     fundamentalQuality: fundamentalQualityScore(candidate),
     momentum: momentumScore(candidate),
+    downsideRisk: downsideRiskScore(candidate),
     penalty: penaltyScore(candidate),
   };
 }
@@ -106,7 +121,8 @@ export function computeBestCallScore(candidate: OpportunityCandidate): number {
     factors.volumeQuality * BEST_CALL_WEIGHTS.volumeQuality +
     factors.sectorStrength * BEST_CALL_WEIGHTS.sectorStrength +
     factors.fundamentalQuality * BEST_CALL_WEIGHTS.fundamentalQuality +
-    factors.momentum * BEST_CALL_WEIGHTS.momentum -
+    factors.momentum * BEST_CALL_WEIGHTS.momentum +
+    factors.downsideRisk * BEST_CALL_WEIGHTS.downsideRisk -
     factors.penalty * BEST_CALL_WEIGHTS.penalty;
 
   return Math.round(clamp(raw, 0, 100));
@@ -117,6 +133,44 @@ export function bestCallStarRating(score: number): string {
   return "★".repeat(stars) + "☆".repeat(5 - stars);
 }
 
+export interface BestCallScoreBreakdown {
+  label: string;
+  weight: number;
+  score: number;
+  contribution: number;
+}
+
+export function buildBestCallScoreBreakdown(
+  candidate: OpportunityCandidate
+): BestCallScoreBreakdown[] {
+  const factors = computeBestCallFactors(candidate);
+  const entries: BestCallScoreBreakdown[] = [
+    { label: "AI Conviction", weight: BEST_CALL_WEIGHTS.conviction, score: factors.conviction, contribution: 0 },
+    { label: "Risk Reward", weight: BEST_CALL_WEIGHTS.riskReward, score: factors.riskReward, contribution: 0 },
+    { label: "Trend Confirmation", weight: BEST_CALL_WEIGHTS.trendStrength, score: factors.trendStrength, contribution: 0 },
+    { label: "Volume Quality", weight: BEST_CALL_WEIGHTS.volumeQuality, score: factors.volumeQuality, contribution: 0 },
+    { label: "Sector Strength", weight: BEST_CALL_WEIGHTS.sectorStrength, score: factors.sectorStrength, contribution: 0 },
+    { label: "Fundamentals", weight: BEST_CALL_WEIGHTS.fundamentalQuality, score: factors.fundamentalQuality, contribution: 0 },
+    { label: "Momentum", weight: BEST_CALL_WEIGHTS.momentum, score: factors.momentum, contribution: 0 },
+    { label: "Low Downside Risk", weight: BEST_CALL_WEIGHTS.downsideRisk, score: factors.downsideRisk, contribution: 0 },
+  ];
+
+  for (const entry of entries) {
+    entry.contribution = Math.round(entry.score * entry.weight);
+  }
+
+  if (factors.penalty > 0) {
+    entries.push({
+      label: "Penalty",
+      weight: BEST_CALL_WEIGHTS.penalty,
+      score: factors.penalty,
+      contribution: -Math.round(factors.penalty * BEST_CALL_WEIGHTS.penalty),
+    });
+  }
+
+  return entries;
+}
+
 export function buildBestCallReasons(
   candidate: OpportunityCandidate,
   allScores: { candidate: OpportunityCandidate; score: number }[]
@@ -125,65 +179,61 @@ export function buildBestCallReasons(
   const metrics = candidate.scanMetrics;
   const factors = computeBestCallFactors(candidate);
 
+  const topScore = [...allScores].sort((a, b) => b.score - a.score)[0];
+  if (topScore?.candidate.symbol === candidate.symbol) {
+    reasons.push("Highest probability setup");
+  }
+
   const topConviction = [...allScores].sort(
     (a, b) => b.candidate.aiConvictionScore - a.candidate.aiConvictionScore
   )[0];
   if (topConviction?.candidate.symbol === candidate.symbol) {
-    reasons.push("Highest conviction today");
-  } else if (candidate.aiConvictionScore >= 80) {
-    reasons.push(`High conviction (${candidate.aiConvictionScore})`);
+    reasons.push("Highest institutional quality");
   }
 
-  if (candidate.riskReward >= 3) {
-    reasons.push(`Risk Reward 1:${candidate.riskReward.toFixed(1)}`);
-  } else if (candidate.riskReward >= 2) {
+  const topRr = [...allScores].sort(
+    (a, b) => b.candidate.riskReward - a.candidate.riskReward
+  )[0];
+  if (topRr?.candidate.symbol === candidate.symbol && candidate.riskReward >= 2) {
+    reasons.push(`Highest expected reward (1:${candidate.riskReward.toFixed(1)})`);
+  } else if (candidate.riskReward >= 2.5) {
     reasons.push(`Favorable R:R 1:${candidate.riskReward.toFixed(1)}`);
   }
 
-  const delivery = num(metrics, "delivery_percent") ?? 0;
-  const volumeRatio = num(metrics, "volume_ratio") ?? 0;
-  const priceToHigh =
-    num(metrics, "price_to_52w_high") ?? 0;
-  if (delivery >= 35 && volumeRatio >= 1.3) {
-    reasons.push("Strong institutional participation");
-  } else if (volumeRatio >= 2) {
-    reasons.push("Elevated institutional volume");
+  const adx = num(metrics, "adx") ?? 0;
+  if (adx >= 28 && factors.trendStrength >= 65) {
+    reasons.push("Strong trend confirmation");
   }
 
   if (factors.sectorStrength >= 70) {
-    reasons.push("Sector leader");
+    reasons.push("Strong sector leadership");
   } else if (factors.sectorStrength >= 58) {
     reasons.push("Sector outperformer");
   }
 
-  const price = num(metrics, "cmp");
-  const ema20 = num(metrics, "ema20");
-  const ema200 = num(metrics, "ema200");
-  if (
-    candidate.side === "Long" &&
-    price !== null &&
-    ema20 !== null &&
-    ema200 !== null &&
-    price > ema20 &&
-    price > ema200
-  ) {
-    reasons.push("Above key moving averages");
+  const delivery = num(metrics, "delivery_percent") ?? 0;
+  const volumeRatio = num(metrics, "volume_ratio") ?? 0;
+  if (delivery >= 35 && volumeRatio >= 1.3) {
+    reasons.push("High liquidity & institutional participation");
+  } else if (volumeRatio >= 2) {
+    reasons.push("High liquidity");
   }
 
-  if (
-    candidate.category === "breakout" ||
-    priceToHigh >= 92
-  ) {
+  if (factors.downsideRisk >= 70) {
+    reasons.push("Low downside risk");
+  }
+
+  const priceToHigh = num(metrics, "price_to_52w_high") ?? 0;
+  if (candidate.category === "breakout" || priceToHigh >= 92) {
     reasons.push("Breakout confirmed");
-  }
-
-  const adx = num(metrics, "adx") ?? 0;
-  if (adx >= 28 && factors.momentum >= 65) {
-    reasons.push("Momentum trend intact");
   }
 
   if (factors.fundamentalQuality >= 65) {
     reasons.push("Strong fundamental quality");
+  }
+
+  if (reasons.length === 0 && candidate.aiConvictionScore >= 75) {
+    reasons.push(`High conviction (${candidate.aiConvictionScore})`);
   }
 
   return reasons.slice(0, 6);
