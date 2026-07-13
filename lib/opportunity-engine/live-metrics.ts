@@ -7,6 +7,7 @@ import {
   atr,
   bollingerBands,
   ema,
+  macd,
   momentum,
   relativeStrength,
   rsi,
@@ -104,6 +105,8 @@ export async function enrichMetricsWithTechnicals(
   const closes = candles.map((bar) => bar.close);
   const price = typeof base.cmp === "number" ? base.cmp : closes.at(-1) ?? 0;
   const rsi14 = rsi(closes, 14);
+  const rsiPrev =
+    closes.length > 15 ? rsi(closes.slice(0, -1), 14) : null;
   const adxResult = adx(candles, 14);
   const atr14 = atr(candles, 14);
   const momentum10 = momentum(closes, 10);
@@ -117,6 +120,7 @@ export async function enrichMetricsWithTechnicals(
   const ema20 = ema(closes, 20);
   const ema50 = ema(closes, 50);
   const ema200 = ema(closes, 200);
+  const macdResult = macd(closes);
   const avgVol20 = averageVolume(candles, 20);
   const trendScore = computeTrendScore(price, ema20, ema50, ema200);
 
@@ -134,11 +138,19 @@ export async function enrichMetricsWithTechnicals(
       ? Math.round(((bands.upper - bands.lower) / bands.middle) * 10000) / 100
       : null;
 
+  const dayHigh = typeof base.high === "number" ? base.high : null;
+  const dayLow = typeof base.low === "number" ? base.low : null;
+  const closingStrength =
+    dayHigh !== null && dayLow !== null && dayHigh > dayLow
+      ? Math.round(((price - dayLow) / (dayHigh - dayLow)) * 10000) / 100
+      : null;
+
   return {
     ...base,
     avg_volume_20d: avgVol20 !== null ? Math.round(avgVol20) : null,
     volume_ratio: volumeRatio,
     rsi: rsi14 !== null ? Math.round(rsi14 * 100) / 100 : null,
+    rsi_prev: rsiPrev !== null ? Math.round(rsiPrev * 100) / 100 : null,
     adx: adxResult?.adx ?? null,
     momentum: momentum10 !== null ? Math.round(momentum10 * 100) / 100 : null,
     relative_strength: rs20 !== null ? Math.round(rs20 * 100) / 100 : null,
@@ -154,6 +166,10 @@ export async function enrichMetricsWithTechnicals(
     ema20,
     ema50,
     ema200,
+    macd: macdResult?.macd ?? null,
+    macd_signal: macdResult?.signal ?? null,
+    macd_histogram: macdResult?.histogram ?? null,
+    closing_strength: closingStrength,
     has_live_technicals: 1,
   };
 }

@@ -8,78 +8,150 @@ function num(
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+export interface ConfidenceReasonContribution {
+  label: string;
+  contribution: number;
+}
+
+function pushReason(
+  reasons: ConfidenceReasonContribution[],
+  label: string,
+  contribution: number
+): void {
+  if (contribution <= 0) return;
+  reasons.push({ label, contribution: Math.round(contribution) });
+}
+
 /**
- * Builds explainable confidence reasons from live metrics.
- * Only includes reasons that are substantiated by actual data.
+ * Builds explainable confidence reasons with point contributions from live metrics.
  */
-export function buildConfidenceReasons(
+export function buildConfidenceReasonContributions(
   metrics: Record<string, number | string | null>,
   category: OpportunityCategory,
   side: "Long" | "Short"
-): string[] {
-  const reasons: string[] = [];
+): ConfidenceReasonContribution[] {
+  const reasons: ConfidenceReasonContribution[] = [];
 
+  const price = num(metrics, "cmp");
+  const ema20 = num(metrics, "ema20");
+  const ema200 = num(metrics, "ema200");
   const changePercent = num(metrics, "change_percent");
   const volumeRatio = num(metrics, "volume_ratio");
   const rsi = num(metrics, "rsi");
+  const rsiPrev = num(metrics, "rsi_prev");
   const adx = num(metrics, "adx");
   const deliveryPercent = num(metrics, "delivery_percent");
   const relativeStrength = num(metrics, "relative_strength");
-  const trendScore = num(metrics, "trend_score");
   const momentum = num(metrics, "momentum");
   const priceToHigh = num(metrics, "price_to_52w_high");
   const fundamentalScore = num(metrics, "fundamental_score");
   const bollingerWidth = num(metrics, "bollinger_width");
-  const sector = typeof metrics.sector === "string" ? metrics.sector : null;
+  const macdHist = num(metrics, "macd_histogram");
+  const macdLine = num(metrics, "macd");
+  const macdSignal = num(metrics, "macd_signal");
+  const closingStrength = num(metrics, "closing_strength");
+  const revenueGrowth = num(metrics, "revenue_growth");
+  const momentumValue = momentum ?? 0;
 
-  if (side === "Long" && priceToHigh !== null && priceToHigh >= 97) {
-    reasons.push("Breakout above resistance");
+  if (side === "Long" && price !== null && ema20 !== null && price > ema20) {
+    pushReason(reasons, "Breakout above 20 DMA", 10);
+  }
+  if (side === "Short" && price !== null && ema20 !== null && price < ema20) {
+    pushReason(reasons, "Breakdown below 20 DMA", 10);
   }
 
-  if (side === "Short" && priceToHigh !== null && priceToHigh <= 85) {
-    reasons.push("Breakdown below key support");
+  if (side === "Long" && price !== null && ema200 !== null && price > ema200) {
+    pushReason(reasons, "Breakout above 200 DMA", 8);
+  }
+  if (side === "Short" && price !== null && ema200 !== null && price < ema200) {
+    pushReason(reasons, "Breakdown below 200 DMA", 8);
   }
 
-  if (volumeRatio !== null && volumeRatio >= 1.5) {
-    reasons.push(`Volume ${volumeRatio.toFixed(1)}x average`);
-  } else if (volumeRatio !== null && volumeRatio >= 1.2 && category === "relative_volume") {
-    reasons.push(`Volume ${volumeRatio.toFixed(1)}x average`);
-  }
-
-  if (rsi !== null) {
-    if (side === "Long" && rsi >= 50 && rsi <= 72 && (momentum ?? 0) > 0) {
-      reasons.push(`RSI ${Math.round(rsi)} rising`);
-    } else if (side === "Short" && rsi >= 28 && rsi <= 50 && (momentum ?? 0) < 0) {
-      reasons.push(`RSI ${Math.round(rsi)} weakening`);
-    } else if (category === "mean_reversion" && rsi <= 35) {
-      reasons.push(`RSI ${Math.round(rsi)} oversold bounce`);
-    } else if (category === "mean_reversion" && rsi >= 65) {
-      reasons.push(`RSI ${Math.round(rsi)} overbought fade`);
+  if (rsi !== null && rsiPrev !== null) {
+    if (side === "Long" && rsiPrev <= 35 && rsi > rsiPrev && rsi <= 55) {
+      pushReason(reasons, "RSI rising from oversold", 12);
+    } else if (side === "Short" && rsiPrev >= 65 && rsi < rsiPrev && rsi >= 45) {
+      pushReason(reasons, "RSI falling from overbought", 12);
+    } else if (side === "Long" && rsi >= 50 && rsi <= 72 && momentumValue > 0) {
+      pushReason(reasons, `RSI ${Math.round(rsi)} momentum`, 8);
     }
+  } else if (rsi !== null && category === "mean_reversion") {
+    if (rsi <= 35 && side === "Long") pushReason(reasons, `RSI ${Math.round(rsi)} oversold`, 14);
+    if (rsi >= 65 && side === "Short") pushReason(reasons, `RSI ${Math.round(rsi)} overbought`, 14);
   }
 
   if (adx !== null && adx >= 25) {
-    reasons.push("ADX trend confirmed");
+    pushReason(reasons, adx >= 30 ? "ADX Trend" : "ADX Trend", adx >= 30 ? 12 : 8);
+  }
+
+  if (macdHist !== null && macdLine !== null && macdSignal !== null) {
+    if (side === "Long" && macdHist > 0 && macdLine > macdSignal) {
+      pushReason(reasons, "MACD Bullish Cross", 10);
+    } else if (side === "Short" && macdHist < 0 && macdLine < macdSignal) {
+      pushReason(reasons, "MACD Bearish Cross", 10);
+    }
+  }
+
+  if (volumeRatio !== null && volumeRatio >= 1.5) {
+    const volContrib = volumeRatio >= 2.5 ? 18 : volumeRatio >= 2 ? 15 : 12;
+    pushReason(reasons, "Volume Surge", volContrib);
+  } else if (volumeRatio !== null && volumeRatio >= 1.2 && category === "relative_volume") {
+    pushReason(reasons, "Volume Surge", 8);
   }
 
   if (deliveryPercent !== null && deliveryPercent >= 35) {
-    reasons.push("Delivery above average");
+    pushReason(reasons, "Delivery Above Avg", 8);
   }
 
-  if (relativeStrength !== null && relativeStrength >= 58) {
-    reasons.push("Relative Strength outperforming Nifty");
+  if (
+    deliveryPercent !== null &&
+    deliveryPercent >= 40 &&
+    volumeRatio !== null &&
+    volumeRatio >= 1.3
+  ) {
+    pushReason(reasons, "Institutional Accumulation", 14);
+  }
+
+  if (relativeStrength !== null && relativeStrength >= 58 && side === "Long") {
+    pushReason(reasons, "Relative Strength", 15);
   } else if (relativeStrength !== null && relativeStrength <= 42 && side === "Short") {
-    reasons.push("Relative Strength underperforming Nifty");
+    pushReason(reasons, "Relative Weakness", 15);
   }
 
-  if (trendScore !== null && trendScore >= 58 && side === "Long") {
-    reasons.push("Closing above key MA");
-  } else if (trendScore !== null && trendScore <= 42 && side === "Short") {
-    reasons.push("Trading below key MA");
+  if (closingStrength !== null && closingStrength >= 75 && side === "Long") {
+    pushReason(reasons, "Closing Strength", 10);
+  } else if (closingStrength !== null && closingStrength <= 25 && side === "Short") {
+    pushReason(reasons, "Weak Close", 10);
+  }
+
+  if (
+    side === "Long" &&
+    changePercent !== null &&
+    changePercent >= 1.5 &&
+    volumeRatio !== null &&
+    volumeRatio >= 1.4 &&
+    momentum !== null &&
+    momentum > 0
+  ) {
+    pushReason(reasons, "Momentum Breakout", 14);
+  }
+
+  if (side === "Long" && priceToHigh !== null && priceToHigh >= 95 && priceToHigh < 100) {
+    pushReason(reasons, "Near 52W High", 9);
+  }
+
+  if (category === "breakout" && bollingerWidth !== null && bollingerWidth >= 8) {
+    pushReason(reasons, "Volatility Squeeze", 11);
   }
 
   if (fundamentalScore !== null && fundamentalScore >= 62) {
-    reasons.push("Strong fundamental quality");
+    pushReason(reasons, "Fundamentals", 20);
+  } else if (fundamentalScore !== null && fundamentalScore >= 55) {
+    pushReason(reasons, "Fundamentals", 12);
+  }
+
+  if (revenueGrowth !== null && revenueGrowth >= 15 && fundamentalScore !== null && fundamentalScore >= 55) {
+    pushReason(reasons, "Earnings Catalyst", 10);
   }
 
   if (
@@ -89,33 +161,72 @@ export function buildConfidenceReasons(
     volumeRatio >= 1.3 &&
     side === "Long"
   ) {
-    reasons.push("Gap-up probability elevated");
-  }
-
-  if (category === "breakout" && bollingerWidth !== null && bollingerWidth >= 8) {
-    reasons.push("Volatility squeeze breakout");
+    pushReason(reasons, "Gap Probability", 6);
   }
 
   if (category === "momentum" && momentum !== null && Math.abs(momentum) >= 2) {
-    reasons.push(
-      side === "Long" ? "Momentum accelerating higher" : "Momentum accelerating lower"
+    pushReason(
+      reasons,
+      side === "Long" ? "Momentum Acceleration" : "Momentum Deceleration",
+      13
     );
   }
 
-  if (sector && changePercent !== null && Math.abs(changePercent) >= 1) {
-    reasons.push(
-      side === "Long" ? `Strong ${sector} sector momentum` : `Weak ${sector} sector momentum`
-    );
+  if (relativeStrength !== null && relativeStrength >= 55 && side === "Long") {
+    pushReason(reasons, "Sector Momentum", 9);
   }
 
   if (category === "swing" && fundamentalScore !== null && fundamentalScore >= 55) {
-    reasons.push("Swing-quality fundamental backdrop");
+    pushReason(reasons, "Swing Fundamentals", 8);
   }
 
-  return reasons.slice(0, 7);
+  return reasons
+    .sort((a, b) => b.contribution - a.contribution)
+    .slice(0, 7);
+}
+
+export function buildConfidenceReasons(
+  metrics: Record<string, number | string | null>,
+  category: OpportunityCategory,
+  side: "Long" | "Short"
+): string[] {
+  return buildConfidenceReasonContributions(metrics, category, side).map((reason) => reason.label);
 }
 
 export function formatConfidenceReasons(reasons: string[]): string {
   if (reasons.length === 0) return "";
   return reasons.map((reason) => `✓ ${reason}`).join("\n");
+}
+
+export function confidenceContributionsTotal(
+  contributions: ConfidenceReasonContribution[]
+): number {
+  return contributions.reduce((sum, item) => sum + item.contribution, 0);
+}
+
+export function resolveConfidenceContributions(candidate: {
+  confidenceReasonContributions?: ConfidenceReasonContribution[];
+  confidenceReasons?: string[];
+  scanMetrics?: Record<string, number | string | null>;
+  category: OpportunityCategory;
+  side: "Long" | "Short";
+  confidencePercent: number;
+}): ConfidenceReasonContribution[] {
+  if (candidate.confidenceReasonContributions?.length) {
+    return candidate.confidenceReasonContributions;
+  }
+
+  if (candidate.scanMetrics) {
+    const computed = buildConfidenceReasonContributions(
+      candidate.scanMetrics,
+      candidate.category,
+      candidate.side
+    );
+    if (computed.length > 0) return computed;
+  }
+
+  return (candidate.confidenceReasons ?? []).map((label, index) => ({
+    label,
+    contribution: Math.max(1, Math.round(candidate.confidencePercent / Math.max(1, (candidate.confidenceReasons?.length ?? 1))) - index),
+  }));
 }

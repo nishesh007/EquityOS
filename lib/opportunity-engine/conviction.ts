@@ -14,19 +14,33 @@ export interface ConvictionComponents {
   momentum: number;
   trend: number;
   volume: number;
-  fundamentals: number;
   liquidity: number;
-  marketRegime: number;
+  fundamentals: number;
+  relativeStrength: number;
   rewardRisk: number;
+  marketRegime: number;
 }
 
+export const CONVICTION_COMPONENT_LABELS: Record<keyof ConvictionComponents, string> = {
+  technical: "Technical",
+  momentum: "Momentum",
+  trend: "Trend",
+  volume: "Volume",
+  liquidity: "Liquidity",
+  fundamentals: "Fundamentals",
+  relativeStrength: "Relative Strength",
+  rewardRisk: "Risk Reward",
+  marketRegime: "Market Regime",
+};
+
 const CONVICTION_WEIGHTS: Record<keyof ConvictionComponents, number> = {
-  technical: 0.16,
-  momentum: 0.14,
-  trend: 0.14,
-  volume: 0.14,
-  fundamentals: 0.1,
+  technical: 0.14,
+  momentum: 0.12,
+  trend: 0.12,
+  volume: 0.12,
   liquidity: 0.1,
+  fundamentals: 0.08,
+  relativeStrength: 0.1,
   marketRegime: 0.12,
   rewardRisk: 0.1,
 };
@@ -85,49 +99,46 @@ export function computeConvictionComponents(
   );
 
   let marketRegime = 52;
-  marketRegime += direction * (relativeStrength - 50) * 0.35;
   if (volatility > 45) marketRegime -= 8;
   else if (volatility < 25) marketRegime += 4;
   marketRegime = clamp(marketRegime, 0, 100);
 
+  const rsComponent = clamp(50 + direction * (relativeStrength - 50) * 0.9, 0, 100);
   const rewardRisk = clamp(riskReward * 28, 0, 100);
 
-  if (category === "intraday") {
-    return {
-      technical: clamp(technical + Math.abs(changePercent) * 2, 0, 100),
-      momentum: momentumScore,
-      trend,
-      volume: clamp(volume + 5, 0, 100),
-      fundamentals,
-      liquidity,
-      marketRegime,
-      rewardRisk,
-    };
-  }
-
-  if (category === "mean_reversion") {
-    return {
-      technical: clamp(technical + 8, 0, 100),
-      momentum: momentumScore,
-      trend,
-      volume,
-      fundamentals,
-      liquidity,
-      marketRegime,
-      rewardRisk,
-    };
-  }
-
-  return {
+  const base: ConvictionComponents = {
     technical,
     momentum: momentumScore,
     trend,
     volume,
     fundamentals,
     liquidity,
+    relativeStrength: rsComponent,
     marketRegime,
     rewardRisk,
   };
+
+  if (category === "intraday") {
+    return {
+      ...base,
+      technical: clamp(technical + Math.abs(changePercent) * 2, 0, 100),
+      volume: clamp(volume + 5, 0, 100),
+    };
+  }
+
+  if (category === "mean_reversion") {
+    return {
+      ...base,
+      technical: clamp(technical + 8, 0, 100),
+    };
+  }
+
+  return base;
+}
+
+export interface ConvictionResult {
+  finalScore: number;
+  components: ConvictionComponents;
 }
 
 function weightedConviction(components: ConvictionComponents): number {
@@ -136,6 +147,20 @@ function weightedConviction(components: ConvictionComponents): number {
     total += components[key] * CONVICTION_WEIGHTS[key];
   }
   return total;
+}
+
+export function computeLiveAiConvictionResult(
+  metrics: Record<string, number | string | null>,
+  category: OpportunityCategory,
+  side: "Long" | "Short",
+  riskReward = 2
+): ConvictionResult {
+  const components = computeConvictionComponents(metrics, category, side, riskReward);
+  const raw = weightedConviction(components);
+  return {
+    finalScore: Math.round(clamp(raw, 40, 97)),
+    components,
+  };
 }
 
 /**
@@ -147,9 +172,7 @@ export function computeLiveAiConviction(
   side: "Long" | "Short",
   riskReward = 2
 ): number {
-  const components = computeConvictionComponents(metrics, category, side, riskReward);
-  const raw = weightedConviction(components);
-  return Math.round(clamp(raw, 40, 97));
+  return computeLiveAiConvictionResult(metrics, category, side, riskReward).finalScore;
 }
 
 export function computeLiveConfidence(

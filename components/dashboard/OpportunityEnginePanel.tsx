@@ -3,12 +3,24 @@
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { StockLink } from "@/components/ui/StockLink";
+import { bestCallStarRating } from "@/lib/opportunity-engine/best-call";
 import {
+  CONVICTION_DISPLAY_LABELS,
+  resolveConvictionDisplayBreakdown,
+} from "@/lib/opportunity-engine/conviction-display";
+import {
+  CATEGORY_EMPTY_HEADLINE,
   deriveCategoryCandidates,
+  deriveCategoryCount,
   getCategoryLabel,
   getCategorySubtitle,
   POST_MARKET_SUBTITLES,
+  type NearestCandidate,
 } from "@/lib/opportunity-engine/presentation";
+import {
+  confidenceContributionsTotal,
+  resolveConfidenceContributions,
+} from "@/lib/opportunity-engine/reasons";
 import {
   OPPORTUNITY_CATEGORIES,
   type OpportunityCandidate,
@@ -16,27 +28,68 @@ import {
   type OpportunityEngineState,
   type PostMarketReport,
 } from "@/lib/opportunity-engine/types";
+import type { AISelfReview } from "@/lib/opportunity-engine/ai-review";
+import type { TradeOutcome } from "@/lib/opportunity-engine/trade-outcome";
 import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Bookmark,
   Clock3,
   Loader2,
   PauseCircle,
+  Pin,
+  PinOff,
   Radar,
   RefreshCw,
   Sparkles,
+  Star,
   TrendingDown,
   TrendingUp,
+  X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface OpportunityEnginePanelProps {
   initialState: OpportunityEngineState;
 }
+
+const TABLE_MAX_VISIBLE_ROWS = 5;
+const TABLE_ROW_HEIGHT_PX = 52;
+const TABLE_HEADER_HEIGHT_PX = 36;
+const TABLE_BODY_MAX_HEIGHT =
+  TABLE_MAX_VISIBLE_ROWS * TABLE_ROW_HEIGHT_PX + TABLE_HEADER_HEIGHT_PX;
+
+const PIN_STORAGE_KEY = "equityos-opportunity-pinned";
+const WATCHLIST_STORAGE_KEY = "equityos-opportunity-watchlist";
+
+type SortDirection = "asc" | "desc";
+type SortKey =
+  | "rank"
+  | "symbol"
+  | "side"
+  | "entry"
+  | "stopLoss"
+  | "target1"
+  | "riskReward"
+  | "aiConvictionScore"
+  | "confidencePercent"
+  | "bestCallScore"
+  | "gapProbability";
 
 function formatTimestamp(iso: string | null): string {
   if (!iso) return "Never";
   return new Intl.DateTimeFormat("en-IN", {
     timeZone: "Asia/Kolkata",
     dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(iso));
+}
+
+function formatTimeOnly(iso: string | null): string {
+  if (!iso) return "—";
+  return new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
     timeStyle: "short",
   }).format(new Date(iso));
 }
@@ -54,90 +107,751 @@ function DirectionBadge({ side }: { side: "Long" | "Short" }) {
   return <Badge variant={side === "Long" ? "gain" : "loss"}>{side}</Badge>;
 }
 
-function ScoreBar({ score, tone = "accent" }: { score: number; tone?: "accent" | "gain" }) {
+function RankBadge({ rank }: { rank: number }) {
   return (
-    <div className="flex items-center justify-end gap-2">
-      <div className="h-1.5 w-12 overflow-hidden rounded-full bg-surface-border">
-        <div
-          className={`h-full rounded-full transition-[width] duration-700 ease-out ${
-            tone === "gain" ? "bg-gain" : "bg-accent"
-          }`}
-          style={{ width: `${Math.min(score, 100)}%` }}
-        />
-      </div>
-      <span className="w-5 font-mono text-xs text-text-secondary tabular-nums">{score}</span>
+    <span className="inline-flex min-w-[2rem] items-center justify-center rounded-md bg-surface-hover/80 px-1.5 py-0.5 font-mono text-xs font-semibold text-text-secondary">
+      #{rank}
+    </span>
+  );
+}
+
+function readStoredSymbols(key: string): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw) as string[];
+    return new Set(parsed.map((symbol) => symbol.toUpperCase()));
+  } catch {
+    return new Set();
+  }
+}
+
+function writeStoredSymbols(key: string, symbols: Set<string>): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(key, JSON.stringify([...symbols]));
+}
+
+function ConvictionPopup({ candidate }: { candidate: OpportunityCandidate }) {
+  const [open, setOpen] = useState(false);
+  const popupRef = useRef<HTMLDivElement>(null);
+  const breakdown = resolveConvictionDisplayBreakdown(candidate);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(event: MouseEvent) {
+      if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  return (
+    <div className="relative inline-block text-right" ref={popupRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="rounded px-1 py-0.5 font-mono text-xs font-medium text-gain tabular-nums transition hover:bg-surface-hover/60"
+      >
+        {candidate.aiConvictionScore}
+      </button>
+      {open && (
+        <div className="absolute right-0 z-30 mt-1 w-48 rounded-lg border border-surface-border bg-surface-raised p-3 shadow-lg">
+          <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-text-faint">
+            Conviction = {candidate.aiConvictionScore}
+          </p>
+          <div className="space-y-1">
+            {(Object.keys(CONVICTION_DISPLAY_LABELS) as (keyof typeof CONVICTION_DISPLAY_LABELS)[]).map(
+              (key) => (
+                <div key={key} className="flex items-center justify-between text-[11px]">
+                  <span className="text-text-muted">{CONVICTION_DISPLAY_LABELS[key]}</span>
+                  <span className="font-mono tabular-nums text-text-secondary">
+                    {key === "penalty" ? `-${breakdown.penalty}` : breakdown[key]}
+                  </span>
+                </div>
+              )
+            )}
+            <div className="mt-1 flex items-center justify-between border-t border-surface-border-subtle/60 pt-1.5 text-[11px] font-semibold">
+              <span className="text-text-secondary">TOTAL</span>
+              <span className="font-mono text-gain tabular-nums">{breakdown.total}</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ConfidenceBreakdown({ candidate }: { candidate: OpportunityCandidate }) {
+  const [open, setOpen] = useState(false);
+  const popupRef = useRef<HTMLDivElement>(null);
+  const contributions = resolveConfidenceContributions(candidate);
+  const total = confidenceContributionsTotal(contributions);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(event: MouseEvent) {
+      if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  return (
+    <div className="relative inline-block text-right" ref={popupRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="rounded px-1 py-0.5 font-mono text-xs text-text-secondary tabular-nums transition hover:bg-surface-hover/60"
+      >
+        {candidate.confidencePercent}
+      </button>
+      {open && (
+        <div className="absolute right-0 z-30 mt-1 w-52 rounded-lg border border-surface-border bg-surface-raised p-3 shadow-lg">
+          <div className="space-y-1">
+            {contributions.map((item) => (
+              <div key={item.label} className="flex items-center justify-between text-[11px]">
+                <span className="text-text-muted">{item.label}</span>
+                <span className="font-mono text-gain tabular-nums">+{item.contribution}</span>
+              </div>
+            ))}
+            <div className="mt-1 flex items-center justify-between border-t border-surface-border-subtle/60 pt-1.5 text-[11px] font-semibold">
+              <span className="text-text-secondary">TOTAL</span>
+              <span className="font-mono text-text-primary tabular-nums">
+                {total || candidate.confidencePercent}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 function ReasonCell({ candidate }: { candidate: OpportunityCandidate }) {
-  const reasons =
-    candidate.confidenceReasons && candidate.confidenceReasons.length > 0
-      ? candidate.confidenceReasons
-      : candidate.reason
-          .split("\n")
-          .map((line) => line.replace(/^✓\s*/, "").trim())
-          .filter(Boolean);
+  const contributions = resolveConfidenceContributions(candidate);
 
-  if (reasons.length === 0) {
+  if (contributions.length === 0) {
     return <span className="text-[11px] text-text-muted">—</span>;
   }
 
   return (
     <ul className="max-w-[240px] space-y-0.5 text-[11px] leading-relaxed text-text-muted">
-      {reasons.map((reason) => (
-        <li key={reason} className="flex items-start gap-1">
-          <span className="mt-px text-gain">✓</span>
-          <span>{reason}</span>
+      {contributions.slice(0, 4).map((item) => (
+        <li key={item.label} className="flex items-start justify-between gap-2">
+          <span className="flex items-start gap-1">
+            <span className="mt-px text-gain">✓</span>
+            <span>{item.label}</span>
+          </span>
+          <span className="shrink-0 font-mono text-[10px] text-gain tabular-nums">
+            +{item.contribution}
+          </span>
         </li>
       ))}
     </ul>
   );
 }
 
-const headerClass =
-  "whitespace-nowrap pb-2 text-[10px] font-medium uppercase tracking-wider text-text-faint";
-const cellClass = "whitespace-nowrap py-3 align-top";
+function BestCallReasonCell({ candidate }: { candidate: OpportunityCandidate }) {
+  const reasons = candidate.bestCallReasons ?? [];
 
-function EmptySection({ message }: { message: string }) {
+  if (reasons.length === 0) {
+    return <ReasonCell candidate={candidate} />;
+  }
+
   return (
-    <div className="rounded-lg border border-surface-border-subtle/80 bg-surface-hover/20 px-4 py-6 text-center">
-      <p className="text-sm text-text-muted">{message}</p>
+    <div className="max-w-[260px]">
+      <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-text-faint">
+        Best Call because:
+      </p>
+      <ul className="space-y-0.5 text-[11px] leading-relaxed text-text-muted">
+        {reasons.map((reason) => (
+          <li key={reason} className="flex items-start gap-1">
+            <span className="mt-px text-gain">✓</span>
+            <span>{reason}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
 
-function OpportunityTable({ candidates }: { candidates: OpportunityCandidate[] }) {
+const headerClass =
+  "sticky top-0 z-10 whitespace-nowrap bg-surface-raised pb-2 text-[10px] font-medium uppercase tracking-wider text-text-faint";
+const cellClass = "whitespace-nowrap py-3 align-top";
+
+function SortButton({
+  label,
+  active,
+  direction,
+  onClick,
+  align = "left",
+}: {
+  label: string;
+  active: boolean;
+  direction: SortDirection;
+  onClick: () => void;
+  align?: "left" | "right";
+}) {
   return (
-    <div className="overflow-x-auto">
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center gap-0.5 transition hover:text-text-secondary ${
+        align === "right" ? "ml-auto" : ""
+      } ${active ? "text-text-secondary" : ""}`}
+    >
+      {label}
+      {active ? (
+        direction === "asc" ? (
+          <ArrowUp className="h-3 w-3" />
+        ) : (
+          <ArrowDown className="h-3 w-3" />
+        )
+      ) : (
+        <ArrowUpDown className="h-3 w-3 opacity-40" />
+      )}
+    </button>
+  );
+}
+
+function ScrollTableWrapper({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="overflow-x-auto overflow-y-auto rounded-lg border border-surface-border-subtle/80"
+      style={{ maxHeight: TABLE_BODY_MAX_HEIGHT }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function StockActions({
+  symbol,
+  pinned,
+  watchlisted,
+  onPin,
+  onWatchlist,
+}: {
+  symbol: string;
+  pinned: boolean;
+  watchlisted: boolean;
+  onPin: (symbol: string) => void;
+  onWatchlist: (symbol: string) => void;
+}) {
+  return (
+    <div className="mt-1 flex items-center gap-1 opacity-0 transition group-hover:opacity-100">
+      <button
+        type="button"
+        title={pinned ? "Unpin" : "Pin stock"}
+        onClick={() => onPin(symbol)}
+        className="rounded p-0.5 text-text-faint transition hover:bg-surface-hover hover:text-accent"
+      >
+        {pinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
+      </button>
+      <button
+        type="button"
+        title={watchlisted ? "On watchlist" : "Add to watchlist"}
+        onClick={() => onWatchlist(symbol)}
+        className={`rounded p-0.5 transition hover:bg-surface-hover ${
+          watchlisted ? "text-accent" : "text-text-faint hover:text-accent"
+        }`}
+      >
+        <Star className={`h-3 w-3 ${watchlisted ? "fill-current" : ""}`} />
+      </button>
+    </div>
+  );
+}
+
+function sortCandidates(
+  candidates: OpportunityCandidate[],
+  sortKey: SortKey,
+  direction: SortDirection,
+  pinned: Set<string>
+): OpportunityCandidate[] {
+  const factor = direction === "asc" ? 1 : -1;
+
+  const sorted = [...candidates].sort((a, b) => {
+    const aPinned = pinned.has(a.symbol.toUpperCase()) ? 1 : 0;
+    const bPinned = pinned.has(b.symbol.toUpperCase()) ? 1 : 0;
+    if (aPinned !== bPinned) return bPinned - aPinned;
+
+    let cmp = 0;
+    switch (sortKey) {
+      case "rank":
+        cmp = a.rank - b.rank;
+        break;
+      case "symbol":
+        cmp = a.symbol.localeCompare(b.symbol);
+        break;
+      case "side":
+        cmp = a.side.localeCompare(b.side);
+        break;
+      case "entry":
+        cmp = a.entryZone.low - b.entryZone.low;
+        break;
+      case "stopLoss":
+        cmp = a.stopLoss - b.stopLoss;
+        break;
+      case "target1":
+        cmp = a.target1 - b.target1;
+        break;
+      case "riskReward":
+        cmp = a.riskReward - b.riskReward;
+        break;
+      case "aiConvictionScore":
+        cmp = a.aiConvictionScore - b.aiConvictionScore;
+        break;
+      case "confidencePercent":
+        cmp = a.confidencePercent - b.confidencePercent;
+        break;
+      case "bestCallScore":
+        cmp = (a.bestCallScore ?? 0) - (b.bestCallScore ?? 0);
+        break;
+      case "gapProbability":
+        cmp = (a.gapProbability ?? 0) - (b.gapProbability ?? 0);
+        break;
+      default:
+        cmp = a.rank - b.rank;
+    }
+    return cmp * factor;
+  });
+
+  return sorted.map((candidate, index) => ({ ...candidate, rank: index + 1 }));
+}
+
+function useTableSort(defaultKey: SortKey = "rank") {
+  const [sortKey, setSortKey] = useState<SortKey>(defaultKey);
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+
+  const toggleSort = useCallback(
+    (key: SortKey) => {
+      if (sortKey === key) {
+        setSortDirection((dir) => (dir === "asc" ? "desc" : "asc"));
+      } else {
+        setSortKey(key);
+        setSortDirection(key === "rank" ? "asc" : "desc");
+      }
+    },
+    [sortKey]
+  );
+
+  return { sortKey, sortDirection, toggleSort };
+}
+
+function NearestCandidatesPanel({ candidates }: { candidates: NearestCandidate[] }) {
+  if (candidates.length === 0) return null;
+
+  return (
+    <div className="mt-4 rounded-lg border border-surface-border-subtle/80 bg-surface-hover/20 p-4">
+      <p className="mb-3 text-xs font-medium uppercase tracking-wider text-text-faint">
+        Nearest Candidates
+      </p>
+      <p className="mb-3 text-[11px] text-text-muted">
+        Top almost-qualified stocks that narrowly missed today&apos;s filters.
+      </p>
+      <div className="space-y-2">
+        {candidates.map((candidate) => (
+          <div
+            key={candidate.symbol}
+            className="flex flex-wrap items-start justify-between gap-2 rounded-md border border-surface-border-subtle/60 px-3 py-2"
+          >
+            <div>
+              <StockLink symbol={candidate.symbol}>
+                <span className="text-xs font-semibold text-text-primary hover:text-accent">
+                  {candidate.symbol}
+                </span>
+              </StockLink>
+              <p className="text-[10px] text-text-muted">{candidate.company}</p>
+            </div>
+            <div className="text-right">
+              <p className="font-mono text-xs text-gain tabular-nums">
+                Conviction {candidate.conviction}
+              </p>
+              <ul className="mt-1 max-w-[220px] text-[10px] text-text-muted">
+                {candidate.filterFailures.map((failure) => (
+                  <li key={failure}>· {failure}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EmptySection({
+  headline,
+  message,
+  nearestCandidates,
+}: {
+  headline?: string;
+  message: string;
+  nearestCandidates?: NearestCandidate[];
+}) {
+  return (
+    <div>
+      <div className="rounded-lg border border-surface-border-subtle/80 bg-surface-hover/20 px-4 py-6 text-center">
+        {headline && <p className="mb-2 text-sm font-medium text-text-secondary">{headline}</p>}
+        <p className="text-sm text-text-muted">{message}</p>
+      </div>
+      {nearestCandidates && nearestCandidates.length > 0 && (
+        <NearestCandidatesPanel candidates={nearestCandidates} />
+      )}
+    </div>
+  );
+}
+
+function OpportunityTable({
+  candidates,
+  variant = "default",
+  pinned,
+  watchlisted,
+  onPin,
+  onWatchlist,
+}: {
+  candidates: OpportunityCandidate[];
+  variant?: "default" | "bestCall" | "watchlist";
+  pinned: Set<string>;
+  watchlisted: Set<string>;
+  onPin: (symbol: string) => void;
+  onWatchlist: (symbol: string) => void;
+}) {
+  const defaultSort: SortKey =
+    variant === "bestCall" ? "bestCallScore" : variant === "watchlist" ? "gapProbability" : "rank";
+  const { sortKey, sortDirection, toggleSort } = useTableSort(defaultSort);
+
+  const sorted = useMemo(
+    () => sortCandidates(candidates, sortKey, sortDirection, pinned),
+    [candidates, sortKey, sortDirection, pinned]
+  );
+
+  if (variant === "watchlist") {
+    return (
+      <ScrollTableWrapper>
+        <table className="w-full min-w-[960px]">
+          <thead>
+            <tr className="border-b border-surface-border-subtle text-left">
+              <th className={headerClass}>
+                <SortButton
+                  label="#"
+                  active={sortKey === "rank"}
+                  direction={sortDirection}
+                  onClick={() => toggleSort("rank")}
+                />
+              </th>
+              <th className={headerClass}>
+                <SortButton
+                  label="Stock"
+                  active={sortKey === "symbol"}
+                  direction={sortDirection}
+                  onClick={() => toggleSort("symbol")}
+                />
+              </th>
+              <th className={`${headerClass} text-right`}>
+                <SortButton
+                  label="Entry"
+                  active={sortKey === "entry"}
+                  direction={sortDirection}
+                  onClick={() => toggleSort("entry")}
+                  align="right"
+                />
+              </th>
+              <th className={`${headerClass} text-right`}>Stop</th>
+              <th className={`${headerClass} text-right`}>Targets</th>
+              <th className={`${headerClass} text-right`}>
+                <SortButton
+                  label="Gap Probability"
+                  active={sortKey === "gapProbability"}
+                  direction={sortDirection}
+                  onClick={() => toggleSort("gapProbability")}
+                  align="right"
+                />
+              </th>
+              <th className={headerClass}>Opening Bias</th>
+              <th className={headerClass}>Expected Catalyst</th>
+              <th className={`${headerClass} text-right`}>
+                <SortButton
+                  label="Confidence"
+                  active={sortKey === "confidencePercent"}
+                  direction={sortDirection}
+                  onClick={() => toggleSort("confidencePercent")}
+                  align="right"
+                />
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((candidate) => (
+              <tr
+                key={candidate.id}
+                className="group border-b border-surface-border-subtle/50 transition-colors last:border-0 hover:bg-surface-hover/40"
+              >
+                <td className={cellClass}>
+                  <RankBadge rank={candidate.rank} />
+                </td>
+                <td className={cellClass}>
+                  <StockLink symbol={candidate.symbol}>
+                    <p className="text-xs font-semibold text-text-primary group-hover:text-accent">
+                      {candidate.symbol}
+                    </p>
+                    <p className="max-w-[140px] truncate text-[10px] text-text-muted">
+                      {candidate.company}
+                    </p>
+                  </StockLink>
+                  <StockActions
+                    symbol={candidate.symbol}
+                    pinned={pinned.has(candidate.symbol.toUpperCase())}
+                    watchlisted={watchlisted.has(candidate.symbol.toUpperCase())}
+                    onPin={onPin}
+                    onWatchlist={onWatchlist}
+                  />
+                </td>
+                <td className={`${cellClass} text-right`}>
+                  <span className="font-mono text-xs text-text-secondary tabular-nums">
+                    ₹{candidate.entryZone.low.toLocaleString("en-IN")}–
+                    {candidate.entryZone.high.toLocaleString("en-IN")}
+                  </span>
+                </td>
+                <td className={`${cellClass} text-right`}>
+                  <Price value={candidate.stopLoss} />
+                </td>
+                <td className={`${cellClass} text-right font-mono text-xs text-text-secondary tabular-nums`}>
+                  <Price value={candidate.target1} />
+                  <span className="mx-1 text-text-faint">/</span>
+                  <Price value={candidate.target2} />
+                </td>
+                <td className={`${cellClass} text-right font-mono text-xs text-gain tabular-nums`}>
+                  {candidate.gapProbability ?? "—"}%
+                </td>
+                <td className={`${cellClass} text-[11px] text-text-muted`}>
+                  {candidate.openingBias ?? "—"}
+                </td>
+                <td className={`${cellClass} text-[11px] text-text-muted`}>
+                  {candidate.expectedCatalyst ?? "—"}
+                </td>
+                <td className={`${cellClass} text-right`}>
+                  <ConfidenceBreakdown candidate={candidate} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </ScrollTableWrapper>
+    );
+  }
+
+  if (variant === "bestCall") {
+    return (
+      <ScrollTableWrapper>
+        <table className="w-full min-w-[960px]">
+          <thead>
+            <tr className="border-b border-surface-border-subtle text-left">
+              <th className={headerClass}>
+                <SortButton
+                  label="#"
+                  active={sortKey === "rank"}
+                  direction={sortDirection}
+                  onClick={() => toggleSort("rank")}
+                />
+              </th>
+              <th className={headerClass}>
+                <SortButton
+                  label="Stock"
+                  active={sortKey === "symbol"}
+                  direction={sortDirection}
+                  onClick={() => toggleSort("symbol")}
+                />
+              </th>
+              <th className={headerClass}>Bias</th>
+              <th className={`${headerClass} text-right`}>Entry Zone</th>
+              <th className={`${headerClass} text-right`}>Stop Loss</th>
+              <th className={`${headerClass} text-right`}>Target 1</th>
+              <th className={`${headerClass} text-right`}>Target 2</th>
+              <th className={`${headerClass} text-right`}>R/R</th>
+              <th className={`${headerClass} text-right`}>
+                <SortButton
+                  label="Best Call Score"
+                  active={sortKey === "bestCallScore"}
+                  direction={sortDirection}
+                  onClick={() => toggleSort("bestCallScore")}
+                  align="right"
+                />
+              </th>
+              <th className={headerClass}>Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((candidate) => {
+              const score = candidate.bestCallScore ?? candidate.aiConvictionScore;
+              return (
+                <tr
+                  key={candidate.id}
+                  className="group border-b border-surface-border-subtle/50 transition-colors last:border-0 hover:bg-surface-hover/40"
+                >
+                  <td className={cellClass}>
+                    <RankBadge rank={candidate.rank} />
+                  </td>
+                  <td className={cellClass}>
+                    <StockLink symbol={candidate.symbol}>
+                      <p className="text-xs font-semibold text-text-primary group-hover:text-accent">
+                        {candidate.symbol}
+                      </p>
+                      <p className="max-w-[140px] truncate text-[10px] text-text-muted">
+                        {candidate.company}
+                      </p>
+                    </StockLink>
+                    <StockActions
+                      symbol={candidate.symbol}
+                      pinned={pinned.has(candidate.symbol.toUpperCase())}
+                      watchlisted={watchlisted.has(candidate.symbol.toUpperCase())}
+                      onPin={onPin}
+                      onWatchlist={onWatchlist}
+                    />
+                  </td>
+                  <td className={cellClass}>
+                    <DirectionBadge side={candidate.side} />
+                  </td>
+                  <td className={`${cellClass} text-right`}>
+                    <span className="font-mono text-xs text-text-secondary tabular-nums">
+                      ₹{candidate.entryZone.low.toLocaleString("en-IN")}–
+                      {candidate.entryZone.high.toLocaleString("en-IN")}
+                    </span>
+                  </td>
+                  <td className={`${cellClass} text-right`}>
+                    <Price value={candidate.stopLoss} />
+                  </td>
+                  <td className={`${cellClass} text-right`}>
+                    <Price value={candidate.target1} />
+                  </td>
+                  <td className={`${cellClass} text-right`}>
+                    <Price value={candidate.target2} />
+                  </td>
+                  <td className={`${cellClass} text-right`}>
+                    <span className="font-mono text-xs font-medium text-gain">
+                      1:{candidate.riskReward.toFixed(1)}
+                    </span>
+                  </td>
+                  <td className={`${cellClass} text-right`}>
+                    <p className="text-sm tracking-wider text-gain">{bestCallStarRating(score)}</p>
+                    <p className="font-mono text-[10px] text-text-muted tabular-nums">
+                      Best Call Score {score}
+                    </p>
+                  </td>
+                  <td className={cellClass}>
+                    <BestCallReasonCell candidate={candidate} />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </ScrollTableWrapper>
+    );
+  }
+
+  return (
+    <ScrollTableWrapper>
       <table className="w-full min-w-[960px]">
         <thead>
           <tr className="border-b border-surface-border-subtle text-left">
-            <th className={headerClass}>#</th>
-            <th className={headerClass}>Stock</th>
-            <th className={headerClass}>Bias</th>
-            <th className={`${headerClass} text-right`}>Entry Zone</th>
-            <th className={`${headerClass} text-right`}>Stop Loss</th>
-            <th className={`${headerClass} text-right`}>Target 1</th>
+            <th className={headerClass}>
+              <SortButton
+                label="#"
+                active={sortKey === "rank"}
+                direction={sortDirection}
+                onClick={() => toggleSort("rank")}
+              />
+            </th>
+            <th className={headerClass}>
+              <SortButton
+                label="Stock"
+                active={sortKey === "symbol"}
+                direction={sortDirection}
+                onClick={() => toggleSort("symbol")}
+              />
+            </th>
+            <th className={headerClass}>
+              <SortButton
+                label="Bias"
+                active={sortKey === "side"}
+                direction={sortDirection}
+                onClick={() => toggleSort("side")}
+              />
+            </th>
+            <th className={`${headerClass} text-right`}>
+              <SortButton
+                label="Entry Zone"
+                active={sortKey === "entry"}
+                direction={sortDirection}
+                onClick={() => toggleSort("entry")}
+                align="right"
+              />
+            </th>
+            <th className={`${headerClass} text-right`}>
+              <SortButton
+                label="Stop Loss"
+                active={sortKey === "stopLoss"}
+                direction={sortDirection}
+                onClick={() => toggleSort("stopLoss")}
+                align="right"
+              />
+            </th>
+            <th className={`${headerClass} text-right`}>
+              <SortButton
+                label="Target 1"
+                active={sortKey === "target1"}
+                direction={sortDirection}
+                onClick={() => toggleSort("target1")}
+                align="right"
+              />
+            </th>
             <th className={`${headerClass} text-right`}>Target 2</th>
-            <th className={`${headerClass} text-right`}>R/R</th>
-            <th className={`${headerClass} text-right`}>AI Conviction</th>
-            <th className={`${headerClass} text-right`}>Confidence</th>
+            <th className={`${headerClass} text-right`}>
+              <SortButton
+                label="R/R"
+                active={sortKey === "riskReward"}
+                direction={sortDirection}
+                onClick={() => toggleSort("riskReward")}
+                align="right"
+              />
+            </th>
+            <th className={`${headerClass} text-right`}>
+              <SortButton
+                label="AI Conviction"
+                active={sortKey === "aiConvictionScore"}
+                direction={sortDirection}
+                onClick={() => toggleSort("aiConvictionScore")}
+                align="right"
+              />
+            </th>
+            <th className={`${headerClass} text-right`}>
+              <SortButton
+                label="Confidence"
+                active={sortKey === "confidencePercent"}
+                direction={sortDirection}
+                onClick={() => toggleSort("confidencePercent")}
+                align="right"
+              />
+            </th>
             <th className={headerClass}>Reason</th>
             <th className={`${headerClass} text-right`}>First Detected</th>
             <th className={`${headerClass} text-right`}>Last Detected</th>
           </tr>
         </thead>
         <tbody>
-          {candidates.map((candidate) => (
+          {sorted.map((candidate) => (
             <tr
               key={candidate.id}
-              className="group border-b border-surface-border-subtle/50 transition-colors last:border-0 hover:bg-surface-hover/30"
+              className="group border-b border-surface-border-subtle/50 transition-colors last:border-0 hover:bg-surface-hover/40"
             >
               <td className={cellClass}>
-                <span className="font-mono text-[10px] text-text-faint">
-                  {String(candidate.rank).padStart(2, "0")}
-                </span>
+                <RankBadge rank={candidate.rank} />
               </td>
               <td className={cellClass}>
                 <StockLink symbol={candidate.symbol}>
@@ -148,6 +862,13 @@ function OpportunityTable({ candidates }: { candidates: OpportunityCandidate[] }
                     {candidate.company}
                   </p>
                 </StockLink>
+                <StockActions
+                  symbol={candidate.symbol}
+                  pinned={pinned.has(candidate.symbol.toUpperCase())}
+                  watchlisted={watchlisted.has(candidate.symbol.toUpperCase())}
+                  onPin={onPin}
+                  onWatchlist={onWatchlist}
+                />
               </td>
               <td className={cellClass}>
                 <DirectionBadge side={candidate.side} />
@@ -173,10 +894,10 @@ function OpportunityTable({ candidates }: { candidates: OpportunityCandidate[] }
                 </span>
               </td>
               <td className={`${cellClass} text-right`}>
-                <ScoreBar score={candidate.aiConvictionScore} tone="gain" />
+                <ConvictionPopup candidate={candidate} />
               </td>
               <td className={`${cellClass} text-right`}>
-                <ScoreBar score={candidate.confidencePercent} />
+                <ConfidenceBreakdown candidate={candidate} />
               </td>
               <td className={cellClass}>
                 <ReasonCell candidate={candidate} />
@@ -197,7 +918,236 @@ function OpportunityTable({ candidates }: { candidates: OpportunityCandidate[] }
           ))}
         </tbody>
       </table>
-    </div>
+    </ScrollTableWrapper>
+  );
+}
+
+function ExpiredSetupsTable({
+  candidates,
+  pinned,
+  watchlisted,
+  onPin,
+  onWatchlist,
+}: {
+  candidates: OpportunityCandidate[];
+  pinned: Set<string>;
+  watchlisted: Set<string>;
+  onPin: (symbol: string) => void;
+  onWatchlist: (symbol: string) => void;
+}) {
+  const { sortKey, sortDirection, toggleSort } = useTableSort("rank");
+  const sorted = useMemo(
+    () => sortCandidates(candidates, sortKey, sortDirection, pinned),
+    [candidates, sortKey, sortDirection, pinned]
+  );
+
+  return (
+    <ScrollTableWrapper>
+      <table className="w-full min-w-[900px]">
+        <thead>
+          <tr className="border-b border-surface-border-subtle text-left">
+            <th className={headerClass}>
+              <SortButton
+                label="#"
+                active={sortKey === "rank"}
+                direction={sortDirection}
+                onClick={() => toggleSort("rank")}
+              />
+            </th>
+            <th className={headerClass}>
+              <SortButton
+                label="Stock"
+                active={sortKey === "symbol"}
+                direction={sortDirection}
+                onClick={() => toggleSort("symbol")}
+              />
+            </th>
+            <th className={`${headerClass} text-right`}>
+              <SortButton
+                label="Highest Conviction"
+                active={sortKey === "aiConvictionScore"}
+                direction={sortDirection}
+                onClick={() => toggleSort("aiConvictionScore")}
+                align="right"
+              />
+            </th>
+            <th className={`${headerClass} text-right`}>Peak Time</th>
+            <th className={headerClass}>Outcome</th>
+            <th className={headerClass}>Reason</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map((candidate) => (
+            <tr
+              key={candidate.id}
+              className="group border-b border-surface-border-subtle/50 transition-colors last:border-0 hover:bg-surface-hover/40"
+            >
+              <td className={cellClass}>
+                <RankBadge rank={candidate.rank} />
+              </td>
+              <td className={cellClass}>
+                <StockLink symbol={candidate.symbol}>
+                  <p className="text-xs font-semibold text-text-primary group-hover:text-accent">
+                    {candidate.symbol}
+                  </p>
+                  <p className="text-[10px] text-text-muted">{candidate.company}</p>
+                </StockLink>
+                <StockActions
+                  symbol={candidate.symbol}
+                  pinned={pinned.has(candidate.symbol.toUpperCase())}
+                  watchlisted={watchlisted.has(candidate.symbol.toUpperCase())}
+                  onPin={onPin}
+                  onWatchlist={onWatchlist}
+                />
+              </td>
+              <td className={`${cellClass} text-right font-mono text-xs text-gain tabular-nums`}>
+                {candidate.highestConviction ?? candidate.aiConvictionScore}
+              </td>
+              <td className={`${cellClass} text-right text-[10px] text-text-muted`}>
+                {formatTimeOnly(candidate.peakTime ?? candidate.lastDetectedAt)}
+              </td>
+              <td className={`${cellClass} text-[11px] font-medium text-text-secondary`}>
+                {candidate.expiredOutcome ?? "Momentum Faded"}
+              </td>
+              <td className={`${cellClass} text-[11px] text-text-muted`}>
+                {candidate.expiredReason ?? candidate.reasonMissed ?? candidate.reason}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </ScrollTableWrapper>
+  );
+}
+
+function TradeOutcomesTable({ outcomes }: { outcomes: TradeOutcome[] }) {
+  if (outcomes.length === 0) return null;
+
+  const statusLabel: Record<TradeOutcome["currentStatus"], string> = {
+    target2_hit: "Target 2 Hit",
+    target1_hit: "Target 1 Hit",
+    stopped: "Stopped Out",
+    open: "Open",
+    breakeven: "Breakeven",
+  };
+
+  const visible = outcomes.slice(0, TABLE_MAX_VISIBLE_ROWS);
+
+  return (
+    <ScrollTableWrapper>
+      <table className="w-full min-w-[960px]">
+        <thead>
+          <tr className="border-b border-surface-border-subtle text-left">
+            <th className={headerClass}>#</th>
+            <th className={headerClass}>Stock</th>
+            <th className={`${headerClass} text-right`}>Entry</th>
+            <th className={`${headerClass} text-right`}>SL</th>
+            <th className={`${headerClass} text-right`}>T1</th>
+            <th className={`${headerClass} text-right`}>T2</th>
+            <th className={`${headerClass} text-right`}>Highest Gain</th>
+            <th className={`${headerClass} text-right`}>Max Drawdown</th>
+            <th className={headerClass}>Status</th>
+            <th className={`${headerClass} text-right`}>Grade</th>
+          </tr>
+        </thead>
+        <tbody>
+          {visible.map((outcome, index) => (
+            <tr
+              key={outcome.candidateId}
+              className="group border-b border-surface-border-subtle/50 transition-colors last:border-0 hover:bg-surface-hover/40"
+            >
+              <td className={cellClass}>
+                <RankBadge rank={index + 1} />
+              </td>
+              <td className={cellClass}>
+                <StockLink symbol={outcome.symbol}>
+                  <p className="text-xs font-semibold text-text-primary group-hover:text-accent">
+                    {outcome.symbol}
+                  </p>
+                </StockLink>
+              </td>
+              <td className={`${cellClass} text-right`}>
+                <Price value={outcome.entry} />
+              </td>
+              <td className={`${cellClass} text-right`}>
+                <Price value={outcome.stopLoss} />
+              </td>
+              <td className={`${cellClass} text-right`}>
+                <Price value={outcome.target1} />
+              </td>
+              <td className={`${cellClass} text-right`}>
+                <Price value={outcome.target2} />
+              </td>
+              <td className={`${cellClass} text-right font-mono text-xs text-gain tabular-nums`}>
+                +{outcome.highestGainPercent.toFixed(2)}%
+              </td>
+              <td className={`${cellClass} text-right font-mono text-xs text-loss tabular-nums`}>
+                {outcome.lowestDrawdownPercent.toFixed(2)}%
+              </td>
+              <td className={`${cellClass} text-[11px] text-text-muted`}>
+                {statusLabel[outcome.currentStatus]}
+              </td>
+              <td className={`${cellClass} text-right`}>
+                <Badge
+                  variant={
+                    outcome.tradeGrade === "A" || outcome.tradeGrade === "B" ? "gain" : "default"
+                  }
+                >
+                  {outcome.tradeGrade}
+                </Badge>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </ScrollTableWrapper>
+  );
+}
+
+function AIReviewSection({ reviews }: { reviews: AISelfReview[] }) {
+  if (reviews.length === 0) return null;
+
+  return (
+    <Card padding="md" className="border-surface-border-subtle/80">
+      <div className="mb-3">
+        <h3 className="text-sm font-semibold text-text-primary">AI Self Review</h3>
+        <p className="text-xs text-text-muted">
+          Retrospective analysis of completed trades from today&apos;s session
+        </p>
+      </div>
+      <div className="space-y-3">
+        {reviews.slice(0, TABLE_MAX_VISIBLE_ROWS).map((review) => (
+          <div
+            key={review.candidateId}
+            className="rounded-lg border border-surface-border-subtle/80 bg-surface-hover/20 p-3"
+          >
+            <p className="text-xs font-semibold text-text-primary">{review.symbol}</p>
+            <dl className="mt-2 space-y-1.5 text-[11px] text-text-muted">
+              <div>
+                <dt className="font-medium text-text-secondary">Why generated</dt>
+                <dd>{review.whyGenerated}</dd>
+              </div>
+              <div>
+                <dt className="font-medium text-text-secondary">What happened</dt>
+                <dd>{review.whatHappened}</dd>
+              </div>
+              <div>
+                <dt className="font-medium text-text-secondary">Entry improvement</dt>
+                <dd>{review.entryImprovement}</dd>
+              </div>
+              <div>
+                <dt className="font-medium text-text-secondary">Exit improvement</dt>
+                <dd>{review.exitImprovement}</dd>
+              </div>
+              <div>
+                <dt className="font-medium text-text-secondary">Lessons</dt>
+                <dd>{review.lessons}</dd>
+              </div>
+            </dl>
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
 
@@ -206,26 +1156,56 @@ function PostMarketSection({
   subtitle,
   candidates,
   emptyNote,
+  variant = "default",
+  pinned,
+  watchlisted,
+  onPin,
+  onWatchlist,
 }: {
   title: string;
   subtitle: string;
   candidates: OpportunityCandidate[];
   emptyNote?: string;
+  variant?: "default" | "expired" | "bestCall" | "watchlist";
+  pinned: Set<string>;
+  watchlisted: Set<string>;
+  onPin: (symbol: string) => void;
+  onWatchlist: (symbol: string) => void;
 }) {
   return (
     <Card padding="md" className="border-surface-border-subtle/80">
-      <div className="mb-3">
-        <h3 className="text-sm font-semibold text-text-primary">{title}</h3>
-        <p className="text-xs text-text-muted">{subtitle}</p>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-semibold text-text-primary">{title}</h3>
+          <p className="text-xs text-text-muted">{subtitle}</p>
+        </div>
+        {candidates.length > 0 && (
+          <span className="font-mono text-[10px] text-text-faint">({candidates.length})</span>
+        )}
       </div>
       {candidates.length > 0 ? (
-        <OpportunityTable candidates={candidates} />
+        variant === "expired" ? (
+          <ExpiredSetupsTable
+            candidates={candidates}
+            pinned={pinned}
+            watchlisted={watchlisted}
+            onPin={onPin}
+            onWatchlist={onWatchlist}
+          />
+        ) : (
+          <OpportunityTable
+            candidates={candidates}
+            variant={variant === "default" ? "default" : variant}
+            pinned={pinned}
+            watchlisted={watchlisted}
+            onPin={onPin}
+            onWatchlist={onWatchlist}
+          />
+        )
       ) : (
         <EmptySection
-          message={
-            emptyNote ??
-            "No stocks satisfied today's strict institutional filters."
-          }
+          headline={CATEGORY_EMPTY_HEADLINE}
+          message={emptyNote ?? CATEGORY_EMPTY_HEADLINE}
         />
       )}
     </Card>
@@ -338,7 +1318,19 @@ function MarketSummaryHighlights({ report }: { report: PostMarketReport }) {
   );
 }
 
-function PostMarketReports({ report }: { report: PostMarketReport }) {
+function PostMarketReports({
+  report,
+  pinned,
+  watchlisted,
+  onPin,
+  onWatchlist,
+}: {
+  report: PostMarketReport;
+  pinned: Set<string>;
+  watchlisted: Set<string>;
+  onPin: (symbol: string) => void;
+  onWatchlist: (symbol: string) => void;
+}) {
   return (
     <div className="mt-6 space-y-4 border-t border-surface-border-subtle pt-6">
       <div className="flex items-center gap-2">
@@ -357,19 +1349,46 @@ function PostMarketReports({ report }: { report: PostMarketReport }) {
           subtitle={POST_MARKET_SUBTITLES.tomorrowWatchlist}
           candidates={report.tomorrowWatchlist}
           emptyNote={report.sectionNotes?.tomorrowWatchlist}
+          variant="watchlist"
+          pinned={pinned}
+          watchlisted={watchlisted}
+          onPin={onPin}
+          onWatchlist={onWatchlist}
         />
         <PostMarketSection
-          title="Missed Opportunities"
+          title="Expired Setups"
           subtitle={POST_MARKET_SUBTITLES.missedOpportunities}
           candidates={report.missedOpportunities}
           emptyNote={report.sectionNotes?.missedOpportunities}
+          variant="expired"
+          pinned={pinned}
+          watchlisted={watchlisted}
+          onPin={onPin}
+          onWatchlist={onWatchlist}
         />
         <PostMarketSection
           title="Best Calls of the Day"
           subtitle={POST_MARKET_SUBTITLES.bestCallsOfDay}
           candidates={report.bestCallsOfDay}
           emptyNote={report.sectionNotes?.bestCallsOfDay}
+          variant="bestCall"
+          pinned={pinned}
+          watchlisted={watchlisted}
+          onPin={onPin}
+          onWatchlist={onWatchlist}
         />
+        {(report.tradeOutcomes?.length ?? 0) > 0 && (
+          <Card padding="md" className="border-surface-border-subtle/80">
+            <div className="mb-3">
+              <h3 className="text-sm font-semibold text-text-primary">Trade Outcomes</h3>
+              <p className="text-xs text-text-muted">
+                Session performance vs entry, stop, and target levels
+              </p>
+            </div>
+            <TradeOutcomesTable outcomes={report.tradeOutcomes ?? []} />
+          </Card>
+        )}
+        <AIReviewSection reviews={report.aiReviews ?? []} />
       </div>
     </div>
   );
@@ -379,11 +1398,49 @@ export function OpportunityEnginePanel({ initialState }: OpportunityEnginePanelP
   const [state, setState] = useState(initialState);
   const [activeCategory, setActiveCategory] = useState<OpportunityCategory>("intraday");
   const [scanning, setScanning] = useState(false);
+  const [pinned, setPinned] = useState<Set<string>>(() => readStoredSymbols(PIN_STORAGE_KEY));
+  const [watchlisted, setWatchlisted] = useState<Set<string>>(() =>
+    readStoredSymbols(WATCHLIST_STORAGE_KEY)
+  );
+  const [toast, setToast] = useState<string | null>(null);
 
-  const { candidates: activeCandidates, emptyNote } = useMemo(
+  const { candidates: activeCandidates, emptyNote, nearestCandidates } = useMemo(
     () => deriveCategoryCandidates(state, activeCategory),
     [state, activeCategory]
   );
+
+  const togglePin = useCallback((symbol: string) => {
+    setPinned((prev) => {
+      const next = new Set(prev);
+      const key = symbol.toUpperCase();
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      writeStoredSymbols(PIN_STORAGE_KEY, next);
+      return next;
+    });
+  }, []);
+
+  const toggleWatchlist = useCallback((symbol: string) => {
+    setWatchlisted((prev) => {
+      const next = new Set(prev);
+      const key = symbol.toUpperCase();
+      if (next.has(key)) {
+        next.delete(key);
+        setToast(`${key} removed from watchlist`);
+      } else {
+        next.add(key);
+        setToast(`${key} added to watchlist`);
+      }
+      writeStoredSymbols(WATCHLIST_STORAGE_KEY, next);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 2200);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   const refreshState = useCallback(async () => {
     const response = await fetch("/api/opportunities");
@@ -427,6 +1484,16 @@ export function OpportunityEnginePanel({ initialState }: OpportunityEnginePanelP
       <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-accent/5 blur-2xl" />
       <div className="pointer-events-none absolute -bottom-8 -left-8 h-24 w-24 rounded-full bg-gain/5 blur-2xl" />
 
+      {toast && (
+        <div className="absolute right-4 top-4 z-40 flex items-center gap-2 rounded-lg border border-accent/20 bg-surface-raised px-3 py-2 text-xs text-text-secondary shadow-lg">
+          <Bookmark className="h-3.5 w-3.5 text-accent" />
+          {toast}
+          <button type="button" onClick={() => setToast(null)} className="text-text-faint hover:text-text-secondary">
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      )}
+
       <CardHeader
         title="Continuous Opportunity Engine"
         subtitle={`Scanning ${state.universeSize.toLocaleString("en-IN")} NSE/BSE symbols · refreshes every 15 min during market hours`}
@@ -466,11 +1533,13 @@ export function OpportunityEnginePanel({ initialState }: OpportunityEnginePanelP
       <div className="mb-4 flex flex-wrap items-center gap-4 text-xs text-text-muted">
         <span className="inline-flex items-center gap-1.5">
           <Clock3 className="h-3.5 w-3.5" />
-          Last scanned: <strong className="text-text-secondary">{formatTimestamp(state.lastScannedAt)}</strong>
+          Last scanned:{" "}
+          <strong className="text-text-secondary">{formatTimestamp(state.lastScannedAt)}</strong>
         </span>
         {state.nextScanAt && !state.isFrozen && (
           <span>
-            Next scan: <strong className="text-text-secondary">{formatTimestamp(state.nextScanAt)}</strong>
+            Next scan:{" "}
+            <strong className="text-text-secondary">{formatTimestamp(state.nextScanAt)}</strong>
           </span>
         )}
         {state.lastScanMetrics && (
@@ -494,10 +1563,7 @@ export function OpportunityEnginePanel({ initialState }: OpportunityEnginePanelP
 
       <div className="mb-4 flex flex-wrap gap-1.5">
         {OPPORTUNITY_CATEGORIES.map((category) => {
-          const count =
-            category === "intraday"
-              ? deriveCategoryCandidates(state, "intraday").candidates.length
-              : (state.categories[category]?.length ?? 0);
+          const count = deriveCategoryCount(state, category);
           const isActive = activeCategory === category;
           return (
             <button
@@ -528,17 +1594,33 @@ export function OpportunityEnginePanel({ initialState }: OpportunityEnginePanelP
       </div>
 
       {activeCandidates.length > 0 ? (
-        <OpportunityTable candidates={activeCandidates} />
+        <OpportunityTable
+          candidates={activeCandidates}
+          pinned={pinned}
+          watchlisted={watchlisted}
+          onPin={togglePin}
+          onWatchlist={toggleWatchlist}
+        />
       ) : (
         <EmptySection
+          headline={CATEGORY_EMPTY_HEADLINE}
           message={
             emptyNote ??
             "No opportunities in this category yet. The next scan may surface candidates."
           }
+          nearestCandidates={nearestCandidates}
         />
       )}
 
-      {state.postMarket && <PostMarketReports report={state.postMarket} />}
+      {state.postMarket && (
+        <PostMarketReports
+          report={state.postMarket}
+          pinned={pinned}
+          watchlisted={watchlisted}
+          onPin={togglePin}
+          onWatchlist={toggleWatchlist}
+        />
+      )}
     </Card>
   );
 }

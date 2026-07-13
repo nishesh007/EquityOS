@@ -6,7 +6,7 @@ import {
   buildConfidenceReasons,
   formatConfidenceReasons,
 } from "@/lib/opportunity-engine/reasons";
-import { computeLiveAiConviction } from "@/lib/opportunity-engine/conviction";
+import { computeLiveAiConvictionResult } from "@/lib/opportunity-engine/conviction";
 import { generatePostMarketReport } from "@/lib/opportunity-engine/post-market";
 import {
   collectShortlistSymbols,
@@ -149,12 +149,13 @@ function toOpportunityCandidate(
   const levels = buildTradeLevels(price, candidate.side, candidate.category, atr ?? null);
   const now = new Date().toISOString();
   const metrics = fullMetrics ?? candidate.metrics;
-  const aiConvictionScore = computeLiveAiConviction(
+  const conviction = computeLiveAiConvictionResult(
     metrics,
     candidate.category,
     candidate.side,
     levels.riskReward
   );
+  const aiConvictionScore = conviction.finalScore;
   const confidenceReasons = buildConfidenceReasons(
     metrics,
     candidate.category,
@@ -182,6 +183,7 @@ function toOpportunityCandidate(
     confidencePercent: candidate.confidencePercent,
     reason,
     confidenceReasons,
+    convictionComponents: conviction.components,
     scanMetrics: metrics,
     firstDetectedAt: now,
     lastDetectedAt: now,

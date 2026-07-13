@@ -1,14 +1,22 @@
+import {
+  buildBestCallReasons,
+  computeBestCallScore,
+} from "@/lib/opportunity-engine/best-call";
 import type {
+  ExpiredSetupOutcome,
   OpportunityCandidate,
   OpportunityEngineState,
   ScanHistoryEntry,
 } from "@/lib/opportunity-engine/types";
 import { OPPORTUNITY_CATEGORIES } from "@/lib/opportunity-engine/types";
+import { collectExcludedSymbols } from "@/lib/opportunity-engine/deduplication";
 
 export const INTRADAY_DISPLAY_LIMIT = 18;
 export const BEST_CALLS_LIMIT = 5;
 export const TOMORROW_WATCHLIST_LIMIT = 15;
-export const MISSED_OPPORTUNITIES_LIMIT = 10;
+export const EXPIRED_SETUPS_LIMIT = 10;
+/** @deprecated Use EXPIRED_SETUPS_LIMIT */
+export const MISSED_OPPORTUNITIES_LIMIT = EXPIRED_SETUPS_LIMIT;
 
 export interface RankedCandidate extends OpportunityCandidate {
   compositeScore: number;
@@ -69,9 +77,67 @@ function volumeConfirmationScore(candidate: OpportunityCandidate): number {
   return 35;
 }
 
+function sectorStrengthScore(candidate: OpportunityCandidate): number {
+  const rs = num(candidate.scanMetrics, "relative_strength") ?? 50;
+  const changePercent = num(candidate.scanMetrics, "change_percent") ?? 0;
+  const direction = candidate.side === "Long" ? 1 : -1;
+  return clamp(50 + direction * (rs - 50) * 0.8 + direction * changePercent * 2, 0, 100);
+}
+
+function gapProbabilityScore(candidate: OpportunityCandidate): number {
+  const metrics = candidate.scanMetrics;
+  let score = 0;
+  const closingStrength = num(metrics, "closing_strength") ?? 0;
+  const volumeRatio = num(metrics, "volume_ratio") ?? 0;
+  const changePercent = num(metrics, "change_percent") ?? 0;
+  const priceToHigh = num(metrics, "price_to_52w_high") ?? 0;
+  const delivery = num(metrics, "delivery_percent") ?? 0;
+
+  if (closingStrength >= 70) score += 25;
+  else if (closingStrength >= 55) score += 15;
+
+  if (volumeRatio >= 1.8) score += 22;
+  else if (volumeRatio >= 1.3) score += 12;
+
+  if (changePercent >= 1.2 && candidate.side === "Long") score += 18;
+  else if (changePercent >= 0.6) score += 10;
+
+  if (priceToHigh >= 92 && priceToHigh < 100) score += 15;
+
+  if (delivery >= 35) score += 10;
+
+  return clamp(score, 0, 100);
+}
+
+function openingBias(candidate: OpportunityCandidate): string {
+  const closingStrength = num(candidate.scanMetrics, "closing_strength") ?? 50;
+  const changePercent = num(candidate.scanMetrics, "change_percent") ?? 0;
+  if (candidate.side === "Long") {
+    if (closingStrength >= 75 && changePercent >= 1) return "Gap-up bias";
+    if (closingStrength >= 60) return "Mild gap-up bias";
+    return "Neutral open";
+  }
+  if (closingStrength <= 30 && changePercent <= -1) return "Gap-down bias";
+  if (closingStrength <= 45) return "Mild gap-down bias";
+  return "Neutral open";
+}
+
+function expectedCatalyst(candidate: OpportunityCandidate): string {
+  const revenueGrowth = num(candidate.scanMetrics, "revenue_growth") ?? 0;
+  const fundamentalScore = num(candidate.scanMetrics, "fundamental_score") ?? 0;
+  const volumeRatio = num(candidate.scanMetrics, "volume_ratio") ?? 0;
+  const priceToHigh = num(candidate.scanMetrics, "price_to_52w_high") ?? 0;
+
+  if (revenueGrowth >= 15 && fundamentalScore >= 55) return "Earnings momentum";
+  if (priceToHigh >= 95) return "52-week breakout watch";
+  if (volumeRatio >= 2) return "Volume continuation";
+  if (candidate.category === "breakout") return "Breakout follow-through";
+  if (candidate.category === "momentum") return "Momentum extension";
+  return "Technical continuation";
+}
+
 /**
- * Composite rank score used to derive Intraday, Best Calls, and post-market lists.
- * Priority: AI Conviction + Technical + Liquidity + Volume + R/R + Freshness.
+ * Composite rank score used to derive Intraday and post-market pools.
  */
 export function computeCompositeScore(
   candidate: OpportunityCandidate,
@@ -141,66 +207,45 @@ export function buildBestCalls(
   limit = BEST_CALLS_LIMIT
 ): OpportunityCandidate[] {
   const intradaySymbols = new Set(intraday.map((c) => c.symbol.toUpperCase()));
-  const intradayTop5 = new Set(
-    intraday.slice(0, 5).map((c) => c.symbol.toUpperCase())
+
+  const scored = pool
+    .filter((c) => !intradaySymbols.has(c.symbol.toUpperCase()))
+    .map((candidate) => ({
+      candidate,
+      score: computeBestCallScore(candidate),
+    }))
+    .sort((a, b) => b.score - a.score);
+
+  const top = scored.slice(0, limit);
+
+  if (top.length >= limit) {
+    return withRanks(
+      top.map(({ candidate, score }) => ({
+        ...candidate,
+        bestCallScore: score,
+        bestCallReasons: buildBestCallReasons(candidate, scored),
+      }))
+    );
+  }
+
+  const used = new Set(top.map((entry) => entry.candidate.symbol.toUpperCase()));
+  const fallback = pool
+    .filter((c) => !intradaySymbols.has(c.symbol.toUpperCase()) && !used.has(c.symbol.toUpperCase()))
+    .filter((c) => c.category !== "intraday")
+    .sort((a, b) => b.aiConvictionScore - a.aiConvictionScore)
+    .map((candidate) => ({
+      candidate,
+      score: computeBestCallScore(candidate),
+    }));
+
+  const blended = [...top, ...fallback].slice(0, limit);
+  return withRanks(
+    blended.map(({ candidate, score }) => ({
+      ...candidate,
+      bestCallScore: score,
+      bestCallReasons: buildBestCallReasons(candidate, [...scored, ...fallback]),
+    }))
   );
-
-  const diversified: RankedCandidate[] = [];
-  let intradayPicks = 0;
-
-  for (const candidate of pool) {
-    const symbol = candidate.symbol.toUpperCase();
-    const isIntradayTop = intradayTop5.has(symbol);
-
-    if (isIntradayTop && intradayPicks >= 1) continue;
-    if (isIntradayTop) intradayPicks += 1;
-
-    diversified.push(candidate);
-    if (diversified.length >= limit * 3) break;
-  }
-
-  let selected = diversified.slice(0, limit);
-
-  if (selected.length < 3) {
-    selected = pool
-      .filter((c) => c.aiConvictionScore >= 70)
-      .slice(0, limit);
-  }
-
-  const isCopyOfIntraday =
-    selected.length > 0 &&
-    selected.length <= intraday.length &&
-    selected.every((c, i) => intraday[i]?.symbol.toUpperCase() === c.symbol.toUpperCase());
-
-  if (isCopyOfIntraday) {
-    const nonIntraday = pool.filter((c) => !intradaySymbols.has(c.symbol.toUpperCase()));
-    const blended = [...nonIntraday.slice(0, limit - 1), ...pool.slice(0, 1)];
-    selected = blended.slice(0, limit);
-  }
-
-  return withRanks(selected);
-}
-
-function tomorrowWatchlistScore(candidate: RankedCandidate): number {
-  const metrics = candidate.scanMetrics;
-  let score = candidate.compositeScore * 0.4;
-
-  const changePercent = num(metrics, "change_percent") ?? 0;
-  const priceToHigh = num(metrics, "price_to_52w_high") ?? 0;
-  const delivery = num(metrics, "delivery_percent") ?? 0;
-  const rs = num(metrics, "relative_strength") ?? 50;
-  const volumeRatio = num(metrics, "volume_ratio") ?? 0;
-  const trend = num(metrics, "trend_score") ?? 50;
-
-  if (changePercent >= 0.8) score += 12;
-  if (priceToHigh >= 95) score += 14;
-  if (delivery >= 35) score += 10;
-  if (rs >= 58) score += 10;
-  if (volumeRatio >= 1.4) score += 10;
-  if (trend >= 58) score += 8;
-  if (changePercent >= 1.2 && volumeRatio >= 1.3) score += 8;
-
-  return score;
 }
 
 export function buildTomorrowWatchlist(
@@ -209,77 +254,126 @@ export function buildTomorrowWatchlist(
 ): OpportunityCandidate[] {
   const intradaySymbols = new Set(intraday.map((c) => c.symbol.toUpperCase()));
 
-  const scoreCandidate = (candidate: RankedCandidate) => ({
-    candidate,
-    score: tomorrowWatchlistScore(candidate),
-  });
+  const candidates = pool.filter((c) => !intradaySymbols.has(c.symbol.toUpperCase()));
+  const source = candidates.length > 0 ? candidates : pool.filter((c) => c.category !== "intraday");
+  const finalPool = source.length > 0 ? source : pool;
 
-  const tiers = [
-    (c: RankedCandidate) =>
-      !intradaySymbols.has(c.symbol.toUpperCase()) &&
-      c.aiConvictionScore >= 68 &&
-      c.confidencePercent >= 60 &&
-      (num(c.scanMetrics, "trend_score") ?? 0) >= 55,
-    (c: RankedCandidate) =>
-      !intradaySymbols.has(c.symbol.toUpperCase()) &&
-      c.aiConvictionScore >= 60 &&
-      c.confidencePercent >= 52,
-    (c: RankedCandidate) => !intradaySymbols.has(c.symbol.toUpperCase()),
-    (c: RankedCandidate) => c.aiConvictionScore >= 55,
-  ];
+  const ranked = [...finalPool]
+    .map((candidate) => ({
+      candidate,
+      gapProbability: gapProbabilityScore(candidate),
+      sectorStrength: sectorStrengthScore(candidate),
+    }))
+    .sort(
+      (a, b) =>
+        b.gapProbability - a.gapProbability ||
+        b.candidate.aiConvictionScore - a.candidate.aiConvictionScore ||
+        b.sectorStrength - a.sectorStrength
+    )
+    .slice(0, TOMORROW_WATCHLIST_LIMIT)
+    .map(({ candidate, gapProbability, sectorStrength }) => ({
+      ...candidate,
+      gapProbability,
+      sectorStrength,
+      openingBias: openingBias(candidate),
+      expectedCatalyst: expectedCatalyst(candidate),
+    }));
 
-  for (const filter of tiers) {
-    const filtered = pool.filter(filter);
-    if (filtered.length > 0) {
-      const ranked = filtered
-        .map(scoreCandidate)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, TOMORROW_WATCHLIST_LIMIT)
-        .map((entry) => entry.candidate);
-      return withRanks(ranked);
-    }
-  }
-
-  return withRanks(pool.slice(0, TOMORROW_WATCHLIST_LIMIT));
+  return withRanks(ranked);
 }
 
-function buildMissedReason(candidate: OpportunityCandidate): string {
-  const parts: string[] = [];
-  if (candidate.previousRank !== null && candidate.rank > candidate.previousRank) {
-    parts.push(`Rank fell from #${candidate.previousRank} to #${candidate.rank}`);
-  } else {
-    parts.push("Setup faded after early-session trigger");
-  }
-  parts.push(`Peak conviction ${candidate.aiConvictionScore}`);
-  return parts.join(" · ");
+function peakConviction(candidate: OpportunityCandidate): number {
+  return Math.max(
+    candidate.highestConviction ?? candidate.aiConvictionScore,
+    candidate.aiConvictionScore
+  );
 }
 
-export function buildMissedOpportunities(
+function moveAfterSignal(candidate: OpportunityCandidate): number {
+  if (candidate.moveAfterSignalPercent !== undefined) {
+    return candidate.moveAfterSignalPercent;
+  }
+  const changePercent = num(candidate.scanMetrics, "change_percent") ?? 0;
+  return candidate.side === "Long" ? changePercent : -changePercent;
+}
+
+function deriveExpiredOutcome(
+  candidate: OpportunityCandidate,
+  scannedAt: Date
+): { outcome: ExpiredSetupOutcome; reason: string } {
+  const move = moveAfterSignal(candidate);
+  const peak = peakConviction(candidate);
+  const current = candidate.aiConvictionScore;
+  const adx = num(candidate.scanMetrics, "adx") ?? 0;
+  const volumeRatio = num(candidate.scanMetrics, "volume_ratio") ?? 0;
+  const priceToHigh = num(candidate.scanMetrics, "price_to_52w_high") ?? 0;
+
+  if (move >= candidate.riskReward * 1.5 && candidate.side === "Long") {
+    return { outcome: "Target Hit", reason: "Target zone reached before signal weakened" };
+  }
+  if (move <= -2.5) {
+    return { outcome: "Stopped Out", reason: "Stop loss hit" };
+  }
+  if (peak - current >= 12) {
+    return { outcome: "Conviction Dropped", reason: "Conviction dropped" };
+  }
+  if (adx < 20 && Math.abs(move) < 0.8) {
+    return { outcome: "Range Bound", reason: "Range bound — no follow-through" };
+  }
+  if (
+    candidate.category === "breakout" &&
+    priceToHigh < 90 &&
+    move < 0.5
+  ) {
+    return { outcome: "Breakout Failed", reason: "Breakout failed" };
+  }
+  if (priceToHigh >= 95 && move < 0.3 && candidate.side === "Long") {
+    return { outcome: "Rejected at Resistance", reason: "Rejected at resistance" };
+  }
+  if (Math.abs(move) < 0.5 && volumeRatio < 1.1) {
+    return { outcome: "Target Never Triggered", reason: "Target never triggered" };
+  }
+  if (hoursActive(candidate, scannedAt) >= 2 && move < 1) {
+    return { outcome: "Momentum Faded", reason: "Momentum faded" };
+  }
+
+  return { outcome: "Momentum Faded", reason: "Momentum faded" };
+}
+
+export function buildExpiredSetups(
   pool: RankedCandidate[],
   bestCalls: OpportunityCandidate[],
   intraday: OpportunityCandidate[],
   scanHistory: ScanHistoryEntry[],
   scannedAt: Date
 ): OpportunityCandidate[] {
-  if (scanHistory.length === 0) return [];
+  const exclude = collectExcludedSymbols([bestCalls, intraday.slice(0, 5)]);
 
-  const exclude = new Set([
-    ...bestCalls.map((c) => c.symbol.toUpperCase()),
-    ...intraday.slice(0, 5).map((c) => c.symbol.toUpperCase()),
-  ]);
-
-  const intradaySymbols = new Set(intraday.map((c) => c.symbol.toUpperCase()));
+  const enrich = (candidate: RankedCandidate): OpportunityCandidate => {
+    const { outcome, reason } = deriveExpiredOutcome(candidate, scannedAt);
+    return {
+      ...candidate,
+      highestConviction: peakConviction(candidate),
+      moveAfterSignalPercent: moveAfterSignal(candidate),
+      peakTime: candidate.lastDetectedAt,
+      expiredOutcome: outcome,
+      expiredReason: reason,
+      reasonMissed: reason,
+      reason: reason,
+    };
+  };
 
   const tiers = [
     () =>
       pool.filter((c) => {
         if (exclude.has(c.symbol.toUpperCase())) return false;
+        const move = moveAfterSignal(c);
         return (
           hoursActive(c, scannedAt) >= 1.5 &&
           c.previousRank !== null &&
           c.previousRank <= 8 &&
-          c.rank > c.previousRank + 2 &&
-          c.aiConvictionScore >= 68
+          move >= 1 &&
+          peakConviction(c) >= 68
         );
       }),
     () =>
@@ -287,19 +381,24 @@ export function buildMissedOpportunities(
         if (exclude.has(c.symbol.toUpperCase())) return false;
         return (
           hoursActive(c, scannedAt) >= 2 &&
-          c.aiConvictionScore >= 72 &&
-          !intradaySymbols.has(c.symbol.toUpperCase())
+          peakConviction(c) >= 72 &&
+          moveAfterSignal(c) >= 0.8
         );
       }),
     () =>
       pool.filter((c) => {
         if (exclude.has(c.symbol.toUpperCase())) return false;
-        return c.previousRank !== null && c.rank > c.previousRank && c.aiConvictionScore >= 65;
+        return c.previousRank !== null && c.rank > c.previousRank && peakConviction(c) >= 65;
       }),
     () =>
       pool.filter((c) => {
         if (exclude.has(c.symbol.toUpperCase())) return false;
-        return c.aiConvictionScore >= 66;
+        return peakConviction(c) >= 66 && moveAfterSignal(c) >= 0.5;
+      }),
+    () =>
+      pool.filter((c) => {
+        if (exclude.has(c.symbol.toUpperCase())) return false;
+        return peakConviction(c) >= 60;
       }),
   ];
 
@@ -308,18 +407,34 @@ export function buildMissedOpportunities(
     if (matches.length > 0) {
       const ranked = [...matches]
         .sort((a, b) => {
-          const rankDropA = (a.previousRank ?? a.rank) - a.rank;
-          const rankDropB = (b.previousRank ?? b.rank) - b.rank;
-          return rankDropB - rankDropA || b.aiConvictionScore - a.aiConvictionScore;
+          const moveA = moveAfterSignal(a);
+          const moveB = moveAfterSignal(b);
+          return moveB - moveA || peakConviction(b) - peakConviction(a);
         })
-        .slice(0, MISSED_OPPORTUNITIES_LIMIT)
-        .map((candidate) => ({
-          ...candidate,
-          reason: buildMissedReason(candidate),
-        }));
+        .slice(0, EXPIRED_SETUPS_LIMIT)
+        .map(enrich);
       return withRanks(ranked);
     }
   }
 
-  return [];
+  if (scanHistory.length === 0 && pool.length === 0) return [];
+
+  const fallback = pool
+    .filter((c) => !exclude.has(c.symbol.toUpperCase()))
+    .sort((a, b) => moveAfterSignal(b) - moveAfterSignal(a))
+    .slice(0, EXPIRED_SETUPS_LIMIT)
+    .map(enrich);
+
+  return withRanks(fallback);
+}
+
+/** @deprecated Use buildExpiredSetups */
+export function buildMissedOpportunities(
+  pool: RankedCandidate[],
+  bestCalls: OpportunityCandidate[],
+  intraday: OpportunityCandidate[],
+  scanHistory: ScanHistoryEntry[],
+  scannedAt: Date
+): OpportunityCandidate[] {
+  return buildExpiredSetups(pool, bestCalls, intraday, scanHistory, scannedAt);
 }

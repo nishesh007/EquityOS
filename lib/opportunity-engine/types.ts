@@ -1,4 +1,18 @@
+import type { ConvictionComponents } from "@/lib/opportunity-engine/conviction";
+import type { AISelfReview } from "@/lib/opportunity-engine/ai-review";
+import type { ConfidenceReasonContribution } from "@/lib/opportunity-engine/reasons";
+import type { TradeOutcome } from "@/lib/opportunity-engine/trade-outcome";
 import type { EnrichedQuote } from "@/lib/market-data/enriched-quote";
+
+export type ExpiredSetupOutcome =
+  | "Target Hit"
+  | "Stopped Out"
+  | "Momentum Faded"
+  | "Range Bound"
+  | "Rejected at Resistance"
+  | "Breakout Failed"
+  | "Target Never Triggered"
+  | "Conviction Dropped";
 
 export type OpportunityCategory =
   | "intraday"
@@ -56,7 +70,22 @@ export interface OpportunityCandidate {
   confidencePercent: number;
   reason: string;
   confidenceReasons?: string[];
+  confidenceReasonContributions?: ConfidenceReasonContribution[];
+  convictionComponents?: ConvictionComponents;
   scanMetrics?: Record<string, number | string | null>;
+  bestCallScore?: number;
+  bestCallReasons?: string[];
+  highestConviction?: number;
+  moveAfterSignalPercent?: number;
+  reasonMissed?: string;
+  expiredOutcome?: ExpiredSetupOutcome;
+  expiredReason?: string;
+  peakTime?: string;
+  gapProbability?: number;
+  openingBias?: string;
+  expectedCatalyst?: string;
+  sectorStrength?: number;
+  nearestFilterFailures?: string[];
   firstDetectedAt: string;
   lastDetectedAt: string;
   lastUpdatedAt: string;
@@ -84,6 +113,8 @@ export interface PostMarketReport {
   tomorrowWatchlist: OpportunityCandidate[];
   missedOpportunities: OpportunityCandidate[];
   bestCallsOfDay: OpportunityCandidate[];
+  tradeOutcomes?: TradeOutcome[];
+  aiReviews?: AISelfReview[];
   marketSummary?: PostMarketMarketSummary;
   sectionNotes?: Partial<Record<"tomorrowWatchlist" | "missedOpportunities" | "bestCallsOfDay", string>>;
   generatedAt: string;
