@@ -733,3 +733,30 @@ export type {
   VersionHealthScore,
   MigrationPlan,
 } from "./versioning";
+
+/** Prompt 9F.25 Institutional Validation Security & Access Control Engine. */
+export {
+  registerSecurity,
+  registerValidationSecurityEngine,
+  getValidationSecurityEngine,
+  resetValidationSecurityEngine,
+  ValidationSecurityEngine,
+  authorize,
+  validateAccess,
+  evaluatePolicy,
+  createSecuritySnapshot,
+  getSecurityMetrics,
+  DEFAULT_SECURITY_CONFIGURATION,
+  resolveSecurityConfiguration,
+} from "./security";
+
+export type {
+  SecurityConfiguration,
+  SecurityConfigurationInput,
+  SecuritySnapshot,
+  SecurityOperationalMetrics,
+  SecurityHealthScore,
+  AuthorizeOptions,
+  AuthorizeResult,
+  SecurityContext,
+} from "./security";

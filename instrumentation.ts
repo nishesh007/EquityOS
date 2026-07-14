@@ -136,5 +136,11 @@ export async function register() {
       "@/src/core/dataIntegrity/versioning"
     );
     registerValidationVersioningEngine();
+
+    // Sprint 9F.25 — idempotent Validation Security & Access Control Engine registration
+    const { registerSecurity } = await import(
+      "@/src/core/dataIntegrity/security"
+    );
+    registerSecurity();
   }
 }
