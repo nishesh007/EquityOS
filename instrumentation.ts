@@ -190,5 +190,11 @@ export async function register() {
       "@/src/core/earnings/data"
     );
     registerEarningsData();
+
+    // Sprint 9B.2 — idempotent Institutional Financial Statement Parser registration
+    const { registerFinancialParser } = await import(
+      "@/src/core/earnings/parser"
+    );
+    registerFinancialParser();
   }
 }
