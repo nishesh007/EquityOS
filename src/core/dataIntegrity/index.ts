@@ -471,3 +471,33 @@ export type {
   ReportSnapshot,
   GenerateReportOptions,
 } from "./reporting";
+
+/** Prompt 9F.16 Institutional Validation Developer Tools & Diagnostics Engine. */
+export {
+  registerValidationDiagnosticsEngine,
+  getValidationDiagnosticsEngine,
+  resetValidationDiagnosticsEngine,
+  ValidationDiagnosticsEngine,
+  runDiagnostics,
+  inspectRules,
+  inspectPipeline,
+  generateTrace,
+  profileValidation,
+  getDiagnosticsHealth,
+  createDiagnosticsSnapshot,
+  generateDiagnosticsReport,
+  DEFAULT_DIAGNOSTICS_CONFIGURATION,
+  resolveDiagnosticsConfiguration,
+  registerDiagnosticsSource,
+} from "./diagnostics";
+
+export type {
+  DiagnosticsConfiguration,
+  DiagnosticsConfigurationInput,
+  DiagnosticsMode,
+  DiagnosticsReport,
+  DiagnosticsSnapshot,
+  DiagnosticsRunResult,
+  RunDiagnosticsOptions,
+  DiagnosticsProbe,
+} from "./diagnostics";
