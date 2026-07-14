@@ -178,5 +178,11 @@ export async function register() {
       "@/src/core/dataIntegrity/documentation"
     );
     registerDocumentation();
+
+    // Sprint 9F.32 — idempotent Institutional Validation Platform final integration
+    const { registerValidationPlatform } = await import(
+      "@/src/core/dataIntegrity/platform"
+    );
+    registerValidationPlatform();
   }
 }
