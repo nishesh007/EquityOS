@@ -7,6 +7,7 @@ import { UpcomingResultsCalendar } from "@/components/dashboard/UpcomingResultsC
 import { MarketPulse } from "@/components/dashboard/MarketPulse";
 import { MarketBreadth } from "@/components/dashboard/MarketBreadth";
 import { OpportunityEnginePanel } from "@/components/dashboard/OpportunityEnginePanel";
+import { InstitutionalPortfolioPanel } from "@/components/dashboard/institutional/InstitutionalPortfolioPanel";
 import {
   fetchMarketIndices,
   fetchPortfolioSummary,
@@ -20,6 +21,7 @@ import {
   fetchMarketPulse,
 } from "@/services/researchDashboardData";
 import { fetchOpportunityEngineState } from "@/services/opportunityEngine";
+import { fetchPortfolioDoctorAnalysis } from "@/services/portfolioAnalysisData";
 
 export default async function DashboardPage() {
   const [
@@ -32,6 +34,7 @@ export default async function DashboardPage() {
     pulse,
     breadth,
     opportunityState,
+    doctorAnalysis,
   ] = await Promise.all([
     fetchMarketIndices(),
     fetchPortfolioSummary(),
@@ -42,6 +45,7 @@ export default async function DashboardPage() {
     fetchMarketPulse(),
     fetchMarketBreadth(),
     fetchOpportunityEngineState(),
+    fetchPortfolioDoctorAnalysis(),
   ]);
 
   return (
@@ -78,7 +82,16 @@ export default async function DashboardPage() {
       </section>
 
       <section className="mb-6 grid animate-fade-in-up grid-cols-1 gap-6 [animation-delay:300ms] xl:grid-cols-2">
-        <PortfolioSummary portfolio={portfolio} />
+        <div className="space-y-4">
+          <PortfolioSummary portfolio={portfolio} />
+          <InstitutionalPortfolioPanel
+            portfolio={portfolio}
+            doctor={doctorAnalysis}
+            compact
+            showReportViewer={false}
+            title="Dashboard · Portfolio Health"
+          />
+        </div>
         <Watchlist initialItems={watchlist} />
       </section>
 

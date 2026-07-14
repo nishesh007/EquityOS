@@ -1,5 +1,5 @@
 /**
- * Institutional history + report viewer UI barrel.
+ * Institutional history + report viewer + portfolio UI barrel.
  */
 
 export { InstitutionalTimelinePanel } from "./InstitutionalTimelinePanel";
@@ -21,3 +21,15 @@ export { ReportTableOfContents } from "./ReportTableOfContents";
 export { ReportMetadataPanel } from "./ReportMetadataPanel";
 export { ReportFooter } from "./ReportFooter";
 export { ReportSharePlaceholder } from "./ReportSharePlaceholder";
+
+export { InstitutionalPortfolioPanel } from "./InstitutionalPortfolioPanel";
+export { PortfolioHealthCard } from "./PortfolioHealthCard";
+export { PortfolioValidationPanel } from "./PortfolioValidationPanel";
+export { PortfolioTrustPanel } from "./PortfolioTrustPanel";
+export { PortfolioRiskPanel } from "./PortfolioRiskPanel";
+export { PortfolioDiversificationPanel } from "./PortfolioDiversificationPanel";
+export { PortfolioSectorExposure } from "./PortfolioSectorExposure";
+export { PortfolioQualityMatrix } from "./PortfolioQualityMatrix";
+export { PortfolioHeatmap } from "./PortfolioHeatmap";
+export { PortfolioRecommendationPanel } from "./PortfolioRecommendationPanel";
+export { PortfolioInstitutionalBadges } from "./PortfolioInstitutionalBadges";

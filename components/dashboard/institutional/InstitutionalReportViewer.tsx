@@ -22,11 +22,16 @@ import { ReportMetadataPanel } from "@/components/dashboard/institutional/Report
 import { ReportFooter } from "@/components/dashboard/institutional/ReportFooter";
 import { ReportSharePlaceholder } from "@/components/dashboard/institutional/ReportSharePlaceholder";
 import { ReportExportToolbar } from "@/components/reporting/ReportExportToolbar";
+import { PortfolioHealthCard } from "@/components/dashboard/institutional/PortfolioHealthCard";
+import { buildPortfolioHealth } from "@/lib/dashboard/institutional-portfolio-presentation";
+import type { PortfolioDoctorAnalysis, PortfolioSummary } from "@/types";
 
 export function InstitutionalReportViewer({
   report = null,
   snapshot = null,
   candidate = null,
+  portfolio = null,
+  doctor = null,
   role = "subscriber",
   subscriptionTier = "pro",
   userId = "dashboard-user",
@@ -37,6 +42,8 @@ export function InstitutionalReportViewer({
   report?: InstitutionalReport | null;
   snapshot?: InstitutionalPlatformSnapshot | null;
   candidate?: InstitutionalCandidateView | null;
+  portfolio?: PortfolioSummary | null;
+  doctor?: PortfolioDoctorAnalysis | null;
   role?: ExportUserRole;
   subscriptionTier?: SubscriptionTier;
   userId?: string;
@@ -62,6 +69,11 @@ export function InstitutionalReportViewer({
       }),
     [report, snapshot, candidate, subject]
   );
+
+  const portfolioHealth = useMemo(() => {
+    if (!portfolio && !doctor) return null;
+    return buildPortfolioHealth({ portfolio, doctor, snapshot });
+  }, [portfolio, doctor, snapshot]);
 
   const navigate = useCallback((id: string) => {
     setActiveId(id);
@@ -224,6 +236,12 @@ export function InstitutionalReportViewer({
                 )}
               </ReportSectionCard>
             ))}
+
+          {portfolioHealth ? (
+            <div data-testid="report-portfolio-health">
+              <PortfolioHealthCard health={portfolioHealth} />
+            </div>
+          ) : null}
 
           <ReportMetadataPanel metadata={model.metadata} />
           <ReportFooter footer={model.footer} />

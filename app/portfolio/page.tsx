@@ -2,6 +2,7 @@ import { PortfolioSummary } from "@/components/dashboard/PortfolioSummary";
 import { PortfolioHoldingsTable } from "@/components/dashboard/PortfolioHoldingsTable";
 import { Watchlist } from "@/components/dashboard/Watchlist";
 import { PortfolioDoctor } from "@/components/portfolio/PortfolioDoctor";
+import { InstitutionalPortfolioPanel } from "@/components/dashboard/institutional/InstitutionalPortfolioPanel";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { fetchPortfolioSummary, fetchWatchlist } from "@/services/marketData";
 import { fetchPortfolioDoctorAnalysis } from "@/services/portfolioAnalysisData";
@@ -21,6 +22,14 @@ export default async function PortfolioPage() {
       />
 
       <section className="mb-6 animate-fade-in-up">
+        <InstitutionalPortfolioPanel
+          portfolio={portfolio}
+          doctor={doctorAnalysis}
+          title="Institutional Portfolio Management"
+        />
+      </section>
+
+      <section className="mb-6 animate-fade-in-up [animation-delay:40ms]">
         <PortfolioSummary
           portfolio={portfolio}
           showTopHoldings={false}
