@@ -589,3 +589,32 @@ export type {
   ReliabilityOperationalMetrics,
   CircuitBreakerStatus,
 } from "./reliability";
+
+/** Prompt 9F.20 Institutional Validation Observability & Telemetry Engine. */
+export {
+  registerValidationObservabilityEngine,
+  getValidationObservabilityEngine,
+  resetValidationObservabilityEngine,
+  ValidationObservabilityEngine,
+  collectTelemetry,
+  collectMetrics,
+  collectTrace,
+  collectEvent,
+  exportTelemetry,
+  getObservabilityMetrics,
+  createTelemetrySnapshot,
+  DEFAULT_TELEMETRY_CONFIGURATION,
+  resolveTelemetryConfiguration,
+  registerTelemetrySource,
+} from "./observability";
+
+export type {
+  TelemetryConfiguration,
+  TelemetryConfigurationInput,
+  TelemetrySnapshot,
+  TelemetrySample,
+  TelemetryCollectionResult,
+  CollectTelemetryOptions,
+  ObservabilityOperationalMetrics,
+  TelemetryExportModel,
+} from "./observability";
