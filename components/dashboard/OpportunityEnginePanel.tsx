@@ -4,7 +4,17 @@ import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { StockLink } from "@/components/ui/StockLink";
 import { SchedulerHealthCard } from "@/components/dashboard/SchedulerHealthCard";
+import { InstitutionalTrustBadges } from "@/components/dashboard/opportunity-intelligence/InstitutionalTrustBadges";
+import { InstitutionalValidationPanel } from "@/components/dashboard/opportunity-intelligence/InstitutionalValidationPanel";
+import { OpportunityExplainabilityDrawer } from "@/components/dashboard/opportunity-intelligence/OpportunityExplainabilityDrawer";
+import { PostMarketCertificationStrip } from "@/components/dashboard/opportunity-intelligence/PostMarketCertificationStrip";
+import { TomorrowWatchlistMetaHeader } from "@/components/dashboard/opportunity-intelligence/TomorrowWatchlistMetaHeader";
 import { bestCallStarRating, buildBestCallScoreBreakdown } from "@/lib/opportunity-engine/best-call";
+import {
+  buildInstitutionalCandidateView,
+  buildTomorrowWatchlistMeta,
+  type InstitutionalPlatformSnapshot,
+} from "@/lib/opportunity-engine/institutional-presentation";
 import {
   CONVICTION_POSITIVE_DRIVER_LABELS,
   resolveConvictionDisplayBreakdown,
@@ -54,7 +64,7 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 interface OpportunityEnginePanelProps {
   initialState: OpportunityEngineState;
@@ -213,7 +223,13 @@ function DriverBreakdownSections({
   );
 }
 
-function ConvictionPopup({ candidate }: { candidate: OpportunityCandidate }) {
+function ConvictionPopup({
+  candidate,
+  onInspect,
+}: {
+  candidate: OpportunityCandidate;
+  onInspect?: (candidate: OpportunityCandidate) => void;
+}) {
   const [open, setOpen] = useState(false);
   const popupRef = useRef<HTMLDivElement>(null);
   const breakdown = resolveConvictionDisplayBreakdown(candidate);
@@ -242,18 +258,24 @@ function ConvictionPopup({ candidate }: { candidate: OpportunityCandidate }) {
     <div className="relative inline-block text-right" ref={popupRef}>
       <button
         type="button"
-        onClick={() => setOpen((value) => !value)}
-        title="Tap for conviction breakdown"
+        onClick={() => {
+          if (onInspect) {
+            onInspect(candidate);
+            return;
+          }
+          setOpen((value) => !value);
+        }}
+        title="Open institutional AI conviction analysis"
         className="group/conviction rounded px-1 py-0.5 transition hover:bg-surface-hover/60"
       >
         <span className="font-mono text-xs font-medium text-gain tabular-nums">
           {candidate.aiConvictionScore}
         </span>
         <span className="block text-[9px] text-text-faint group-hover/conviction:text-text-muted">
-          Tap for Breakdown
+          Tap for Analysis
         </span>
       </button>
-      {open && (
+      {open && !onInspect && (
         <div className="absolute right-0 z-30 mt-1 w-56 rounded-lg border border-surface-border bg-surface-raised p-3 shadow-lg">
           <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-text-faint">
             AI Conviction Breakdown
@@ -672,6 +694,8 @@ function OpportunityTable({
   onPin,
   onWatchlist,
   onCopy,
+  platformSnapshot = null,
+  onInspect,
 }: {
   candidates: OpportunityCandidate[];
   variant?: "default" | "bestCall" | "watchlist";
@@ -680,6 +704,8 @@ function OpportunityTable({
   onPin: (symbol: string) => void;
   onWatchlist: (symbol: string) => void;
   onCopy?: (symbol: string) => void;
+  platformSnapshot?: InstitutionalPlatformSnapshot | null;
+  onInspect?: (candidate: OpportunityCandidate) => void;
 }) {
   const defaultSort: SortKey =
     variant === "bestCall" ? "bestCallScore" : variant === "watchlist" ? "gapProbability" : "rank";
@@ -693,7 +719,7 @@ function OpportunityTable({
   if (variant === "watchlist") {
     return (
       <ScrollTableWrapper>
-        <table className="w-full min-w-[960px]">
+        <table className="w-full min-w-[1280px]">
           <thead>
             <tr className="border-b border-surface-border-subtle text-left">
               <th className={headerClass}>
@@ -712,101 +738,116 @@ function OpportunityTable({
                   onClick={() => toggleSort("symbol")}
                 />
               </th>
+              <th className={`${headerClass} text-right`}>Generated</th>
+              <th className={`${headerClass} text-right`}>Valid Until</th>
+              <th className={headerClass}>Holding</th>
               <th className={`${headerClass} text-right`}>
                 <SortButton
-                  label="Entry"
-                  active={sortKey === "entry"}
-                  direction={sortDirection}
-                  onClick={() => toggleSort("entry")}
-                  align="right"
-                />
-              </th>
-              <th className={`${headerClass} text-right`}>Stop</th>
-              <th className={`${headerClass} text-right`}>Targets</th>
-              <th className={`${headerClass} text-right`}>
-                <SortButton
-                  label="Gap Probability"
-                  active={sortKey === "gapProbability"}
-                  direction={sortDirection}
-                  onClick={() => toggleSort("gapProbability")}
-                  align="right"
-                />
-              </th>
-              <th className={headerClass}>Opening Bias</th>
-              <th className={headerClass}>Expected Catalyst</th>
-              <th className={`${headerClass} text-right`}>
-                <SortButton
-                  label="Confidence"
+                  label="AI Confidence"
                   active={sortKey === "confidencePercent"}
                   direction={sortDirection}
                   onClick={() => toggleSort("confidencePercent")}
                   align="right"
                 />
               </th>
+              <th className={`${headerClass} text-right`}>Trust</th>
+              <th className={`${headerClass} text-right`}>Validation</th>
+              <th className={headerClass}>Risk</th>
+              <th className={`${headerClass} text-right`}>
+                <SortButton
+                  label="Probability"
+                  active={sortKey === "gapProbability"}
+                  direction={sortDirection}
+                  onClick={() => toggleSort("gapProbability")}
+                  align="right"
+                />
+              </th>
+              <th className={headerClass}>Catalyst</th>
+              <th className={headerClass}>Reason Summary</th>
             </tr>
           </thead>
           <tbody>
-            {sorted.map((candidate) => (
-              <tr
-                key={candidate.id}
-                className="group border-b border-surface-border-subtle/50 transition-colors last:border-0 hover:bg-surface-hover/40"
-              >
-                <td className={cellClass}>
-                  <RankBadge rank={candidate.rank} />
-                </td>
-                <td className={cellClass}>
-                  <StockLink symbol={candidate.symbol}>
-                    <p className="text-xs font-semibold text-text-primary group-hover:text-accent">
-                      {candidate.symbol}
-                    </p>
-                    <p className="max-w-[140px] truncate text-[10px] text-text-muted">
-                      {candidate.company}
-                    </p>
-                  </StockLink>
-                  <StockActions
-                    symbol={candidate.symbol}
-                    pinned={pinned.has(candidate.symbol.toUpperCase())}
-                    watchlisted={watchlisted.has(candidate.symbol.toUpperCase())}
-                    onPin={onPin}
-                    onWatchlist={onWatchlist}
-                    onCopy={onCopy}
-                  />
-                </td>
-                <td className={`${cellClass} text-right`}>
-                  <span className="font-mono text-xs text-text-secondary tabular-nums">
-                    ₹{candidate.entryZone.low.toLocaleString("en-IN")}–
-                    {candidate.entryZone.high.toLocaleString("en-IN")}
-                  </span>
-                </td>
-                <td className={`${cellClass} text-right`}>
-                  <Price value={candidate.stopLoss} />
-                </td>
-                <td className={`${cellClass} text-right font-mono text-xs text-text-secondary tabular-nums`}>
-                  <Price value={candidate.target1} />
-                  <span className="mx-1 text-text-faint">/</span>
-                  <Price value={candidate.target2} />
-                </td>
-                <td className={`${cellClass} text-right`}>
-                  <div className="flex flex-col items-end gap-0.5">
-                    <Badge variant={gapLevelVariant(candidate.gapProbabilityLevel)}>
-                      {candidate.gapProbabilityLevel ?? "Low"}
-                    </Badge>
-                    <span className="font-mono text-[10px] text-text-muted tabular-nums">
-                      {candidate.gapProbability ?? 0}%
-                    </span>
-                  </div>
-                </td>
-                <td className={`${cellClass} text-[11px] text-text-muted`}>
-                  {candidate.openingBias ?? "Neutral open"}
-                </td>
-                <td className={`${cellClass} text-[11px] text-text-muted`}>
-                  {candidate.expectedCatalyst ?? "Sector Rotation"}
-                </td>
-                <td className={`${cellClass} text-right`}>
-                  <ConfidenceBreakdown candidate={candidate} />
-                </td>
-              </tr>
-            ))}
+            {sorted.map((candidate) => {
+              const view = buildInstitutionalCandidateView(
+                candidate,
+                platformSnapshot,
+                null
+              );
+              return (
+                <tr
+                  key={candidate.id}
+                  className="group border-b border-surface-border-subtle/50 transition-colors last:border-0 hover:bg-surface-hover/40"
+                >
+                  <td className={cellClass}>
+                    <RankBadge rank={candidate.rank} />
+                  </td>
+                  <td className={cellClass}>
+                    <StockLink symbol={candidate.symbol}>
+                      <p className="text-xs font-semibold text-text-primary group-hover:text-accent">
+                        {candidate.symbol}
+                      </p>
+                      <p className="max-w-[140px] truncate text-[10px] text-text-muted">
+                        {candidate.company}
+                      </p>
+                    </StockLink>
+                    <InstitutionalTrustBadges badges={view.badges.slice(0, 3)} compact />
+                    <StockActions
+                      symbol={candidate.symbol}
+                      pinned={pinned.has(candidate.symbol.toUpperCase())}
+                      watchlisted={watchlisted.has(candidate.symbol.toUpperCase())}
+                      onPin={onPin}
+                      onWatchlist={onWatchlist}
+                      onCopy={onCopy}
+                    />
+                  </td>
+                  <td className={`${cellClass} text-right font-mono text-[10px] text-text-muted`}>
+                    {formatTimeOnly(candidate.firstDetectedAt)}
+                  </td>
+                  <td className={`${cellClass} text-right font-mono text-[10px] text-text-muted`}>
+                    {candidate.timeHorizon ?? "Session"}
+                  </td>
+                  <td className={`${cellClass} text-[11px] text-text-muted`}>
+                    {candidate.timeHorizon ?? "Intraday"}
+                  </td>
+                  <td className={`${cellClass} text-right`}>
+                    <button
+                      type="button"
+                      onClick={() => onInspect?.(candidate)}
+                      className="font-mono text-xs text-text-secondary tabular-nums hover:text-accent"
+                    >
+                      {candidate.confidencePercent}%
+                    </button>
+                  </td>
+                  <td className={`${cellClass} text-right font-mono text-xs text-text-secondary`}>
+                    {view.trustScore ?? "—"}
+                  </td>
+                  <td className={`${cellClass} text-right font-mono text-xs text-text-secondary`}>
+                    {view.validationScore ?? "—"}
+                  </td>
+                  <td className={`${cellClass} text-[11px] text-text-muted`}>
+                    {view.riskRating ?? "—"}
+                  </td>
+                  <td className={`${cellClass} text-right`}>
+                    <div className="flex flex-col items-end gap-0.5">
+                      <Badge variant={gapLevelVariant(candidate.gapProbabilityLevel)}>
+                        {candidate.gapProbabilityLevel ?? "—"}
+                      </Badge>
+                      <span className="font-mono text-[10px] text-text-muted tabular-nums">
+                        {candidate.gapProbability != null
+                          ? `${candidate.gapProbability}%`
+                          : "—"}
+                      </span>
+                    </div>
+                  </td>
+                  <td className={`${cellClass} text-[11px] text-text-muted`}>
+                    {candidate.expectedCatalyst ?? "—"}
+                  </td>
+                  <td className={`${cellClass} max-w-[220px] text-[11px] text-text-muted`}>
+                    {view.primaryReasons[0] ?? candidate.reason.split("\n")[0] ?? "—"}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </ScrollTableWrapper>
@@ -1007,7 +1048,12 @@ function OpportunityTable({
           </tr>
         </thead>
         <tbody>
-          {sorted.map((candidate) => (
+          {sorted.map((candidate) => {
+            const badges = buildInstitutionalCandidateView(
+              candidate,
+              platformSnapshot
+            ).badges;
+            return (
             <tr
               key={candidate.id}
               className="group border-b border-surface-border-subtle/50 transition-colors last:border-0 hover:bg-surface-hover/40"
@@ -1024,6 +1070,7 @@ function OpportunityTable({
                     {candidate.company}
                   </p>
                 </StockLink>
+                <InstitutionalTrustBadges badges={badges.slice(0, 4)} compact />
                 <StockActions
                   symbol={candidate.symbol}
                   pinned={pinned.has(candidate.symbol.toUpperCase())}
@@ -1057,7 +1104,7 @@ function OpportunityTable({
                 </span>
               </td>
               <td className={`${cellClass} text-right`}>
-                <ConvictionPopup candidate={candidate} />
+                <ConvictionPopup candidate={candidate} onInspect={onInspect} />
               </td>
               <td className={`${cellClass} text-right`}>
                 <ConfidenceBreakdown candidate={candidate} />
@@ -1078,7 +1125,8 @@ function OpportunityTable({
                 </span>
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </ScrollTableWrapper>
@@ -1360,6 +1408,9 @@ function PostMarketSection({
   onPin,
   onWatchlist,
   onCopy,
+  platformSnapshot = null,
+  onInspect,
+  headerSlot,
 }: {
   title: string;
   subtitle: string;
@@ -1372,6 +1423,9 @@ function PostMarketSection({
   onPin: (symbol: string) => void;
   onWatchlist: (symbol: string) => void;
   onCopy?: (symbol: string) => void;
+  platformSnapshot?: InstitutionalPlatformSnapshot | null;
+  onInspect?: (candidate: OpportunityCandidate) => void;
+  headerSlot?: ReactNode;
 }) {
   return (
     <Card padding="md" className="border-surface-border-subtle/80">
@@ -1384,6 +1438,7 @@ function PostMarketSection({
           <span className="font-mono text-[10px] text-text-faint">({candidates.length})</span>
         )}
       </div>
+      {headerSlot}
       {candidates.length > 0 ? (
         variant === "expired" ? (
           <ExpiredSetupsTable
@@ -1403,6 +1458,8 @@ function PostMarketSection({
             onPin={onPin}
             onWatchlist={onWatchlist}
             onCopy={onCopy}
+            platformSnapshot={platformSnapshot}
+            onInspect={onInspect}
           />
         )
       ) : (
@@ -1530,6 +1587,8 @@ function PostMarketReports({
   onPin,
   onWatchlist,
   onCopy,
+  platformSnapshot = null,
+  onInspect,
 }: {
   report: PostMarketReport;
   engineState: OpportunityEngineState;
@@ -1538,6 +1597,8 @@ function PostMarketReports({
   onPin: (symbol: string) => void;
   onWatchlist: (symbol: string) => void;
   onCopy?: (symbol: string) => void;
+  platformSnapshot?: InstitutionalPlatformSnapshot | null;
+  onInspect?: (candidate: OpportunityCandidate) => void;
 }) {
   const tomorrowNearest = useMemo(
     () =>
@@ -1560,6 +1621,10 @@ function PostMarketReports({
         : [],
     [engineState, report.bestCallsOfDay.length]
   );
+  const tomorrowMeta = useMemo(
+    () => buildTomorrowWatchlistMeta(report, report.tomorrowWatchlist),
+    [report]
+  );
 
   return (
     <div className="mt-6 space-y-4 border-t border-surface-border-subtle pt-6">
@@ -1570,6 +1635,8 @@ function PostMarketReports({
           Generated {formatTimestamp(report.generatedAt)}
         </span>
       </div>
+
+      <PostMarketCertificationStrip report={report} snapshot={platformSnapshot} />
 
       {report.marketSummary && <MarketSummaryHighlights report={report} />}
 
@@ -1586,6 +1653,9 @@ function PostMarketReports({
           onPin={onPin}
           onWatchlist={onWatchlist}
           onCopy={onCopy}
+          platformSnapshot={platformSnapshot}
+          onInspect={onInspect}
+          headerSlot={<TomorrowWatchlistMetaHeader meta={tomorrowMeta} />}
         />
         <PostMarketSection
           title="Expired Setups"
@@ -1612,6 +1682,8 @@ function PostMarketReports({
           onPin={onPin}
           onWatchlist={onWatchlist}
           onCopy={onCopy}
+          platformSnapshot={platformSnapshot}
+          onInspect={onInspect}
         />
         {(report.tradeOutcomes?.length ?? 0) > 0 && (
           <Card padding="md" className="border-surface-border-subtle/80">
@@ -1639,11 +1711,43 @@ export function OpportunityEnginePanel({ initialState }: OpportunityEnginePanelP
     readStoredSymbols(WATCHLIST_STORAGE_KEY)
   );
   const [toast, setToast] = useState<string | null>(null);
+  const [platformSnapshot, setPlatformSnapshot] =
+    useState<InstitutionalPlatformSnapshot | null>(null);
+  const [inspectedCandidate, setInspectedCandidate] =
+    useState<OpportunityCandidate | null>(null);
 
   const { candidates: activeCandidates, emptyNote, nearestCandidates } = useMemo(
     () => deriveCategoryCandidates(state, activeCategory),
     [state, activeCategory]
   );
+
+  const inspectedView = useMemo(() => {
+    if (!inspectedCandidate) return null;
+    return buildInstitutionalCandidateView(
+      inspectedCandidate,
+      platformSnapshot,
+      state.postMarket?.generatedAt ?? null
+    );
+  }, [inspectedCandidate, platformSnapshot, state.postMarket?.generatedAt]);
+
+  const refreshInstitutionalHealth = useCallback(async () => {
+    try {
+      const response = await fetch("/api/validation/institutional-health");
+      if (!response.ok) return;
+      const payload = (await response.json()) as InstitutionalPlatformSnapshot;
+      setPlatformSnapshot(payload);
+    } catch {
+      // Hide platform metrics gracefully when unavailable.
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshInstitutionalHealth();
+    const interval = setInterval(() => {
+      void refreshInstitutionalHealth();
+    }, 60_000);
+    return () => clearInterval(interval);
+  }, [refreshInstitutionalHealth]);
 
   const togglePin = useCallback((symbol: string) => {
     setPinned((prev) => {
@@ -1741,6 +1845,7 @@ export function OpportunityEnginePanel({ initialState }: OpportunityEnginePanelP
       )}
 
       <SchedulerHealthCard />
+      <InstitutionalValidationPanel snapshot={platformSnapshot} />
 
       <CardHeader
         title="Continuous Opportunity Engine"
@@ -1849,6 +1954,8 @@ export function OpportunityEnginePanel({ initialState }: OpportunityEnginePanelP
           onPin={togglePin}
           onWatchlist={toggleWatchlist}
           onCopy={copySymbol}
+          platformSnapshot={platformSnapshot}
+          onInspect={setInspectedCandidate}
         />
       ) : (
         <EmptySection
@@ -1870,8 +1977,20 @@ export function OpportunityEnginePanel({ initialState }: OpportunityEnginePanelP
           onPin={togglePin}
           onWatchlist={toggleWatchlist}
           onCopy={copySymbol}
+          platformSnapshot={platformSnapshot}
+          onInspect={setInspectedCandidate}
         />
       )}
+
+      {inspectedCandidate && inspectedView ? (
+        <OpportunityExplainabilityDrawer
+          symbol={inspectedCandidate.symbol}
+          company={inspectedCandidate.company}
+          view={inspectedView}
+          open
+          onClose={() => setInspectedCandidate(null)}
+        />
+      ) : null}
     </Card>
   );
 }
