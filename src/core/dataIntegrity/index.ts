@@ -561,3 +561,31 @@ export type {
   RunOptimizationOptions,
   OptimizationOperationalMetrics,
 } from "./optimization";
+
+/** Prompt 9F.19 Institutional Validation Reliability & Resilience Engine. */
+export {
+  registerValidationReliabilityEngine,
+  getValidationReliabilityEngine,
+  resetValidationReliabilityEngine,
+  ValidationReliabilityEngine,
+  checkHealth,
+  runRecovery,
+  tripCircuit,
+  resetCircuit,
+  retryExecution,
+  getReliabilityMetrics,
+  createReliabilitySnapshot,
+  DEFAULT_RELIABILITY_CONFIGURATION,
+  resolveReliabilityConfiguration,
+  registerReliabilitySource,
+} from "./reliability";
+
+export type {
+  ReliabilityConfiguration,
+  ReliabilityConfigurationInput,
+  ReliabilitySnapshot,
+  ReliabilityProbe,
+  CheckHealthOptions,
+  ReliabilityOperationalMetrics,
+  CircuitBreakerStatus,
+} from "./reliability";

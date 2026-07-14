@@ -100,5 +100,11 @@ export async function register() {
       "@/src/core/dataIntegrity/optimization"
     );
     registerValidationOptimizationEngine();
+
+    // Sprint 9F.19 — idempotent Validation Reliability & Resilience Engine registration
+    const { registerValidationReliabilityEngine } = await import(
+      "@/src/core/dataIntegrity/reliability"
+    );
+    registerValidationReliabilityEngine();
   }
 }
