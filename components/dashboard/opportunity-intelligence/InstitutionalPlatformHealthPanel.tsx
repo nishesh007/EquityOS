@@ -20,6 +20,7 @@ import { InstitutionalMetricTooltip } from "@/components/dashboard/opportunity-i
 import { RecommendationTimeline } from "@/components/dashboard/opportunity-intelligence/RecommendationTimeline";
 import { MetricGrid } from "@/components/dashboard/opportunity-intelligence/MetricBlocks";
 import { InstitutionalTimelinePanel } from "@/components/dashboard/institutional/InstitutionalTimelinePanel";
+import { InstitutionalReportViewer } from "@/components/dashboard/institutional/InstitutionalReportViewer";
 import { ArrowDownRight, ArrowRight, ArrowUpRight } from "lucide-react";
 
 function TrendIcon({ trend }: { trend: PlatformMetricCell["trend"] }) {
@@ -444,6 +445,14 @@ export function InstitutionalPlatformHealthPanel({
             compact
             title="Platform Audit History"
           />
+
+          <Section title="Institutional Report">
+            <InstitutionalReportViewer
+              snapshot={snapshot}
+              compact
+              title="Institutional Health Report"
+            />
+          </Section>
         </div>
       ) : null}
     </div>

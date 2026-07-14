@@ -11,6 +11,7 @@ import { buildInstitutionalResearchDrawerView } from "@/lib/dashboard/institutio
 import { InstitutionalResearchPanelContent } from "@/components/dashboard/opportunity-intelligence/InstitutionalResearchPanelContent";
 import { InstitutionalTrustBadges } from "@/components/dashboard/opportunity-intelligence/InstitutionalTrustBadges";
 import { InstitutionalTimelinePanel } from "@/components/dashboard/institutional/InstitutionalTimelinePanel";
+import { InstitutionalReportViewer } from "@/components/dashboard/institutional/InstitutionalReportViewer";
 
 /**
  * Institutional Research Panel — expandable recommendation drawer (9F.R3 + history).
@@ -77,6 +78,12 @@ export function OpportunityExplainabilityDrawer({
             candidate={candidate}
             snapshot={snapshot}
             title="Recommendation History"
+          />
+          <InstitutionalReportViewer
+            snapshot={snapshot}
+            candidate={view}
+            compact
+            title="Research Report"
           />
         </div>
       </aside>

@@ -14,6 +14,7 @@ import { InstitutionalTrustBadges } from "@/components/dashboard/opportunity-int
 import { InstitutionalValidationDetailsDrawer } from "@/components/dashboard/opportunity-intelligence/InstitutionalValidationDetailsDrawer";
 import { ReportExportToolbar } from "@/components/reporting/ReportExportToolbar";
 import { InstitutionalTimelinePanel } from "@/components/dashboard/institutional/InstitutionalTimelinePanel";
+import { InstitutionalReportViewer } from "@/components/dashboard/institutional/InstitutionalReportViewer";
 
 export function InstitutionalValidationPanel({
   snapshot,
@@ -85,6 +86,14 @@ export function InstitutionalValidationPanel({
             snapshot={snapshot}
             compact
             title="Validation History"
+          />
+        </div>
+
+        <div className="mt-3">
+          <InstitutionalReportViewer
+            snapshot={snapshot}
+            compact
+            title="Institutional Report Viewer"
           />
         </div>
       </div>
