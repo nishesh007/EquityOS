@@ -4,7 +4,10 @@ import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { StockLink } from "@/components/ui/StockLink";
 import { SchedulerHealthCard } from "@/components/dashboard/SchedulerHealthCard";
+import { InstitutionalExplainabilityPanel } from "@/components/dashboard/opportunity-intelligence/InstitutionalExplainabilityPanel";
+import { InstitutionalRecommendationPanel } from "@/components/dashboard/opportunity-intelligence/InstitutionalRecommendationPanel";
 import { InstitutionalTrustBadges } from "@/components/dashboard/opportunity-intelligence/InstitutionalTrustBadges";
+import { InstitutionalTrustPanel } from "@/components/dashboard/opportunity-intelligence/InstitutionalTrustPanel";
 import { InstitutionalValidationPanel } from "@/components/dashboard/opportunity-intelligence/InstitutionalValidationPanel";
 import { OpportunityExplainabilityDrawer } from "@/components/dashboard/opportunity-intelligence/OpportunityExplainabilityDrawer";
 import { PostMarketCertificationStrip } from "@/components/dashboard/opportunity-intelligence/PostMarketCertificationStrip";
@@ -1750,6 +1753,23 @@ export function OpportunityEnginePanel({ initialState }: OpportunityEnginePanelP
     );
   }, [inspectedCandidate, platformSnapshot, state.postMarket?.generatedAt]);
 
+  /** Featured candidate for platform explainability / recommendation exposure. */
+  const featuredCandidateView = useMemo(() => {
+    if (inspectedView) return inspectedView;
+    const top = activeCandidates[0];
+    if (!top) return null;
+    return buildInstitutionalCandidateView(
+      top,
+      platformSnapshot,
+      state.postMarket?.generatedAt ?? null
+    );
+  }, [
+    inspectedView,
+    activeCandidates,
+    platformSnapshot,
+    state.postMarket?.generatedAt,
+  ]);
+
   const refreshInstitutionalHealth = useCallback(async () => {
     try {
       const response = await fetch("/api/validation/institutional-health");
@@ -1866,6 +1886,17 @@ export function OpportunityEnginePanel({ initialState }: OpportunityEnginePanelP
 
       <SchedulerHealthCard />
       <InstitutionalValidationPanel snapshot={platformSnapshot} />
+      <div className="mb-4 grid gap-3 lg:grid-cols-3">
+        <InstitutionalTrustPanel snapshot={platformSnapshot} />
+        <InstitutionalExplainabilityPanel
+          snapshot={platformSnapshot}
+          candidate={featuredCandidateView}
+        />
+        <InstitutionalRecommendationPanel
+          snapshot={platformSnapshot}
+          candidate={featuredCandidateView}
+        />
+      </div>
 
       <CardHeader
         title="Continuous Opportunity Engine"
