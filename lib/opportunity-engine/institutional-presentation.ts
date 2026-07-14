@@ -19,6 +19,15 @@ import type { PlatformHealthReport } from "@/src/core/dataIntegrity/platform/Pla
 import type { DashboardSummary } from "@/src/core/dataIntegrity/dashboard/DashboardSummary";
 import type { ExplainabilityOperationalMetrics } from "@/src/core/dataIntegrity/explainability/ExplainabilityMetrics";
 import type { TrustMetricsSnapshot } from "@/src/core/dataIntegrity/trust/TrustMetrics";
+import type { PlatformStatus } from "@/src/core/dataIntegrity/platform/PlatformStatus";
+import type { PlatformOperationalMetrics } from "@/src/core/dataIntegrity/platform/PlatformMetrics";
+import type { PlatformSummary } from "@/src/core/dataIntegrity/platform/PlatformSummary";
+import type { ObservabilityOperationalMetrics } from "@/src/core/dataIntegrity/observability/TelemetryMetrics";
+import type { DiagnosticsOperationalMetrics } from "@/src/core/dataIntegrity/diagnostics/DiagnosticsMetrics";
+import type { PerformanceOperationalMetrics } from "@/src/core/dataIntegrity/performance/PerformanceMetrics";
+import type { SecurityOperationalMetrics } from "@/src/core/dataIntegrity/security/SecurityMetrics";
+import type { ReleaseOperationalMetrics } from "@/src/core/dataIntegrity/release/ReleaseMetrics";
+import type { ReportingOperationalMetrics } from "@/src/core/dataIntegrity/reporting/ReportMetrics";
 
 export type InstitutionalBadgeId =
   | "AI_VERIFIED"
@@ -88,6 +97,26 @@ export interface InstitutionalPlatformSnapshot {
   dashboard: DashboardSummary | null;
   trust: TrustMetricsSnapshot | null;
   explainability: ExplainabilityOperationalMetrics | null;
+  /** Sprint 9F.R4 — optional operational slices (read-only engine getters). */
+  operations?: InstitutionalPlatformOperations | null;
+}
+
+export interface InstitutionalPlatformOperations {
+  status: PlatformStatus | null;
+  metrics: PlatformOperationalMetrics | null;
+  summary: PlatformSummary | null;
+  observability: ObservabilityOperationalMetrics | null;
+  diagnostics: DiagnosticsOperationalMetrics | null;
+  performance: PerformanceOperationalMetrics | null;
+  security: SecurityOperationalMetrics | null;
+  release: ReleaseOperationalMetrics | null;
+  reporting: ReportingOperationalMetrics | null;
+  audit: Array<{
+    timestamp: string;
+    event: string;
+    warnings?: string[];
+    errors?: string[];
+  }>;
 }
 
 export interface TomorrowWatchlistMeta {
