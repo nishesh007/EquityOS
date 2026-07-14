@@ -705,3 +705,31 @@ export type {
   KnowledgeOperationalMetrics,
   KnowledgeQuery,
 } from "./knowledge";
+
+/** Prompt 9F.24 Institutional Validation Versioning & Migration Engine. */
+export {
+  registerValidationVersioningEngine,
+  getValidationVersioningEngine,
+  resetValidationVersioningEngine,
+  ValidationVersioningEngine,
+  registerVersion,
+  planMigration,
+  validateMigration,
+  checkCompatibility,
+  compareVersions,
+  createVersionSnapshot,
+  getVersionMetrics,
+  DEFAULT_VERSION_CONFIGURATION,
+  resolveVersionConfiguration,
+} from "./versioning";
+
+export type {
+  VersionConfiguration,
+  VersionConfigurationInput,
+  VersionSnapshot,
+  VersionRecord,
+  PlanMigrationOptions,
+  VersionOperationalMetrics,
+  VersionHealthScore,
+  MigrationPlan,
+} from "./versioning";

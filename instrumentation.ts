@@ -130,5 +130,11 @@ export async function register() {
       "@/src/core/dataIntegrity/knowledge"
     );
     registerValidationKnowledgeGraph();
+
+    // Sprint 9F.24 — idempotent Validation Versioning & Migration Engine registration
+    const { registerValidationVersioningEngine } = await import(
+      "@/src/core/dataIntegrity/versioning"
+    );
+    registerValidationVersioningEngine();
   }
 }
