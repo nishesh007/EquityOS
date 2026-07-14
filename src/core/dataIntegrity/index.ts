@@ -231,3 +231,29 @@ export type {
   TradeSetupAuditEntry,
   TradeSetupQualityScoreResult,
 } from "./rules/tradeSetup";
+
+/** Prompt 9F.8 institutional AI hallucination detection library. */
+export {
+  registerHallucinationRules,
+  validateAIOutput,
+  validateFacts,
+  validateEvidence,
+  validateReasoning,
+  detectContradictions,
+  calculateHallucinationScore,
+  buildHallucinationRules,
+  getHallucinationValidationMetrics,
+  resetHallucinationValidationMetrics,
+  getHallucinationAuditLog,
+  resetHallucinationAuditLog,
+  DEFAULT_HALLUCINATION_VALIDATION_CONFIG,
+} from "./rules/hallucination";
+
+export type {
+  HallucinationValidationConfig,
+  HallucinationValidationConfigInput,
+  HallucinationValidationMetrics,
+  HallucinationAuditEntry,
+  HallucinationScoreResult,
+  HallucinationScoreBand,
+} from "./rules/hallucination";

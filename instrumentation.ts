@@ -34,5 +34,11 @@ export async function register() {
       "@/src/core/dataIntegrity/rules/tradeSetup"
     );
     registerTradeSetupRules();
+
+    // Sprint 9F.8 — idempotent AI hallucination detection rule registration
+    const { registerHallucinationRules } = await import(
+      "@/src/core/dataIntegrity/rules/hallucination"
+    );
+    registerHallucinationRules();
   }
 }
