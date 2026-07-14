@@ -70,5 +70,11 @@ export async function register() {
       "@/src/core/dataIntegrity/events"
     );
     registerValidationEventBus();
+
+    // Sprint 9F.14 — idempotent Validation Analytics Engine registration
+    const { registerValidationAnalyticsEngine } = await import(
+      "@/src/core/dataIntegrity/analytics"
+    );
+    registerValidationAnalyticsEngine();
   }
 }

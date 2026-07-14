@@ -409,3 +409,35 @@ export type {
   ReplayResult,
   ValidationEventConfiguration,
 } from "./events";
+
+/** Prompt 9F.14 Institutional Validation Analytics Engine. */
+export {
+  registerValidationAnalyticsEngine,
+  getValidationAnalyticsEngine,
+  resetValidationAnalyticsEngine,
+  ValidationAnalyticsEngine,
+  getAnalyticsSummary,
+  getRuleEffectiveness,
+  getFailureAnalytics,
+  getTrendAnalytics,
+  getDistributionAnalytics,
+  getPredictionAnalytics,
+  createAnalyticsSnapshot,
+  DEFAULT_ANALYTICS_CONFIGURATION,
+  resolveAnalyticsConfiguration,
+  registerAnalyticsSource,
+} from "./analytics";
+
+export type {
+  AnalyticsConfiguration,
+  AnalyticsConfigurationInput,
+  AnalyticsSummary,
+  RuleEffectivenessReport,
+  FailureAnalyticsReport,
+  TrendAnalyticsReport,
+  DistributionAnalyticsReport,
+  PredictionAnalyticsReport,
+  AnalyticsSnapshot,
+  AnalyticsObservation,
+  AnalyticsRunResult,
+} from "./analytics";
