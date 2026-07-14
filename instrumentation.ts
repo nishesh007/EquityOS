@@ -40,5 +40,11 @@ export async function register() {
       "@/src/core/dataIntegrity/rules/hallucination"
     );
     registerHallucinationRules();
+
+    // Sprint 9F.9 — idempotent historical performance validation rule registration
+    const { registerHistoricalRules } = await import(
+      "@/src/core/dataIntegrity/rules/historical"
+    );
+    registerHistoricalRules();
   }
 }

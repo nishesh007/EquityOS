@@ -176,3 +176,27 @@ export type {
   HallucinationScoreResult,
   HallucinationScoreBand,
 } from "./hallucination";
+
+/** Prompt 9F.9 historical performance validation library re-exports. */
+export {
+  registerHistoricalRules,
+  validateHistoricalPerformance,
+  validateRecommendationHistory,
+  validateTradeHistory,
+  calculateHistoricalScore,
+  detectModelDecay,
+  buildHistoricalRules,
+  getHistoricalValidationMetrics,
+  getHistoricalAuditLog,
+  DEFAULT_HISTORICAL_VALIDATION_CONFIG,
+} from "./historical";
+
+export type {
+  HistoricalValidationConfig,
+  HistoricalValidationConfigInput,
+  HistoricalValidationMetrics,
+  HistoricalAuditEntry,
+  HistoricalScoreResult,
+  HistoricalScoreBand,
+  ModelDecayResult,
+} from "./historical";
