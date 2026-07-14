@@ -112,5 +112,11 @@ export async function register() {
       "@/src/core/dataIntegrity/observability"
     );
     registerValidationObservabilityEngine();
+
+    // Sprint 9F.21 — idempotent Validation Intelligence & Insights Engine registration
+    const { registerValidationIntelligenceEngine } = await import(
+      "@/src/core/dataIntegrity/intelligence"
+    );
+    registerValidationIntelligenceEngine();
   }
 }

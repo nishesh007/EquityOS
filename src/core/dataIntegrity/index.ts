@@ -618,3 +618,32 @@ export type {
   ObservabilityOperationalMetrics,
   TelemetryExportModel,
 } from "./observability";
+
+/** Prompt 9F.21 Institutional Validation Intelligence & Insights Engine. */
+export {
+  registerValidationIntelligenceEngine,
+  getValidationIntelligenceEngine,
+  resetValidationIntelligenceEngine,
+  ValidationIntelligenceEngine,
+  generateInsights,
+  detectPatterns,
+  analyzeCorrelations,
+  generateRecommendations,
+  getRiskInsights,
+  getInsightMetrics,
+  createInsightSnapshot,
+  DEFAULT_INSIGHTS_CONFIGURATION,
+  resolveInsightsConfiguration,
+  registerInsightSource,
+} from "./intelligence";
+
+export type {
+  InsightsConfiguration,
+  InsightsConfigurationInput,
+  InsightsPack,
+  InsightSnapshot,
+  InsightObservation,
+  GenerateInsightsOptions,
+  InsightsOperationalMetrics,
+  IntelligentRecommendation,
+} from "./intelligence";
