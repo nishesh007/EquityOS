@@ -142,5 +142,11 @@ export async function register() {
       "@/src/core/dataIntegrity/security"
     );
     registerSecurity();
+
+    // Sprint 9F.26 — idempotent Validation Performance Benchmark Engine registration
+    const { registerPerformance } = await import(
+      "@/src/core/dataIntegrity/performance"
+    );
+    registerPerformance();
   }
 }

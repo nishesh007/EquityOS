@@ -760,3 +760,29 @@ export type {
   AuthorizeResult,
   SecurityContext,
 } from "./security";
+
+/** Prompt 9F.26 Institutional Validation Performance Benchmark & Capacity Planning Engine. */
+export {
+  registerPerformance,
+  registerValidationPerformanceEngine,
+  getValidationPerformanceEngine,
+  resetValidationPerformanceEngine,
+  ValidationPerformanceEngine,
+  runBenchmark,
+  analyzeLatency,
+  analyzeCapacity,
+  createPerformanceSnapshot,
+  getPerformanceMetrics,
+  DEFAULT_PERFORMANCE_CONFIGURATION,
+  resolvePerformanceConfiguration,
+} from "./performance";
+
+export type {
+  PerformanceConfiguration,
+  PerformanceConfigurationInput,
+  PerformanceSnapshot,
+  PerformanceOperationalMetrics,
+  PerformanceHealthScore,
+  BenchmarkRunOptions,
+  BenchmarkRunResult,
+} from "./performance";
