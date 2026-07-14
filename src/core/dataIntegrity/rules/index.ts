@@ -105,3 +105,26 @@ export type {
   FundamentalValidationConfigInput,
   FundamentalValidationMetrics,
 } from "./fundamental";
+
+/** Prompt 9F.6 AI recommendation validation library re-exports. */
+export {
+  registerRecommendationRules,
+  validateRecommendation,
+  validateRecommendationReasoning,
+  validateRecommendationConfidence,
+  validateRecommendationAlignment,
+  calculateRecommendationQualityScore,
+  buildRecommendationRules,
+  getRecommendationValidationMetrics,
+  getRecommendationAuditLog,
+  DEFAULT_RECOMMENDATION_VALIDATION_CONFIG,
+} from "./recommendation";
+
+export type {
+  RecommendationValidationConfig,
+  RecommendationValidationConfigInput,
+  RecommendationValidationMetrics,
+  RecommendationAction,
+  RecommendationAuditEntry,
+  RecommendationQualityScoreResult,
+} from "./recommendation";

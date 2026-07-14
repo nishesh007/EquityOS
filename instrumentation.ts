@@ -22,5 +22,11 @@ export async function register() {
       "@/src/core/dataIntegrity/rules/fundamental"
     );
     registerFundamentalRules();
+
+    // Sprint 9F.6 — idempotent AI recommendation validation rule registration
+    const { registerRecommendationRules } = await import(
+      "@/src/core/dataIntegrity/rules/recommendation"
+    );
+    registerRecommendationRules();
   }
 }
