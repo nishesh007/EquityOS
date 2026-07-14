@@ -378,3 +378,34 @@ export type {
   ValidationEngineId,
   ExecutionStatus,
 } from "./orchestrator";
+
+/** Prompt 9F.13 Institutional Validation Event Bus & Monitoring Engine. */
+export {
+  registerValidationEventBus,
+  getValidationEventBus,
+  resetValidationEventBus,
+  ValidationEventBus,
+  publishEvent,
+  subscribe,
+  unsubscribe,
+  getEventHistory,
+  replayEvents,
+  getEventMetrics,
+  getEventHealth,
+  safePublishEvent,
+  DEFAULT_VALIDATION_EVENT_CONFIGURATION,
+  resolveValidationEventConfiguration,
+} from "./events";
+
+export type {
+  ValidationEvent,
+  ValidationEventInput,
+  ValidationEventType,
+  ValidationEventSeverity,
+  ValidationEventFilters,
+  EventBusMetricsSnapshot,
+  EventBusHealth,
+  ReplayRequest,
+  ReplayResult,
+  ValidationEventConfiguration,
+} from "./events";

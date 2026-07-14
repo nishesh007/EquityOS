@@ -47,6 +47,7 @@ import { registerHallucinationRules } from "../rules/hallucination";
 import { registerHistoricalRules } from "../rules/historical";
 import { registerTrustEngine } from "../trust";
 import { registerDashboardService } from "../dashboard";
+import { safePublishEvent } from "../events/ValidationEventBus";
 
 export interface ExecutionStatus {
   requestId: string;
@@ -306,6 +307,29 @@ export class ValidationOrchestrator {
     const plan = this.router.route(request);
     const pipelineStarted = Date.now();
 
+    safePublishEvent({
+      eventType: "ValidationStarted",
+      module: "orchestrator",
+      validationId: request.requestId,
+      entityId: request.objectId ?? request.context.stock,
+      correlationId: request.requestId,
+      payload: {
+        kind: request.kind,
+        pipeline: plan.pipelineId,
+        engines: plan.engines,
+      },
+      source: "orchestrator",
+    });
+    if (plan.pipelineId) {
+      safePublishEvent({
+        eventType: "PipelineStarted",
+        module: "orchestrator",
+        validationId: request.requestId,
+        payload: { pipeline: plan.pipelineId, engines: plan.engines },
+        source: "orchestrator",
+      });
+    }
+
     await this.dispatcher.executePlan(context, plan);
 
     if (context.cancelled) {
@@ -326,6 +350,45 @@ export class ValidationOrchestrator {
     const response = this.buildResponse(context, workflow);
     execution.response = response;
     execution.finishedAt = new Date().toISOString();
+
+    const terminalType =
+      workflow.getState() === "CANCELLED"
+        ? "ValidationCancelled"
+        : workflow.getState() === "FAILED" || workflow.getState() === "TIMED_OUT"
+          ? "ValidationFailed"
+          : "ValidationCompleted";
+    safePublishEvent({
+      eventType: terminalType,
+      module: "orchestrator",
+      validationId: request.requestId,
+      entityId: request.objectId ?? request.context.stock,
+      correlationId: request.requestId,
+      payload: {
+        status: response.validationStatus,
+        overallValidationScore: response.overallValidationScore,
+        trustScore: response.trustScore,
+      },
+      executionTimeMs: response.executionTime,
+      source: "orchestrator",
+      severity:
+        terminalType === "ValidationFailed"
+          ? "ERROR"
+          : terminalType === "ValidationCancelled"
+            ? "WARNING"
+            : "INFO",
+    });
+    if (plan.pipelineId) {
+      safePublishEvent({
+        eventType:
+          terminalType === "ValidationFailed"
+            ? "PipelineFailed"
+            : "PipelineCompleted",
+        module: "orchestrator",
+        validationId: request.requestId,
+        payload: { pipeline: plan.pipelineId, status: response.validationStatus },
+        source: "orchestrator",
+      });
+    }
 
     this.audit.append({
       requestId: request.requestId,

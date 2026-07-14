@@ -73,6 +73,7 @@ import {
 } from "../rules/hallucination";
 import { getHistoricalValidationMetrics } from "../rules/historical";
 import { getTrustMetrics, getTrustScoreEngine } from "../trust";
+import { safePublishEvent } from "../events/ValidationEventBus";
 
 const CACHE_SUMMARY = "dashboard:summary";
 const CACHE_METRICS = "dashboard:metrics";
@@ -212,6 +213,16 @@ export class ValidationDashboardService {
       healthScore: result.summary.health.overallHealthScore,
       validationCount: result.summary.summary.totalValidations,
     });
+    safePublishEvent({
+      eventType: "DashboardRefreshed",
+      module: "dashboard",
+      payload: {
+        healthScore: result.summary.health.overallHealthScore,
+        validationCount: result.summary.summary.totalValidations,
+      },
+      executionTimeMs: runtime,
+      source: "dashboard",
+    });
 
     return result;
   }
@@ -293,6 +304,17 @@ export class ValidationDashboardService {
     this.events.emit("SnapshotCreated", {
       snapshotId: snapshot.snapshotId,
       healthScore: snapshot.summary.health.overallHealthScore,
+    });
+    safePublishEvent({
+      eventType: "SnapshotCreated",
+      module: "dashboard",
+      entityId: snapshot.snapshotId,
+      payload: {
+        snapshotId: snapshot.snapshotId,
+        healthScore: snapshot.summary.health.overallHealthScore,
+        label,
+      },
+      source: "dashboard",
     });
     this.audit.append({
       timestamp: snapshot.timestamp,

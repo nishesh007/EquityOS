@@ -43,6 +43,7 @@ import {
   type TrustModuleDefinition,
   type TrustModuleRegistrationResult,
 } from "./TrustRuleRegistry";
+import { safePublishEvent } from "../events/ValidationEventBus";
 
 export interface TrustScoreRequest {
   /** Stable object identifier (stock, recommendation, trade setup, AI report). */
@@ -269,6 +270,20 @@ export class TrustScoreEngine {
       rejected,
       trendDelta: trustTrend.trend7d,
       runtimeMs,
+    });
+
+    safePublishEvent({
+      eventType: "TrustScoreUpdated",
+      module: "trust",
+      entityId: request.objectId,
+      payload: {
+        trustScore: calculated.trustScore,
+        trustClassification,
+        rejected,
+      },
+      executionTimeMs: runtimeMs,
+      source: "trust-engine",
+      severity: rejected ? "WARNING" : "INFO",
     });
 
     return {

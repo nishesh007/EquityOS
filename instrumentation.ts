@@ -64,5 +64,11 @@ export async function register() {
       "@/src/core/dataIntegrity/orchestrator"
     );
     registerValidationOrchestrator();
+
+    // Sprint 9F.13 — idempotent Validation Event Bus registration
+    const { registerValidationEventBus } = await import(
+      "@/src/core/dataIntegrity/events"
+    );
+    registerValidationEventBus();
   }
 }
