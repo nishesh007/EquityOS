@@ -13,6 +13,7 @@ import {
   loadPersistedData,
   persistEngineData,
 } from "@/lib/opportunity-engine/persistence";
+import { recordPersistenceWrite } from "@/lib/opportunity-engine/scheduler-observability";
 import {
   buildFreshTradingDayState,
   emptyOpportunityCategories,
@@ -52,6 +53,7 @@ function persistNow(): void {
     state,
     firstDetectedMap: Object.fromEntries(firstDetectedMap),
   });
+  recordPersistenceWrite();
 }
 
 function hydrateFromDisk(): void {

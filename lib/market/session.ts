@@ -198,3 +198,38 @@ export function getMarketStatusLabel(status: MarketStatus): string {
       return "Market Closed";
   }
 }
+
+/** IST session open (09:15) as an ISO timestamp for a given calendar date key. */
+export function sessionOpenISOForDateKey(dateKey: string): string {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  // 09:15 IST = 03:45 UTC
+  return new Date(Date.UTC(year, month - 1, day, 3, 45, 0)).toISOString();
+}
+
+/**
+ * Next NSE cash session open (09:15 IST).
+ * If today is a trading day and still before open, returns today's open.
+ * Otherwise walks forward to the next trading calendar day.
+ */
+export function getNextSessionOpenISO(now = new Date()): string {
+  const parts = getISTParts(now);
+  const elapsed = minutesSinceMidnight(parts.hours, parts.minutes);
+
+  if (
+    isTradingCalendarDay(parts.dayOfWeek, parts.dateKey) &&
+    elapsed < SESSION.MARKET_OPEN
+  ) {
+    return sessionOpenISOForDateKey(parts.dateKey);
+  }
+
+  let cursor = new Date(now.getTime());
+  for (let guard = 0; guard < 14; guard += 1) {
+    cursor = new Date(cursor.getTime() + 86_400_000);
+    const next = getISTParts(cursor);
+    if (isTradingCalendarDay(next.dayOfWeek, next.dateKey)) {
+      return sessionOpenISOForDateKey(next.dateKey);
+    }
+  }
+
+  return sessionOpenISOForDateKey(parts.dateKey);
+}

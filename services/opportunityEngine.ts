@@ -16,6 +16,14 @@ export async function triggerOpportunityScan(): Promise<ScanResult> {
   return runOpportunityScan(true);
 }
 
+export { getSchedulerHealth } from "@/lib/opportunity-engine/scheduler-health";
+export type {
+  SchedulerHealth,
+  SchedulerStatus,
+  SchedulerMarketState,
+  DataFreshnessLevel,
+} from "@/lib/opportunity-engine/scheduler-health";
+
 export function mapToIntradayIdeas(candidates: OpportunityCandidate[]): IntradayIdea[] {
   return candidates.map((candidate) => ({
     symbol: candidate.symbol,

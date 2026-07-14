@@ -3,6 +3,7 @@
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { StockLink } from "@/components/ui/StockLink";
+import { SchedulerHealthCard } from "@/components/dashboard/SchedulerHealthCard";
 import { bestCallStarRating, buildBestCallScoreBreakdown } from "@/lib/opportunity-engine/best-call";
 import {
   CONVICTION_POSITIVE_DRIVER_LABELS,
@@ -1738,6 +1739,8 @@ export function OpportunityEnginePanel({ initialState }: OpportunityEnginePanelP
           </button>
         </div>
       )}
+
+      <SchedulerHealthCard />
 
       <CardHeader
         title="Continuous Opportunity Engine"
