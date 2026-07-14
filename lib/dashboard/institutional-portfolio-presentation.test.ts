@@ -420,6 +420,8 @@ describe("institutional-portfolio-presentation", () => {
         topNegativeDrivers: [],
         riskFactors: [],
         expectedCatalyst: null,
+        earningsProximity: null,
+        earningsProximityLabel: null,
         institutionalFlow: null,
         sectorStrength: null,
         historicalSimilarity: null,

@@ -28,6 +28,7 @@ import type { PerformanceOperationalMetrics } from "@/src/core/dataIntegrity/per
 import type { SecurityOperationalMetrics } from "@/src/core/dataIntegrity/security/SecurityMetrics";
 import type { ReleaseOperationalMetrics } from "@/src/core/dataIntegrity/release/ReleaseMetrics";
 import type { ReportingOperationalMetrics } from "@/src/core/dataIntegrity/reporting/ReportMetrics";
+import { getEarningsCalendarService } from "@/src/core/earnings/calendar";
 
 export type InstitutionalBadgeId =
   | "AI_VERIFIED"
@@ -85,6 +86,9 @@ export interface InstitutionalCandidateView {
   topNegativeDrivers: ContributionRow[];
   riskFactors: ContributionRow[];
   expectedCatalyst: string | null;
+  /** Presentation-only earnings window — never used for scoring. */
+  earningsProximity: string | null;
+  earningsProximityLabel: string | null;
   institutionalFlow: number | null;
   sectorStrength: number | null;
   historicalSimilarity: string | null;
@@ -272,6 +276,43 @@ export function buildRecommendationTimeline(
   return events.filter((event) => event.available);
 }
 
+function resolvePresentationEarningsProximity(candidate: OpportunityCandidate): {
+  proximity: string | null;
+  label: string | null;
+  catalystHint: string | null;
+} {
+  const metrics = candidate.scanMetrics ?? {};
+  const fromMetrics =
+    typeof metrics.earnings_proximity === "string"
+      ? metrics.earnings_proximity
+      : null;
+  const fromLabel =
+    typeof metrics.earnings_proximity_label === "string"
+      ? metrics.earnings_proximity_label
+      : null;
+
+  if (fromMetrics || fromLabel) {
+    return {
+      proximity: fromMetrics,
+      label: fromLabel ?? fromMetrics,
+      catalystHint: fromLabel ?? fromMetrics,
+    };
+  }
+
+  const info = getEarningsCalendarService().getEarningsProximity(candidate.symbol);
+  if (!info || info.proximity === "none") {
+    return { proximity: null, label: null, catalystHint: null };
+  }
+  return {
+    proximity: info.proximity,
+    label: info.label,
+    catalystHint:
+      info.daysRemaining != null && info.quarter
+        ? `${info.quarter} · ${info.label}`
+        : info.label,
+  };
+}
+
 export function buildInstitutionalCandidateView(
   candidate: OpportunityCandidate,
   platform: InstitutionalPlatformSnapshot | null = null,
@@ -344,6 +385,7 @@ export function buildInstitutionalCandidateView(
       : typeof scanMetrics.volume_ratio === "number"
         ? scanMetrics.volume_ratio
         : null;
+  const earnings = resolvePresentationEarningsProximity(candidate);
 
   return {
     overallScore: candidate.aiConvictionScore,
@@ -396,7 +438,9 @@ export function buildInstitutionalCandidateView(
       .sort((a, b) => a.contribution - b.contribution)
       .slice(0, 6),
     riskFactors: [...negatives, ...riskAdjustments],
-    expectedCatalyst: candidate.expectedCatalyst ?? null,
+    expectedCatalyst: candidate.expectedCatalyst ?? earnings.catalystHint ?? null,
+    earningsProximity: earnings.proximity,
+    earningsProximityLabel: earnings.label,
     institutionalFlow,
     sectorStrength: candidate.sectorStrength ?? breakdown.sector ?? null,
     historicalSimilarity: null,

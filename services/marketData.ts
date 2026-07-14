@@ -376,7 +376,16 @@ export async function fetchMarketNews(): Promise<MarketNews[]> {
 }
 
 export async function fetchUpcomingResults(): Promise<UpcomingResult[]> {
-  return upcomingResults;
+  const {
+    getEarningsCalendarService,
+  } = await import("@/src/core/earnings/calendar");
+  const service = getEarningsCalendarService();
+  service.setMembership({
+    portfolioSymbols: PORTFOLIO_SEED.holdings.map((h) => h.symbol),
+    watchlistSymbols: WATCHLIST_SEED.map((w) => w.symbol),
+  });
+  const fromCalendar = service.toUpcomingResults();
+  return fromCalendar.length > 0 ? fromCalendar : upcomingResults;
 }
 
 /** Build initial quotes map for client-side live polling */

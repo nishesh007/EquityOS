@@ -4,6 +4,7 @@ import { Watchlist } from "@/components/dashboard/Watchlist";
 import { AIMarketSummary } from "@/components/dashboard/AIMarketSummary";
 import { LatestMarketNews } from "@/components/dashboard/LatestMarketNews";
 import { UpcomingResultsCalendar } from "@/components/dashboard/UpcomingResultsCalendar";
+import { DashboardEarningsPanel } from "@/components/dashboard/earnings";
 import { MarketPulse } from "@/components/dashboard/MarketPulse";
 import { MarketBreadth } from "@/components/dashboard/MarketBreadth";
 import { OpportunityEnginePanel } from "@/components/dashboard/OpportunityEnginePanel";
@@ -17,6 +18,7 @@ import {
   fetchMarketNews,
   fetchUpcomingResults,
 } from "@/services/marketData";
+import { fetchEarningsCalendarDashboard } from "@/services/earningsCalendar";
 import {
   fetchMarketBreadth,
   fetchMarketPulse,
@@ -36,6 +38,7 @@ export default async function DashboardPage() {
     breadth,
     opportunityState,
     doctorAnalysis,
+    earningsDashboard,
   ] = await Promise.all([
     fetchMarketIndices(),
     fetchPortfolioSummary(),
@@ -47,6 +50,7 @@ export default async function DashboardPage() {
     fetchMarketBreadth(),
     fetchOpportunityEngineState(),
     fetchPortfolioDoctorAnalysis(),
+    fetchEarningsCalendarDashboard(),
   ]);
 
   return (
@@ -126,6 +130,10 @@ export default async function DashboardPage() {
                 ?.lastUpdated ?? null,
           }}
         />
+      </section>
+
+      <section className="mb-6 animate-fade-in-up [animation-delay:400ms]">
+        <DashboardEarningsPanel view={earningsDashboard} />
       </section>
 
       <section className="grid animate-fade-in-up grid-cols-1 gap-6 [animation-delay:420ms] xl:grid-cols-2">

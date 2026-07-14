@@ -1,23 +1,32 @@
 import { PortfolioSummary } from "@/components/dashboard/PortfolioSummary";
 import { PortfolioHoldingsTable } from "@/components/dashboard/PortfolioHoldingsTable";
 import { Watchlist } from "@/components/dashboard/Watchlist";
+import { PortfolioEarningsPanel } from "@/components/dashboard/earnings";
 import { PortfolioDoctor } from "@/components/portfolio/PortfolioDoctor";
 import { InstitutionalPortfolioPanel } from "@/components/dashboard/institutional/InstitutionalPortfolioPanel";
 import { ExecutiveInstitutionalDashboard } from "@/components/dashboard/institutional/ExecutiveInstitutionalDashboard";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { fetchPortfolioSummary, fetchWatchlist, fetchUpcomingResults } from "@/services/marketData";
+import { fetchPortfolioEarningsRows } from "@/services/earningsCalendar";
 import { fetchPortfolioDoctorAnalysis } from "@/services/portfolioAnalysisData";
 import { fetchOpportunityEngineState } from "@/services/opportunityEngine";
 
 export default async function PortfolioPage() {
-  const [portfolio, watchlist, doctorAnalysis, opportunityState, results] =
-    await Promise.all([
-      fetchPortfolioSummary(),
-      fetchWatchlist(),
-      fetchPortfolioDoctorAnalysis(),
-      fetchOpportunityEngineState(),
-      fetchUpcomingResults(),
-    ]);
+  const [
+    portfolio,
+    watchlist,
+    doctorAnalysis,
+    opportunityState,
+    results,
+    portfolioEarnings,
+  ] = await Promise.all([
+    fetchPortfolioSummary(),
+    fetchWatchlist(),
+    fetchPortfolioDoctorAnalysis(),
+    fetchOpportunityEngineState(),
+    fetchUpcomingResults(),
+    fetchPortfolioEarningsRows(),
+  ]);
 
   return (
     <div className="p-6">
@@ -57,6 +66,10 @@ export default async function PortfolioPage() {
         className="mb-6 animate-fade-in-up [animation-delay:60ms]"
       >
         <PortfolioHoldingsTable holdings={portfolio.holdings} />
+      </section>
+
+      <section className="mb-6 animate-fade-in-up [animation-delay:90ms]">
+        <PortfolioEarningsPanel rows={portfolioEarnings} />
       </section>
 
       <section className="mb-6 animate-fade-in-up [animation-delay:120ms]">

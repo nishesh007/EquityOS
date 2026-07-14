@@ -45,7 +45,7 @@ export function UpcomingResultsCalendar({
 
       <div className="space-y-2">
         {results.length === 0 ? (
-          <p className="text-xs text-text-muted">No upcoming results available.</p>
+          <p className="text-xs text-text-muted">No Upcoming Earnings</p>
         ) : (
           results.map((result) => {
             const { day, month } = formatDate(result.date);
