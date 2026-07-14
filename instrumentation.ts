@@ -28,5 +28,11 @@ export async function register() {
       "@/src/core/dataIntegrity/rules/recommendation"
     );
     registerRecommendationRules();
+
+    // Sprint 9F.7 — idempotent trade setup validation rule registration
+    const { registerTradeSetupRules } = await import(
+      "@/src/core/dataIntegrity/rules/tradeSetup"
+    );
+    registerTradeSetupRules();
   }
 }

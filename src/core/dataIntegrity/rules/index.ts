@@ -128,3 +128,27 @@ export type {
   RecommendationAuditEntry,
   RecommendationQualityScoreResult,
 } from "./recommendation";
+
+/** Prompt 9F.7 trade setup validation library re-exports. */
+export {
+  registerTradeSetupRules,
+  validateTradeSetup,
+  validateEntry,
+  validateStopLoss,
+  validateTargets,
+  validateRiskReward,
+  calculateTradeSetupQuality,
+  buildTradeSetupRules,
+  getTradeSetupValidationMetrics,
+  getTradeSetupAuditLog,
+  DEFAULT_TRADE_SETUP_VALIDATION_CONFIG,
+} from "./tradeSetup";
+
+export type {
+  TradeSetupValidationConfig,
+  TradeSetupValidationConfigInput,
+  TradeSetupValidationMetrics,
+  TradeSide,
+  TradeSetupAuditEntry,
+  TradeSetupQualityScoreResult,
+} from "./tradeSetup";
