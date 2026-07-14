@@ -152,6 +152,8 @@ export interface ScanMetrics {
 }
 
 export interface OpportunityEngineState {
+  /** IST trading session date (YYYY-MM-DD) owning the active registry. */
+  tradingDate: string | null;
   lastScannedAt: string | null;
   nextScanAt: string | null;
   isFrozen: boolean;
@@ -163,6 +165,13 @@ export interface OpportunityEngineState {
   postMarket: PostMarketReport | null;
   scanHistory: ScanHistoryEntry[];
   lastScanMetrics: ScanMetrics | null;
+}
+
+export interface OpportunityDaySnapshot {
+  tradingDate: string;
+  archivedAt: string;
+  state: OpportunityEngineState;
+  firstDetectedMap: Record<string, string>;
 }
 
 export interface ScanResult {

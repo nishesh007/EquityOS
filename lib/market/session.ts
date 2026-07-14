@@ -75,11 +75,49 @@ function minutesSinceMidnight(hours: number, minutes: number): number {
   return hours * 60 + minutes;
 }
 
+function isTradingCalendarDay(dayOfWeek: number, dateKey: string): boolean {
+  return dayOfWeek !== 0 && dayOfWeek !== 6 && !isTradingHoliday(dateKey);
+}
+
+/** IST calendar date key (YYYY-MM-DD) for `now`. */
+export function getISTDateKey(now = new Date()): string {
+  return getISTParts(now).dateKey;
+}
+
+/** Whether `now` falls on an NSE trading calendar day (weekday, not holiday). */
+export function isTradingDay(now = new Date()): boolean {
+  const { dayOfWeek, dateKey } = getISTParts(now);
+  return isTradingCalendarDay(dayOfWeek, dateKey);
+}
+
+/**
+ * Trading session date for opportunity-engine lifecycle.
+ * - On a trading day: that IST calendar date.
+ * - On weekends/holidays: the previous trading date (keeps post-market
+ *   visible until the next session, without mixing into a new day).
+ */
+export function getTradingDateKey(now = new Date()): string {
+  const parts = getISTParts(now);
+  if (isTradingCalendarDay(parts.dayOfWeek, parts.dateKey)) {
+    return parts.dateKey;
+  }
+
+  let cursor = new Date(now.getTime());
+  for (let guard = 0; guard < 14; guard += 1) {
+    cursor = new Date(cursor.getTime() - 86_400_000);
+    const previous = getISTParts(cursor);
+    if (isTradingCalendarDay(previous.dayOfWeek, previous.dateKey)) {
+      return previous.dateKey;
+    }
+  }
+
+  return parts.dateKey;
+}
+
 /** Whether NSE cash market is currently open for live polling. */
 export function isMarketOpen(now = new Date()): boolean {
   const { dayOfWeek, dateKey, hours, minutes } = getISTParts(now);
-  if (dayOfWeek === 0 || dayOfWeek === 6) return false;
-  if (isTradingHoliday(dateKey)) return false;
+  if (!isTradingCalendarDay(dayOfWeek, dateKey)) return false;
 
   const elapsed = minutesSinceMidnight(hours, minutes);
   return elapsed >= SESSION.MARKET_OPEN && elapsed < SESSION.MARKET_CLOSE;

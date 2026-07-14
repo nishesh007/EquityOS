@@ -1,10 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { OpportunityEngineState } from "@/lib/opportunity-engine/types";
+import type {
+  OpportunityDaySnapshot,
+  OpportunityEngineState,
+} from "@/lib/opportunity-engine/types";
 
 const DATA_DIR = path.join(process.cwd(), ".data", "opportunity-engine");
 const STATE_FILE = path.join(DATA_DIR, "state.json");
-const FIRST_DETECTED_FILE = path.join(DATA_DIR, "first-detected.json");
+const ARCHIVE_DIR = path.join(DATA_DIR, "archive");
 const LOCK_FILE = path.join(DATA_DIR, "scheduler.lock");
 
 const LOCK_TTL_MS = 5 * 60 * 1000;
@@ -24,6 +27,17 @@ function ensureDataDir(): void {
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
   }
+}
+
+function ensureArchiveDir(): void {
+  ensureDataDir();
+  if (!fs.existsSync(ARCHIVE_DIR)) {
+    fs.mkdirSync(ARCHIVE_DIR, { recursive: true });
+  }
+}
+
+function archiveFilePath(tradingDate: string): string {
+  return path.join(ARCHIVE_DIR, `${tradingDate}.json`);
 }
 
 export function loadPersistedData(): PersistedEngineData | null {
@@ -46,6 +60,28 @@ export function persistEngineData(data: PersistedEngineData): void {
   ensureDataDir();
   const payload = JSON.stringify(data, null, 2);
   fs.writeFileSync(STATE_FILE, payload, "utf8");
+}
+
+export function archiveOpportunitySnapshot(snapshot: OpportunityDaySnapshot): void {
+  ensureArchiveDir();
+  const payload = JSON.stringify(snapshot, null, 2);
+  fs.writeFileSync(archiveFilePath(snapshot.tradingDate), payload, "utf8");
+}
+
+export function loadArchivedOpportunitySnapshot(
+  tradingDate: string
+): OpportunityDaySnapshot | null {
+  ensureArchiveDir();
+  try {
+    const file = archiveFilePath(tradingDate);
+    if (!fs.existsSync(file)) return null;
+    const raw = fs.readFileSync(file, "utf8");
+    const parsed = JSON.parse(raw) as OpportunityDaySnapshot;
+    if (!parsed?.tradingDate || !parsed?.state) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
 }
 
 export function loadFirstDetectedMap(): Map<string, string> {

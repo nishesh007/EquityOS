@@ -1,6 +1,11 @@
 import { getCompanyMasterRecords } from "@/lib/company-master";
 import { marketDataService } from "@/lib/market-data";
-import { isMarketOpen, getMarketStatus } from "@/lib/market/session";
+import {
+  getMarketStatus,
+  getTradingDateKey,
+  isMarketOpen,
+  isTradingDay,
+} from "@/lib/market/session";
 import { buildTradeLevels } from "@/lib/opportunity-engine/levels";
 import {
   buildConfidenceReasonContributions,
@@ -19,6 +24,7 @@ import {
 } from "@/lib/opportunity-engine/scanner";
 import {
   clearScanningOnError,
+  ensureTradingDayLifecycle,
   finalizeScan,
   freezeScan,
   getOpportunityEngineState,
@@ -50,15 +56,6 @@ const QUOTE_BATCH_SIZE = 50;
 const METRICS_CONCURRENCY = 8;
 
 let scanInFlight: Promise<ScanResult> | null = null;
-
-function getISTDateKey(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Kolkata",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
 
 async function fetchQuotesInBatches(symbols: string[]) {
   const quoteMap = new Map<
@@ -254,10 +251,27 @@ function buildCategoryCandidates(
 
 async function executeScan(force = false): Promise<ScanResult> {
   const start = Date.now();
+  const tradingDate = getTradingDateKey();
+
+  // Trading-day boundary: archive prior day and clear active registry first.
+  ensureTradingDayLifecycle(tradingDate);
   unfreezeIfMarketOpen();
 
   const current = getOpportunityEngineState();
   if (current.isFrozen && !force) {
+    return {
+      state: current,
+      added: 0,
+      removed: 0,
+      updated: 0,
+      durationMs: Date.now() - start,
+      symbolsScanned: 0,
+    };
+  }
+
+  // Do not mutate opportunity lists on weekends/holidays (non-session days).
+  // Post-close freeze still runs on trading days after 15:30.
+  if (!isTradingDay() && getMarketStatus() !== "post_close") {
     return {
       state: current,
       added: 0,
@@ -343,8 +357,16 @@ async function executeScan(force = false): Promise<ScanResult> {
     });
 
     if (!isMarketOpen() && getMarketStatus() === "post_close") {
-      const report = generatePostMarketReport(getOpportunityEngineState(), getISTDateKey());
-      freezeScan(report);
+      const sessionDate = getTradingDateKey();
+      const liveState = getOpportunityEngineState();
+      // Regenerate post-market only for the current trading day.
+      if (
+        liveState.tradingDate === sessionDate &&
+        liveState.postMarket?.sessionDate !== sessionDate
+      ) {
+        const report = generatePostMarketReport(liveState, sessionDate);
+        freezeScan(report);
+      }
     }
 
     return {
