@@ -87,8 +87,13 @@ export function Watchlist({ initialItems }: WatchlistProps) {
                   <td className="py-2.5 text-right">
                     <p className="text-[9px] text-text-faint">
                       {quote.availability === "unavailable"
-                        ? quote.lastSuccessfulUpdateIST ?? "—"
-                        : quote.lastUpdatedIST?.split(" ").slice(-3).join(" ") ?? "—"}
+                        ? quote.lastSuccessfulUpdateIST ?? "N/A"
+                        : quote.lastUpdatedIST?.split(" ").slice(-3).join(" ") ??
+                          "N/A"}
+                    </p>
+                    <p className="mt-0.5 text-[9px] text-text-faint">
+                      AI Reviewed{" "}
+                      <span className="text-text-muted">Not reviewed yet.</span>
                     </p>
                   </td>
                   <td className="py-2.5 text-right">

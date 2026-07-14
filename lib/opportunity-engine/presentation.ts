@@ -27,10 +27,10 @@ export const POST_MARKET_SUBTITLES = {
 } as const;
 
 export const CATEGORY_EMPTY_HEADLINE =
-  "No institutional candidates satisfied today's strict filters.";
+  "No candidates matched today's institutional criteria.";
 
-const CATEGORY_EMPTY_NOTE =
-  "No stocks satisfied today's strict institutional filters for this category. Filters were relaxed once — the next scan may surface candidates.";
+export const CATEGORY_EMPTY_NOTE =
+  "Filters were automatically relaxed once. Next scheduled scan may surface additional opportunities.";
 
 export interface NearestCandidate {
   symbol: string;

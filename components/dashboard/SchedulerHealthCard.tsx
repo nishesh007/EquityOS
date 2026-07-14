@@ -6,13 +6,14 @@ import type {
   SchedulerMarketState,
   SchedulerStatus,
 } from "@/lib/opportunity-engine/scheduler-health";
+import { formatOptionalText } from "@/lib/dashboard/display-value";
 import { Activity, Clock3, Radar } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 const HEALTH_POLL_MS = 30_000;
 
-function formatClock(iso: string | null): string {
-  if (!iso) return "—";
+function formatClock(iso: string | null): string | null {
+  if (!iso) return null;
   return new Intl.DateTimeFormat("en-IN", {
     timeZone: "Asia/Kolkata",
     hour: "2-digit",
@@ -34,22 +35,8 @@ function formatCountdown(iso: string | null, nowMs: number): string {
   return `(${seconds}s)`;
 }
 
-function formatDurationMs(ms: number | null): string {
-  if (ms == null) return "—";
-  if (ms < 1000) return `${ms} ms`;
-  return `${(ms / 1000).toFixed(0)} sec`;
-}
-
-function formatRelativeSeconds(seconds: number | null): string {
-  if (seconds == null) return "—";
-  if (seconds < 60) return `${seconds} sec ago`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} min ago`;
-  return `${Math.floor(minutes / 60)}h ${minutes % 60}m ago`;
-}
-
-function formatNextSession(iso: string | null): string {
-  if (!iso) return "—";
+function formatNextSession(iso: string | null): string | null {
+  if (!iso) return null;
   return new Intl.DateTimeFormat("en-IN", {
     timeZone: "Asia/Kolkata",
     weekday: "short",
@@ -59,6 +46,14 @@ function formatNextSession(iso: string | null): string {
     minute: "2-digit",
     hour12: true,
   }).format(new Date(iso));
+}
+
+function formatRelativeSeconds(seconds: number | null): string | null {
+  if (seconds == null) return null;
+  if (seconds < 60) return `${seconds} sec ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} min ago`;
+  return `${Math.floor(minutes / 60)}h ${minutes % 60}m ago`;
 }
 
 function statusTone(status: SchedulerStatus): string {
@@ -130,12 +125,22 @@ function Metric({
   sub?: string;
   valueClassName?: string;
 }) {
+  const muted =
+    value === "N/A" ||
+    value === "Unavailable" ||
+    value.startsWith("No scans") ||
+    value === "Collecting...";
+
   return (
     <div className="min-w-[7.5rem]">
       <div className="text-[10px] font-medium uppercase tracking-wider text-text-faint">
         {label}
       </div>
-      <div className={`mt-0.5 text-sm font-medium tabular-nums ${valueClassName ?? "text-text-primary"}`}>
+      <div
+        className={`mt-0.5 text-sm font-medium tabular-nums ${
+          valueClassName ?? (muted ? "text-text-muted" : "text-text-primary")
+        }`}
+      >
         {value}
       </div>
       {sub ? <div className="text-[10px] text-text-muted">{sub}</div> : null}
@@ -187,14 +192,32 @@ export function SchedulerHealthCard() {
   const isClosed =
     health.marketState === "CLOSED" || health.schedulerStatus === "FROZEN";
   const headline = statusHeadline(health.schedulerStatus, health.marketState);
+  const noScansToday = health.scansToday <= 0 || !health.lastSuccessfulScan;
+
+  const lastScanValue = noScansToday
+    ? "No scans completed yet today"
+    : formatOptionalText(formatClock(health.lastSuccessfulScan), "Unavailable");
+
+  const nextScanValue = isHoliday
+    ? formatOptionalText(formatNextSession(health.nextScheduledScan), "N/A")
+    : isClosed && health.schedulerStatus === "FROZEN"
+      ? formatOptionalText(formatNextSession(health.nextScheduledScan), "N/A")
+      : formatOptionalText(formatClock(health.nextScheduledScan), "N/A");
+
+  const marketRefresh =
+    formatClock(health.lastMarketDataSync) ??
+    formatClock(health.lastSuccessfulScan);
 
   return (
     <div className="mb-4 rounded-lg border border-surface-border-subtle/80 bg-surface-hover/20 px-4 py-3">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className={`inline-block h-2 w-2 rounded-full ${statusDot(health.schedulerStatus)}`} />
           <span className={`text-sm font-semibold ${statusTone(health.schedulerStatus)}`}>
             {headline}
+          </span>
+          <span className="rounded border border-surface-border-subtle px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-text-muted">
+            Market · {health.marketState}
           </span>
           {isClosed && !isHoliday && health.schedulerStatus === "FROZEN" ? (
             <span className="text-[10px] uppercase tracking-wider text-text-muted">
@@ -214,61 +237,64 @@ export function SchedulerHealthCard() {
       </div>
 
       <div className="flex flex-wrap gap-x-6 gap-y-3">
-        <Metric label="Market" value={health.marketState} />
-
-        {isHoliday ? (
-          <Metric
-            label="Next Trading Session"
-            value={formatNextSession(health.nextScheduledScan)}
-          />
-        ) : (
-          <Metric
-            label="Next Scan"
-            value={
-              isClosed && health.schedulerStatus === "FROZEN"
-                ? formatNextSession(health.nextScheduledScan)
-                : formatClock(health.nextScheduledScan)
-            }
-            sub={
-              health.nextScheduledScan
-                ? formatCountdown(health.nextScheduledScan, nowMs)
-                : undefined
-            }
-          />
-        )}
-
         <Metric
-          label="Last Scan"
-          value={formatClock(health.lastSuccessfulScan)}
-          sub={formatRelativeSeconds(health.dataFreshnessSeconds)}
+          label="Scheduler Status"
+          value={headline}
+          valueClassName={statusTone(health.schedulerStatus)}
         />
 
-        <Metric label="Today's Scans" value={String(health.scansToday)} />
+        <Metric
+          label="Last Successful Scan"
+          value={lastScanValue}
+          sub={
+            noScansToday
+              ? undefined
+              : formatRelativeSeconds(health.dataFreshnessSeconds) ?? undefined
+          }
+        />
+
+        <Metric
+          label="Next Scheduled Scan"
+          value={nextScanValue}
+          sub={
+            health.nextScheduledScan
+              ? formatCountdown(health.nextScheduledScan, nowMs)
+              : undefined
+          }
+        />
+
+        <Metric
+          label="Last Market Refresh"
+          value={formatOptionalText(marketRefresh, "N/A")}
+        />
+
+        <Metric
+          label="Today's Scan Count"
+          value={
+            health.scansToday > 0
+              ? String(health.scansToday)
+              : "No scans completed yet today"
+          }
+        />
+
+        <Metric
+          label="Symbols Processed"
+          value={
+            health.symbolsScanned > 0
+              ? health.symbolsScanned.toLocaleString("en-IN")
+              : "N/A"
+          }
+        />
 
         <Metric
           label="Data Freshness"
-          value={health.dataFreshness ?? "—"}
+          value={formatOptionalText(health.dataFreshness, "N/A")}
           valueClassName={freshnessTone(health.dataFreshness)}
           sub={
             health.dataFreshnessSeconds != null
               ? `Updated ${formatRelativeSeconds(health.dataFreshnessSeconds)}`
               : undefined
           }
-        />
-
-        <Metric
-          label="Average Scan"
-          value={formatDurationMs(health.averageScanDuration)}
-        />
-
-        <Metric
-          label="Symbols"
-          value={health.symbolsScanned.toLocaleString("en-IN")}
-        />
-
-        <Metric
-          label="Opportunities"
-          value={health.opportunitiesGenerated.toLocaleString("en-IN")}
         />
       </div>
 

@@ -83,7 +83,26 @@ export default async function DashboardPage() {
       </section>
 
       <section className="mb-6 animate-fade-in-up [animation-delay:360ms]">
-        <AIMarketSummary summary={aiSummary} />
+        <AIMarketSummary
+          summary={aiSummary}
+          meta={{
+            marketData: indices.some((index) => index.value > 0) ? "Live" : null,
+            news: news.length > 0 ? `${news.length} headlines` : null,
+            breadth:
+              breadth.advances + breadth.declines > 0
+                ? `${breadth.advances} adv / ${breadth.declines} dec`
+                : null,
+            trend:
+              aiSummary.sentiment === "bullish"
+                ? "Bullish"
+                : aiSummary.sentiment === "bearish"
+                  ? "Bearish"
+                  : "Neutral",
+            generatedAt:
+              indices.find((index) => index.quote?.lastUpdated)?.quote
+                ?.lastUpdated ?? null,
+          }}
+        />
       </section>
 
       <section className="grid animate-fade-in-up grid-cols-1 gap-6 [animation-delay:420ms] xl:grid-cols-2">

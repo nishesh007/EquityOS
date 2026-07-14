@@ -120,7 +120,7 @@ export function PortfolioSummary({
           </p>
         </div>
         <div className="rounded-lg border border-surface-border-subtle bg-surface-overlay/50 p-4">
-          <p className="data-label">Total Gain</p>
+          <p className="data-label">Unrealized P&L</p>
           <div className="mt-1 flex items-center gap-2">
             <p
               className={`data-value text-lg font-semibold ${

@@ -676,8 +676,28 @@ function EmptySection({
   return (
     <div>
       <div className="rounded-lg border border-surface-border-subtle/80 bg-surface-hover/20 px-4 py-6 text-center">
-        {headline && <p className="mb-2 text-sm font-medium text-text-secondary">{headline}</p>}
-        <p className="text-sm text-text-muted">{message}</p>
+        <p className="mb-2 text-sm font-medium text-text-secondary">
+          {headline ?? "No candidates matched today's institutional criteria."}
+        </p>
+        <p className="mx-auto max-w-xl text-sm text-text-muted">{message}</p>
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+          <button
+            type="button"
+            disabled
+            title="Backend support coming soon"
+            className="rounded-lg border border-surface-border px-3 py-1.5 text-[11px] font-medium text-text-faint disabled:cursor-not-allowed"
+          >
+            View rejected candidates
+          </button>
+          <button
+            type="button"
+            disabled
+            title="Backend support coming soon"
+            className="rounded-lg border border-surface-border px-3 py-1.5 text-[11px] font-medium text-text-faint disabled:cursor-not-allowed"
+          >
+            Explain filters
+          </button>
+        </div>
       </div>
       {nearestCandidates && nearestCandidates.length > 0 && (
         <NearestCandidatesPanel candidates={nearestCandidates} />

@@ -15,10 +15,10 @@ import type {
   PostMarketMarketSummary,
   PostMarketReport,
 } from "@/lib/opportunity-engine/types";
+import { CATEGORY_EMPTY_HEADLINE } from "@/lib/opportunity-engine/presentation";
 import { marketBreadth, marketPulse } from "@/services/researchDashboardData";
 
-const EMPTY_SECTION_NOTE =
-  "No institutional candidates satisfied today's strict filters.";
+const EMPTY_SECTION_NOTE = CATEGORY_EMPTY_HEADLINE;
 
 function sectorShortName(name: string): string {
   return name.replace(/^Nifty\s+/i, "").trim();
