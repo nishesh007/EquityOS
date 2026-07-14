@@ -472,6 +472,42 @@ export type {
   GenerateReportOptions,
 } from "./reporting";
 
+/** Prompt 9F.R1 Institutional Report Export Center. */
+export {
+  registerReportExportEngine,
+  getReportExportEngine,
+  resetReportExportEngine,
+  ReportExportEngine,
+  exportPDF,
+  exportExcel,
+  exportMarkdown,
+  printReport,
+  canUserExport,
+  getExportMetrics,
+  getExportAuditLog,
+  getExportVisibleActions,
+  DEFAULT_EXPORT_CONFIGURATION,
+  resolveExportConfiguration,
+} from "./reporting";
+
+export type {
+  ExportableFormat,
+  ExportUserRole,
+  SubscriptionTier,
+  ExportConfiguration,
+  ExportConfigurationInput,
+  ExportAccessSubject,
+  ExportPermissionResult,
+  SupportedExportReportType,
+  ExportRequestOptions,
+  ExportResult,
+  ExportOperationalMetrics,
+  PdfExportResult,
+  ExcelExportResult,
+  MarkdownExportResult,
+  PrintExportResult,
+} from "./reporting";
+
 /** Prompt 9F.16 Institutional Validation Developer Tools & Diagnostics Engine. */
 export {
   registerValidationDiagnosticsEngine,

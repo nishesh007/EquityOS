@@ -78,10 +78,13 @@ export async function register() {
     registerValidationAnalyticsEngine();
 
     // Sprint 9F.15 — idempotent Validation Reporting & Export Engine registration
-    const { registerValidationReportingEngine } = await import(
-      "@/src/core/dataIntegrity/reporting"
-    );
+    const {
+      registerValidationReportingEngine,
+      registerReportExportEngine,
+    } = await import("@/src/core/dataIntegrity/reporting");
     registerValidationReportingEngine();
+    // Sprint 9F.R1 — Institutional Report Export Center
+    registerReportExportEngine();
 
     // Sprint 9F.16 — idempotent Validation Diagnostics Engine registration
     const { registerValidationDiagnosticsEngine } = await import(

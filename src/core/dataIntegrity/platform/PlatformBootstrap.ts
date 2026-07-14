@@ -11,7 +11,10 @@ import { registerDashboardService } from "../dashboard";
 import { registerValidationOrchestrator } from "../orchestrator";
 import { registerValidationEventBus } from "../events";
 import { registerValidationAnalyticsEngine } from "../analytics";
-import { registerValidationReportingEngine } from "../reporting";
+import {
+  registerValidationReportingEngine,
+  registerReportExportEngine,
+} from "../reporting";
 import { registerValidationDiagnosticsEngine } from "../diagnostics";
 import { registerValidationAdministrationEngine } from "../admin";
 import { registerValidationOptimizationEngine } from "../optimization";
@@ -118,7 +121,13 @@ export class PlatformBootstrap {
         { id: "orchestrator", run: () => registerValidationOrchestrator() },
         { id: "events", run: () => registerValidationEventBus() },
         { id: "analytics", run: () => registerValidationAnalyticsEngine() },
-        { id: "reporting", run: () => registerValidationReportingEngine() },
+        {
+          id: "reporting",
+          run: () => {
+            registerValidationReportingEngine();
+            registerReportExportEngine();
+          },
+        },
         { id: "diagnostics", run: () => registerValidationDiagnosticsEngine() },
         { id: "admin", run: () => registerValidationAdministrationEngine() },
         { id: "optimization", run: () => registerValidationOptimizationEngine() },

@@ -6,6 +6,7 @@ import {
   hasValidationActivity,
 } from "@/lib/dashboard/display-value";
 import { InfoTooltip } from "@/components/ui/InfoTooltip";
+import { ReportExportToolbar } from "@/components/reporting/ReportExportToolbar";
 import { ShieldCheck } from "lucide-react";
 
 const OVERALL_VALIDATION_TOOLTIP =
@@ -131,16 +132,19 @@ export function InstitutionalValidationPanel({
 
   return (
     <div className="mb-4 rounded-lg border border-surface-border-subtle/80 bg-surface-hover/20 px-4 py-3">
-      <div className="mb-3 flex items-center gap-2">
-        <ShieldCheck className="h-3.5 w-3.5 text-accent" />
-        <p className="text-xs font-semibold text-text-primary">
-          Institutional Validation (Sprint 9F)
-        </p>
-        {snapshot.platform?.overallValidationStatus ? (
-          <span className="rounded border border-accent/20 bg-accent/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-accent">
-            {snapshot.platform.overallValidationStatus}
-          </span>
-        ) : null}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-3.5 w-3.5 text-accent" />
+          <p className="text-xs font-semibold text-text-primary">
+            Institutional Validation (Sprint 9F)
+          </p>
+          {snapshot.platform?.overallValidationStatus ? (
+            <span className="rounded border border-accent/20 bg-accent/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-accent">
+              {snapshot.platform.overallValidationStatus}
+            </span>
+          ) : null}
+        </div>
+        <ReportExportToolbar reportType="ValidationReport" />
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
         {items.map((item) => (
