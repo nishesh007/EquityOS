@@ -94,5 +94,11 @@ export async function register() {
       "@/src/core/dataIntegrity/admin"
     );
     registerValidationAdministrationEngine();
+
+    // Sprint 9F.18 — idempotent Validation Automation & Optimization Engine registration
+    const { registerValidationOptimizationEngine } = await import(
+      "@/src/core/dataIntegrity/optimization"
+    );
+    registerValidationOptimizationEngine();
   }
 }

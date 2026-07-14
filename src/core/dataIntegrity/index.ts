@@ -532,3 +532,32 @@ export type {
   UpdatePolicyInput,
   ApplyOverrideInput,
 } from "./admin";
+
+/** Prompt 9F.18 Institutional Validation Automation & Optimization Engine. */
+export {
+  registerValidationOptimizationEngine,
+  getValidationOptimizationEngine,
+  resetValidationOptimizationEngine,
+  ValidationOptimizationEngine,
+  runOptimization,
+  analyzePerformance,
+  optimizePipeline,
+  optimizeCache,
+  analyzeDependencies,
+  getOptimizationMetrics,
+  createOptimizationSnapshot,
+  DEFAULT_OPTIMIZATION_CONFIGURATION,
+  resolveOptimizationConfiguration,
+  registerOptimizationSource,
+} from "./optimization";
+
+export type {
+  OptimizationConfiguration,
+  OptimizationConfigurationInput,
+  OptimizationMode,
+  OptimizationRunResult,
+  OptimizationSnapshot,
+  OptimizationProbe,
+  RunOptimizationOptions,
+  OptimizationOperationalMetrics,
+} from "./optimization";
