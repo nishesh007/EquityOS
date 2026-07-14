@@ -345,3 +345,36 @@ export type {
   DashboardModuleStatus,
   DashboardHealthClassification,
 } from "./dashboard";
+
+/** Prompt 9F.12 Institutional Validation Orchestrator & unified API. */
+export {
+  registerValidationOrchestrator,
+  getValidationOrchestrator,
+  resetValidationOrchestrator,
+  ValidationOrchestrator,
+  validateBatch as orchestrateValidateBatch,
+  validateResearch,
+  validateRecommendation as orchestrateValidateRecommendation,
+  validateTrade,
+  validatePortfolio,
+  executePipeline,
+  getExecutionStatus,
+  cancelValidation,
+  validate as orchestrateValidate,
+  DEFAULT_VALIDATION_CONFIGURATION,
+  resolveValidationConfiguration,
+  registerValidationEngine,
+} from "./orchestrator";
+
+export type {
+  ValidationConfiguration,
+  ValidationConfigurationInput,
+  ValidationRequest,
+  ValidationRequestInput,
+  ValidationResponse,
+  ValidationExecutionMode,
+  ValidationPriority,
+  ValidationPipelineId,
+  ValidationEngineId,
+  ExecutionStatus,
+} from "./orchestrator";

@@ -58,5 +58,11 @@ export async function register() {
       "@/src/core/dataIntegrity/dashboard"
     );
     registerDashboardService();
+
+    // Sprint 9F.12 — idempotent Validation Orchestrator registration
+    const { registerValidationOrchestrator } = await import(
+      "@/src/core/dataIntegrity/orchestrator"
+    );
+    registerValidationOrchestrator();
   }
 }
