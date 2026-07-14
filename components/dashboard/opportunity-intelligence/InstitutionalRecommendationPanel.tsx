@@ -9,6 +9,7 @@ import type {
 import { buildRecommendationPanelView } from "@/lib/dashboard/institutional-exposure";
 import { InstitutionalPanelSkeleton } from "@/components/dashboard/opportunity-intelligence/InstitutionalPanelSkeleton";
 import { TraceList } from "@/components/dashboard/opportunity-intelligence/MetricBlocks";
+import { InstitutionalTimelinePanel } from "@/components/dashboard/institutional/InstitutionalTimelinePanel";
 
 export function InstitutionalRecommendationPanel({
   snapshot,
@@ -78,6 +79,15 @@ export function InstitutionalRecommendationPanel({
             {view.historicalSimilarity}
           </p>
         </div>
+      </div>
+
+      <div className="mt-3">
+        <InstitutionalTimelinePanel
+          view={candidate}
+          snapshot={snapshot}
+          compact
+          title="Recommendation History"
+        />
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import type { InstitutionalPlatformSnapshot } from "@/lib/opportunity-engine/ins
 import { buildTrustPanelView } from "@/lib/dashboard/institutional-exposure";
 import { InstitutionalMetricCell } from "@/components/dashboard/opportunity-intelligence/InstitutionalMetricCell";
 import { InstitutionalPanelSkeleton } from "@/components/dashboard/opportunity-intelligence/InstitutionalPanelSkeleton";
+import { InstitutionalTimelinePanel } from "@/components/dashboard/institutional/InstitutionalTimelinePanel";
 
 export function InstitutionalTrustPanel({
   snapshot,
@@ -54,6 +55,14 @@ export function InstitutionalTrustPanel({
         <FactorList title="Trust Factors" rows={view.trustFactors.map((f) => `${f.label}: ${f.value}`)} />
         <FactorList title="Positive Drivers" rows={view.positiveDrivers} tone="gain" />
         <FactorList title="Negative Drivers" rows={view.negativeDrivers} tone="loss" />
+      </div>
+
+      <div className="mt-3">
+        <InstitutionalTimelinePanel
+          snapshot={snapshot}
+          compact
+          title="Trust History"
+        />
       </div>
     </div>
   );

@@ -13,6 +13,7 @@ import { InstitutionalPanelSkeleton } from "@/components/dashboard/opportunity-i
 import { InstitutionalTrustBadges } from "@/components/dashboard/opportunity-intelligence/InstitutionalTrustBadges";
 import { InstitutionalValidationDetailsDrawer } from "@/components/dashboard/opportunity-intelligence/InstitutionalValidationDetailsDrawer";
 import { ReportExportToolbar } from "@/components/reporting/ReportExportToolbar";
+import { InstitutionalTimelinePanel } from "@/components/dashboard/institutional/InstitutionalTimelinePanel";
 
 export function InstitutionalValidationPanel({
   snapshot,
@@ -77,6 +78,14 @@ export function InstitutionalValidationPanel({
               onClick={() => setDrawerOpen(true)}
             />
           ))}
+        </div>
+
+        <div className="mt-3">
+          <InstitutionalTimelinePanel
+            snapshot={snapshot}
+            compact
+            title="Validation History"
+          />
         </div>
       </div>
 

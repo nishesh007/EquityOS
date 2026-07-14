@@ -3,20 +3,25 @@
 import { useMemo } from "react";
 import { X } from "lucide-react";
 import type { OpportunityCandidate } from "@/lib/opportunity-engine/types";
-import type { InstitutionalCandidateView } from "@/lib/opportunity-engine/institutional-presentation";
+import type {
+  InstitutionalCandidateView,
+  InstitutionalPlatformSnapshot,
+} from "@/lib/opportunity-engine/institutional-presentation";
 import { buildInstitutionalResearchDrawerView } from "@/lib/dashboard/institutional-research-presentation";
 import { InstitutionalResearchPanelContent } from "@/components/dashboard/opportunity-intelligence/InstitutionalResearchPanelContent";
 import { InstitutionalTrustBadges } from "@/components/dashboard/opportunity-intelligence/InstitutionalTrustBadges";
+import { InstitutionalTimelinePanel } from "@/components/dashboard/institutional/InstitutionalTimelinePanel";
 
 /**
- * Institutional Research Panel — expandable recommendation drawer (9F.R3).
- * Reuses existing InstitutionalCandidateView + OpportunityCandidate fields only.
+ * Institutional Research Panel — expandable recommendation drawer (9F.R3 + history).
+ * Reuses existing InstitutionalCandidateView + OpportunityCandidate + platform snapshot.
  */
 export function OpportunityExplainabilityDrawer({
   symbol,
   company,
   view,
   candidate = null,
+  snapshot = null,
   open,
   onClose,
 }: {
@@ -24,6 +29,7 @@ export function OpportunityExplainabilityDrawer({
   company: string;
   view: InstitutionalCandidateView;
   candidate?: OpportunityCandidate | null;
+  snapshot?: InstitutionalPlatformSnapshot | null;
   open: boolean;
   onClose: () => void;
 }) {
@@ -64,8 +70,14 @@ export function OpportunityExplainabilityDrawer({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-4">
+        <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
           <InstitutionalResearchPanelContent research={research} />
+          <InstitutionalTimelinePanel
+            view={view}
+            candidate={candidate}
+            snapshot={snapshot}
+            title="Recommendation History"
+          />
         </div>
       </aside>
     </div>

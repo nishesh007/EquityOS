@@ -2044,6 +2044,7 @@ export function OpportunityEnginePanel({ initialState }: OpportunityEnginePanelP
           company={inspectedCandidate.company}
           view={inspectedView}
           candidate={inspectedCandidate}
+          snapshot={platformSnapshot}
           open
           onClose={() => setInspectedCandidate(null)}
         />
