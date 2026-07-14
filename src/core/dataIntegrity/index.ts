@@ -647,3 +647,32 @@ export type {
   InsightsOperationalMetrics,
   IntelligentRecommendation,
 } from "./intelligence";
+
+/** Prompt 9F.22 Institutional Validation Compliance & Governance Engine. */
+export {
+  registerValidationComplianceEngine,
+  getValidationComplianceEngine,
+  resetValidationComplianceEngine,
+  ValidationComplianceEngine,
+  runCompliance,
+  evaluatePolicies,
+  detectViolations,
+  generateComplianceReport,
+  getComplianceScore,
+  getComplianceMetrics,
+  createComplianceSnapshot,
+  DEFAULT_COMPLIANCE_CONFIGURATION,
+  resolveComplianceConfiguration,
+  registerComplianceSource,
+} from "./compliance";
+
+export type {
+  ComplianceConfiguration,
+  ComplianceConfigurationInput,
+  ComplianceReport,
+  ComplianceSnapshot,
+  ComplianceObservation,
+  RunComplianceOptions,
+  ComplianceOperationalMetrics,
+  ComplianceViolation,
+} from "./compliance";

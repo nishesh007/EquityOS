@@ -118,5 +118,11 @@ export async function register() {
       "@/src/core/dataIntegrity/intelligence"
     );
     registerValidationIntelligenceEngine();
+
+    // Sprint 9F.22 — idempotent Validation Compliance & Governance Engine registration
+    const { registerValidationComplianceEngine } = await import(
+      "@/src/core/dataIntegrity/compliance"
+    );
+    registerValidationComplianceEngine();
   }
 }
