@@ -158,3 +158,25 @@ export type {
   TechnicalValidationConfigInput,
   TechnicalValidationMetrics,
 } from "./rules/technical";
+
+/** Prompt 9F.5 institutional fundamental validation library. */
+export {
+  registerFundamentalRules,
+  validateFundamentals,
+  validateBalanceSheet,
+  validateIncomeStatement,
+  validateCashFlow,
+  validateFinancialRatios,
+  validateTTM,
+  validateShareholding,
+  buildFundamentalRules,
+  getFundamentalValidationMetrics,
+  resetFundamentalValidationMetrics,
+  DEFAULT_FUNDAMENTAL_VALIDATION_CONFIG,
+} from "./rules/fundamental";
+
+export type {
+  FundamentalValidationConfig,
+  FundamentalValidationConfigInput,
+  FundamentalValidationMetrics,
+} from "./rules/fundamental";

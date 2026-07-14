@@ -16,5 +16,11 @@ export async function register() {
       "@/src/core/dataIntegrity/rules/technical"
     );
     registerTechnicalRules();
+
+    // Sprint 9F.5 — idempotent fundamental validation rule registration
+    const { registerFundamentalRules } = await import(
+      "@/src/core/dataIntegrity/rules/fundamental"
+    );
+    registerFundamentalRules();
   }
 }
