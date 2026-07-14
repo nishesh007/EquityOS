@@ -844,3 +844,30 @@ export type {
   StressTestResult,
   MonteCarloResult,
 } from "./simulation";
+
+/** Prompt 9F.29 Institutional Validation Learning, Feedback & Continuous Improvement Engine. */
+export {
+  registerLearning,
+  registerValidationLearningEngine,
+  getValidationLearningEngine,
+  resetValidationLearningEngine,
+  ValidationLearningEngine,
+  collectFeedback,
+  analyzePatterns,
+  generateImprovements,
+  createLearningSnapshot,
+  getLearningMetrics,
+  DEFAULT_LEARNING_CONFIGURATION,
+  resolveLearningConfiguration,
+} from "./learning";
+
+export type {
+  LearningConfiguration,
+  LearningConfigurationInput,
+  LearningSnapshot,
+  LearningOperationalMetrics,
+  LearningHealthScore,
+  LearningRunResult,
+  FeedbackRecord,
+  ImprovementItem,
+} from "./learning";
