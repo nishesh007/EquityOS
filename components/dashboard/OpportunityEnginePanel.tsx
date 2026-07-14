@@ -12,6 +12,7 @@ import { InstitutionalTrustPanel } from "@/components/dashboard/opportunity-inte
 import { InstitutionalValidationPanel } from "@/components/dashboard/opportunity-intelligence/InstitutionalValidationPanel";
 import { OpportunityExplainabilityDrawer } from "@/components/dashboard/opportunity-intelligence/OpportunityExplainabilityDrawer";
 import { InstitutionalReportViewer } from "@/components/dashboard/institutional/InstitutionalReportViewer";
+import { ExecutiveInstitutionalDashboard } from "@/components/dashboard/institutional/ExecutiveInstitutionalDashboard";
 import { PostMarketCertificationStrip } from "@/components/dashboard/opportunity-intelligence/PostMarketCertificationStrip";
 import { TomorrowWatchlistMetaHeader } from "@/components/dashboard/opportunity-intelligence/TomorrowWatchlistMetaHeader";
 import { bestCallStarRating, buildBestCallScoreBreakdown } from "@/lib/opportunity-engine/best-call";
@@ -1890,6 +1891,14 @@ export function OpportunityEnginePanel({ initialState }: OpportunityEnginePanelP
       )}
 
       <SchedulerHealthCard />
+      <div className="mb-4">
+        <ExecutiveInstitutionalDashboard
+          snapshot={platformSnapshot}
+          opportunityState={state}
+          fetchSnapshot={false}
+          compact
+        />
+      </div>
       <InstitutionalValidationPanel snapshot={platformSnapshot} />
       <div className="mb-4">
         <InstitutionalReportViewer

@@ -33,3 +33,13 @@ export { PortfolioQualityMatrix } from "./PortfolioQualityMatrix";
 export { PortfolioHeatmap } from "./PortfolioHeatmap";
 export { PortfolioRecommendationPanel } from "./PortfolioRecommendationPanel";
 export { PortfolioInstitutionalBadges } from "./PortfolioInstitutionalBadges";
+
+export { ExecutiveInstitutionalDashboard } from "./ExecutiveInstitutionalDashboard";
+export { ExecutiveHealthOverview } from "./ExecutiveHealthOverview";
+export { ExecutiveMetricsGrid } from "./ExecutiveMetricsGrid";
+export { ExecutiveStatusStrip } from "./ExecutiveStatusStrip";
+export { ExecutiveAlertsPanel } from "./ExecutiveAlertsPanel";
+export { ExecutiveSystemSummary } from "./ExecutiveSystemSummary";
+export { ExecutiveReadinessCard } from "./ExecutiveReadinessCard";
+export { ExecutiveQuickActions } from "./ExecutiveQuickActions";
+export { ExecutiveFooter } from "./ExecutiveFooter";

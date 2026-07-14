@@ -3,16 +3,21 @@ import { PortfolioHoldingsTable } from "@/components/dashboard/PortfolioHoldings
 import { Watchlist } from "@/components/dashboard/Watchlist";
 import { PortfolioDoctor } from "@/components/portfolio/PortfolioDoctor";
 import { InstitutionalPortfolioPanel } from "@/components/dashboard/institutional/InstitutionalPortfolioPanel";
+import { ExecutiveInstitutionalDashboard } from "@/components/dashboard/institutional/ExecutiveInstitutionalDashboard";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { fetchPortfolioSummary, fetchWatchlist } from "@/services/marketData";
+import { fetchPortfolioSummary, fetchWatchlist, fetchUpcomingResults } from "@/services/marketData";
 import { fetchPortfolioDoctorAnalysis } from "@/services/portfolioAnalysisData";
+import { fetchOpportunityEngineState } from "@/services/opportunityEngine";
 
 export default async function PortfolioPage() {
-  const [portfolio, watchlist, doctorAnalysis] = await Promise.all([
-    fetchPortfolioSummary(),
-    fetchWatchlist(),
-    fetchPortfolioDoctorAnalysis(),
-  ]);
+  const [portfolio, watchlist, doctorAnalysis, opportunityState, results] =
+    await Promise.all([
+      fetchPortfolioSummary(),
+      fetchWatchlist(),
+      fetchPortfolioDoctorAnalysis(),
+      fetchOpportunityEngineState(),
+      fetchUpcomingResults(),
+    ]);
 
   return (
     <div className="p-6">
@@ -22,6 +27,16 @@ export default async function PortfolioPage() {
       />
 
       <section className="mb-6 animate-fade-in-up">
+        <ExecutiveInstitutionalDashboard
+          portfolio={portfolio}
+          doctor={doctorAnalysis}
+          opportunityState={opportunityState}
+          earnings={results}
+          compact
+        />
+      </section>
+
+      <section className="mb-6 animate-fade-in-up [animation-delay:40ms]">
         <InstitutionalPortfolioPanel
           portfolio={portfolio}
           doctor={doctorAnalysis}

@@ -13,6 +13,8 @@ import { InstitutionalTrustBadges } from "@/components/dashboard/opportunity-int
 import { InstitutionalTimelinePanel } from "@/components/dashboard/institutional/InstitutionalTimelinePanel";
 import { InstitutionalReportViewer } from "@/components/dashboard/institutional/InstitutionalReportViewer";
 import { InstitutionalPortfolioPanel } from "@/components/dashboard/institutional/InstitutionalPortfolioPanel";
+import { ExecutiveStatusStrip } from "@/components/dashboard/institutional/ExecutiveStatusStrip";
+import { buildExecutiveStatus } from "@/lib/dashboard/institutional-executive-presentation";
 
 /**
  * Institutional Research Panel — expandable recommendation drawer (9F.R3 + history).
@@ -38,6 +40,11 @@ export function OpportunityExplainabilityDrawer({
   const research = useMemo(
     () => buildInstitutionalResearchDrawerView(view, candidate),
     [view, candidate]
+  );
+
+  const statusStrip = useMemo(
+    () => buildExecutiveStatus({ snapshot }),
+    [snapshot]
   );
 
   if (!open) return null;
@@ -73,6 +80,7 @@ export function OpportunityExplainabilityDrawer({
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
+          <ExecutiveStatusStrip items={statusStrip} />
           <InstitutionalResearchPanelContent research={research} />
           <InstitutionalTimelinePanel
             view={view}

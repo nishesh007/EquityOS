@@ -8,6 +8,7 @@ import { MarketPulse } from "@/components/dashboard/MarketPulse";
 import { MarketBreadth } from "@/components/dashboard/MarketBreadth";
 import { OpportunityEnginePanel } from "@/components/dashboard/OpportunityEnginePanel";
 import { InstitutionalPortfolioPanel } from "@/components/dashboard/institutional/InstitutionalPortfolioPanel";
+import { ExecutiveInstitutionalDashboard } from "@/components/dashboard/institutional/ExecutiveInstitutionalDashboard";
 import {
   fetchMarketIndices,
   fetchPortfolioSummary,
@@ -75,6 +76,15 @@ export default async function DashboardPage() {
 
       <section className="mb-6 animate-fade-in-up [animation-delay:180ms]">
         <MarketBreadth breadth={breadth} />
+      </section>
+
+      <section className="mb-6 animate-fade-in-up [animation-delay:210ms]">
+        <ExecutiveInstitutionalDashboard
+          portfolio={portfolio}
+          doctor={doctorAnalysis}
+          opportunityState={opportunityState}
+          earnings={results}
+        />
       </section>
 
       <section className="mb-6 animate-fade-in-up [animation-delay:240ms]">
