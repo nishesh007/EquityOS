@@ -42,3 +42,45 @@ export {
   DEFAULT_RULE_TIMEOUT_MS,
   DEFAULT_CACHE_TTL_MS,
 } from "./RuleTypes";
+
+/** Prompt 9F.3 market validation library re-exports. */
+export {
+  registerMarketRules,
+  validateMarketData,
+  validateOHLC,
+  validateQuote,
+  validateVolume,
+  validateCorporateAdjustments,
+  buildMarketRules,
+  getMarketValidationMetrics,
+  DEFAULT_MARKET_VALIDATION_CONFIG,
+} from "./market";
+
+export type {
+  MarketValidationConfig,
+  MarketValidationConfigInput,
+  MarketValidationMetrics,
+} from "./market";
+
+/** Prompt 9F.4 technical indicator validation library re-exports. */
+export {
+  registerTechnicalRules,
+  validateTechnicalIndicators,
+  validateRSI,
+  validateMACD,
+  validateMovingAverages,
+  validateBollingerBands,
+  validateADX,
+  validateATR,
+  validateVWAP,
+  validateIchimoku,
+  buildTechnicalRules,
+  getTechnicalValidationMetrics,
+  DEFAULT_TECHNICAL_VALIDATION_CONFIG,
+} from "./technical";
+
+export type {
+  TechnicalValidationConfig,
+  TechnicalValidationConfigInput,
+  TechnicalValidationMetrics,
+} from "./technical";

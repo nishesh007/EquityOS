@@ -4,5 +4,17 @@ export async function register() {
       "@/lib/opportunity-engine/scheduler"
     );
     startOpportunityScheduler();
+
+    // Sprint 9F.3 — idempotent institutional market rule registration
+    const { registerMarketRules } = await import(
+      "@/src/core/dataIntegrity/rules/market"
+    );
+    registerMarketRules();
+
+    // Sprint 9F.4 — idempotent technical indicator rule registration
+    const { registerTechnicalRules } = await import(
+      "@/src/core/dataIntegrity/rules/technical"
+    );
+    registerTechnicalRules();
   }
 }

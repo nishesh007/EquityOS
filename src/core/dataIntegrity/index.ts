@@ -114,3 +114,47 @@ export type {
   ScheduleWave,
   RuleVersionRecord,
 } from "./rules";
+
+/** Prompt 9F.3 institutional market validation library. */
+export {
+  registerMarketRules,
+  validateMarketData,
+  validateOHLC,
+  validateQuote,
+  validateVolume,
+  validateCorporateAdjustments,
+  buildMarketRules,
+  getMarketValidationMetrics,
+  resetMarketValidationMetrics,
+  DEFAULT_MARKET_VALIDATION_CONFIG,
+} from "./rules/market";
+
+export type {
+  MarketValidationConfig,
+  MarketValidationConfigInput,
+  MarketValidationMetrics,
+} from "./rules/market";
+
+/** Prompt 9F.4 institutional technical indicator validation library. */
+export {
+  registerTechnicalRules,
+  validateTechnicalIndicators,
+  validateRSI,
+  validateMACD,
+  validateMovingAverages,
+  validateBollingerBands,
+  validateADX,
+  validateATR,
+  validateVWAP,
+  validateIchimoku,
+  buildTechnicalRules,
+  getTechnicalValidationMetrics,
+  resetTechnicalValidationMetrics,
+  DEFAULT_TECHNICAL_VALIDATION_CONFIG,
+} from "./rules/technical";
+
+export type {
+  TechnicalValidationConfig,
+  TechnicalValidationConfigInput,
+  TechnicalValidationMetrics,
+} from "./rules/technical";
