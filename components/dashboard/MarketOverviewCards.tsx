@@ -22,8 +22,14 @@ export function MarketOverviewCards({ indices }: MarketOverviewCardsProps) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {indices.map((index) => {
-        const quote = quotes.get(index.symbol) ?? index.quote ?? createUnavailableQuote(index.symbol);
+        const polled = quotes.get(index.symbol);
+        const quote =
+          polled && polled.availability !== "unavailable" && polled.price !== null && polled.price > 0
+            ? polled
+            : index.quote ?? polled ?? createUnavailableQuote(index.symbol);
         const changePercent = quote.changePercent ?? index.changePercent;
+        const high = quote.high ?? index.high;
+        const low = quote.low ?? index.low;
 
         return (
           <Card key={index.id} hover padding="md">
@@ -50,13 +56,13 @@ export function MarketOverviewCards({ indices }: MarketOverviewCardsProps) {
               <div>
                 <p className="text-[10px] text-text-faint">H</p>
                 <p className="text-xs font-mono text-text-secondary tabular-nums">
-                  {formatNumber(index.high)}
+                  {formatNumber(high)}
                 </p>
               </div>
               <div>
                 <p className="text-[10px] text-text-faint">L</p>
                 <p className="text-xs font-mono text-text-secondary tabular-nums">
-                  {formatNumber(index.low)}
+                  {formatNumber(low)}
                 </p>
               </div>
             </div>

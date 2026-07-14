@@ -39,11 +39,15 @@ async function resolveIndex(symbol: string): Promise<MarketIndex> {
     value,
     change,
     changePercent,
-    high: value > 0 ? value + Math.abs(change) : 0,
-    low: value > 0 ? value - Math.abs(change) : 0,
+    high: enriched.high ?? (value > 0 ? value + Math.abs(change) : 0),
+    low: enriched.low ?? (value > 0 ? value - Math.abs(change) : 0),
     sparkline:
       value > 0
-        ? buildSparkline(value - Math.abs(change), value, value + Math.abs(change))
+        ? buildSparkline(
+            enriched.low ?? value - Math.abs(change),
+            value,
+            enriched.high ?? value + Math.abs(change)
+          )
         : [],
     quote: enriched,
   };
@@ -237,11 +241,14 @@ export async function fetchPortfolioSummary(): Promise<PortfolioSummary> {
   return getCached(
     { key: cacheKey("portfolio-summary"), ttlMs: CACHE_TTL.QUOTE },
     async () => {
-      const holdings = await Promise.all(
-        PORTFOLIO_SEED.holdings.map(async (holding) => {
-          const quote = await marketDataService.getEnrichedQuote(holding.symbol);
-          return holdingFromQuote(holding, quote);
-        })
+      const quoteMap = await marketDataService.getEnrichedQuotes(
+        PORTFOLIO_SEED.holdings.map((holding) => holding.symbol)
+      );
+      const holdings = PORTFOLIO_SEED.holdings.map((holding) =>
+        holdingFromQuote(
+          holding,
+          quoteMap.get(holding.symbol) ?? quoteMap.get(holding.symbol.toUpperCase())!
+        )
       );
 
       const pricedHoldings = holdings.filter(
@@ -262,15 +269,15 @@ export async function fetchPortfolioSummary(): Promise<PortfolioSummary> {
       );
 
       return {
-        totalValue: Math.round(totalValue),
-        dayChange: Math.round(dayChange),
+        totalValue,
+        dayChange,
         dayChangePercent:
-          totalValue > 0 ? Math.round((dayChange / totalValue) * 10000) / 100 : 0,
+          totalValue > 0 ? (dayChange / totalValue) * 100 : 0,
         totalInvested,
-        totalGain: Math.round(totalValue - totalInvested),
+        totalGain: totalValue - totalInvested,
         totalGainPercent:
           totalInvested > 0
-            ? Math.round(((totalValue - totalInvested) / totalInvested) * 10000) / 100
+            ? ((totalValue - totalInvested) / totalInvested) * 100
             : 0,
         holdings,
       };
@@ -281,18 +288,87 @@ export async function fetchPortfolioSummary(): Promise<PortfolioSummary> {
 export async function fetchWatchlist(): Promise<WatchlistItem[]> {
   return getCached(
     { key: cacheKey("watchlist"), ttlMs: CACHE_TTL.QUOTE },
-    async () =>
-      Promise.all(
-        WATCHLIST_SEED.map(async (item) => {
-          const quote = await marketDataService.getEnrichedQuote(item.symbol);
-          return watchlistFromQuote(item, quote);
-        })
-      )
+    async () => {
+      const quoteMap = await marketDataService.getEnrichedQuotes(
+        WATCHLIST_SEED.map((item) => item.symbol)
+      );
+      return WATCHLIST_SEED.map((item) =>
+        watchlistFromQuote(
+          item,
+          quoteMap.get(item.symbol) ?? quoteMap.get(item.symbol.toUpperCase())!
+        )
+      );
+    }
   );
 }
 
+function buildLiveMarketSummary(indices: MarketIndex[]): AIMarketSummary {
+  const nifty = indices.find((index) => index.symbol === "NIFTY");
+  const sensex = indices.find((index) => index.symbol === "SENSEX");
+  const bankNifty = indices.find((index) => index.symbol === "BANKNIFTY");
+  const vix = indices.find((index) => index.symbol === "INDIAVIX");
+
+  const tracked = [nifty, sensex, bankNifty].filter(
+    (index): index is MarketIndex => index !== undefined && index.value > 0
+  );
+  const avgChange =
+    tracked.length > 0
+      ? tracked.reduce((sum, index) => sum + index.changePercent, 0) /
+        tracked.length
+      : 0;
+
+  const sentiment: AIMarketSummary["sentiment"] =
+    avgChange > 0.25 ? "bullish" : avgChange < -0.25 ? "bearish" : "neutral";
+  const confidence = Math.min(
+    95,
+    Math.max(45, Math.round(60 + Math.abs(avgChange) * 8))
+  );
+
+  const formatIndex = (index: MarketIndex | undefined) =>
+    index && index.value > 0
+      ? `${index.name} at ${index.value.toLocaleString("en-IN")} (${index.changePercent >= 0 ? "+" : ""}${index.changePercent.toFixed(2)}%)`
+      : null;
+
+  const keyPoints = [
+    formatIndex(nifty),
+    formatIndex(sensex),
+    formatIndex(bankNifty),
+    vix && vix.value > 0
+      ? `India VIX at ${vix.value.toFixed(2)} (${vix.changePercent >= 0 ? "+" : ""}${vix.changePercent.toFixed(2)}%)`
+      : null,
+  ].filter((point): point is string => point !== null);
+
+  const providerLabel = nifty?.quote?.provider ?? "EquityOS";
+
+  return {
+    sentiment,
+    confidence,
+    summary:
+      tracked.length > 0
+        ? `Indian equity benchmarks are ${sentiment} with an average move of ${avgChange >= 0 ? "+" : ""}${avgChange.toFixed(2)}% across major indices. ${formatIndex(nifty) ?? "Nifty 50"} leads the tape. Data sourced from ${providerLabel}.`
+        : "Live index data is temporarily unavailable. Use company-specific context and note market assumptions explicitly.",
+    keyPoints:
+      keyPoints.length > 0
+        ? keyPoints
+        : ["Live index quotes unavailable — verify market context before acting on macro views."],
+    sectors: [],
+  };
+}
+
 export async function fetchAIMarketSummary(): Promise<AIMarketSummary> {
-  return aiMarketSummary;
+  try {
+    const indices = await fetchMarketIndices();
+    return buildLiveMarketSummary(indices);
+  } catch {
+    return {
+      sentiment: "neutral",
+      confidence: 50,
+      summary:
+        "Live market summary is temporarily unavailable. Use company-specific context and note macro assumptions explicitly.",
+      keyPoints: ["Index data unavailable at report generation time."],
+      sectors: [],
+    };
+  }
 }
 
 export async function fetchMarketNews(): Promise<MarketNews[]> {

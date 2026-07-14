@@ -39,6 +39,10 @@ function normalizeSymbols(symbols: string[]): string[] {
   return [...new Set(symbols.map((s) => s.trim().toUpperCase()).filter(Boolean))].sort();
 }
 
+function isQuoteAvailable(quote: EnrichedQuote): boolean {
+  return quote.availability !== "unavailable" && quote.price !== null && quote.price > 0;
+}
+
 /**
  * Client hook for live market quotes.
  * Polls every 5 seconds during market hours; disabled outside session.
@@ -91,11 +95,19 @@ export function useMarketQuotes(
       setMarketStatus(status.marketStatus);
       setPollIntervalMs(status.pollIntervalMs);
 
-      const map = new Map<string, EnrichedQuote>();
-      for (const [symbol, quote] of Object.entries(data.quotes)) {
-        map.set(symbol.toUpperCase(), quote);
-      }
-      setQuotes(map);
+      setQuotes((prev) => {
+        const map = new Map(prev);
+        for (const [symbol, quote] of Object.entries(data.quotes)) {
+          const key = symbol.toUpperCase();
+          const existing = map.get(key);
+          if (isQuoteAvailable(quote)) {
+            map.set(key, quote);
+          } else if (!existing || !isQuoteAvailable(existing)) {
+            map.set(key, quote);
+          }
+        }
+        return map;
+      });
       setError(null);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;

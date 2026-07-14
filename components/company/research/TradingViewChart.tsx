@@ -211,8 +211,7 @@ export function TradingViewChart({
   const containerId = `tv_${rawId.replace(/[^a-zA-Z0-9]/g, "")}`;
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const fallbackPoints =
-    priceHistory?.[toPriceHistoryKey(timeframe)] ?? priceHistory?.["6M"] ?? [];
+  const fallbackPoints = priceHistory?.[toPriceHistoryKey(timeframe)] ?? [];
 
   useEffect(() => {
     let cancelled = false;
@@ -436,7 +435,7 @@ function CustomCandlestickChart({
   symbol: string;
   liveQuote?: EnrichedQuote;
 }) {
-  const candles = useMemo(() => providerCandles.slice(-64), [providerCandles]);
+  const candles = useMemo(() => providerCandles, [providerCandles]);
 
   if (candles.length === 0) {
     return (

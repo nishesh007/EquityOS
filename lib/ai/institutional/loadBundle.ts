@@ -88,11 +88,55 @@ export async function loadInstitutionalBundle(
   const normalized = symbol.toUpperCase();
   const researchPrompt = prompt ?? `Analyse ${normalized}`;
 
-  return getCached(
+  const cached = await getCached(
     {
       key: cacheKey("institutional-bundle", normalized, researchPrompt.slice(0, 120)),
       ttlMs: CACHE_TTL.RESEARCH,
     },
     () => loadInstitutionalBundleUncached(normalized, researchPrompt)
   );
+
+  if (!cached) return null;
+
+  const [context, profile] = await Promise.all([
+    loadCompanyContext(normalized),
+    fetchCompanyProfile(normalized),
+  ]);
+
+  const refreshedContext = context ?? cached.context;
+  const refreshedProfile = profile ?? cached.profile;
+
+  const valuation = buildInstitutionalValuation(
+    refreshedContext,
+    refreshedProfile,
+    cached.bundle
+  );
+  const risk = buildInstitutionalRiskAssessment(
+    refreshedContext,
+    refreshedProfile,
+    cached.bundle
+  );
+  const moat = buildInstitutionalMoatAssessment(
+    refreshedContext,
+    refreshedProfile,
+    cached.intelligence
+  );
+
+  const analysisCtx = createAnalysisContext(
+    refreshedProfile,
+    cached.bundle ?? undefined,
+    refreshedContext.financialIntelligence?.fundamentals ??
+      refreshedProfile.fundamentals
+  );
+  const opportunities = detectOpportunities(analysisCtx);
+
+  return {
+    ...cached,
+    context: refreshedContext,
+    profile: refreshedProfile,
+    valuation,
+    risk,
+    moat,
+    opportunities,
+  };
 }

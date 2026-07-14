@@ -23,6 +23,75 @@ export interface OhlcResult {
   attempted: string[];
 }
 
+const DAILY_TIMEFRAME_LOOKBACK_DAYS: Partial<Record<ChartTimeframe, number>> = {
+  "1M": 31,
+  "3M": 93,
+  "6M": 186,
+};
+
+function startOfUtcDay(date: Date): string {
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
+  ).toISOString();
+}
+
+function normalizeDailyCandles(
+  candles: OhlcBar[],
+  timeframe: ChartTimeframe
+): OhlcBar[] {
+  const lookbackDays = DAILY_TIMEFRAME_LOOKBACK_DAYS[timeframe];
+  if (!lookbackDays) return candles;
+
+  const sorted = candles
+    .filter(
+      (candle) =>
+        Number.isFinite(candle.open) &&
+        Number.isFinite(candle.high) &&
+        Number.isFinite(candle.low) &&
+        Number.isFinite(candle.close)
+    )
+    .sort(
+      (a, b) =>
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+
+  const dailyBars = new Map<string, OhlcBar>();
+  for (const candle of sorted) {
+    const date = new Date(candle.timestamp);
+    if (Number.isNaN(date.getTime())) continue;
+
+    const dayKey = date.toISOString().slice(0, 10);
+    const existing = dailyBars.get(dayKey);
+    if (!existing) {
+      dailyBars.set(dayKey, {
+        timestamp: startOfUtcDay(date),
+        open: candle.open,
+        high: candle.high,
+        low: candle.low,
+        close: candle.close,
+        volume: candle.volume,
+      });
+      continue;
+    }
+
+    existing.high = Math.max(existing.high, candle.high);
+    existing.low = Math.min(existing.low, candle.low);
+    existing.close = candle.close;
+    existing.volume += candle.volume;
+  }
+
+  const daily = Array.from(dailyBars.values());
+  const latestTimestamp = daily.at(-1)?.timestamp;
+  if (!latestTimestamp) return [];
+
+  const cutoff = new Date(latestTimestamp);
+  cutoff.setUTCDate(cutoff.getUTCDate() - lookbackDays);
+
+  return daily.filter(
+    (candle) => new Date(candle.timestamp).getTime() >= cutoff.getTime()
+  );
+}
+
 function unavailableResult(attempted: string[]): OhlcResult {
   return {
     data: [],
@@ -42,7 +111,11 @@ async function fetchHistoricalCandles(
   attempted.push("Yahoo");
   try {
     const data = await yahooAdapter.fetchCandles(symbol, timeframe);
-    return { data, provider: "Yahoo", source: "live", attempted };
+    const normalized = normalizeDailyCandles(data, timeframe);
+    if (normalized.length === 0) {
+      throw new Error(`Yahoo: no normalized candles for ${symbol} (${timeframe})`);
+    }
+    return { data: normalized, provider: "Yahoo", source: "live", attempted };
   } catch {
     // Continue to Finnhub; do not reconstruct missing candles.
   }
@@ -50,7 +123,11 @@ async function fetchHistoricalCandles(
   attempted.push("Finnhub");
   try {
     const data = await finnhubAdapter.fetchCandles(symbol, timeframe);
-    return { data, provider: "Finnhub", source: "live", attempted };
+    const normalized = normalizeDailyCandles(data, timeframe);
+    if (normalized.length === 0) {
+      throw new Error(`Finnhub: no normalized candles for ${symbol} (${timeframe})`);
+    }
+    return { data: normalized, provider: "Finnhub", source: "live", attempted };
   } catch {
     // Continue to stale cache; do not reconstruct missing candles.
   }

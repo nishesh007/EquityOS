@@ -18,6 +18,8 @@ import {
   buildFinancialIntelligenceFromProfile,
   type FinancialIntelligence,
 } from "@/lib/financials/financialEngine";
+import { marketDataService, type EnrichedQuote } from "@/lib/market-data";
+import { isValidMarketPrice } from "@/lib/utils";
 import { fetchCompanyProfile } from "@/services/companyData";
 import { fetchEquityIntelligence } from "@/services/equityIntelligenceData";
 import { fetchCompanyResearch } from "@/services/researchData";
@@ -238,6 +240,85 @@ function mergeNews(
     .slice(0, MAX_NEWS_ITEMS);
 }
 
+function resolveDataSource(
+  quote: EnrichedQuote | null,
+  bundle: FundamentalsBundle | null,
+  intelligence: EquityIntelligence | null
+): CompanyContextDataSource {
+  if (quote && isValidMarketPrice(quote.price)) {
+    return {
+      provider: quote.provider,
+      source: quote.source,
+      fetchedAt: quote.lastUpdated,
+    };
+  }
+
+  const provider =
+    bundle?.provider ?? intelligence?.dataTransparency.provider ?? "EquityOS";
+  const source =
+    bundle?.source ?? intelligence?.dataTransparency.dataSource ?? "company-profile";
+
+  if (
+    process.env.NODE_ENV === "production" &&
+    (source === "mock" || provider === "Mock")
+  ) {
+    return {
+      provider: "unavailable",
+      source: "unavailable",
+      fetchedAt: new Date().toISOString(),
+    };
+  }
+
+  return {
+    provider,
+    source,
+    fetchedAt:
+      bundle?.fetchedAt ??
+      intelligence?.dataTransparency.lastUpdated ??
+      new Date().toISOString(),
+  };
+}
+
+async function overlayLiveMarketSnapshot(
+  context: CompanyContext,
+  symbol: string
+): Promise<CompanyContext> {
+  const quote = await marketDataService.getEnrichedQuote(symbol).catch(() => null);
+  const livePrice = quote?.price ?? null;
+
+  if (!quote || !isValidMarketPrice(livePrice)) {
+    const dataSource =
+      process.env.NODE_ENV === "production" &&
+      (context.dataSource.source === "mock" ||
+        context.dataSource.provider === "Mock")
+        ? {
+            provider: "unavailable",
+            source: "unavailable",
+            fetchedAt: new Date().toISOString(),
+          }
+        : context.dataSource;
+
+    return {
+      ...context,
+      dataSource,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  return {
+    ...context,
+    profile: {
+      ...context.profile,
+      price: livePrice,
+      change: quote.change ?? context.profile.change,
+      changePercent: quote.changePercent ?? context.profile.changePercent,
+      marketCap: quote.marketCap ?? context.profile.marketCap,
+    },
+    dataSource: resolveDataSource(quote, null, null),
+    generatedAt: new Date().toISOString(),
+  };
+}
+
 function normalizeCompanyContext(
   profile: CompanyProfile,
   bundle: FundamentalsBundle | null,
@@ -304,11 +385,7 @@ function normalizeCompanyContext(
           summary: intelligence.summary.summary,
         }
       : null,
-    dataSource: {
-      provider: bundle?.provider ?? intelligence?.dataTransparency.provider ?? "EquityOS",
-      source: bundle?.source ?? intelligence?.dataTransparency.dataSource ?? "company-profile",
-      fetchedAt: bundle?.fetchedAt ?? intelligence?.dataTransparency.lastUpdated ?? new Date().toISOString(),
-    },
+    dataSource: resolveDataSource(profile.quote ?? null, bundle, intelligence),
     generatedAt: new Date().toISOString(),
   };
 }
@@ -352,10 +429,10 @@ export async function loadCompanyContext(
 ): Promise<CompanyContext | null> {
   const normalized = normalizeNseSymbol(symbol);
 
-  return getCached(
+  const base = await getCached(
     {
       key: cacheKey("ai-company-context", normalized),
-      ttlMs: CACHE_TTL.FIVE_MINUTES,
+      ttlMs: CACHE_TTL.QUOTE,
     },
     async () => {
       const [profile, bundleResult, research, intelligence] = await Promise.all([
@@ -375,6 +452,10 @@ export async function loadCompanyContext(
       );
     }
   );
+
+  if (!base) return null;
+
+  return overlayLiveMarketSnapshot(base, normalized);
 }
 
 export async function loadCompanyContexts(

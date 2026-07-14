@@ -59,7 +59,7 @@ export function Watchlist({ initialItems }: WatchlistProps) {
               const quote =
                 quotes.get(item.symbol) ?? item.quote ?? createUnavailableQuote(item.symbol);
               const volume =
-                quote.volume !== undefined
+                quote.volume !== null
                   ? quote.volume >= 1e7
                     ? `${(quote.volume / 1e7).toFixed(2)} Cr`
                     : quote.volume >= 1e5

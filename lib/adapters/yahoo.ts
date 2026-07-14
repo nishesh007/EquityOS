@@ -59,11 +59,6 @@ const TIMEFRAME_TO_YAHOO: Record<ChartTimeframe, { range: string; interval: stri
   "5Y": { range: "5y", interval: "1wk" },
 };
 
-function round(n: number, d = 2): number {
-  const f = 10 ** d;
-  return Math.round(n * f) / f;
-}
-
 export class YahooAdapter extends BaseDataAdapter<YahooQuoteParams, YahooQuoteResult> {
   readonly provider = "Yahoo";
 
@@ -101,8 +96,8 @@ export class YahooAdapter extends BaseDataAdapter<YahooQuoteParams, YahooQuoteRe
     }
 
     const previousClose = meta.previousClose ?? meta.chartPreviousClose ?? price;
-    const change = round(price - previousClose);
-    const changePercent = previousClose > 0 ? round((change / previousClose) * 100) : 0;
+    const change = price - previousClose;
+    const changePercent = previousClose > 0 ? (change / previousClose) * 100 : 0;
 
     return {
       symbol: params.symbol.toUpperCase(),

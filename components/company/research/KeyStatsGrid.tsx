@@ -34,6 +34,15 @@ export function KeyStatsGrid({ company, trading }: KeyStatsGridProps) {
     createUnavailableQuote(company.symbol);
 
   const livePrice = quote.price;
+  const liveTrading = {
+    open: quote.open ?? trading.open,
+    high: quote.high ?? trading.high,
+    low: quote.low ?? trading.low,
+    previousClose: quote.previousClose ?? trading.previousClose,
+    volume: quote.volume ?? trading.volume,
+    deliveryPercent: quote.deliveryPercent ?? trading.deliveryPercent,
+    vwap: quote.vwap ?? trading.vwap,
+  };
   const rangePosition =
     isValidMarketPrice(livePrice) &&
     trading.weekHigh52 > trading.weekLow52
@@ -43,15 +52,15 @@ export function KeyStatsGrid({ company, trading }: KeyStatsGridProps) {
       : 0;
 
   const stats: Stat[] = [
-    { label: "Open", value: formatPrice(trading.open), mono: true },
-    { label: "High", value: formatPrice(trading.high), mono: true, tone: "gain" },
-    { label: "Low", value: formatPrice(trading.low), mono: true, tone: "loss" },
-    { label: "Prev Close", value: formatPrice(trading.previousClose), mono: true },
-    { label: "Volume", value: `${formatVolume(trading.volume)}`, mono: true },
-    { label: "Delivery %", value: `${trading.deliveryPercent}%`, mono: true, tone: "accent" },
-    { label: "VWAP", value: formatPrice(trading.vwap), mono: true },
+    { label: "Open", value: formatPrice(liveTrading.open), mono: true },
+    { label: "High", value: formatPrice(liveTrading.high), mono: true, tone: "gain" },
+    { label: "Low", value: formatPrice(liveTrading.low), mono: true, tone: "loss" },
+    { label: "Prev Close", value: formatPrice(liveTrading.previousClose), mono: true },
+    { label: "Volume", value: `${formatVolume(liveTrading.volume)}`, mono: true },
+    { label: "Delivery %", value: `${liveTrading.deliveryPercent}%`, mono: true, tone: "accent" },
+    { label: "VWAP", value: formatPrice(liveTrading.vwap), mono: true },
     { label: "Turnover", value: trading.turnover, mono: true },
-    { label: "Market Cap", value: company.marketCap, mono: true },
+    { label: "Market Cap", value: quote.marketCap ?? company.marketCap, mono: true },
     { label: "P/E", value: `${company.financials.pe}x`, mono: true },
     { label: "P/B", value: `${company.financials.pb}x`, mono: true },
     { label: "ROE", value: `${company.financials.roe}%`, mono: true },

@@ -3,7 +3,7 @@ import {
   type CompanyContext,
 } from "@/lib/ai/context/companyContext";
 import { RESEARCH_SECTIONS, getResearchSystemPrompt } from "@/lib/ai/systemPrompt";
-import { CACHE_TTL, cacheKey, getCached } from "@/lib/cache";
+import { invalidateCache, cacheKey } from "@/lib/cache";
 import { retrieveInstitutionalContext } from "@/lib/rag/retriever";
 import {
   fetchAIMarketSummary,
@@ -31,24 +31,18 @@ export interface BuiltResearchPrompt {
 }
 
 async function loadMarketContext(): Promise<MarketContext> {
-  return getCached(
-    {
-      key: cacheKey("ai-market-context"),
-      ttlMs: CACHE_TTL.FIVE_MINUTES,
-    },
-    async () => {
-      const [indices, aiSummary] = await Promise.all([
-        fetchMarketIndices(),
-        fetchAIMarketSummary(),
-      ]);
+  invalidateCache(cacheKey("market-indices"));
 
-      return {
-        indices,
-        aiSummary,
-        generatedAt: new Date().toISOString(),
-      };
-    }
-  );
+  const [indices, aiSummary] = await Promise.all([
+    fetchMarketIndices(),
+    fetchAIMarketSummary(),
+  ]);
+
+  return {
+    indices,
+    aiSummary,
+    generatedAt: new Date().toISOString(),
+  };
 }
 
 function formatCompanyContexts(companies: CompanyContext[]): string {

@@ -36,7 +36,7 @@ const TIMEFRAME_TO_POLYGON: Record<
 > = {
   "1D": { multiplier: 5, timespan: "minute", limit: 78 },
   "1W": { multiplier: 30, timespan: "minute", limit: 65 },
-  "1M": { multiplier: 1, timespan: "hour", limit: 22 },
+  "1M": { multiplier: 1, timespan: "day", limit: 22 },
   "3M": { multiplier: 1, timespan: "day", limit: 66 },
   "6M": { multiplier: 1, timespan: "day", limit: 130 },
   "1Y": { multiplier: 1, timespan: "day", limit: 252 },

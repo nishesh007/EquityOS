@@ -112,6 +112,11 @@ export function toProviderFormat(
   return normalized.formats[format];
 }
 
+export function isIndexSymbol(symbol: string): boolean {
+  const { internal, exchange } = normalizeSymbol(symbol);
+  return exchange === "INDEX" && INDEX_SYMBOLS.has(internal);
+}
+
 export function isValidSymbol(symbol: string): boolean {
   const { internal, exchange } = normalizeSymbol(symbol);
   if (exchange === "INDEX") return INDEX_SYMBOLS.has(internal);

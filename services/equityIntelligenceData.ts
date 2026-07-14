@@ -379,7 +379,7 @@ export async function fetchEquityIntelligence(
   symbol: string
 ): Promise<EquityIntelligence | null> {
   return getCached(
-    { key: cacheKey("equity-intelligence", symbol), ttlMs: CACHE_TTL.RESEARCH },
+    { key: cacheKey("equity-intelligence", symbol), ttlMs: CACHE_TTL.QUOTE },
     async () => {
       const profile = await fetchCompanyProfile(symbol);
       if (!profile) return null;

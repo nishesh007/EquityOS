@@ -20,6 +20,14 @@ export interface EnrichedQuote {
   price: number | null;
   change: number | null;
   changePercent: number | null;
+  open: number | null;
+  high: number | null;
+  low: number | null;
+  previousClose: number | null;
+  vwap: number | null;
+  volume: number | null;
+  deliveryPercent: number | null;
+  marketCap: string | null;
   exchange: "NSE" | "BSE" | "INDEX";
   marketStatus: MarketStatus;
   marketStatusLabel: string;
@@ -32,7 +40,6 @@ export interface EnrichedQuote {
   availability: QuoteAvailability;
   provider: string;
   source: DataSource;
-  volume?: number;
 }
 
 function resolveAvailability(
@@ -86,6 +93,14 @@ export function toEnrichedQuote(
       price: null,
       change: null,
       changePercent: null,
+      open: null,
+      high: null,
+      low: null,
+      previousClose: null,
+      vwap: null,
+      volume: null,
+      deliveryPercent: null,
+      marketCap: null,
       exchange,
       marketStatus,
       marketStatusLabel: marketStatus === "open" ? "NSE" : exchange,
@@ -111,6 +126,26 @@ export function toEnrichedQuote(
     price,
     change: price !== null ? data.change : null,
     changePercent: price !== null ? data.changePercent : null,
+    open: price !== null && Number.isFinite(data.open) ? data.open : null,
+    high: price !== null && Number.isFinite(data.high) ? data.high : null,
+    low: price !== null && Number.isFinite(data.low) ? data.low : null,
+    previousClose:
+      price !== null && Number.isFinite(data.previousClose)
+        ? data.previousClose
+        : null,
+    vwap:
+      price !== null && data.vwap !== undefined && Number.isFinite(data.vwap)
+        ? data.vwap
+        : null,
+    volume:
+      price !== null && Number.isFinite(data.volume) ? data.volume : null,
+    deliveryPercent:
+      price !== null &&
+      data.deliveryPercent !== undefined &&
+      Number.isFinite(data.deliveryPercent)
+        ? data.deliveryPercent
+        : null,
+    marketCap: data.marketCap ?? null,
     exchange,
     marketStatus,
     marketStatusLabel: exchange,
@@ -123,7 +158,6 @@ export function toEnrichedQuote(
     availability,
     provider: result.provider,
     source: result.source,
-    volume: data.volume,
   };
 }
 

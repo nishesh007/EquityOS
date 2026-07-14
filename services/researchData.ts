@@ -16,6 +16,7 @@ import { round } from "@/lib/engine/utils";
 import { isValidMarketPrice } from "@/lib/utils";
 import { getCached, cacheKey, CACHE_TTL } from "@/lib/cache";
 import { marketDataService } from "@/lib/market-data";
+import type { EnrichedQuote } from "@/lib/market-data";
 import { createRng, hashSeed } from "@/lib/random";
 
 const REFERENCE_CAPITAL = 1_000_000;
@@ -27,17 +28,9 @@ function toExchangeSymbol(symbol: string): string {
 function buildTradingData(
   profile: CompanyProfile,
   rng: () => number,
-  liveQuote?: {
-    open: number;
-    high: number;
-    low: number;
-    previousClose: number;
-    volume: number;
-    deliveryPercent?: number;
-    vwap?: number;
-  }
+  liveQuote?: EnrichedQuote
 ): TradingData {
-  const close = profile.price;
+  const close = liveQuote?.price ?? profile.price;
 
   if (!isValidMarketPrice(close)) {
     return {
@@ -58,9 +51,35 @@ function buildTradingData(
     };
   }
 
-  const previousClose = liveQuote?.previousClose && liveQuote.previousClose > 0
-    ? liveQuote.previousClose
-    : round(close - profile.change);
+  if (liveQuote && isValidMarketPrice(liveQuote.price)) {
+    const open = liveQuote.open ?? close;
+    const high = liveQuote.high ?? close;
+    const low = liveQuote.low ?? close;
+    const previousClose = liveQuote.previousClose ?? close - (liveQuote.change ?? 0);
+    const volume = liveQuote.volume ?? 0;
+    const vwap = liveQuote.vwap ?? close;
+    const deliveryPercent = liveQuote.deliveryPercent ?? 0;
+    const turnoverCr = volume > 0 ? (volume * vwap) / 1e7 : 0;
+
+    return {
+      open,
+      high,
+      low,
+      close,
+      previousClose,
+      volume,
+      turnover: turnoverCr > 0 ? `₹${turnoverCr.toFixed(0)} Cr` : "N/A",
+      deliveryPercent,
+      vwap,
+      weekHigh52: round(close * (1.12 + rng() * 0.35)),
+      weekLow52: round(close * (0.62 + rng() * 0.15)),
+      dividendYield: round(0.2 + rng() * 2.4, 2),
+      upperCircuit: round(previousClose * 1.1),
+      lowerCircuit: round(previousClose * 0.9),
+    };
+  }
+
+  const previousClose = round(close - profile.change);
   const open = liveQuote?.open ?? round(previousClose * (1 + (rng() - 0.5) * 0.01));
 
   const intradaySwing = 0.008 + rng() * 0.02;
@@ -272,21 +291,11 @@ function buildNews(profile: CompanyProfile): CompanyNews[] {
 
 function buildResearch(
   profile: CompanyProfile,
-  liveQuote?: Awaited<ReturnType<typeof marketDataService.getQuote>>["data"],
+  liveQuote?: EnrichedQuote,
   candles?: OhlcBar[]
 ): CompanyResearch {
   const rng = createRng(hashSeed(profile.symbol));
-  const trading = buildTradingData(profile, rng, liveQuote
-    ? {
-        open: liveQuote.open,
-        high: liveQuote.high,
-        low: liveQuote.low,
-        previousClose: liveQuote.previousClose,
-        volume: liveQuote.volume,
-        deliveryPercent: liveQuote.deliveryPercent,
-        vwap: liveQuote.vwap,
-      }
-    : undefined);
+  const trading = buildTradingData(profile, rng, liveQuote);
   const { analysis: technicals } = EquityIntelligenceEngine.buildTechnicalAnalysis(
     profile,
     trading,
@@ -318,20 +327,13 @@ export async function fetchCompanyResearch(
   symbol: string
 ): Promise<CompanyResearch | null> {
   return getCached(
-    { key: cacheKey("company-research", symbol), ttlMs: CACHE_TTL.RESEARCH },
+    { key: cacheKey("company-research", symbol), ttlMs: CACHE_TTL.QUOTE },
     async () => {
       const profile = await fetchCompanyProfile(symbol);
       if (!profile) return null;
 
-      let liveQuote: Awaited<ReturnType<typeof marketDataService.getQuote>>["data"] | undefined;
+      let liveQuote: EnrichedQuote | undefined = profile.quote;
       let candles: OhlcBar[] | undefined;
-
-      try {
-        const result = await marketDataService.getQuote(symbol);
-        liveQuote = result.data;
-      } catch {
-        liveQuote = undefined;
-      }
 
       try {
         const ohlcResult = await marketDataService.getOhlcCandles(symbol, "1Y");

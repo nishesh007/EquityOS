@@ -25,10 +25,9 @@ import {
   type EnrichedQuote,
 } from "@/lib/market-data/enriched-quote";
 import { marketDataToLiveQuote } from "@/lib/market-data/mappers";
-import { normalizeSymbol, isValidSymbol } from "@/lib/market-data/symbols";
+import { isIndexSymbol, normalizeSymbol, isValidSymbol } from "@/lib/market-data/symbols";
 import { getQuoteCacheTtlMs } from "@/lib/market/session";
 import type {
-  MarketData,
   MarketDataResult,
   NormalizedSymbol,
 } from "@/lib/market-data/types";
@@ -124,7 +123,7 @@ class MarketDataServiceImpl {
     );
   }
 
-  /** Index quote (NIFTY, SENSEX, BANKNIFTY, INDIAVIX) */
+  /** Index quote (NIFTY, SENSEX, BANKNIFTY, INDIAVIX) — separate cache namespace from equities */
   async getIndex(indexSymbol: string): Promise<QuoteResult> {
     const normalized = indexSymbol.toUpperCase();
     const result = await getCached(
@@ -145,21 +144,31 @@ class MarketDataServiceImpl {
 
   /** Batch quotes for multiple symbols */
   async getQuotes(symbols: string[]): Promise<Map<string, QuoteResult>> {
+    const normalizedSymbols = [
+      ...new Set(symbols.map((symbol) => normalizeSymbol(symbol).internal)),
+    ];
     const results = await Promise.all(
-      symbols.map(async (symbol) => {
-        const result = await this.getQuote(symbol);
-        return [normalizeSymbol(symbol).internal, result] as const;
+      normalizedSymbols.map(async (symbol) => {
+        const result = isIndexSymbol(symbol)
+          ? await this.getIndex(symbol)
+          : await this.getQuote(symbol);
+        return [symbol, result] as const;
       })
     );
     return new Map(results);
   }
 
-  /** Batch enriched quotes */
+  /** Batch enriched quotes — indices use the dedicated index pipeline */
   async getEnrichedQuotes(symbols: string[]): Promise<Map<string, EnrichedQuote>> {
+    const normalizedSymbols = [
+      ...new Set(symbols.map((symbol) => normalizeSymbol(symbol).internal)),
+    ];
     const results = await Promise.all(
-      symbols.map(async (symbol) => {
-        const enriched = await this.getEnrichedQuote(symbol);
-        return [normalizeSymbol(symbol).internal, enriched] as const;
+      normalizedSymbols.map(async (symbol) => {
+        const enriched = isIndexSymbol(symbol)
+          ? await this.getEnrichedIndex(symbol)
+          : await this.getEnrichedQuote(symbol);
+        return [symbol, enriched] as const;
       })
     );
     return new Map(results);
@@ -169,10 +178,13 @@ class MarketDataServiceImpl {
   async getMarketDataBatch(
     symbols: string[]
   ): Promise<Map<string, MarketDataResult>> {
+    const normalizedSymbols = [
+      ...new Set(symbols.map((symbol) => normalizeSymbol(symbol).internal)),
+    ];
     const results = await Promise.all(
-      symbols.map(async (symbol) => {
+      normalizedSymbols.map(async (symbol) => {
         const result = await this.getMarketData(symbol);
-        return [normalizeSymbol(symbol).internal, result] as const;
+        return [symbol, result] as const;
       })
     );
     return new Map(results);
@@ -181,12 +193,15 @@ class MarketDataServiceImpl {
   /** Graceful stale read — never throws; returns null when no live data */
   async getQuoteSafe(symbol: string): Promise<LiveQuote | null> {
     try {
-      const result = await this.getQuote(symbol);
+      const result = isIndexSymbol(symbol)
+        ? await this.getIndex(symbol)
+        : await this.getQuote(symbol);
       if (result.source === "unavailable" || result.source === "mock") {
         const normalized = normalizeSymbol(symbol);
-        const stale = getStaleCachedSync<MarketDataResult>(
-          cacheKey("market-data", normalized.internal)
-        );
+        const staleKey = isIndexSymbol(symbol)
+          ? cacheKey("index", normalized.internal)
+          : cacheKey("market-data", normalized.internal);
+        const stale = getStaleCachedSync<MarketDataResult>(staleKey);
         if (stale && stale.source !== "mock" && stale.source !== "unavailable") {
           return marketDataToLiveQuote(stale.data);
         }
@@ -195,9 +210,10 @@ class MarketDataServiceImpl {
       return result.data;
     } catch {
       const normalized = normalizeSymbol(symbol);
-      const stale = getStaleCachedSync<MarketDataResult>(
-        cacheKey("market-data", normalized.internal)
-      );
+      const staleKey = isIndexSymbol(symbol)
+        ? cacheKey("index", normalized.internal)
+        : cacheKey("market-data", normalized.internal);
+      const stale = getStaleCachedSync<MarketDataResult>(staleKey);
       if (stale && stale.source !== "mock" && stale.source !== "unavailable") {
         return marketDataToLiveQuote(stale.data);
       }

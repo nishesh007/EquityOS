@@ -36,21 +36,45 @@ async function enrichPeersWithQuotes(peers: PeerCompany[]): Promise<PeerCompany[
   });
 }
 
+async function attachLatestMarketSnapshot(
+  profile: CompanyProfile,
+  symbol: string
+): Promise<CompanyProfile> {
+  const [quote, peers] = await Promise.all([
+    marketDataService.getEnrichedQuote(symbol).catch(() => null),
+    enrichPeersWithQuotes(profile.peers).catch(() => profile.peers),
+  ]);
+
+  const livePrice = quote?.price ?? null;
+  if (!quote || !isValidMarketPrice(livePrice)) {
+    return { ...profile, peers };
+  }
+
+  return {
+    ...profile,
+    price: livePrice,
+    change: quote.change ?? profile.change,
+    changePercent: quote.changePercent ?? profile.changePercent,
+    marketCap: quote.marketCap ?? profile.marketCap,
+    quote,
+    peers,
+  };
+}
+
 export async function fetchCompanyProfile(
   symbol: string
 ): Promise<CompanyProfile | null> {
   const normalized = normalizeNseSymbol(symbol);
   if (!isValidNseSymbol(normalized)) return null;
   try {
-    return await getCached(
+    const profile = await getCached(
       {
         key: cacheKey("company-profile", normalized),
         ttlMs: CACHE_TTL.FUNDAMENTALS,
       },
       async () => {
-        const [fundamentalsResult, quoteResult, priceHistory] = await Promise.all([
+        const [fundamentalsResult, priceHistory] = await Promise.all([
           fetchFundamentalsBundle(normalized),
-          marketDataService.getEnrichedQuote(normalized).catch(() => null),
           getFullPriceHistory(normalized).catch(() => null),
         ]);
 
@@ -62,37 +86,27 @@ export async function fetchCompanyProfile(
           change: 0,
           changePercent: 0,
         };
-        const quote = quoteResult;
-        const livePrice = quote?.price ?? null;
-        const resolvedPrice = isValidMarketPrice(livePrice) ? livePrice : 0;
 
         const history = priceHistory ?? EMPTY_PRICE_HISTORY;
-
         const profile = bundleToCompanyProfile(bundle, history);
 
-        const enriched = attachFundamentalsToProfile(
+        return attachFundamentalsToProfile(
           {
             ...profile,
-            price: resolvedPrice,
-            change: quote?.change ?? profile.change,
-            changePercent: quote?.changePercent ?? profile.changePercent,
-            marketCap: profile.marketCap,
-            sector: quote?.exchange ? profile.sector : profile.sector,
-            industry: profile.industry,
-            quote: quote ?? undefined,
+            price: 0,
+            change: 0,
+            changePercent: 0,
           },
           bundle
         );
-
-        const peers = await enrichPeersWithQuotes(enriched.peers);
-        return { ...enriched, peers };
       }
     );
+    return profile ? attachLatestMarketSnapshot(profile, normalized) : null;
   } catch {
     const stale = getStaleCachedSync<CompanyProfile>(
       cacheKey("company-profile", normalized)
     );
-    if (stale) return stale;
+    if (stale) return attachLatestMarketSnapshot(stale, normalized);
     return null;
   }
 }

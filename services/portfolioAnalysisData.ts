@@ -38,7 +38,7 @@ async function enrichHoldings(): Promise<PortfolioHoldingContext[]> {
 
 export async function fetchPortfolioDoctorAnalysis(): Promise<PortfolioDoctorAnalysis> {
   return getCached(
-    { key: cacheKey("portfolio-doctor"), ttlMs: CACHE_TTL.RESEARCH },
+    { key: cacheKey("portfolio-doctor"), ttlMs: CACHE_TTL.QUOTE },
     async () => {
       const holdings = await enrichHoldings();
 
