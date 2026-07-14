@@ -283,3 +283,34 @@ export type {
   HistoricalScoreBand,
   ModelDecayResult,
 } from "./rules/historical";
+
+/** Prompt 9F.10 Institutional Trust Score Engine. */
+export {
+  registerTrustEngine,
+  getTrustScoreEngine,
+  resetTrustScoreEngine,
+  calculateTrustScore,
+  getTrustHistory,
+  getTrustMetrics,
+  getTrustTrend,
+  classifyTrust,
+  registerTrustModule,
+  TrustScoreEngine,
+  DEFAULT_TRUST_CONFIGURATION,
+  resolveTrustConfiguration,
+} from "./trust";
+
+export type {
+  TrustConfiguration,
+  TrustConfigurationInput,
+  TrustScoreRequest,
+  TrustScoreResult,
+  TrustFields,
+  TrustClassificationLabel,
+  TrustTrendSnapshot,
+  TrustMetricsSnapshot,
+  TrustHistoryEntry,
+  TrustErrorReport,
+  TrustModuleDefinition,
+  TrustWeightMap,
+} from "./trust";

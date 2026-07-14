@@ -46,5 +46,11 @@ export async function register() {
       "@/src/core/dataIntegrity/rules/historical"
     );
     registerHistoricalRules();
+
+    // Sprint 9F.10 — idempotent Institutional Trust Score Engine registration
+    const { registerTrustEngine } = await import(
+      "@/src/core/dataIntegrity/trust"
+    );
+    registerTrustEngine();
   }
 }
