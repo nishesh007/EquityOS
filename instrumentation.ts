@@ -172,5 +172,11 @@ export async function register() {
       "@/src/core/dataIntegrity/release"
     );
     registerRelease();
+
+    // Sprint 9F.31 — idempotent Validation Documentation & Developer Experience Engine registration
+    const { registerDocumentation } = await import(
+      "@/src/core/dataIntegrity/documentation"
+    );
+    registerDocumentation();
   }
 }

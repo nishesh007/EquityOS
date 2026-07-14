@@ -899,3 +899,32 @@ export type {
   DeploymentAnalysis,
   ReleaseRunResult,
 } from "./release";
+
+/** Prompt 9F.31 Institutional Validation Documentation & Developer Experience Engine. */
+export {
+  registerDocumentation,
+  registerValidationDocumentationEngine,
+  getValidationDocumentationEngine,
+  resetValidationDocumentationEngine,
+  ValidationDocumentationEngine,
+  generateApiDocs,
+  generateArchitectureDocs,
+  generateModuleDocs,
+  generateRuleDocs,
+  generateDeveloperGuide,
+  generateIntegrationGuide,
+  generateMigrationGuide,
+  generateDocumentationSnapshot,
+  getDocumentationMetrics,
+  DEFAULT_DOCUMENTATION_CONFIGURATION,
+  resolveDocumentationConfiguration,
+} from "./documentation";
+
+export type {
+  DocumentationConfiguration,
+  DocumentationConfigurationInput,
+  DocumentationSnapshot,
+  DocumentationOperationalMetrics,
+  DocumentationHealthScore,
+  DocumentationDocument,
+} from "./documentation";
