@@ -786,3 +786,32 @@ export type {
   BenchmarkRunOptions,
   BenchmarkRunResult,
 } from "./performance";
+
+/** Prompt 9F.27 Institutional Validation AI Explainability & Decision Trace Engine. */
+export {
+  registerExplainability,
+  registerValidationExplainabilityEngine,
+  getValidationExplainabilityEngine,
+  resetValidationExplainabilityEngine,
+  ValidationExplainabilityEngine,
+  traceDecision,
+  generateExplanation,
+  analyzeRuleContribution,
+  getConfidenceBreakdown,
+  createExplainabilitySnapshot,
+  getExplainabilityMetrics,
+  DEFAULT_EXPLAINABILITY_CONFIGURATION,
+  resolveExplainabilityConfiguration,
+} from "./explainability";
+
+export type {
+  ExplainabilityConfiguration,
+  ExplainabilityConfigurationInput,
+  ExplainabilitySnapshot,
+  ExplainabilityOperationalMetrics,
+  ExplainabilityHealthScore,
+  TraceDecisionOptions,
+  TraceDecisionResult,
+  DecisionTrace,
+  GeneratedExplanation,
+} from "./explainability";

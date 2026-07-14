@@ -148,5 +148,11 @@ export async function register() {
       "@/src/core/dataIntegrity/performance"
     );
     registerPerformance();
+
+    // Sprint 9F.27 — idempotent Validation Explainability & Decision Trace Engine registration
+    const { registerExplainability } = await import(
+      "@/src/core/dataIntegrity/explainability"
+    );
+    registerExplainability();
   }
 }
