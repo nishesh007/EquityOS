@@ -52,5 +52,11 @@ export async function register() {
       "@/src/core/dataIntegrity/trust"
     );
     registerTrustEngine();
+
+    // Sprint 9F.11 — idempotent Validation Dashboard Service registration
+    const { registerDashboardService } = await import(
+      "@/src/core/dataIntegrity/dashboard"
+    );
+    registerDashboardService();
   }
 }

@@ -314,3 +314,34 @@ export type {
   TrustModuleDefinition,
   TrustWeightMap,
 } from "./trust";
+
+/** Prompt 9F.11 Institutional Validation Dashboard backend. */
+export {
+  registerDashboardService,
+  getValidationDashboardService,
+  resetValidationDashboardService,
+  ValidationDashboardService,
+  getDashboardSummary,
+  getDashboardMetrics,
+  getDashboardHealth,
+  getValidationDistribution,
+  getTopFailures,
+  createSnapshot,
+  loadSnapshot,
+  DEFAULT_DASHBOARD_CONFIGURATION,
+  resolveDashboardConfiguration,
+} from "./dashboard";
+
+export type {
+  DashboardConfiguration,
+  DashboardConfigurationInput,
+  DashboardSummary,
+  DashboardSystemHealth,
+  DashboardOperationalMetrics,
+  ValidationDistribution,
+  TopFailuresReport,
+  DashboardSnapshot,
+  DashboardFilters,
+  DashboardModuleStatus,
+  DashboardHealthClassification,
+} from "./dashboard";
