@@ -815,3 +815,32 @@ export type {
   DecisionTrace,
   GeneratedExplanation,
 } from "./explainability";
+
+/** Prompt 9F.28 Institutional Validation Simulation & Scenario Testing Engine. */
+export {
+  registerSimulation,
+  registerValidationSimulationEngine,
+  getValidationSimulationEngine,
+  resetValidationSimulationEngine,
+  ValidationSimulationEngine,
+  runScenario,
+  runStressTest,
+  runMonteCarlo,
+  compareScenarios,
+  createSimulationSnapshot,
+  getSimulationMetrics,
+  DEFAULT_SIMULATION_CONFIGURATION,
+  resolveSimulationConfiguration,
+} from "./simulation";
+
+export type {
+  SimulationConfiguration,
+  SimulationConfigurationInput,
+  SimulationSnapshot,
+  SimulationOperationalMetrics,
+  SimulationHealthScore,
+  RunScenarioOptions,
+  ScenarioRunResult,
+  StressTestResult,
+  MonteCarloResult,
+} from "./simulation";

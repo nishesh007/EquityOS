@@ -154,5 +154,11 @@ export async function register() {
       "@/src/core/dataIntegrity/explainability"
     );
     registerExplainability();
+
+    // Sprint 9F.28 — idempotent Validation Simulation & Scenario Testing Engine registration
+    const { registerSimulation } = await import(
+      "@/src/core/dataIntegrity/simulation"
+    );
+    registerSimulation();
   }
 }
