@@ -184,5 +184,11 @@ export async function register() {
       "@/src/core/dataIntegrity/platform"
     );
     registerValidationPlatform();
+
+    // Sprint 9B.1 — idempotent Institutional Earnings Data Engine registration
+    const { registerEarningsData } = await import(
+      "@/src/core/earnings/data"
+    );
+    registerEarningsData();
   }
 }
