@@ -799,12 +799,13 @@ function OpportunityTable({
               return (
                 <tr
                   key={candidate.id}
-                  className="group border-b border-surface-border-subtle/50 transition-colors last:border-0 hover:bg-surface-hover/40"
+                  onClick={() => onInspect?.(candidate)}
+                  className="group cursor-pointer border-b border-surface-border-subtle/50 transition-colors last:border-0 hover:bg-surface-hover/40"
                 >
                   <td className={cellClass}>
                     <RankBadge rank={candidate.rank} />
                   </td>
-                  <td className={cellClass}>
+                  <td className={cellClass} onClick={(e) => e.stopPropagation()}>
                     <StockLink symbol={candidate.symbol}>
                       <p className="text-xs font-semibold text-text-primary group-hover:text-accent">
                         {candidate.symbol}
@@ -921,12 +922,13 @@ function OpportunityTable({
             {sorted.map((candidate) => (
                 <tr
                   key={candidate.id}
-                  className="group border-b border-surface-border-subtle/50 transition-colors last:border-0 hover:bg-surface-hover/40"
+                  onClick={() => onInspect?.(candidate)}
+                  className="group cursor-pointer border-b border-surface-border-subtle/50 transition-colors last:border-0 hover:bg-surface-hover/40"
                 >
                   <td className={cellClass}>
                     <RankBadge rank={candidate.rank} />
                   </td>
-                  <td className={cellClass}>
+                  <td className={cellClass} onClick={(e) => e.stopPropagation()}>
                     <StockLink symbol={candidate.symbol}>
                       <p className="text-xs font-semibold text-text-primary group-hover:text-accent">
                         {candidate.symbol}
@@ -1079,12 +1081,13 @@ function OpportunityTable({
             return (
             <tr
               key={candidate.id}
-              className="group border-b border-surface-border-subtle/50 transition-colors last:border-0 hover:bg-surface-hover/40"
+              onClick={() => onInspect?.(candidate)}
+              className="group cursor-pointer border-b border-surface-border-subtle/50 transition-colors last:border-0 hover:bg-surface-hover/40"
             >
               <td className={cellClass}>
                 <RankBadge rank={candidate.rank} />
               </td>
-              <td className={cellClass}>
+              <td className={cellClass} onClick={(e) => e.stopPropagation()}>
                 <StockLink symbol={candidate.symbol}>
                   <p className="text-xs font-semibold text-text-primary group-hover:text-accent">
                     {candidate.symbol}
@@ -2038,6 +2041,7 @@ export function OpportunityEnginePanel({ initialState }: OpportunityEnginePanelP
           symbol={inspectedCandidate.symbol}
           company={inspectedCandidate.company}
           view={inspectedView}
+          candidate={inspectedCandidate}
           open
           onClose={() => setInspectedCandidate(null)}
         />

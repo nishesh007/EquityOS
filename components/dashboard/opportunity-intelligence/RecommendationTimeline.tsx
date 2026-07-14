@@ -3,7 +3,7 @@
 import type { TimelineEvent } from "@/lib/opportunity-engine/institutional-presentation";
 
 function formatClock(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "Awaiting Validation";
   return new Intl.DateTimeFormat("en-IN", {
     timeZone: "Asia/Kolkata",
     hour: "2-digit",
