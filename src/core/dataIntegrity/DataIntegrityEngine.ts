@@ -1,12 +1,12 @@
 /**
  * Institutional Data Integrity Engine — public façade.
  *
- * Public APIs:
- *   validate()
- *   validateBatch()
- *   calculateIntegrityScore()
- *   registerRule()
- *   getMetrics()
+ * Public APIs (Prompt 1):
+ *   validate() / validateBatch() / calculateIntegrityScore() / registerRule() / getMetrics()
+ *
+ * Extended APIs (Prompt 9F.2):
+ *   executeRules() / registerRules() / removeRule() / enableRule() / disableRule()
+ *   getRuleMetrics() / getAuditHistory()
  *
  * Future Sprint 9F modules must consume these APIs.
  * This engine does not modify existing EquityOS business logic.
@@ -39,6 +39,17 @@ import {
   ValidationPipeline,
   createBuiltInRules,
 } from "./ValidationPipeline";
+import { RuleEngine } from "./rules/RuleEngine";
+import { RuleFactory } from "./rules/RuleFactory";
+import type {
+  AdvancedRuleDefinition,
+  CreateRuleInput,
+  ExecuteRulesRequest,
+  ExecuteRulesResult,
+  RuleAuditEntry,
+  RulePerformanceSnapshot,
+} from "./rules/RuleTypes";
+import { FunctionalRule } from "./rules/BaseRule";
 
 export class DataIntegrityEngine {
   private readonly config: IntegrityConfig;
@@ -46,6 +57,8 @@ export class DataIntegrityEngine {
   private readonly logger: IntegrityLogger;
   private readonly metrics: IntegrityMetrics;
   private readonly pipeline: ValidationPipeline;
+  /** Prompt 9F.2 advanced rule execution framework (additive). */
+  private readonly ruleEngine: RuleEngine;
 
   constructor(options?: DataIntegrityEngineOptions) {
     this.config = new IntegrityConfig(options?.config);
@@ -55,6 +68,7 @@ export class DataIntegrityEngine {
     });
     this.metrics = new IntegrityMetrics();
     this.pipeline = new ValidationPipeline();
+    this.ruleEngine = new RuleEngine();
 
     if (options?.registerBuiltInRules !== false) {
       for (const rule of createBuiltInRules()) {
@@ -163,24 +177,89 @@ export class DataIntegrityEngine {
     return scoreFromIssues(issues);
   }
 
-  /** Register a custom rule dynamically. */
+  /** Register a custom Prompt 1 pipeline rule dynamically. */
   registerRule(rule: IntegrityRule): void {
     this.registry.registerRule(rule);
   }
 
-  /** Unregister a rule by ID. */
+  /** Unregister a Prompt 1 pipeline rule by ID. */
   unregisterRule(ruleId: string): boolean {
     return this.registry.unregisterRule(ruleId);
   }
 
-  /** Enable a rule via configuration override. */
+  /**
+   * Enable a rule via configuration override (pipeline)
+   * and advanced RuleEngine when present.
+   */
   enableRule(ruleId: string): void {
     this.config.enableRule(ruleId);
+    this.ruleEngine.enableRule(ruleId);
   }
 
-  /** Disable a rule via configuration override. */
+  /**
+   * Disable a rule via configuration override (pipeline)
+   * and advanced RuleEngine when present.
+   */
   disableRule(ruleId: string): void {
     this.config.disableRule(ruleId);
+    this.ruleEngine.disableRule(ruleId);
+  }
+
+  // ─── Prompt 9F.2 advanced rule APIs (additive) ─────────────────
+
+  /** Execute advanced institutional rules (does not replace validate()). */
+  async executeRules(
+    request: ExecuteRulesRequest
+  ): Promise<ExecuteRulesResult> {
+    return this.ruleEngine.executeRules({
+      ...request,
+      config: request.config ?? this.config,
+    });
+  }
+
+  /** Register one advanced rule (and optionally mirror into the pipeline). */
+  registerAdvancedRule(
+    rule: AdvancedRuleDefinition | CreateRuleInput | FunctionalRule,
+    options?: { mirrorToPipeline?: boolean }
+  ): void {
+    this.ruleEngine.registerRule(rule);
+    if (options?.mirrorToPipeline) {
+      const definition =
+        rule instanceof FunctionalRule
+          ? rule.toDefinition()
+          : "executionMode" in rule && "dependencies" in rule
+            ? (rule as AdvancedRuleDefinition)
+            : RuleFactory.create(rule as CreateRuleInput);
+      this.registry.registerRule(RuleFactory.toIntegrityRule(definition));
+    }
+  }
+
+  registerRules(
+    rules: Array<AdvancedRuleDefinition | CreateRuleInput | FunctionalRule>,
+    options?: { mirrorToPipeline?: boolean }
+  ): void {
+    for (const rule of rules) {
+      this.registerAdvancedRule(rule, options);
+    }
+  }
+
+  removeRule(ruleId: string): boolean {
+    const advanced = this.ruleEngine.removeRule(ruleId);
+    const pipeline = this.registry.unregisterRule(ruleId);
+    return advanced || pipeline;
+  }
+
+  getRuleMetrics(ruleId?: string): RulePerformanceSnapshot[] {
+    return this.ruleEngine.getRuleMetrics(ruleId);
+  }
+
+  getAuditHistory(limit?: number): RuleAuditEntry[] {
+    return this.ruleEngine.getAuditHistory(limit);
+  }
+
+  /** Access the advanced RuleEngine for future Sprint 9F modules. */
+  getRuleEngine(): RuleEngine {
+    return this.ruleEngine;
   }
 
   /** Expose metrics for future dashboard integration. */
@@ -262,4 +341,29 @@ export function registerRule(rule: IntegrityRule): void {
 
 export function getMetrics(): IntegrityMetricsSnapshot {
   return getDataIntegrityEngine().getMetrics();
+}
+
+/** Prompt 9F.2 convenience wrappers. */
+export async function executeRules(
+  request: ExecuteRulesRequest
+): Promise<ExecuteRulesResult> {
+  return getDataIntegrityEngine().executeRules(request);
+}
+
+export function registerRules(
+  rules: Array<AdvancedRuleDefinition | CreateRuleInput | FunctionalRule>
+): void {
+  getDataIntegrityEngine().registerRules(rules);
+}
+
+export function removeRule(ruleId: string): boolean {
+  return getDataIntegrityEngine().removeRule(ruleId);
+}
+
+export function getRuleMetrics(ruleId?: string): RulePerformanceSnapshot[] {
+  return getDataIntegrityEngine().getRuleMetrics(ruleId);
+}
+
+export function getAuditHistory(limit?: number): RuleAuditEntry[] {
+  return getDataIntegrityEngine().getAuditHistory(limit);
 }
