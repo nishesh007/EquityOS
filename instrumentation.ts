@@ -124,5 +124,11 @@ export async function register() {
       "@/src/core/dataIntegrity/compliance"
     );
     registerValidationComplianceEngine();
+
+    // Sprint 9F.23 — idempotent Validation Knowledge Graph Engine registration
+    const { registerValidationKnowledgeGraph } = await import(
+      "@/src/core/dataIntegrity/knowledge"
+    );
+    registerValidationKnowledgeGraph();
   }
 }

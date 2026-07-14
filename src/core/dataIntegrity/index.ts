@@ -676,3 +676,32 @@ export type {
   ComplianceOperationalMetrics,
   ComplianceViolation,
 } from "./compliance";
+
+/** Prompt 9F.23 Institutional Validation Knowledge Graph & Dependency Intelligence Engine. */
+export {
+  registerValidationKnowledgeGraph,
+  getValidationKnowledgeGraph,
+  resetValidationKnowledgeGraph,
+  ValidationKnowledgeGraph,
+  buildKnowledgeGraph,
+  queryGraph,
+  analyzeDependencies,
+  analyzeImpact,
+  findRelationships,
+  getKnowledgeMetrics,
+  createKnowledgeSnapshot,
+  DEFAULT_KNOWLEDGE_CONFIGURATION,
+  resolveKnowledgeConfiguration,
+  registerKnowledgeSource,
+} from "./knowledge";
+
+export type {
+  KnowledgeConfiguration,
+  KnowledgeConfigurationInput,
+  KnowledgeBuildResult,
+  KnowledgeSnapshot,
+  KnowledgeFactBundle,
+  BuildKnowledgeGraphOptions,
+  KnowledgeOperationalMetrics,
+  KnowledgeQuery,
+} from "./knowledge";
