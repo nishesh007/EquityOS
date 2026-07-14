@@ -871,3 +871,31 @@ export type {
   FeedbackRecord,
   ImprovementItem,
 } from "./learning";
+
+/** Prompt 9F.30 Institutional Validation Production Readiness & Release Certification Engine. */
+export {
+  registerRelease,
+  registerValidationReleaseEngine,
+  getValidationReleaseEngine,
+  resetValidationReleaseEngine,
+  ValidationReleaseEngine,
+  evaluateReadiness,
+  certifyRelease,
+  analyzeDeployment,
+  createReleaseSnapshot,
+  getReleaseMetrics,
+  DEFAULT_RELEASE_CONFIGURATION,
+  resolveReleaseConfiguration,
+} from "./release";
+
+export type {
+  ReleaseConfiguration,
+  ReleaseConfigurationInput,
+  ReleaseSnapshot,
+  ReleaseOperationalMetrics,
+  ReleaseHealthScore,
+  CertificationResult,
+  CertificationStatus,
+  DeploymentAnalysis,
+  ReleaseRunResult,
+} from "./release";
