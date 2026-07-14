@@ -441,3 +441,33 @@ export type {
   AnalyticsObservation,
   AnalyticsRunResult,
 } from "./analytics";
+
+/** Prompt 9F.15 Institutional Validation Reporting & Export Engine. */
+export {
+  registerValidationReportingEngine,
+  getValidationReportingEngine,
+  resetValidationReportingEngine,
+  ValidationReportingEngine,
+  generateReport,
+  generateValidationReport,
+  generateTrustReport,
+  generateAnalyticsReport,
+  generateAuditReport,
+  exportReportModel,
+  createReportSnapshot,
+  DEFAULT_REPORTING_CONFIGURATION,
+  resolveReportingConfiguration,
+  registerReportSource,
+} from "./reporting";
+
+export type {
+  ReportingConfiguration,
+  ReportingConfigurationInput,
+  InstitutionalReport,
+  ReportFilters,
+  ReportType,
+  ExportFormat,
+  ReportExportModel,
+  ReportSnapshot,
+  GenerateReportOptions,
+} from "./reporting";
