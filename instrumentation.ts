@@ -88,5 +88,11 @@ export async function register() {
       "@/src/core/dataIntegrity/diagnostics"
     );
     registerValidationDiagnosticsEngine();
+
+    // Sprint 9F.17 — idempotent Validation Administration & Policy Engine registration
+    const { registerValidationAdministrationEngine } = await import(
+      "@/src/core/dataIntegrity/admin"
+    );
+    registerValidationAdministrationEngine();
   }
 }

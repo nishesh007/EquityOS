@@ -501,3 +501,34 @@ export type {
   RunDiagnosticsOptions,
   DiagnosticsProbe,
 } from "./diagnostics";
+
+/** Prompt 9F.17 Institutional Validation Administration & Policy Engine. */
+export {
+  registerValidationAdministrationEngine,
+  getValidationAdministrationEngine,
+  resetValidationAdministrationEngine,
+  ValidationAdministrationEngine,
+  createPolicy,
+  updatePolicy,
+  deletePolicy,
+  evaluatePolicy,
+  applyOverride,
+  rollbackPolicy,
+  createGovernanceSnapshot,
+  getAdministrationMetrics,
+  DEFAULT_ADMINISTRATION_CONFIGURATION,
+  resolveAdministrationConfiguration,
+  registerPolicy,
+} from "./admin";
+
+export type {
+  AdministrationConfiguration,
+  AdministrationConfigurationInput,
+  GovernanceProfileId,
+  PolicyDefinition,
+  GovernanceSnapshot,
+  AdministrationOperationalMetrics,
+  CreatePolicyInput,
+  UpdatePolicyInput,
+  ApplyOverrideInput,
+} from "./admin";
