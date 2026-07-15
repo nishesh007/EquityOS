@@ -44,7 +44,11 @@ import {
   scoreEventCandidate,
   scoreInstitutionalCandidate,
   generateResearchPriority,
+  runStrategy,
+  listStrategies,
+  listTemplates,
   SCREEN_INTELLIGENCE_EMPTY,
+  BUILTIN_TEMPLATE_IDS,
   type ScreenEngineScores,
   type ScreenRunOptions,
   type ScreenSnapshot,
@@ -208,6 +212,9 @@ export {
   runPortfolioScreen,
   runWatchlistScreen,
   runOpportunityScreen,
+  runStrategy,
+  listStrategies,
+  listTemplates,
 };
 
 /** Health/status bridge for /dashboard, /results, Research, /screener, /ai/screener. */
@@ -226,8 +233,11 @@ export function fetchInstitutionalScreenerHealth(): {
   intelligenceReady: boolean;
   eventIntelligenceReady: boolean;
   institutionalReady: boolean;
+  strategyReady: boolean;
+  strategyTemplateCount: number;
 } {
   const registration = registerAIScreener();
+  const templates = listTemplates({ origin: "built-in" });
   return {
     registered: registration.registered || registration.skipped,
     screenCount: listScreens({ enabledOnly: true }).length,
@@ -243,6 +253,9 @@ export function fetchInstitutionalScreenerHealth(): {
     intelligenceReady: true,
     eventIntelligenceReady: true,
     institutionalReady: true,
+    strategyReady: true,
+    strategyTemplateCount:
+      templates.length > 0 ? templates.length : BUILTIN_TEMPLATE_IDS.length,
   };
 }
 

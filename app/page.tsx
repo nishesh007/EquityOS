@@ -75,6 +75,7 @@ export default async function DashboardPage() {
           {screenerHealth.screenCount} AI screens ·{" "}
           {screenerHealth.portfolioScreens} portfolio ·{" "}
           {screenerHealth.watchlistScreens} watchlist ·{" "}
+          {screenerHealth.strategyTemplateCount} strategies ·{" "}
           {new Date().toLocaleDateString("en-IN", {
             weekday: "long",
             year: "numeric",

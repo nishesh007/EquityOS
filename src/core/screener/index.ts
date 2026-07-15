@@ -91,6 +91,14 @@ export {
   rankInstitutionalResults,
   generateResearchPriority,
   buildInstitutionalInsights,
+  createStrategy,
+  updateStrategy,
+  deleteStrategy,
+  cloneStrategy,
+  saveTemplate,
+  runStrategy,
+  listStrategies,
+  listTemplates,
 } from "./AIScreener";
 export type { AIScreenerRegistrationResult } from "./AIScreener";
 export type {
@@ -116,6 +124,10 @@ export type {
   InstitutionalScoreFactors,
   ResearchPriorityBand,
   InsightBuildInput,
+  StrategyDefinition,
+  StrategyDefinitionInput,
+  StrategyExecutionResult,
+  StrategyRunOptions,
 } from "./AIScreener";
 
 export {
@@ -215,3 +227,57 @@ export type {
   InstitutionalCandidate,
   InstitutionalInsight,
 } from "./intelligence";
+
+/* ── Sprint 9D.R5 — Institutional Strategy Screener ───────────────── */
+
+export {
+  STRATEGY_RULE_CATEGORIES,
+  STRATEGY_COMPARISON_OPERATORS,
+  STRATEGY_LOGIC_OPERATORS,
+  STRATEGY_ORIGINS,
+  STRATEGY_EMPTY,
+  BUILTIN_TEMPLATE_IDS,
+  isLeafRule,
+  isRuleGroup,
+  createLeafRule,
+  createRuleGroup,
+  evaluateRuleNode,
+  collectMatchedFailedRules,
+  normalizeStrategyDefinition,
+  normalizeStrategyCard,
+  normalizeSavedTemplateCard,
+  normalizeStrategyExplainability,
+  emptyStrategyExecutionResult,
+  buildStrategyFromLeaves,
+  countRules,
+  summarizeRules,
+  validateRuleTree,
+  previewStrategy,
+  registerBuiltinTemplates,
+  getBuiltinTemplates,
+  resetStrategyLibrary,
+  resetStrategyModule,
+  resetBuiltinTemplateFlag,
+  getStrategy,
+  renameStrategy,
+  setStrategyFavorite,
+  getTemplate,
+  deleteTemplate,
+  StrategyEngine,
+  toInstitutionalCandidate,
+} from "./strategy";
+export type {
+  StrategyRuleCategory,
+  StrategyComparisonOperator,
+  StrategyLogicOperator,
+  StrategyLeafRule,
+  StrategyRuleGroup,
+  StrategyRuleNode,
+  StrategyOrigin,
+  StrategyEmptyMessage,
+  StrategyCard,
+  SavedTemplateCard,
+  StrategyExplainability,
+  StrategyUniverseCandidate,
+  BuiltinTemplateId,
+} from "./strategy";

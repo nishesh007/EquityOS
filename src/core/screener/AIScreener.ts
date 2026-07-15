@@ -1,11 +1,12 @@
 /**
- * Institutional AI Screener — public façade (Sprint 9D.R1–R4).
+ * Institutional AI Screener — public façade (Sprint 9D.R1–R5).
  * Composition layer over Research, Opportunity, Validation, Trust, Earnings, Market, Alert.
  *
  * Public API (R1): registerScreen | runScreen | getResults | getMetrics | clearCache
  * Public API (R2): runTechnicalScreen | runFundamentalScreen | runMultiFactorScreen | rankResults | buildExplainability
  * Public API (R3): runEarningsScreen | runNewsScreen | runCorporateActionScreen | runManagementScreen | runEventScreen | buildEventExplainability
  * Public API (R4): runPortfolioScreen | runWatchlistScreen | runOpportunityScreen | rankInstitutionalResults | generateResearchPriority | buildInstitutionalInsights
+ * Public API (R5): createStrategy | updateStrategy | deleteStrategy | cloneStrategy | saveTemplate | runStrategy | listStrategies | listTemplates
  */
 
 import type { ScreenDefinition, ScreenDefinitionInput } from "./ScreenDefinition";
@@ -70,6 +71,25 @@ import {
   type TechnicalScreenOptions,
   type WatchlistScreenOptions,
 } from "./intelligence";
+import {
+  cloneStrategy as cloneStrategyCore,
+  createStrategy as createStrategyCore,
+  deleteStrategy as deleteStrategyCore,
+  listStrategies as listStrategiesCore,
+  listTemplates as listTemplatesCore,
+  registerBuiltinTemplates,
+  resetStrategyLibrary,
+  resetBuiltinTemplateFlag,
+  runStrategy as runStrategyCore,
+  saveTemplate as saveTemplateCore,
+  updateStrategy as updateStrategyCore,
+  STRATEGY_EMPTY,
+  emptyStrategyExecutionResult,
+  type StrategyDefinition,
+  type StrategyDefinitionInput,
+  type StrategyExecutionResult,
+  type StrategyRunOptions,
+} from "./strategy";
 
 export interface AIScreenerRegistrationResult {
   registered: boolean;
@@ -104,6 +124,7 @@ export function registerAIScreener(options?: {
   }
 
   const builtins = registerBuiltinScreens({ force: options?.force });
+  registerBuiltinTemplates({ force: options?.force });
 
   if (options?.runner) {
     defaultRunner = options.runner;
@@ -142,6 +163,8 @@ export function resetAIScreener(): void {
   defaultRunner = null;
   screenerRegistered = false;
   resetScreenRegistry();
+  resetStrategyLibrary();
+  resetBuiltinTemplateFlag();
 }
 
 /** Public API — register a screen definition (built-in / custom / marketplace). */
@@ -456,6 +479,107 @@ export function buildInstitutionalInsights(input: InsightBuildInput) {
   }
 }
 
+/** Public API (R5) — create strategy (never throws). */
+export function createStrategy(
+  input: StrategyDefinitionInput,
+  options?: { force?: boolean }
+): { created: boolean; skipped: boolean; definition: StrategyDefinition | null } {
+  registerAIScreener();
+  try {
+    return createStrategyCore(input, options);
+  } catch {
+    return { created: false, skipped: false, definition: null };
+  }
+}
+
+/** Public API (R5) — update strategy. */
+export function updateStrategy(
+  id: string,
+  patch: Partial<StrategyDefinitionInput>
+): StrategyDefinition | null {
+  registerAIScreener();
+  try {
+    return updateStrategyCore(id, patch);
+  } catch {
+    return null;
+  }
+}
+
+/** Public API (R5) — delete strategy. */
+export function deleteStrategy(id: string): boolean {
+  registerAIScreener();
+  try {
+    return deleteStrategyCore(id);
+  } catch {
+    return false;
+  }
+}
+
+/** Public API (R5) — clone strategy. */
+export function cloneStrategy(
+  id: string,
+  overrides?: Partial<StrategyDefinitionInput>
+): StrategyDefinition | null {
+  registerAIScreener();
+  try {
+    return cloneStrategyCore(id, overrides);
+  } catch {
+    return null;
+  }
+}
+
+/** Public API (R5) — save strategy template. */
+export function saveTemplate(
+  input: StrategyDefinitionInput,
+  options?: { force?: boolean }
+): { saved: boolean; skipped: boolean; definition: StrategyDefinition | null } {
+  registerAIScreener();
+  try {
+    return saveTemplateCore(input, options);
+  } catch {
+    return { saved: false, skipped: false, definition: null };
+  }
+}
+
+/** Public API (R5) — run strategy against a universe. */
+export function runStrategy(
+  strategyIdOrDefinition: string | StrategyDefinition,
+  options: StrategyRunOptions
+): StrategyExecutionResult {
+  registerAIScreener();
+  try {
+    return runStrategyCore(strategyIdOrDefinition, options);
+  } catch {
+    return emptyStrategyExecutionResult(STRATEGY_EMPTY.awaitingExecution);
+  }
+}
+
+/** Public API (R5) — list user / shared strategies. */
+export function listStrategies(options?: {
+  origin?: StrategyDefinition["origin"];
+  favoriteOnly?: boolean;
+  recentOnly?: boolean;
+}): StrategyDefinition[] {
+  registerAIScreener();
+  try {
+    return listStrategiesCore(options);
+  } catch {
+    return [];
+  }
+}
+
+/** Public API (R5) — list saved / built-in templates. */
+export function listTemplates(options?: {
+  origin?: StrategyDefinition["origin"];
+}): StrategyDefinition[] {
+  registerAIScreener();
+  try {
+    return listTemplatesCore(options);
+  } catch {
+    return [];
+  }
+}
+
 export type {
   TechnicalScreenOptions,
   FundamentalScreenOptions,
@@ -479,6 +603,10 @@ export type {
   InstitutionalScoreFactors,
   ResearchPriorityBand,
   InsightBuildInput,
+  StrategyDefinition,
+  StrategyDefinitionInput,
+  StrategyExecutionResult,
+  StrategyRunOptions,
 };
 
 function emptyIntegrations(): AIScreenerRegistrationResult["integrations"] {
