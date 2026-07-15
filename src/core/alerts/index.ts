@@ -204,3 +204,33 @@ export type {
   SectorAlertSnapshot,
   ScoredAlert,
 } from "./intelligence";
+
+/** Sprint 9C.R5 — Institutional Alert Center */
+export {
+  ALERT_CENTER_EMPTY,
+  getAlertCenter,
+  resetAlertCenter,
+  getAlertCenterView,
+  getAlertDrawer,
+  AlertCenter,
+  AlertInbox,
+  AlertLifecycleManager,
+  AlertFilterEngine,
+  AlertSearchEngine,
+  AlertGroupingEngine as AlertCenterGroupingEngine,
+  AlertArchiveEngine,
+  AlertHistoryEngine,
+  AlertCenterMetricsEngine,
+} from "./center";
+
+export type {
+  CenterAlert,
+  AlertCenterView,
+  AlertDrawerView,
+  AlertCenterFilterId,
+  AlertSearchQuery,
+  AlertCenterMetrics,
+  AlertCenterActionId,
+  AlertCenterGroupBy,
+  CenterAlertGroup,
+} from "./center";

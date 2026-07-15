@@ -1,0 +1,279 @@
+/**
+ * Institutional Alert Center — models & empty states (Sprint 9C.R5).
+ * Presentation / lifecycle management on top of R1–R4 alerts.
+ */
+
+import type { InstitutionalAlert } from "../AlertModels";
+import { safeAlertText } from "../AlertModels";
+
+export const ALERT_CENTER_EMPTY = {
+  noAlerts: "No Alerts",
+  noUnread: "No Unread Alerts",
+  noMatching: "No Matching Alerts",
+  awaitingGeneration: "Awaiting Alert Generation",
+} as const;
+
+export type AlertCenterEmptyMessage =
+  (typeof ALERT_CENTER_EMPTY)[keyof typeof ALERT_CENTER_EMPTY];
+
+/** Inbox lifecycle (management layer — distinct from R1 engine lifecycle). */
+export const CENTER_LIFECYCLE_STATES = [
+  "Generated",
+  "New",
+  "Unread",
+  "Read",
+  "Acknowledged",
+  "Pinned",
+  "Snoozed",
+  "Resolved",
+  "Archived",
+  "Expired",
+  "Deleted",
+] as const;
+
+export type CenterLifecycleStatus = (typeof CENTER_LIFECYCLE_STATES)[number];
+
+export interface AlertLifecycleTimestamps {
+  created: string;
+  firstSeen: string | "";
+  opened: string | "";
+  acknowledged: string | "";
+  snoozedUntil: string | "";
+  resolved: string | "";
+  archived: string | "";
+  expired: string | "";
+  deleted: string | "";
+}
+
+export interface CenterAlert {
+  id: string;
+  alert: InstitutionalAlert;
+  inboxStatus: CenterLifecycleStatus;
+  read: boolean;
+  pinned: boolean;
+  snoozedUntil: string | "";
+  timestamps: AlertLifecycleTimestamps;
+  decisionTrace: string[];
+  relatedResearch: string;
+  relatedOpportunity: string;
+  copyText: string;
+}
+
+export type AlertCenterFilterId =
+  | "all"
+  | "unread"
+  | "critical"
+  | "high"
+  | "medium"
+  | "low"
+  | "today"
+  | "this_week"
+  | "portfolio"
+  | "watchlist"
+  | "research"
+  | "opportunity"
+  | "earnings"
+  | "technical"
+  | "fundamental"
+  | "news"
+  | "corporate_action"
+  | "market"
+  | "sector"
+  | "trust"
+  | "validation"
+  | "archived"
+  | "resolved"
+  | "expired";
+
+export type AlertCenterGroupBy =
+  | "company"
+  | "category"
+  | "severity"
+  | "date"
+  | "portfolio"
+  | "watchlist"
+  | "sector"
+  | "source";
+
+export type AlertCenterActionId =
+  | "mark_read"
+  | "mark_unread"
+  | "pin"
+  | "unpin"
+  | "snooze"
+  | "resolve"
+  | "archive"
+  | "restore"
+  | "dismiss"
+  | "copy"
+  | "open_research"
+  | "open_opportunity"
+  | "open_company";
+
+export interface AlertSearchQuery {
+  text?: string;
+  company?: string;
+  ticker?: string;
+  sector?: string;
+  category?: string;
+  keywords?: string[];
+  alertType?: string;
+  minConfidence?: number;
+  maxConfidence?: number;
+  severity?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  portfolioOnly?: boolean;
+  watchlistOnly?: boolean;
+}
+
+export interface AlertCenterSummaryCards {
+  unread: number;
+  critical: number;
+  today: number;
+  portfolio: number;
+  watchlist: number;
+  archived: number;
+  resolved: number;
+  labels: {
+    unread: string;
+    critical: string;
+    today: string;
+    portfolio: string;
+    watchlist: string;
+    archived: string;
+    resolved: string;
+  };
+}
+
+export interface AlertTableRow {
+  id: string;
+  severity: string;
+  severityBadge: string;
+  confidence: string;
+  company: string;
+  ticker: string;
+  category: string;
+  reason: string;
+  time: string;
+  source: string;
+  inboxStatus: CenterLifecycleStatus;
+  pinned: boolean;
+  read: boolean;
+  actions: AlertCenterActionId[];
+}
+
+export interface AlertDrawerView {
+  id: string;
+  title: string;
+  summary: string;
+  reason: string;
+  evidence: string[];
+  decisionTrace: string[];
+  relatedResearch: string;
+  relatedOpportunity: string;
+  relatedCompany: string;
+  timeline: Array<{ label: string; at: string }>;
+  severity: string;
+  confidence: string;
+  category: string;
+  source: string;
+  inboxStatus: CenterLifecycleStatus;
+  ready: boolean;
+  emptyMessage: AlertCenterEmptyMessage;
+}
+
+export interface AlertCenterView {
+  summary: AlertCenterSummaryCards;
+  rows: AlertTableRow[];
+  total: number;
+  empty: boolean;
+  emptyMessage: AlertCenterEmptyMessage;
+  filter: AlertCenterFilterId;
+}
+
+export interface CenterAlertGroup {
+  groupId: string;
+  label: string;
+  count: number;
+  alerts: CenterAlert[];
+}
+
+export function emptyTimestamps(createdAt: string): AlertLifecycleTimestamps {
+  return {
+    created: safeAlertText(createdAt, new Date().toISOString()),
+    firstSeen: "",
+    opened: "",
+    acknowledged: "",
+    snoozedUntil: "",
+    resolved: "",
+    archived: "",
+    expired: "",
+    deleted: "",
+  };
+}
+
+export function wrapInstitutionalAlert(
+  alert: InstitutionalAlert,
+  overrides?: Partial<CenterAlert>
+): CenterAlert {
+  const created = safeAlertText(alert.createdAt, new Date().toISOString());
+  return {
+    id: alert.id,
+    alert,
+    inboxStatus: "New",
+    read: false,
+    pinned: false,
+    snoozedUntil: "",
+    timestamps: emptyTimestamps(created),
+    decisionTrace: [
+      `Generated by ${alert.sourceEngine}`,
+      `Category ${alert.category}`,
+      `Priority ${alert.priority}`,
+    ],
+    relatedResearch:
+      alert.category === "Opportunity" || alert.sourceEngine === "AI Research"
+        ? `/research?symbol=${encodeURIComponent(alert.ticker || "")}`
+        : "",
+    relatedOpportunity:
+      alert.category === "Opportunity"
+        ? `/opportunity?symbol=${encodeURIComponent(alert.ticker || "")}`
+        : "",
+    copyText: [
+      alert.title,
+      alert.summary,
+      alert.reason,
+      alert.ticker,
+      alert.company,
+    ]
+      .map((t) => safeAlertText(t, ""))
+      .filter(Boolean)
+      .join(" | "),
+    ...overrides,
+  };
+}
+
+export function defaultActionsFor(
+  item: CenterAlert
+): AlertCenterActionId[] {
+  const actions: AlertCenterActionId[] = [
+    item.read ? "mark_unread" : "mark_read",
+    item.pinned ? "unpin" : "pin",
+    "snooze",
+    "resolve",
+    "archive",
+    "dismiss",
+    "copy",
+  ];
+  if (
+    item.inboxStatus === "Archived" ||
+    item.inboxStatus === "Resolved" ||
+    item.inboxStatus === "Deleted"
+  ) {
+    actions.push("restore");
+  }
+  if (item.alert.ticker) {
+    actions.push("open_company", "open_research", "open_opportunity");
+  }
+  return actions;
+}
