@@ -29,8 +29,15 @@ import {
   runTechnicalScreen,
   runFundamentalScreen,
   runMultiFactorScreen,
+  runEarningsScreen,
+  runNewsScreen,
+  runCorporateActionScreen,
+  runManagementScreen,
+  runEventScreen,
   buildExplainability,
+  buildEventExplainability,
   scoreCandidate,
+  scoreEventCandidate,
   SCREEN_INTELLIGENCE_EMPTY,
   type ScreenEngineScores,
   type ScreenRunOptions,
@@ -38,6 +45,9 @@ import {
   type ScreenUniverseCandidate,
   type IntelligenceScreenResult,
   type MultiFactorScreenOptions,
+  type ScreenEventCandidate,
+  type EventScreenResult,
+  type EventCorrelationOptions,
 } from "@/src/core/screener";
 
 async function enrichScreenerRows(rows: ScreenerRow[]): Promise<ScreenerRow[]> {
@@ -179,6 +189,11 @@ export {
   runTechnicalScreen,
   runFundamentalScreen,
   runMultiFactorScreen,
+  runEarningsScreen,
+  runNewsScreen,
+  runCorporateActionScreen,
+  runManagementScreen,
+  runEventScreen,
 };
 
 /** Health/status bridge for /dashboard, /results, Research, /screener, /ai/screener. */
@@ -189,7 +204,11 @@ export function fetchInstitutionalScreenerHealth(): {
   emptyMessage: string;
   technicalFilters: number;
   fundamentalFilters: number;
+  earningsScreens: number;
+  newsScreens: number;
+  corporateActionScreens: number;
   intelligenceReady: boolean;
+  eventIntelligenceReady: boolean;
 } {
   const registration = registerAIScreener();
   return {
@@ -199,7 +218,11 @@ export function fetchInstitutionalScreenerHealth(): {
     emptyMessage: getInstitutionalScreenResults().emptyMessage,
     technicalFilters: 19,
     fundamentalFilters: 19,
+    earningsScreens: 15,
+    newsScreens: 12,
+    corporateActionScreens: 14,
     intelligenceReady: true,
+    eventIntelligenceReady: true,
   };
 }
 
@@ -228,8 +251,10 @@ export function fetchSymbolScreenerInsight(input: {
   metrics?: Record<string, number | string | null | undefined>;
   price?: number | null;
   engineScores?: ScreenEngineScores;
+  event?: ScreenEventCandidate;
 }): {
   score: number;
+  eventScore: number;
   reasonSummary: string;
   emptyMessage: string;
   whyMatched: string;
@@ -250,12 +275,45 @@ export function fetchSymbolScreenerInsight(input: {
     factors,
     reasonSummary: input.engineScores?.reasonSummary,
   });
+
+  let eventScore = 0;
+  let eventWhy = explain.whyMatched;
+  if (input.event) {
+    const eventFactors = scoreEventCandidate({
+      ...input.event,
+      ticker: input.ticker,
+      company: input.company ?? input.event.company,
+    });
+    eventScore = eventFactors.finalEventScore;
+    const eventExplain = buildEventExplainability({
+      ticker: input.ticker,
+      company: input.company,
+      matchedRules: input.event.tags ?? [],
+      supportingEvent: input.event.upcomingEvent,
+      factors: eventFactors,
+      reasonSummary: input.event.reasonSummary,
+      evidence: input.event.evidence,
+    });
+    if (!eventExplain.empty) {
+      eventWhy = eventExplain.whyMatched;
+    }
+  }
+
   return {
     score: factors.finalAiScreenerScore,
+    eventScore,
     reasonSummary: explain.aiReasoning,
     emptyMessage: explain.empty
       ? SCREEN_INTELLIGENCE_EMPTY.awaitingScreening
       : "",
-    whyMatched: explain.whyMatched,
+    whyMatched: eventWhy,
   };
+}
+
+/** Run correlated event screen for dashboard / AI screener surfaces. */
+export function runEventIntelligenceScreen(
+  options?: EventCorrelationOptions
+): EventScreenResult {
+  registerAIScreener();
+  return runEventScreen(options);
 }

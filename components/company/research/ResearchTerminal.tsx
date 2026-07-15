@@ -12,6 +12,7 @@ interface ResearchTerminalProps {
   research: CompanyResearch;
   screenerInsight?: {
     score: number;
+    eventScore?: number;
     reasonSummary: string;
     emptyMessage: string;
     whyMatched: string;
@@ -22,7 +23,7 @@ interface ResearchTerminalProps {
  * Sprint 3 — Equity Research Terminal.
  * Composes the full research layer for a company. Rendered as an additive
  * section on the company page; existing components remain untouched.
- * Sprint 9D.R2 — optional AI Screener insight strip for Research Drawer.
+ * Sprint 9D.R2/R3 — optional AI Screener + event insight strip for Research Drawer.
  */
 export function ResearchTerminal({
   company,
@@ -35,6 +36,10 @@ export function ResearchTerminal({
         <div className="rounded-xl border border-surface-border-subtle bg-surface-elevated px-4 py-3 text-sm">
           <p className="font-medium text-text-primary">
             AI Screener · Score {screenerInsight.score}
+            {typeof screenerInsight.eventScore === "number" &&
+            screenerInsight.eventScore > 0
+              ? ` · Event ${screenerInsight.eventScore}`
+              : ""}
           </p>
           <p className="mt-1 text-text-muted">
             {screenerInsight.emptyMessage ||

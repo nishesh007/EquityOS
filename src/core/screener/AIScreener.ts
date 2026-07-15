@@ -1,9 +1,10 @@
 /**
- * Institutional AI Screener — public façade (Sprint 9D.R1 / R2).
+ * Institutional AI Screener — public façade (Sprint 9D.R1 / R2 / R3).
  * Composition layer over Research, Opportunity, Validation, Trust, Earnings, Market, Alert.
  *
  * Public API (R1): registerScreen | runScreen | getResults | getMetrics | clearCache
  * Public API (R2): runTechnicalScreen | runFundamentalScreen | runMultiFactorScreen | rankResults | buildExplainability
+ * Public API (R3): runEarningsScreen | runNewsScreen | runCorporateActionScreen | runManagementScreen | runEventScreen | buildEventExplainability
  */
 
 import type { ScreenDefinition, ScreenDefinitionInput } from "./ScreenDefinition";
@@ -23,16 +24,31 @@ import type { ScreenSnapshot } from "./ScreenSnapshot";
 import { emptyScreenSnapshot } from "./ScreenSnapshot";
 import {
   buildExplainability as buildExplainabilityCore,
+  buildEventExplainability as buildEventExplainabilityCore,
+  emptyEventScreenResult,
   emptyIntelligenceResult,
   rankResults as rankResultsCore,
+  runCorporateActionScreen as runCorporateActionScreenCore,
+  runEarningsScreen as runEarningsScreenCore,
+  runEventScreen as runEventScreenCore,
   runFundamentalScreen as runFundamentalScreenCore,
+  runManagementScreen as runManagementScreenCore,
   runMultiFactorScreen as runMultiFactorScreenCore,
+  runNewsScreen as runNewsScreenCore,
   runTechnicalScreen as runTechnicalScreenCore,
+  SCREEN_EVENT_EMPTY,
   SCREEN_INTELLIGENCE_EMPTY,
+  type CorporateActionScreenOptions,
+  type EarningsScreenOptions,
+  type EventCorrelationOptions,
+  type EventExplainabilityInput,
+  type EventScreenResult,
   type ExplainabilityInput,
   type FundamentalScreenOptions,
   type IntelligenceScreenResult,
+  type ManagementScreenOptions,
   type MultiFactorScreenOptions,
+  type NewsScreenOptions,
   type ScreenRankingMode,
   type ScreenResultCard,
   type TechnicalScreenOptions,
@@ -259,6 +275,89 @@ export function buildExplainability(input: ExplainabilityInput) {
   }
 }
 
+/** Public API (R3) — earnings event screen. */
+export function runEarningsScreen(
+  options?: EarningsScreenOptions
+): EventScreenResult {
+  registerAIScreener();
+  try {
+    return runEarningsScreenCore(options);
+  } catch {
+    return emptyEventScreenResult(
+      "earnings",
+      SCREEN_EVENT_EMPTY.awaitingEventScan
+    );
+  }
+}
+
+/** Public API (R3) — news event screen. */
+export function runNewsScreen(options?: NewsScreenOptions): EventScreenResult {
+  registerAIScreener();
+  try {
+    return runNewsScreenCore(options);
+  } catch {
+    return emptyEventScreenResult("news", SCREEN_EVENT_EMPTY.awaitingEventScan);
+  }
+}
+
+/** Public API (R3) — corporate action screen. */
+export function runCorporateActionScreen(
+  options?: CorporateActionScreenOptions
+): EventScreenResult {
+  registerAIScreener();
+  try {
+    return runCorporateActionScreenCore(options);
+  } catch {
+    return emptyEventScreenResult(
+      "corporate-action",
+      SCREEN_EVENT_EMPTY.awaitingEventScan
+    );
+  }
+}
+
+/** Public API (R3) — management commentary screen. */
+export function runManagementScreen(
+  options?: ManagementScreenOptions
+): EventScreenResult {
+  registerAIScreener();
+  try {
+    return runManagementScreenCore(options);
+  } catch {
+    return emptyEventScreenResult(
+      "management",
+      SCREEN_EVENT_EMPTY.awaitingEventScan
+    );
+  }
+}
+
+/** Public API (R3) — correlated multi-domain event screen. */
+export function runEventScreen(
+  options?: EventCorrelationOptions
+): EventScreenResult {
+  registerAIScreener();
+  try {
+    return runEventScreenCore(options);
+  } catch {
+    return emptyEventScreenResult(
+      "event",
+      SCREEN_EVENT_EMPTY.awaitingEventScan
+    );
+  }
+}
+
+/** Public API (R3) — event explainability. */
+export function buildEventExplainability(input: EventExplainabilityInput) {
+  try {
+    return buildEventExplainabilityCore(input);
+  } catch {
+    return buildEventExplainabilityCore({
+      ticker: input.ticker,
+      matchedRules: [],
+      factors: input.factors,
+    });
+  }
+}
+
 export type {
   TechnicalScreenOptions,
   FundamentalScreenOptions,
@@ -267,6 +366,13 @@ export type {
   ScreenResultCard,
   ScreenRankingMode,
   ExplainabilityInput,
+  EarningsScreenOptions,
+  NewsScreenOptions,
+  CorporateActionScreenOptions,
+  ManagementScreenOptions,
+  EventCorrelationOptions,
+  EventScreenResult,
+  EventExplainabilityInput,
 };
 
 function emptyIntegrations(): AIScreenerRegistrationResult["integrations"] {

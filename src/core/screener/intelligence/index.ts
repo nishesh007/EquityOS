@@ -1,5 +1,5 @@
 /**
- * Institutional AI Screener — intelligence exports (Sprint 9D.R2).
+ * Institutional AI Screener — intelligence exports (Sprint 9D.R2 / R3).
  */
 
 export {
@@ -69,3 +69,85 @@ export {
   runMultiFactorScreen,
 } from "./MultiFactorScreenEngine";
 export type { MultiFactorScreenOptions } from "./MultiFactorScreenEngine";
+
+/* ── Sprint 9D.R3 — Event intelligence ─────────────────────────────── */
+
+export {
+  SCREEN_EVENT_EMPTY,
+  emptyEventScoreFactors,
+  emptyEventExplainability,
+  emptyEventScreenResult,
+  normalizeEventResultCard,
+  candidateTags,
+  candidateHasTag,
+} from "./EventPresentationModels";
+export type {
+  ScreenEventEmptyMessage,
+  EventScreenMode,
+  ScreenEventCandidate,
+  EventScoreFactors,
+  EventExplainability,
+  EventResultCard,
+  EventScreenResult,
+} from "./EventPresentationModels";
+
+export {
+  EventExplainabilityEngine,
+  buildEventExplainability,
+  composeEventScoreFactors,
+  scoreEventCandidate,
+} from "./EventExplainabilityEngine";
+export type { EventExplainabilityInput } from "./EventExplainabilityEngine";
+
+export {
+  EventRankingEngine,
+  rankEventResults,
+} from "./EventRankingEngine";
+export type { EventRankingMode } from "./EventRankingEngine";
+
+export {
+  EarningsScreenEngine,
+  runEarningsScreen,
+  EARNINGS_SCREEN_IDS,
+  EARNINGS_SCREEN_LABELS,
+} from "./EarningsScreenEngine";
+export type {
+  EarningsScreenId,
+  EarningsScreenOptions,
+} from "./EarningsScreenEngine";
+
+export {
+  NewsScreenEngine,
+  runNewsScreen,
+  NEWS_SCREEN_IDS,
+  NEWS_SCREEN_LABELS,
+} from "./NewsScreenEngine";
+export type { NewsScreenId, NewsScreenOptions } from "./NewsScreenEngine";
+
+export {
+  CorporateActionScreenEngine,
+  runCorporateActionScreen,
+  CORPORATE_ACTION_SCREEN_IDS,
+  CORPORATE_ACTION_SCREEN_LABELS,
+} from "./CorporateActionScreenEngine";
+export type {
+  CorporateActionScreenId,
+  CorporateActionScreenOptions,
+} from "./CorporateActionScreenEngine";
+
+export {
+  ManagementCommentaryScreenEngine,
+  runManagementScreen,
+  MANAGEMENT_SCREEN_IDS,
+  MANAGEMENT_SCREEN_LABELS,
+} from "./ManagementCommentaryScreenEngine";
+export type {
+  ManagementScreenId,
+  ManagementScreenOptions,
+} from "./ManagementCommentaryScreenEngine";
+
+export {
+  EventCorrelationScreenEngine,
+  runEventScreen,
+} from "./EventCorrelationScreenEngine";
+export type { EventCorrelationOptions } from "./EventCorrelationScreenEngine";

@@ -31,7 +31,8 @@ export default function AIResearchPage() {
             </h1>
             <p className="mt-1 text-sm text-text-muted md:mt-2">
               Institutional-grade equity research powered by AI ·{" "}
-              {screenerHealth.screenCount} AI screens · multi-factor ready.
+              {screenerHealth.screenCount} AI screens ·{" "}
+              {screenerHealth.earningsScreens} earnings event screens.
             </p>
           </div>
 
