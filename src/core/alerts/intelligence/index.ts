@@ -182,6 +182,87 @@ export type {
 
 export type { EventIntelBatch } from "./emitEventIntelBatch";
 
+/** Sprint 9C.R4 — Technical / Fundamental / Market / Sector */
+export {
+  SIGNAL_ALERT_EMPTY,
+  TECHNICAL_ALERT_KINDS,
+  FUNDAMENTAL_ALERT_KINDS,
+  MARKET_ALERT_KINDS,
+  SECTOR_ALERT_KINDS,
+  TECHNICAL_KIND_LABELS,
+  FUNDAMENTAL_KIND_LABELS,
+  MARKET_KIND_LABELS,
+  SECTOR_KIND_LABELS,
+  toSignalAlertCard,
+  buildSignalDecision,
+} from "./AlertSignalModels";
+export type {
+  TechnicalAlertKind,
+  FundamentalAlertKind,
+  MarketAlertKind,
+  SectorAlertKind,
+  TechnicalAlertSnapshot,
+  FundamentalAlertSnapshot,
+  MarketAlertSnapshot,
+  SectorAlertSnapshot,
+  SignalAlertCard,
+} from "./AlertSignalModels";
+
+export {
+  detectTechnicalSignals,
+  TechnicalSignalEngine,
+} from "./TechnicalSignalEngine";
+export {
+  detectFundamentalSignals,
+  FundamentalSignalEngine,
+} from "./FundamentalSignalEngine";
+export {
+  detectMarketSignals,
+  detectSectorSignals,
+  MarketTrendEngine,
+} from "./MarketTrendEngine";
+
+export {
+  TechnicalAlertEngine,
+  getTechnicalAlertEngine,
+  resetTechnicalAlertEngine,
+  generateTechnicalAlerts,
+} from "./TechnicalAlertEngine";
+export type { TechnicalAlertInput } from "./TechnicalAlertEngine";
+
+export {
+  FundamentalAlertEngine,
+  getFundamentalAlertEngine,
+  resetFundamentalAlertEngine,
+  generateFundamentalAlerts,
+} from "./FundamentalAlertEngine";
+export type { FundamentalAlertInput } from "./FundamentalAlertEngine";
+
+export {
+  MarketAlertEngine,
+  getMarketAlertEngine,
+  resetMarketAlertEngine,
+  generateMarketAlerts,
+} from "./MarketAlertEngine";
+export type { MarketAlertInput } from "./MarketAlertEngine";
+
+export {
+  SectorAlertEngine,
+  getSectorAlertEngine,
+  resetSectorAlertEngine,
+  generateSectorAlerts,
+} from "./SectorAlertEngine";
+export type { SectorAlertInput } from "./SectorAlertEngine";
+
+export {
+  extractAlertScoreFactors,
+  computeAlertScore,
+  scoreAlerts,
+} from "./AlertScoringEngine";
+export type { AlertScoreFactors, ScoredAlert } from "./AlertScoringEngine";
+
+export type { SignalIntelBatch } from "./emitSignalIntelBatch";
+
 import { resetOpportunityAlertEngine } from "./OpportunityAlertEngine";
 import { resetPortfolioAlertEngine } from "./PortfolioAlertEngine";
 import { resetWatchlistAlertIntelligenceEngine } from "./WatchlistAlertEngine";
@@ -190,6 +271,10 @@ import { resetTranscriptAlertEngine } from "./TranscriptAlertEngine";
 import { resetManagementCommentaryAlertEngine } from "./ManagementCommentaryAlertEngine";
 import { resetNewsAlertEngine } from "./NewsAlertEngine";
 import { resetCorporateActionAlertEngine } from "./CorporateActionAlertEngine";
+import { resetTechnicalAlertEngine } from "./TechnicalAlertEngine";
+import { resetFundamentalAlertEngine } from "./FundamentalAlertEngine";
+import { resetMarketAlertEngine } from "./MarketAlertEngine";
+import { resetSectorAlertEngine } from "./SectorAlertEngine";
 
 export function resetAlertIntelligence(): void {
   resetOpportunityAlertEngine();
@@ -200,4 +285,8 @@ export function resetAlertIntelligence(): void {
   resetManagementCommentaryAlertEngine();
   resetNewsAlertEngine();
   resetCorporateActionAlertEngine();
+  resetTechnicalAlertEngine();
+  resetFundamentalAlertEngine();
+  resetMarketAlertEngine();
+  resetSectorAlertEngine();
 }

@@ -174,6 +174,11 @@ export {
   correlateAlerts,
   rankNewsAlerts,
   generateManagementCommentaryAlerts,
+  generateTechnicalAlerts,
+  generateFundamentalAlerts,
+  generateMarketAlerts,
+  generateSectorAlerts,
+  scoreAlerts,
 } from "./intelligence";
 
 export type {
@@ -192,4 +197,10 @@ export type {
   NewsAlertSnapshot,
   CorporateActionAlertSnapshot,
   CorrelationResult,
+  SignalIntelBatch,
+  TechnicalAlertSnapshot,
+  FundamentalAlertSnapshot,
+  MarketAlertSnapshot,
+  SectorAlertSnapshot,
+  ScoredAlert,
 } from "./intelligence";

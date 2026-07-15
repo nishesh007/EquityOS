@@ -31,7 +31,8 @@ export interface AlertDecision {
     | "Watchlist"
     | "Earnings"
     | "News"
-    | "Corporate Actions";
+    | "Corporate Actions"
+    | "Market";
   suggestedCategory:
     | "Opportunity"
     | "Portfolio"
@@ -40,7 +41,9 @@ export interface AlertDecision {
     | "Earnings"
     | "News"
     | "Corporate Action"
-    | "Platform";
+    | "Platform"
+    | "Technical"
+    | "Fundamental";
   suggestedPriority: AlertPriority;
   suggestedSeverity: AlertSeverity;
   title: string;
