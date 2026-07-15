@@ -39,7 +39,13 @@ export default function AIResearchPage() {
                 ? `${screenerHealth.themeCount} themes`
                 : screenerHealth.emptyMessage}{" "}
               · workspace{" "}
-              {screenerHealth.workspaceReady ? "ready" : screenerHealth.emptyMessage}
+              {screenerHealth.workspaceReady ? "ready" : screenerHealth.emptyMessage}{" "}
+              · executive{" "}
+              {screenerHealth.executiveReady
+                ? screenerHealth.sprint9DFrozen
+                  ? "9D frozen"
+                  : screenerHealth.executiveSummary
+                : screenerHealth.emptyMessage}
               .
             </p>
           </div>

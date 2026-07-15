@@ -81,6 +81,12 @@ export default async function DashboardPage() {
             : screenerHealth.emptyMessage}{" "}
           · workspace{" "}
           {screenerHealth.workspaceReady ? "ready" : screenerHealth.emptyMessage}{" "}
+          · executive{" "}
+          {screenerHealth.executiveReady
+            ? screenerHealth.sprint9DFrozen
+              ? "9D frozen"
+              : screenerHealth.executiveSummary
+            : screenerHealth.emptyMessage}{" "}
           ·{" "}
           {new Date().toLocaleDateString("en-IN", {
             weekday: "long",

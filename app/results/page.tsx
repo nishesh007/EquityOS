@@ -33,7 +33,7 @@ export default async function ResultsPage() {
     <div className="p-6">
       <PageHeader
         title="Executive Earnings Hub"
-        subtitle={`Sprint 9B complete · institutional calendar, AI, transcripts, workspace & reports · Screener institutional ${screenerHealth.institutionalReady ? "ready" : screenerHealth.emptyMessage} · discovery ${screenerHealth.discoveryReady ? "ready" : screenerHealth.emptyMessage} · screener workspace ${screenerHealth.workspaceReady ? "ready" : screenerHealth.emptyMessage}`}
+        subtitle={`Sprint 9B complete · institutional calendar, AI, transcripts, workspace & reports · Screener institutional ${screenerHealth.institutionalReady ? "ready" : screenerHealth.emptyMessage} · discovery ${screenerHealth.discoveryReady ? "ready" : screenerHealth.emptyMessage} · screener workspace ${screenerHealth.workspaceReady ? "ready" : screenerHealth.emptyMessage} · executive ${screenerHealth.executiveReady ? (screenerHealth.sprint9DFrozen ? "9D frozen" : screenerHealth.executiveSummary) : screenerHealth.emptyMessage}`}
       />
 
       <section className="animate-fade-in-up">

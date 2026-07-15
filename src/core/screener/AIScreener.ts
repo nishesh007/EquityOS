@@ -1,6 +1,7 @@
 /**
- * Institutional AI Screener — public façade (Sprint 9D.R1–R7).
+ * Institutional AI Screener — public façade (Sprint 9D.R1–R8).
  * Composition layer over Research, Opportunity, Validation, Trust, Earnings, Market, Alert.
+ * Sprint 9D COMPLETE and FROZEN at R8.
  *
  * Public API (R1): registerScreen | runScreen | getResults | getMetrics | clearCache
  * Public API (R2): runTechnicalScreen | runFundamentalScreen | runMultiFactorScreen | rankResults | buildExplainability
@@ -9,6 +10,7 @@
  * Public API (R5): createStrategy | updateStrategy | deleteStrategy | cloneStrategy | saveTemplate | runStrategy | listStrategies | listTemplates
  * Public API (R6): discoverIdeas | discoverThemes | discoverSectorRotation | rankIdeas | generateInstitutionalIdeas | buildDiscoveryInsights
  * Public API (R7): saveScreen | loadScreen | listSavedScreens | compareScreens | openResearch | getTimeline | archiveScreen | favoriteScreen
+ * Public API (R8): getExecutiveScreenerView | getHomeScreenerStrip | getExecutiveScreenerSummary | exportExecutiveScreenerReport | isSprint9DFrozen
  */
 
 import type { ScreenDefinition, ScreenDefinitionInput } from "./ScreenDefinition";
@@ -138,6 +140,22 @@ import {
   type TimelineSnapshot,
   type WorkspaceView,
 } from "./workspace";
+import {
+  getExecutiveScreenerView as getExecutiveScreenerViewCore,
+  getHomeScreenerStrip as getHomeScreenerStripCore,
+  getExecutiveScreenerSummary as getExecutiveScreenerSummaryCore,
+  getExecutiveScreenerDashboard,
+  resetExecutiveScreenerStack,
+  isSprint9DFrozen as isSprint9DFrozenCore,
+  EXECUTIVE_SCREENER_EMPTY,
+  SPRINT_9D_STATUS,
+  type ExecutiveDashboardOptions,
+  type ExecutiveScreenerDashboardView,
+  type ExecutiveScreenerExportResult,
+  type HomeScreenerStrip,
+} from "./executive";
+import type { ExportAccessSubject } from "../dataIntegrity/reporting/export/ExportAccessControl";
+import type { ExportableFormat } from "../dataIntegrity/reporting/export/ExportConfiguration";
 
 export interface AIScreenerRegistrationResult {
   registered: boolean;
@@ -214,6 +232,7 @@ export function resetAIScreener(): void {
   resetStrategyLibrary();
   resetBuiltinTemplateFlag();
   resetScreenWorkspace();
+  resetExecutiveScreenerStack();
 }
 
 /** Public API — register a screen definition (built-in / custom / marketplace). */
@@ -840,6 +859,97 @@ export function getWorkspaceView(): WorkspaceView {
   }
 }
 
+function withOperational(
+  options?: ExecutiveDashboardOptions
+): ExecutiveDashboardOptions {
+  return {
+    ...options,
+    operational: options?.operational ?? getMetrics(),
+  };
+}
+
+function emptyExecutiveView(): ExecutiveScreenerDashboardView {
+  return getExecutiveScreenerViewCore({
+    operational: {
+      symbolsScanned: 0,
+      matches: 0,
+      scanTimeMs: 0,
+      cacheHit: 0,
+      cacheMiss: 0,
+      averageConfidence: 0,
+      runs: 0,
+      lastScanAt: null,
+    },
+  });
+}
+
+/** Public API (R8) — Executive AI Screener Hub view. */
+export function getExecutiveScreenerView(
+  options?: ExecutiveDashboardOptions
+): ExecutiveScreenerDashboardView {
+  registerAIScreener();
+  try {
+    return getExecutiveScreenerViewCore(withOperational(options));
+  } catch {
+    return emptyExecutiveView();
+  }
+}
+
+/** Public API (R8) — home / dashboard screener strip. */
+export function getHomeScreenerStrip(
+  options?: ExecutiveDashboardOptions
+): HomeScreenerStrip {
+  registerAIScreener();
+  try {
+    return getHomeScreenerStripCore(withOperational(options));
+  } catch {
+    return emptyExecutiveView().homeStrip;
+  }
+}
+
+/** Public API (R8) — executive summary text for dashboard widgets. */
+export function getExecutiveScreenerSummary(
+  options?: ExecutiveDashboardOptions
+): string {
+  registerAIScreener();
+  try {
+    return getExecutiveScreenerSummaryCore(withOperational(options));
+  } catch {
+    return EXECUTIVE_SCREENER_EMPTY.awaitingScan;
+  }
+}
+
+/** Public API (R8) — export executive report (Markdown / Print / PDF / ACL). */
+export function exportExecutiveScreenerReport(
+  format: ExportableFormat | "PRINT" = "MARKDOWN",
+  options?: ExecutiveDashboardOptions,
+  subject?: ExportAccessSubject
+): ExecutiveScreenerExportResult {
+  registerAIScreener();
+  try {
+    return getExecutiveScreenerDashboard().exportReport(
+      format,
+      withOperational(options),
+      subject
+    );
+  } catch {
+    return {
+      ok: false,
+      format,
+      content: "",
+      filename: "",
+      deniedReason: EXECUTIVE_SCREENER_EMPTY.awaitingScan,
+      previewOnly: false,
+      upgradeRequired: false,
+    };
+  }
+}
+
+/** Public API (R8) — Sprint 9D freeze confirmation. */
+export function isSprint9DFrozen(): boolean {
+  return isSprint9DFrozenCore() && SPRINT_9D_STATUS.complete;
+}
+
 export type {
   TechnicalScreenOptions,
   FundamentalScreenOptions,
@@ -884,6 +994,10 @@ export type {
   ComparableSide,
   OpenResearchOptions,
   TimelineSnapshot,
+  ExecutiveDashboardOptions,
+  ExecutiveScreenerDashboardView,
+  ExecutiveScreenerExportResult,
+  HomeScreenerStrip,
 };
 
 function emptyIntegrations(): AIScreenerRegistrationResult["integrations"] {

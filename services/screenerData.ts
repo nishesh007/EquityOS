@@ -68,6 +68,11 @@ import {
   THEME_IDS,
   SCREEN_INTELLIGENCE_EMPTY,
   BUILTIN_TEMPLATE_IDS,
+  getExecutiveScreenerView,
+  getHomeScreenerStrip,
+  getExecutiveScreenerSummary,
+  exportExecutiveScreenerReport,
+  isSprint9DFrozen,
   type ScreenEngineScores,
   type ScreenRunOptions,
   type ScreenSnapshot,
@@ -85,6 +90,9 @@ import {
   type DiscoveryCandidate,
   type DiscoveryResult,
   type OpportunityDiscoveryOptions,
+  type ExecutiveDashboardOptions,
+  type ExecutiveScreenerDashboardView,
+  type HomeScreenerStrip,
 } from "@/src/core/screener";
 
 async function enrichScreenerRows(rows: ScreenerRow[]): Promise<ScreenerRow[]> {
@@ -255,6 +263,14 @@ export {
   getWorkspaceView,
 };
 
+export {
+  getExecutiveScreenerView,
+  getHomeScreenerStrip,
+  getExecutiveScreenerSummary,
+  exportExecutiveScreenerReport,
+  isSprint9DFrozen,
+};
+
 /** Health/status bridge for /dashboard, /results, Research, /screener, /ai/screener. */
 export function fetchInstitutionalScreenerHealth(): {
   registered: boolean;
@@ -279,11 +295,15 @@ export function fetchInstitutionalScreenerHealth(): {
   workspaceReady: boolean;
   savedScreenCount: number;
   historyCount: number;
+  executiveReady: boolean;
+  sprint9DFrozen: boolean;
+  executiveSummary: string;
 } {
   const registration = registerAIScreener();
   const templates = listTemplates({ origin: "built-in" });
   const savedScreenCount = listSavedScreens({ includeArchived: true }).length;
   const historyCount = listHistory({ includeArchived: true }).length;
+  const homeStrip = getHomeScreenerStrip();
   return {
     registered: registration.registered || registration.skipped,
     screenCount: listScreens({ enabledOnly: true }).length,
@@ -308,6 +328,28 @@ export function fetchInstitutionalScreenerHealth(): {
     workspaceReady: true,
     savedScreenCount,
     historyCount,
+    executiveReady: true,
+    sprint9DFrozen: isSprint9DFrozen(),
+    executiveSummary: homeStrip.executiveSummary,
+  };
+}
+
+/** Executive hub snapshot for dashboard / home widgets (reuse existing APIs). */
+export function fetchExecutiveScreenerSummary(
+  options?: ExecutiveDashboardOptions
+): {
+  view: ExecutiveScreenerDashboardView;
+  homeStrip: HomeScreenerStrip;
+  summary: string;
+  frozen: boolean;
+} {
+  registerAIScreener();
+  const view = getExecutiveScreenerView(options);
+  return {
+    view,
+    homeStrip: view.homeStrip,
+    summary: getExecutiveScreenerSummary(options),
+    frozen: isSprint9DFrozen(),
   };
 }
 

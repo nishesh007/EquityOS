@@ -1,6 +1,7 @@
 /**
- * Institutional AI Screener — public exports (Sprint 9D.R1–R7).
+ * Institutional AI Screener — public exports (Sprint 9D.R1–R8).
  * Composition layer only — no duplicated engine calculations.
+ * Sprint 9D COMPLETE and FROZEN at R8.
  */
 
 export {
@@ -115,6 +116,11 @@ export {
   favoriteScreen,
   pinScreen,
   getWorkspaceView,
+  getExecutiveScreenerView,
+  getHomeScreenerStrip,
+  getExecutiveScreenerSummary,
+  exportExecutiveScreenerReport,
+  isSprint9DFrozen,
 } from "./AIScreener";
 export type { AIScreenerRegistrationResult } from "./AIScreener";
 export type {
@@ -161,6 +167,10 @@ export type {
   ComparableSide,
   OpenResearchOptions,
   TimelineSnapshot,
+  ExecutiveDashboardOptions,
+  ExecutiveScreenerDashboardView,
+  ExecutiveScreenerExportResult,
+  HomeScreenerStrip,
 } from "./AIScreener";
 
 export {
@@ -432,3 +442,25 @@ export type {
   TimelineMetric,
   RecordRunInput,
 } from "./workspace";
+
+export {
+  EXECUTIVE_SCREENER_EMPTY,
+  EXECUTIVE_QUICK_ACTIONS,
+  EXECUTIVE_QUICK_ACTION_LABELS,
+  SPRINT_9D_STATUS,
+  getExecutiveScreenerDashboard,
+  resetExecutiveScreenerDashboard,
+  resetExecutiveScreenerStack,
+  assertNoSentinel as assertNoExecutiveSentinel,
+} from "./executive";
+export type {
+  ExecutiveScreenerEmptyMessage,
+  ExecutiveQuickAction,
+  ExecutiveSummaryCard,
+  RankedScreenerItem,
+  ScreenerHealthView,
+  ExecutiveScreenerOverview,
+  SectorRotationSummary,
+  ExecutiveReportSection,
+  ExecutiveScreenerReportView,
+} from "./executive";

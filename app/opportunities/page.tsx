@@ -51,8 +51,8 @@ export default async function OpportunitiesPage() {
     <div className="p-6">
       <PageHeader
         title="AI Opportunities"
-        subtitle={`Sprint 9D.R6 Discovery · ${health.ideaKindsCount} idea kinds · ${health.themeCount} themes · ${
-          health.discoveryReady ? "ready" : health.emptyMessage
+        subtitle={`Sprint 9D FROZEN · Discovery · ${health.ideaKindsCount} idea kinds · ${health.themeCount} themes · executive ${
+          health.executiveReady ? health.executiveSummary : health.emptyMessage
         }`}
       />
 
