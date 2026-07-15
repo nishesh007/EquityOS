@@ -1,5 +1,5 @@
 /**
- * Institutional AI Screener — public exports (Sprint 9D.R1–R6).
+ * Institutional AI Screener — public exports (Sprint 9D.R1–R7).
  * Composition layer only — no duplicated engine calculations.
  */
 
@@ -105,6 +105,16 @@ export {
   rankIdeas,
   generateInstitutionalIdeas,
   buildDiscoveryInsights,
+  saveScreen,
+  loadScreen,
+  listSavedScreens,
+  compareScreens,
+  openResearch,
+  getTimeline,
+  archiveScreen,
+  favoriteScreen,
+  pinScreen,
+  getWorkspaceView,
 } from "./AIScreener";
 export type { AIScreenerRegistrationResult } from "./AIScreener";
 export type {
@@ -142,6 +152,15 @@ export type {
   OpportunityDiscoveryOptions,
   SectorRotationCard,
   ThemeCard,
+  SavedScreenRecord,
+  ScreenComparisonResult,
+  ScreenTimelineEntry,
+  ResearchBridgeTarget,
+  WorkspaceView,
+  SaveScreenInput,
+  ComparableSide,
+  OpenResearchOptions,
+  TimelineSnapshot,
 } from "./AIScreener";
 
 export {
@@ -337,3 +356,79 @@ export type {
   DiscoveryScoreFactors,
   DiscoveryUniverseCandidate,
 } from "./discovery";
+
+/* ── Sprint 9D.R7 — Institutional Screener Workspace ─────────────── */
+
+export {
+  WORKSPACE_EMPTY,
+  QUICK_ACTIONS,
+  SCORE_DELTAS,
+  emptyInstitutionalScoresSummary,
+  normalizeInstitutionalScoresSummary,
+  emptySavedScreenRecord,
+  normalizeSavedScreenRecord,
+  emptyScreenHistoryRun,
+  normalizeScreenHistoryRun,
+  emptyComparisonTickerDelta,
+  normalizeComparisonTickerDelta,
+  emptyScreenComparisonResult,
+  normalizeScreenComparisonResult,
+  emptyScreenTimelineEntry,
+  normalizeScreenTimelineEntry,
+  emptyResearchBridgeTarget,
+  normalizeResearchBridgeTarget,
+  emptyWorkspaceCard,
+  normalizeWorkspaceCard,
+  emptyWorkspaceActivity,
+  normalizeWorkspaceActivity,
+  emptyWorkspaceView,
+  normalizeScoreDelta,
+  recordRun,
+  listHistory,
+  getRun,
+  reloadRun,
+  duplicateRun,
+  archiveRun,
+  deleteRun,
+  resetHistory,
+  ScreenHistoryEngine,
+  compareRuns,
+  compareStrategies,
+  compareSectorSnapshots,
+  portfolioVsMarket,
+  watchlistVsMarket,
+  ScreenComparisonEngine,
+  listResearchBridgeIntents,
+  ResearchBridgeEngine,
+  TIMELINE_METRICS,
+  ScreenTimelineEngine,
+  saveScreen as saveScreenCore,
+  loadScreen as loadScreenCore,
+  listSavedScreens as listSavedScreensCore,
+  deleteSavedScreen,
+  pinSavedScreen,
+  favoriteSavedScreen,
+  archiveSavedScreen,
+  listRecentSavedScreens,
+  listPinnedSavedScreens,
+  listFavoriteSavedScreens,
+  resetSavedScreens,
+  SavedScreenEngine,
+  ScreenWorkspace,
+  getScreenWorkspace,
+  resetScreenWorkspace,
+} from "./workspace";
+export type {
+  WorkspaceEmptyMessage,
+  QuickAction,
+  ScoreDelta,
+  WorkspaceScreenOrigin,
+  InstitutionalScoresSummary,
+  ScreenHistoryRun,
+  ComparisonTickerDelta,
+  ResearchBridgeIntent,
+  WorkspaceCard,
+  WorkspaceActivity,
+  TimelineMetric,
+  RecordRunInput,
+} from "./workspace";

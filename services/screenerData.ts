@@ -53,6 +53,17 @@ import {
   rankIdeas,
   generateInstitutionalIdeas,
   buildDiscoveryInsights,
+  saveScreen,
+  loadScreen,
+  listSavedScreens,
+  compareScreens,
+  openResearch,
+  getTimeline,
+  archiveScreen,
+  favoriteScreen,
+  pinScreen,
+  getWorkspaceView,
+  listHistory,
   DISCOVERY_KINDS,
   THEME_IDS,
   SCREEN_INTELLIGENCE_EMPTY,
@@ -232,6 +243,16 @@ export {
   rankIdeas,
   generateInstitutionalIdeas,
   buildDiscoveryInsights,
+  saveScreen,
+  loadScreen,
+  listSavedScreens,
+  compareScreens,
+  openResearch,
+  getTimeline,
+  archiveScreen,
+  favoriteScreen,
+  pinScreen,
+  getWorkspaceView,
 };
 
 /** Health/status bridge for /dashboard, /results, Research, /screener, /ai/screener. */
@@ -255,9 +276,14 @@ export function fetchInstitutionalScreenerHealth(): {
   discoveryReady: boolean;
   ideaKindsCount: number;
   themeCount: number;
+  workspaceReady: boolean;
+  savedScreenCount: number;
+  historyCount: number;
 } {
   const registration = registerAIScreener();
   const templates = listTemplates({ origin: "built-in" });
+  const savedScreenCount = listSavedScreens({ includeArchived: true }).length;
+  const historyCount = listHistory({ includeArchived: true }).length;
   return {
     registered: registration.registered || registration.skipped,
     screenCount: listScreens({ enabledOnly: true }).length,
@@ -279,6 +305,9 @@ export function fetchInstitutionalScreenerHealth(): {
     discoveryReady: true,
     ideaKindsCount: DISCOVERY_KINDS.length,
     themeCount: THEME_IDS.length,
+    workspaceReady: true,
+    savedScreenCount,
+    historyCount,
   };
 }
 

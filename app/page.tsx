@@ -79,6 +79,8 @@ export default async function DashboardPage() {
           {screenerHealth.discoveryReady
             ? `${screenerHealth.ideaKindsCount} discovery kinds`
             : screenerHealth.emptyMessage}{" "}
+          · workspace{" "}
+          {screenerHealth.workspaceReady ? "ready" : screenerHealth.emptyMessage}{" "}
           ·{" "}
           {new Date().toLocaleDateString("en-IN", {
             weekday: "long",

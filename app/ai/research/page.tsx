@@ -37,7 +37,9 @@ export default function AIResearchPage() {
               discovery{" "}
               {screenerHealth.discoveryReady
                 ? `${screenerHealth.themeCount} themes`
-                : screenerHealth.emptyMessage}
+                : screenerHealth.emptyMessage}{" "}
+              · workspace{" "}
+              {screenerHealth.workspaceReady ? "ready" : screenerHealth.emptyMessage}
               .
             </p>
           </div>

@@ -16,7 +16,7 @@ export default async function WatchlistPage() {
     <div className="p-6">
       <PageHeader
         title="Watchlist"
-        subtitle={`Track symbols, price action and upcoming earnings · ${screenerHealth.watchlistScreens} institutional watchlist screens`}
+        subtitle={`Track symbols, price action and upcoming earnings · ${screenerHealth.watchlistScreens} institutional watchlist screens · workspace ${screenerHealth.workspaceReady ? "ready" : screenerHealth.emptyMessage}`}
       />
 
       <section className="mb-6 animate-fade-in-up max-w-4xl">

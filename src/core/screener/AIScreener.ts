@@ -1,5 +1,5 @@
 /**
- * Institutional AI Screener — public façade (Sprint 9D.R1–R6).
+ * Institutional AI Screener — public façade (Sprint 9D.R1–R7).
  * Composition layer over Research, Opportunity, Validation, Trust, Earnings, Market, Alert.
  *
  * Public API (R1): registerScreen | runScreen | getResults | getMetrics | clearCache
@@ -8,6 +8,7 @@
  * Public API (R4): runPortfolioScreen | runWatchlistScreen | runOpportunityScreen | rankInstitutionalResults | generateResearchPriority | buildInstitutionalInsights
  * Public API (R5): createStrategy | updateStrategy | deleteStrategy | cloneStrategy | saveTemplate | runStrategy | listStrategies | listTemplates
  * Public API (R6): discoverIdeas | discoverThemes | discoverSectorRotation | rankIdeas | generateInstitutionalIdeas | buildDiscoveryInsights
+ * Public API (R7): saveScreen | loadScreen | listSavedScreens | compareScreens | openResearch | getTimeline | archiveScreen | favoriteScreen
  */
 
 import type { ScreenDefinition, ScreenDefinitionInput } from "./ScreenDefinition";
@@ -110,6 +111,33 @@ import {
   type SectorRotationCard,
   type ThemeCard,
 } from "./discovery";
+import {
+  archiveScreenWorkspace,
+  compareScreensWorkspace,
+  emptyResearchBridgeTarget,
+  emptySavedScreenRecord,
+  emptyScreenComparisonResult,
+  emptyScreenTimelineEntry,
+  favoriteScreenWorkspace,
+  getTimelineWorkspace,
+  getWorkspaceView as getWorkspaceViewCore,
+  listSavedScreensWorkspace,
+  loadScreenWorkspace,
+  openResearchWorkspace,
+  pinScreenWorkspace,
+  resetScreenWorkspace,
+  saveScreenWorkspace,
+  WORKSPACE_EMPTY,
+  type ComparableSide,
+  type OpenResearchOptions,
+  type ResearchBridgeTarget,
+  type SavedScreenRecord,
+  type SaveScreenInput,
+  type ScreenComparisonResult,
+  type ScreenTimelineEntry,
+  type TimelineSnapshot,
+  type WorkspaceView,
+} from "./workspace";
 
 export interface AIScreenerRegistrationResult {
   registered: boolean;
@@ -185,6 +213,7 @@ export function resetAIScreener(): void {
   resetScreenRegistry();
   resetStrategyLibrary();
   resetBuiltinTemplateFlag();
+  resetScreenWorkspace();
 }
 
 /** Public API — register a screen definition (built-in / custom / marketplace). */
@@ -678,6 +707,139 @@ export function buildDiscoveryInsights(
   }
 }
 
+/** Public API (R7) — save screen results snapshot (never throws). */
+export function saveScreen(input: SaveScreenInput): SavedScreenRecord {
+  registerAIScreener();
+  try {
+    return saveScreenWorkspace(input);
+  } catch {
+    return emptySavedScreenRecord(WORKSPACE_EMPTY.noSavedScreens);
+  }
+}
+
+/** Public API (R7) — load a saved screen by id. */
+export function loadScreen(id: string): SavedScreenRecord | null {
+  registerAIScreener();
+  try {
+    return loadScreenWorkspace(id);
+  } catch {
+    return null;
+  }
+}
+
+/** Public API (R7) — list saved screens. */
+export function listSavedScreens(options?: {
+  includeArchived?: boolean;
+  pinnedOnly?: boolean;
+  favoriteOnly?: boolean;
+  recentOnly?: boolean;
+}): SavedScreenRecord[] {
+  registerAIScreener();
+  try {
+    return listSavedScreensWorkspace(options);
+  } catch {
+    return [];
+  }
+}
+
+/** Public API (R7) — compare two screen sides. */
+export function compareScreens(
+  left: ComparableSide,
+  right: ComparableSide
+): ScreenComparisonResult {
+  registerAIScreener();
+  try {
+    return compareScreensWorkspace(left, right);
+  } catch {
+    return emptyScreenComparisonResult(WORKSPACE_EMPTY.noComparisons);
+  }
+}
+
+/** Public API (R7) — open research deep-link for a ticker. */
+export function openResearch(
+  ticker: string,
+  options?: OpenResearchOptions
+): ResearchBridgeTarget | ResearchBridgeTarget[] {
+  registerAIScreener();
+  try {
+    return openResearchWorkspace(ticker, options);
+  } catch {
+    return emptyResearchBridgeTarget(ticker, WORKSPACE_EMPTY.awaitingFirstScan);
+  }
+}
+
+/** Public API (R7) — institutional score timeline. */
+export function getTimeline(
+  target: string,
+  snapshots: TimelineSnapshot[],
+  options?: { screenId?: string | null }
+): ScreenTimelineEntry[] {
+  registerAIScreener();
+  try {
+    return getTimelineWorkspace(target, snapshots, options);
+  } catch {
+    return [emptyScreenTimelineEntry(WORKSPACE_EMPTY.awaitingFirstScan)];
+  }
+}
+
+/** Public API (R7) — archive a saved screen. */
+export function archiveScreen(
+  id: string,
+  archived = true
+): SavedScreenRecord | null {
+  registerAIScreener();
+  try {
+    return archiveScreenWorkspace(id, archived);
+  } catch {
+    return null;
+  }
+}
+
+/** Public API (R7) — favorite a saved screen. */
+export function favoriteScreen(
+  id: string,
+  favorite = true
+): SavedScreenRecord | null {
+  registerAIScreener();
+  try {
+    return favoriteScreenWorkspace(id, favorite);
+  } catch {
+    return null;
+  }
+}
+
+/** Public API (R7) — pin a saved screen. */
+export function pinScreen(
+  id: string,
+  pinned = true
+): SavedScreenRecord | null {
+  registerAIScreener();
+  try {
+    return pinScreenWorkspace(id, pinned);
+  } catch {
+    return null;
+  }
+}
+
+/** Public API (R7) — consolidated workspace view. */
+export function getWorkspaceView(): WorkspaceView {
+  registerAIScreener();
+  try {
+    return getWorkspaceViewCore();
+  } catch {
+    return {
+      recentScreens: [],
+      pinned: [],
+      favorites: [],
+      savedResults: [],
+      sharedTemplates: [],
+      recentActivity: [],
+      empty: true,
+      emptyMessage: WORKSPACE_EMPTY.awaitingFirstScan,
+    };
+  }
+}
+
 export type {
   TechnicalScreenOptions,
   FundamentalScreenOptions,
@@ -713,6 +875,15 @@ export type {
   OpportunityDiscoveryOptions,
   SectorRotationCard,
   ThemeCard,
+  SavedScreenRecord,
+  ScreenComparisonResult,
+  ScreenTimelineEntry,
+  ResearchBridgeTarget,
+  WorkspaceView,
+  SaveScreenInput,
+  ComparableSide,
+  OpenResearchOptions,
+  TimelineSnapshot,
 };
 
 function emptyIntegrations(): AIScreenerRegistrationResult["integrations"] {

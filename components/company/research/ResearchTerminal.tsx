@@ -40,6 +40,7 @@ export function ResearchTerminal({
             screenerInsight.eventScore > 0
               ? ` · Event ${screenerInsight.eventScore}`
               : ""}
+            {" · Workspace"}
           </p>
           <p className="mt-1 text-text-muted">
             {screenerInsight.emptyMessage ||

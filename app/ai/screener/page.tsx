@@ -71,7 +71,7 @@ export default async function AIScreenerPage() {
     <div className="p-6">
       <PageHeader
         title="AI Screener"
-        subtitle={`Sprint 9D · ${health.technicalFilters} technical · ${health.fundamentalFilters} fundamental · ${health.portfolioScreens} portfolio · ${health.watchlistScreens} watchlist · ${health.strategyTemplateCount} strategy templates · discovery ${health.discoveryReady ? `${health.ideaKindsCount} kinds / ${health.themeCount} themes` : "pending"}`}
+        subtitle={`Sprint 9D · ${health.technicalFilters} technical · ${health.fundamentalFilters} fundamental · ${health.portfolioScreens} portfolio · ${health.watchlistScreens} watchlist · ${health.strategyTemplateCount} strategy templates · discovery ${health.discoveryReady ? `${health.ideaKindsCount} kinds / ${health.themeCount} themes` : "pending"} · workspace ${health.workspaceReady ? `${health.savedScreenCount} saved / ${health.historyCount} history` : "pending"}`}
       />
 
       <div className="mb-4 flex flex-wrap gap-3 text-sm">
