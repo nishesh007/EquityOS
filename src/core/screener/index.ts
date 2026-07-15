@@ -1,5 +1,5 @@
 /**
- * Institutional AI Screener — public exports (Sprint 9D.R1 / R2).
+ * Institutional AI Screener — public exports (Sprint 9D.R1–R6).
  * Composition layer only — no duplicated engine calculations.
  */
 
@@ -99,6 +99,12 @@ export {
   runStrategy,
   listStrategies,
   listTemplates,
+  discoverIdeas,
+  discoverThemes,
+  discoverSectorRotation,
+  rankIdeas,
+  generateInstitutionalIdeas,
+  buildDiscoveryInsights,
 } from "./AIScreener";
 export type { AIScreenerRegistrationResult } from "./AIScreener";
 export type {
@@ -128,6 +134,14 @@ export type {
   StrategyDefinitionInput,
   StrategyExecutionResult,
   StrategyRunOptions,
+  DiscoveryCandidate,
+  DiscoveryIdeaCard,
+  DiscoveryInsight,
+  DiscoveryResult,
+  InstitutionalIdeaOptions,
+  OpportunityDiscoveryOptions,
+  SectorRotationCard,
+  ThemeCard,
 } from "./AIScreener";
 
 export {
@@ -281,3 +295,45 @@ export type {
   StrategyUniverseCandidate,
   BuiltinTemplateId,
 } from "./strategy";
+
+/* ── Sprint 9D.R6 — AI Discovery Engine ───────────────────────────── */
+
+export {
+  DISCOVERY_EMPTY,
+  DISCOVERY_IDEA_CATEGORIES,
+  DISCOVERY_KINDS,
+  THEME_IDS,
+  THEME_LABELS,
+  THEME_MATCHERS,
+  emptyDiscoveryScoreFactors,
+  emptyDiscoveryIdeaCard,
+  emptyThemeCard,
+  emptySectorRotationCard,
+  emptyDiscoveryInsight,
+  emptyDiscoveryResult,
+  normalizeDiscoveryScoreFactors,
+  normalizeDiscoveryIdeaCard,
+  normalizeThemeCard,
+  normalizeSectorRotationCard,
+  normalizeDiscoveryInsight,
+  toInstitutionalFromDiscovery,
+  composeDiscoveryScoreFactors,
+  IdeaRankingEngine,
+  matchThemes,
+  ThemeDiscoveryEngine,
+  SectorRotationDiscoveryEngine,
+  InstitutionalIdeaEngine,
+  classifyDiscoveryKinds,
+  OpportunityDiscoveryEngine,
+  toDiscoveryCandidate,
+  mapToDiscoveryCandidates,
+  DiscoveryEngine,
+} from "./discovery";
+export type {
+  DiscoveryEmptyMessage,
+  DiscoveryIdeaCategory,
+  DiscoveryKind,
+  ThemeId,
+  DiscoveryScoreFactors,
+  DiscoveryUniverseCandidate,
+} from "./discovery";

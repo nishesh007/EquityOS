@@ -1,5 +1,5 @@
 /**
- * Institutional AI Screener — public façade (Sprint 9D.R1–R5).
+ * Institutional AI Screener — public façade (Sprint 9D.R1–R6).
  * Composition layer over Research, Opportunity, Validation, Trust, Earnings, Market, Alert.
  *
  * Public API (R1): registerScreen | runScreen | getResults | getMetrics | clearCache
@@ -7,6 +7,7 @@
  * Public API (R3): runEarningsScreen | runNewsScreen | runCorporateActionScreen | runManagementScreen | runEventScreen | buildEventExplainability
  * Public API (R4): runPortfolioScreen | runWatchlistScreen | runOpportunityScreen | rankInstitutionalResults | generateResearchPriority | buildInstitutionalInsights
  * Public API (R5): createStrategy | updateStrategy | deleteStrategy | cloneStrategy | saveTemplate | runStrategy | listStrategies | listTemplates
+ * Public API (R6): discoverIdeas | discoverThemes | discoverSectorRotation | rankIdeas | generateInstitutionalIdeas | buildDiscoveryInsights
  */
 
 import type { ScreenDefinition, ScreenDefinitionInput } from "./ScreenDefinition";
@@ -90,6 +91,25 @@ import {
   type StrategyExecutionResult,
   type StrategyRunOptions,
 } from "./strategy";
+import {
+  buildDiscoveryInsights as buildDiscoveryInsightsCore,
+  discoverIdeasPublic as discoverIdeasCore,
+  discoverSectorRotationPublic as discoverSectorRotationCore,
+  discoverThemesPublic as discoverThemesCore,
+  generateInstitutionalIdeasPublic as generateInstitutionalIdeasCore,
+  rankIdeasPublic as rankIdeasCore,
+  DISCOVERY_EMPTY,
+  emptyDiscoveryInsight,
+  emptyDiscoveryResult,
+  type DiscoveryCandidate,
+  type DiscoveryIdeaCard,
+  type DiscoveryInsight,
+  type DiscoveryResult,
+  type InstitutionalIdeaOptions,
+  type OpportunityDiscoveryOptions,
+  type SectorRotationCard,
+  type ThemeCard,
+} from "./discovery";
 
 export interface AIScreenerRegistrationResult {
   registered: boolean;
@@ -580,6 +600,84 @@ export function listTemplates(options?: {
   }
 }
 
+/** Public API (R6) — discover opportunity ideas (never throws). */
+export function discoverIdeas(
+  candidates: DiscoveryCandidate[],
+  options?: OpportunityDiscoveryOptions
+): DiscoveryResult {
+  registerAIScreener();
+  try {
+    return discoverIdeasCore(candidates, options);
+  } catch {
+    return emptyDiscoveryResult(DISCOVERY_EMPTY.awaitingMarketData);
+  }
+}
+
+/** Public API (R6) — discover active themes. */
+export function discoverThemes(
+  candidates: DiscoveryCandidate[]
+): ThemeCard[] {
+  registerAIScreener();
+  try {
+    return discoverThemesCore(candidates);
+  } catch {
+    return [];
+  }
+}
+
+/** Public API (R6) — sector rotation discovery. */
+export function discoverSectorRotation(
+  candidates: DiscoveryCandidate[]
+): SectorRotationCard[] {
+  registerAIScreener();
+  try {
+    return discoverSectorRotationCore(candidates);
+  } catch {
+    return [];
+  }
+}
+
+/** Public API (R6) — rank discovery idea cards. */
+export function rankIdeas(
+  cards: DiscoveryIdeaCard[]
+): DiscoveryIdeaCard[] {
+  registerAIScreener();
+  try {
+    return rankIdeasCore(cards);
+  } catch {
+    return Array.isArray(cards) ? cards : [];
+  }
+}
+
+/** Public API (R6) — generate institutional idea cards by category. */
+export function generateInstitutionalIdeas(
+  candidates: DiscoveryCandidate[],
+  options?: InstitutionalIdeaOptions
+): DiscoveryIdeaCard[] {
+  registerAIScreener();
+  try {
+    return generateInstitutionalIdeasCore(candidates, options);
+  } catch {
+    return [];
+  }
+}
+
+/** Public API (R6) — discovery explainability. */
+export function buildDiscoveryInsights(
+  cardOrCandidate: DiscoveryIdeaCard | DiscoveryCandidate,
+  options?: { matchedSignals?: string[] }
+): DiscoveryInsight {
+  registerAIScreener();
+  try {
+    return buildDiscoveryInsightsCore(cardOrCandidate, options);
+  } catch {
+    return emptyDiscoveryInsight(
+      "ticker" in cardOrCandidate ? cardOrCandidate.ticker : "—",
+      DISCOVERY_EMPTY.awaitingMarketData
+    );
+  }
+}
+
 export type {
   TechnicalScreenOptions,
   FundamentalScreenOptions,
@@ -607,6 +705,14 @@ export type {
   StrategyDefinitionInput,
   StrategyExecutionResult,
   StrategyRunOptions,
+  DiscoveryCandidate,
+  DiscoveryIdeaCard,
+  DiscoveryInsight,
+  DiscoveryResult,
+  InstitutionalIdeaOptions,
+  OpportunityDiscoveryOptions,
+  SectorRotationCard,
+  ThemeCard,
 };
 
 function emptyIntegrations(): AIScreenerRegistrationResult["integrations"] {

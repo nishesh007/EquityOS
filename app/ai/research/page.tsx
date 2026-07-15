@@ -33,7 +33,12 @@ export default function AIResearchPage() {
               Institutional-grade equity research powered by AI ·{" "}
               {screenerHealth.screenCount} AI screens ·{" "}
               {screenerHealth.portfolioScreens} portfolio screens ·{" "}
-              {screenerHealth.strategyTemplateCount} strategy templates.
+              {screenerHealth.strategyTemplateCount} strategy templates ·
+              discovery{" "}
+              {screenerHealth.discoveryReady
+                ? `${screenerHealth.themeCount} themes`
+                : screenerHealth.emptyMessage}
+              .
             </p>
           </div>
 

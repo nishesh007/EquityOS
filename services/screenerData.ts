@@ -47,6 +47,14 @@ import {
   runStrategy,
   listStrategies,
   listTemplates,
+  discoverIdeas,
+  discoverThemes,
+  discoverSectorRotation,
+  rankIdeas,
+  generateInstitutionalIdeas,
+  buildDiscoveryInsights,
+  DISCOVERY_KINDS,
+  THEME_IDS,
   SCREEN_INTELLIGENCE_EMPTY,
   BUILTIN_TEMPLATE_IDS,
   type ScreenEngineScores,
@@ -63,6 +71,9 @@ import {
   type PortfolioScreenOptions,
   type WatchlistScreenOptions,
   type OpportunityScreenOptions,
+  type DiscoveryCandidate,
+  type DiscoveryResult,
+  type OpportunityDiscoveryOptions,
 } from "@/src/core/screener";
 
 async function enrichScreenerRows(rows: ScreenerRow[]): Promise<ScreenerRow[]> {
@@ -215,6 +226,12 @@ export {
   runStrategy,
   listStrategies,
   listTemplates,
+  discoverIdeas,
+  discoverThemes,
+  discoverSectorRotation,
+  rankIdeas,
+  generateInstitutionalIdeas,
+  buildDiscoveryInsights,
 };
 
 /** Health/status bridge for /dashboard, /results, Research, /screener, /ai/screener. */
@@ -235,6 +252,9 @@ export function fetchInstitutionalScreenerHealth(): {
   institutionalReady: boolean;
   strategyReady: boolean;
   strategyTemplateCount: number;
+  discoveryReady: boolean;
+  ideaKindsCount: number;
+  themeCount: number;
 } {
   const registration = registerAIScreener();
   const templates = listTemplates({ origin: "built-in" });
@@ -256,7 +276,19 @@ export function fetchInstitutionalScreenerHealth(): {
     strategyReady: true,
     strategyTemplateCount:
       templates.length > 0 ? templates.length : BUILTIN_TEMPLATE_IDS.length,
+    discoveryReady: true,
+    ideaKindsCount: DISCOVERY_KINDS.length,
+    themeCount: THEME_IDS.length,
   };
+}
+
+/** Run AI discovery scan over institutional / opportunity candidates. */
+export function runDiscoveryScan(
+  candidates: DiscoveryCandidate[],
+  options?: OpportunityDiscoveryOptions
+): DiscoveryResult {
+  registerAIScreener();
+  return discoverIdeas(candidates, options);
 }
 
 /**
