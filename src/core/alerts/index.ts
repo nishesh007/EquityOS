@@ -234,3 +234,32 @@ export type {
   AlertCenterGroupBy,
   CenterAlertGroup,
 } from "./center";
+
+/** Sprint 9C.R6 — decision support */
+export {
+  DECISION_SUPPORT_EMPTY,
+  scoreAlertPriority,
+  estimateAlertImpact,
+  recommendAlertAction,
+  explainAlert,
+  collectAlertEvidence,
+  detectAlertConflicts,
+  findSimilarAlerts,
+  buildAlertTimeline,
+  buildConfidenceBreakdown,
+  buildAlertDecisionSupport,
+} from "./intelligence";
+
+export type {
+  AlertDecisionSupportPanel,
+  AlertPriorityResult,
+  AlertImpactResult,
+  AlertRecommendationResult,
+  AlertExplainabilityResult,
+  AlertEvidenceResult,
+  AlertConflictResult,
+  AlertSimilarityResult,
+  AlertTimelineResult,
+  AlertConfidenceBreakdownResult,
+  AlertDecisionBadge,
+} from "./intelligence";

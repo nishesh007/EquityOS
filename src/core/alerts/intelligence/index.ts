@@ -263,6 +263,75 @@ export type { AlertScoreFactors, ScoredAlert } from "./AlertScoringEngine";
 
 export type { SignalIntelBatch } from "./emitSignalIntelBatch";
 
+/** Sprint 9C.R6 — AI prioritization, explainability & decision support */
+export {
+  DECISION_SUPPORT_EMPTY,
+  emptyEvidenceResult,
+  safeScore,
+  safeLabel,
+} from "./AlertDecisionModels";
+export type {
+  DecisionSupportEmptyMessage,
+  AlertRecommendationAction,
+  AlertDecisionBadge,
+  AlertPriorityFactorBreakdown,
+  AlertPriorityResult,
+  AlertImpactResult,
+  AlertRecommendationResult,
+  AlertExplainabilityResult,
+  AlertEvidenceItem,
+  AlertEvidenceResult,
+  AlertConflictResult,
+  AlertSimilarityMatch,
+  AlertSimilarityResult,
+  AlertTimelineEvent,
+  AlertTimelineResult,
+  AlertConfidenceBreakdownResult,
+  AlertDecisionSupportPanel,
+} from "./AlertDecisionModels";
+
+export {
+  AlertPriorityEngine,
+  extractPriorityFactors,
+  computePriorityScore,
+  scoreAlertPriority,
+} from "./AlertPriorityEngine";
+export {
+  AlertImpactEngine,
+  estimateAlertImpact,
+  formatImpactSummary,
+} from "./AlertImpactEngine";
+export {
+  AlertRecommendationEngine,
+  recommendAlertAction,
+} from "./AlertRecommendationEngine";
+export {
+  AlertExplainabilityEngine,
+  explainAlert,
+} from "./AlertExplainabilityEngine";
+export {
+  AlertEvidenceEngine,
+  collectAlertEvidence,
+} from "./AlertEvidenceEngine";
+export {
+  AlertConflictEngine,
+  detectAlertConflicts,
+} from "./AlertConflictEngine";
+export {
+  AlertSimilarityEngine,
+  findSimilarAlerts,
+} from "./AlertSimilarityEngine";
+export {
+  AlertTimelineEngine,
+  buildAlertTimeline,
+} from "./AlertTimelineEngine";
+export {
+  AlertConfidenceBreakdownEngine,
+  buildConfidenceBreakdown,
+  getAlertConfidenceBreakdown,
+} from "./AlertConfidenceBreakdown";
+export { buildAlertDecisionSupport } from "./buildAlertDecisionSupport";
+
 import { resetOpportunityAlertEngine } from "./OpportunityAlertEngine";
 import { resetPortfolioAlertEngine } from "./PortfolioAlertEngine";
 import { resetWatchlistAlertIntelligenceEngine } from "./WatchlistAlertEngine";
