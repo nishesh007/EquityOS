@@ -1,10 +1,11 @@
 /**
- * Institutional AI Screener — public façade (Sprint 9D.R1 / R2 / R3).
+ * Institutional AI Screener — public façade (Sprint 9D.R1–R4).
  * Composition layer over Research, Opportunity, Validation, Trust, Earnings, Market, Alert.
  *
  * Public API (R1): registerScreen | runScreen | getResults | getMetrics | clearCache
  * Public API (R2): runTechnicalScreen | runFundamentalScreen | runMultiFactorScreen | rankResults | buildExplainability
  * Public API (R3): runEarningsScreen | runNewsScreen | runCorporateActionScreen | runManagementScreen | runEventScreen | buildEventExplainability
+ * Public API (R4): runPortfolioScreen | runWatchlistScreen | runOpportunityScreen | rankInstitutionalResults | generateResearchPriority | buildInstitutionalInsights
  */
 
 import type { ScreenDefinition, ScreenDefinitionInput } from "./ScreenDefinition";
@@ -25,8 +26,12 @@ import { emptyScreenSnapshot } from "./ScreenSnapshot";
 import {
   buildExplainability as buildExplainabilityCore,
   buildEventExplainability as buildEventExplainabilityCore,
+  buildInstitutionalInsights as buildInstitutionalInsightsCore,
   emptyEventScreenResult,
+  emptyInstitutionalScreenResult,
   emptyIntelligenceResult,
+  generateResearchPriority as generateResearchPriorityCore,
+  rankInstitutionalResults as rankInstitutionalResultsCore,
   rankResults as rankResultsCore,
   runCorporateActionScreen as runCorporateActionScreenCore,
   runEarningsScreen as runEarningsScreenCore,
@@ -35,7 +40,11 @@ import {
   runManagementScreen as runManagementScreenCore,
   runMultiFactorScreen as runMultiFactorScreenCore,
   runNewsScreen as runNewsScreenCore,
+  runOpportunityScreen as runOpportunityScreenCore,
+  runPortfolioScreen as runPortfolioScreenCore,
   runTechnicalScreen as runTechnicalScreenCore,
+  runWatchlistScreen as runWatchlistScreenCore,
+  INSTITUTIONAL_SCREEN_EMPTY,
   SCREEN_EVENT_EMPTY,
   SCREEN_INTELLIGENCE_EMPTY,
   type CorporateActionScreenOptions,
@@ -45,13 +54,21 @@ import {
   type EventScreenResult,
   type ExplainabilityInput,
   type FundamentalScreenOptions,
+  type InsightBuildInput,
+  type InstitutionalResultCard,
+  type InstitutionalScoreFactors,
+  type InstitutionalScreenResult,
   type IntelligenceScreenResult,
   type ManagementScreenOptions,
   type MultiFactorScreenOptions,
   type NewsScreenOptions,
+  type OpportunityScreenOptions,
+  type PortfolioScreenOptions,
+  type ResearchPriorityBand,
   type ScreenRankingMode,
   type ScreenResultCard,
   type TechnicalScreenOptions,
+  type WatchlistScreenOptions,
 } from "./intelligence";
 
 export interface AIScreenerRegistrationResult {
@@ -358,6 +375,87 @@ export function buildEventExplainability(input: EventExplainabilityInput) {
   }
 }
 
+/** Public API (R4) — portfolio screening. */
+export function runPortfolioScreen(
+  options?: PortfolioScreenOptions
+): InstitutionalScreenResult {
+  registerAIScreener();
+  try {
+    return runPortfolioScreenCore(options);
+  } catch {
+    return emptyInstitutionalScreenResult(
+      "portfolio",
+      INSTITUTIONAL_SCREEN_EMPTY.awaitingScan
+    );
+  }
+}
+
+/** Public API (R4) — watchlist screening. */
+export function runWatchlistScreen(
+  options?: WatchlistScreenOptions
+): InstitutionalScreenResult {
+  registerAIScreener();
+  try {
+    return runWatchlistScreenCore(options);
+  } catch {
+    return emptyInstitutionalScreenResult(
+      "watchlist",
+      INSTITUTIONAL_SCREEN_EMPTY.awaitingScan
+    );
+  }
+}
+
+/** Public API (R4) — opportunity screening. */
+export function runOpportunityScreen(
+  options?: OpportunityScreenOptions
+): InstitutionalScreenResult {
+  registerAIScreener();
+  try {
+    return runOpportunityScreenCore(options);
+  } catch {
+    return emptyInstitutionalScreenResult(
+      "opportunity",
+      INSTITUTIONAL_SCREEN_EMPTY.noInstitutionalOpportunities
+    );
+  }
+}
+
+/** Public API (R4) — rank institutional result cards. */
+export function rankInstitutionalResults(
+  cards: InstitutionalResultCard[]
+): InstitutionalResultCard[] {
+  try {
+    return rankInstitutionalResultsCore(cards);
+  } catch {
+    return cards;
+  }
+}
+
+/** Public API (R4) — research priority band. */
+export function generateResearchPriority(
+  factors: InstitutionalScoreFactors,
+  options?: { matchedSignals?: number; hasCatalyst?: boolean }
+): ResearchPriorityBand {
+  try {
+    return generateResearchPriorityCore(factors, options);
+  } catch {
+    return "Monitor";
+  }
+}
+
+/** Public API (R4) — institutional insight card. */
+export function buildInstitutionalInsights(input: InsightBuildInput) {
+  try {
+    return buildInstitutionalInsightsCore(input);
+  } catch {
+    return buildInstitutionalInsightsCore({
+      candidate: input.candidate,
+      factors: input.factors,
+      matchedSignals: [],
+    });
+  }
+}
+
 export type {
   TechnicalScreenOptions,
   FundamentalScreenOptions,
@@ -373,6 +471,14 @@ export type {
   EventCorrelationOptions,
   EventScreenResult,
   EventExplainabilityInput,
+  PortfolioScreenOptions,
+  WatchlistScreenOptions,
+  OpportunityScreenOptions,
+  InstitutionalScreenResult,
+  InstitutionalResultCard,
+  InstitutionalScoreFactors,
+  ResearchPriorityBand,
+  InsightBuildInput,
 };
 
 function emptyIntegrations(): AIScreenerRegistrationResult["integrations"] {

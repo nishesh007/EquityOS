@@ -151,3 +151,69 @@ export {
   runEventScreen,
 } from "./EventCorrelationScreenEngine";
 export type { EventCorrelationOptions } from "./EventCorrelationScreenEngine";
+
+/* ── Sprint 9D.R4 — Institutional portfolio / watchlist intelligence ─ */
+
+export {
+  INSTITUTIONAL_SCREEN_EMPTY,
+  PORTFOLIO_SCREEN_IDS,
+  PORTFOLIO_SCREEN_LABELS,
+  WATCHLIST_SCREEN_IDS,
+  WATCHLIST_SCREEN_LABELS,
+  recommendationFromScore,
+  emptyInstitutionalFactors,
+  emptyInstitutionalInsight,
+  emptyInstitutionalScreenResult,
+  normalizeInstitutionalCard,
+  hasTag,
+} from "./InstitutionalScreenModels";
+export type {
+  InstitutionalScreenEmptyMessage,
+  InstitutionalRecommendation,
+  ResearchPriorityBand,
+  InstitutionalScreenMode,
+  PortfolioScreenId,
+  WatchlistScreenId,
+  InstitutionalCandidate,
+  InstitutionalScoreFactors,
+  InstitutionalInsight,
+  InstitutionalResultCard,
+  InstitutionalScreenResult,
+} from "./InstitutionalScreenModels";
+
+export {
+  InstitutionalRankingEngine,
+  composeInstitutionalScoreFactors,
+  scoreInstitutionalCandidate,
+  classifyInstitutionalRecommendation,
+  rankInstitutionalResults,
+} from "./InstitutionalRankingEngine";
+
+export {
+  ResearchPriorityEngine,
+  generateResearchPriority,
+} from "./ResearchPriorityEngine";
+
+export {
+  ScreenInsightEngine,
+  buildInstitutionalInsights,
+} from "./ScreenInsightEngine";
+export type { InsightBuildInput } from "./ScreenInsightEngine";
+
+export {
+  PortfolioScreenEngine,
+  runPortfolioScreen,
+} from "./PortfolioScreenEngine";
+export type { PortfolioScreenOptions } from "./PortfolioScreenEngine";
+
+export {
+  WatchlistScreenEngine,
+  runWatchlistScreen,
+} from "./WatchlistScreenEngine";
+export type { WatchlistScreenOptions } from "./WatchlistScreenEngine";
+
+export {
+  OpportunityScreenEngine,
+  runOpportunityScreen,
+} from "./OpportunityScreenEngine";
+export type { OpportunityScreenOptions } from "./OpportunityScreenEngine";

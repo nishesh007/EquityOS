@@ -3,18 +3,20 @@ import { WatchlistEarningsPanel } from "@/components/dashboard/earnings";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { fetchWatchlist } from "@/services/marketData";
 import { fetchWatchlistEarningsSurface } from "@/services/earningsCalendar";
+import { fetchInstitutionalScreenerHealth } from "@/services/screenerData";
 
 export default async function WatchlistPage() {
-  const [watchlist, earningsSurface] = await Promise.all([
+  const [watchlist, earningsSurface, screenerHealth] = await Promise.all([
     fetchWatchlist(),
     fetchWatchlistEarningsSurface(),
+    Promise.resolve(fetchInstitutionalScreenerHealth()),
   ]);
 
   return (
     <div className="p-6">
       <PageHeader
         title="Watchlist"
-        subtitle="Track symbols, price action and upcoming earnings"
+        subtitle={`Track symbols, price action and upcoming earnings · ${screenerHealth.watchlistScreens} institutional watchlist screens`}
       />
 
       <section className="mb-6 animate-fade-in-up max-w-4xl">

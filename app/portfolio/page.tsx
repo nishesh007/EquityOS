@@ -6,10 +6,15 @@ import { PortfolioDoctor } from "@/components/portfolio/PortfolioDoctor";
 import { InstitutionalPortfolioPanel } from "@/components/dashboard/institutional/InstitutionalPortfolioPanel";
 import { ExecutiveInstitutionalDashboard } from "@/components/dashboard/institutional/ExecutiveInstitutionalDashboard";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { fetchPortfolioSummary, fetchWatchlist, fetchUpcomingResults } from "@/services/marketData";
+import {
+  fetchPortfolioSummary,
+  fetchWatchlist,
+  fetchUpcomingResults,
+} from "@/services/marketData";
 import { fetchPortfolioEarningsRows } from "@/services/earningsCalendar";
 import { fetchPortfolioDoctorAnalysis } from "@/services/portfolioAnalysisData";
 import { fetchOpportunityEngineState } from "@/services/opportunityEngine";
+import { fetchInstitutionalScreenerHealth } from "@/services/screenerData";
 
 export default async function PortfolioPage() {
   const [
@@ -19,6 +24,7 @@ export default async function PortfolioPage() {
     opportunityState,
     results,
     portfolioEarnings,
+    screenerHealth,
   ] = await Promise.all([
     fetchPortfolioSummary(),
     fetchWatchlist(),
@@ -26,13 +32,14 @@ export default async function PortfolioPage() {
     fetchOpportunityEngineState(),
     fetchUpcomingResults(),
     fetchPortfolioEarningsRows(),
+    Promise.resolve(fetchInstitutionalScreenerHealth()),
   ]);
 
   return (
     <div className="p-6">
       <PageHeader
         title="Portfolio"
-        subtitle="Holdings, performance and monitored opportunities"
+        subtitle={`Holdings, performance and monitored opportunities · ${screenerHealth.portfolioScreens} institutional portfolio screens`}
       />
 
       <section className="mb-6 animate-fade-in-up">

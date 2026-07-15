@@ -73,8 +73,8 @@ export default async function DashboardPage() {
         <p className="mt-0.5 text-sm text-text-muted">
           Indian markets, institutional flow and AI-ranked opportunities ·{" "}
           {screenerHealth.screenCount} AI screens ·{" "}
-          {screenerHealth.earningsScreens} earnings ·{" "}
-          {screenerHealth.newsScreens} news ·{" "}
+          {screenerHealth.portfolioScreens} portfolio ·{" "}
+          {screenerHealth.watchlistScreens} watchlist ·{" "}
           {new Date().toLocaleDateString("en-IN", {
             weekday: "long",
             year: "numeric",

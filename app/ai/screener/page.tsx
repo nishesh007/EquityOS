@@ -4,6 +4,7 @@ import {
   fetchInstitutionalScreenerHealth,
   fetchScreenerInitialData,
   runEventIntelligenceScreen,
+  runInstitutionalIntelligenceScreen,
   runIntelligenceScreen,
   toScreenUniverseCandidates,
 } from "@/services/screenerData";
@@ -42,11 +43,35 @@ export default async function AIScreenerPage() {
     resultLimit: 8,
   });
 
+  const opportunityScreen = runInstitutionalIntelligenceScreen("opportunity", {
+    opportunities: candidates.slice(0, 30).map((c) => ({
+      ticker: c.ticker,
+      company: c.company,
+      sector: c.sector,
+      domain: "opportunity" as const,
+      tags: ["swing"],
+      aiConviction: 70,
+      opportunityScore: 70,
+      trustScore: 65,
+      validationScore: 65,
+      confidence: 68,
+      riskReward: 2.1,
+      momentum: 66,
+      fundamentalStrength: 64,
+      liquidity: 60,
+      sectorStrength: 62,
+      marketTrend: 58,
+    })),
+    minInstitutionalScore: 45,
+    minConviction: 50,
+    resultLimit: 6,
+  });
+
   return (
     <div className="p-6">
       <PageHeader
         title="AI Screener"
-        subtitle={`Sprint 9D · ${health.technicalFilters} technical · ${health.fundamentalFilters} fundamental · ${health.earningsScreens} earnings · ${health.newsScreens} news screens`}
+        subtitle={`Sprint 9D · ${health.technicalFilters} technical · ${health.fundamentalFilters} fundamental · ${health.portfolioScreens} portfolio · ${health.watchlistScreens} watchlist screens`}
       />
 
       <div className="mb-4 flex flex-wrap gap-3 text-sm">
@@ -136,6 +161,45 @@ export default async function AIScreenerPage() {
                     <td className="max-w-xs truncate px-3 py-2 text-text-muted">
                       {card.reasonSummary}
                     </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="mt-8">
+        <h2 className="mb-2 text-sm font-semibold text-text-primary">
+          Institutional Opportunities
+        </h2>
+        {opportunityScreen.empty ? (
+          <p className="text-sm text-text-muted">{opportunityScreen.emptyMessage}</p>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-surface-border-subtle">
+            <table className="min-w-full text-left text-sm">
+              <thead className="border-b border-surface-border-subtle bg-surface-elevated text-xs uppercase text-text-muted">
+                <tr>
+                  <th className="px-3 py-2">Rank</th>
+                  <th className="px-3 py-2">Ticker</th>
+                  <th className="px-3 py-2">Score</th>
+                  <th className="px-3 py-2">Rec</th>
+                  <th className="px-3 py-2">Priority</th>
+                </tr>
+              </thead>
+              <tbody>
+                {opportunityScreen.cards.map((card) => (
+                  <tr
+                    key={`inst-${card.ticker}-${card.rank}`}
+                    className="border-b border-surface-border-subtle/60 last:border-0"
+                  >
+                    <td className="px-3 py-2 text-text-muted">{card.rank}</td>
+                    <td className="px-3 py-2 font-medium text-text-primary">
+                      <Link href={`/company/${card.ticker}`}>{card.ticker}</Link>
+                    </td>
+                    <td className="px-3 py-2">{card.institutionalScore}</td>
+                    <td className="px-3 py-2">{card.recommendation}</td>
+                    <td className="px-3 py-2 text-text-muted">{card.priority}</td>
                   </tr>
                 ))}
               </tbody>

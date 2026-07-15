@@ -85,6 +85,12 @@ export {
   runManagementScreen,
   runEventScreen,
   buildEventExplainability,
+  runPortfolioScreen,
+  runWatchlistScreen,
+  runOpportunityScreen,
+  rankInstitutionalResults,
+  generateResearchPriority,
+  buildInstitutionalInsights,
 } from "./AIScreener";
 export type { AIScreenerRegistrationResult } from "./AIScreener";
 export type {
@@ -102,6 +108,14 @@ export type {
   EventCorrelationOptions,
   EventScreenResult,
   EventExplainabilityInput,
+  PortfolioScreenOptions,
+  WatchlistScreenOptions,
+  OpportunityScreenOptions,
+  InstitutionalScreenResult,
+  InstitutionalResultCard,
+  InstitutionalScoreFactors,
+  ResearchPriorityBand,
+  InsightBuildInput,
 } from "./AIScreener";
 
 export {
@@ -153,6 +167,25 @@ export {
   MANAGEMENT_SCREEN_IDS,
   MANAGEMENT_SCREEN_LABELS,
   EventCorrelationScreenEngine,
+  INSTITUTIONAL_SCREEN_EMPTY,
+  PORTFOLIO_SCREEN_IDS,
+  PORTFOLIO_SCREEN_LABELS,
+  WATCHLIST_SCREEN_IDS,
+  WATCHLIST_SCREEN_LABELS,
+  recommendationFromScore,
+  emptyInstitutionalFactors,
+  emptyInstitutionalInsight,
+  emptyInstitutionalScreenResult,
+  normalizeInstitutionalCard,
+  InstitutionalRankingEngine,
+  composeInstitutionalScoreFactors,
+  scoreInstitutionalCandidate,
+  classifyInstitutionalRecommendation,
+  ResearchPriorityEngine,
+  ScreenInsightEngine,
+  PortfolioScreenEngine,
+  WatchlistScreenEngine,
+  OpportunityScreenEngine,
 } from "./intelligence";
 export type {
   ScreenIntelligenceEmptyMessage,
@@ -174,4 +207,11 @@ export type {
   NewsScreenId,
   CorporateActionScreenId,
   ManagementScreenId,
+  InstitutionalScreenEmptyMessage,
+  InstitutionalRecommendation,
+  InstitutionalScreenMode,
+  PortfolioScreenId,
+  WatchlistScreenId,
+  InstitutionalCandidate,
+  InstitutionalInsight,
 } from "./intelligence";

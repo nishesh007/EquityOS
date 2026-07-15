@@ -34,10 +34,16 @@ import {
   runCorporateActionScreen,
   runManagementScreen,
   runEventScreen,
+  runPortfolioScreen,
+  runWatchlistScreen,
+  runOpportunityScreen,
   buildExplainability,
   buildEventExplainability,
+  buildInstitutionalInsights,
   scoreCandidate,
   scoreEventCandidate,
+  scoreInstitutionalCandidate,
+  generateResearchPriority,
   SCREEN_INTELLIGENCE_EMPTY,
   type ScreenEngineScores,
   type ScreenRunOptions,
@@ -48,6 +54,11 @@ import {
   type ScreenEventCandidate,
   type EventScreenResult,
   type EventCorrelationOptions,
+  type InstitutionalCandidate,
+  type InstitutionalScreenResult,
+  type PortfolioScreenOptions,
+  type WatchlistScreenOptions,
+  type OpportunityScreenOptions,
 } from "@/src/core/screener";
 
 async function enrichScreenerRows(rows: ScreenerRow[]): Promise<ScreenerRow[]> {
@@ -194,6 +205,9 @@ export {
   runCorporateActionScreen,
   runManagementScreen,
   runEventScreen,
+  runPortfolioScreen,
+  runWatchlistScreen,
+  runOpportunityScreen,
 };
 
 /** Health/status bridge for /dashboard, /results, Research, /screener, /ai/screener. */
@@ -207,8 +221,11 @@ export function fetchInstitutionalScreenerHealth(): {
   earningsScreens: number;
   newsScreens: number;
   corporateActionScreens: number;
+  portfolioScreens: number;
+  watchlistScreens: number;
   intelligenceReady: boolean;
   eventIntelligenceReady: boolean;
+  institutionalReady: boolean;
 } {
   const registration = registerAIScreener();
   return {
@@ -221,8 +238,11 @@ export function fetchInstitutionalScreenerHealth(): {
     earningsScreens: 15,
     newsScreens: 12,
     corporateActionScreens: 14,
+    portfolioScreens: 11,
+    watchlistScreens: 10,
     intelligenceReady: true,
     eventIntelligenceReady: true,
+    institutionalReady: true,
   };
 }
 
@@ -316,4 +336,40 @@ export function runEventIntelligenceScreen(
 ): EventScreenResult {
   registerAIScreener();
   return runEventScreen(options);
+}
+
+/** Portfolio / watchlist / opportunity institutional screens. */
+export function runInstitutionalIntelligenceScreen(
+  mode: "portfolio" | "watchlist" | "opportunity",
+  options?: {
+    holdings?: InstitutionalCandidate[];
+    items?: InstitutionalCandidate[];
+    opportunities?: InstitutionalCandidate[];
+  } & PortfolioScreenOptions &
+    WatchlistScreenOptions &
+    OpportunityScreenOptions
+): InstitutionalScreenResult {
+  registerAIScreener();
+  if (mode === "portfolio") {
+    return runPortfolioScreen({
+      holdings: options?.holdings,
+      screens: options?.screens as PortfolioScreenOptions["screens"],
+      resultLimit: options?.resultLimit,
+      minMatches: options?.minMatches,
+    });
+  }
+  if (mode === "watchlist") {
+    return runWatchlistScreen({
+      items: options?.items,
+      screens: options?.screens as WatchlistScreenOptions["screens"],
+      resultLimit: options?.resultLimit,
+      minMatches: options?.minMatches,
+    });
+  }
+  return runOpportunityScreen({
+    opportunities: options?.opportunities,
+    resultLimit: options?.resultLimit,
+    minInstitutionalScore: options?.minInstitutionalScore,
+    minConviction: options?.minConviction,
+  });
 }
