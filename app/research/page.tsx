@@ -1,20 +1,26 @@
 /**
- * Institutional Research Workspace — primary analyst surface (Sprint 10A.R1).
- * Composes existing module routes via workspace panels.
+ * Institutional Research Workspace — primary analyst surface (Sprint 10A.R1–R2).
+ * Multi-tab terminal composing existing module routes.
  */
 
 import Link from "next/link";
 import {
   ensureDefaultResearchWorkspace,
+  fetchMultiTabWorkspaceView,
   fetchResearchWorkspaceHealth,
   fetchResearchWorkspaceView,
+  fetchWorkspaceHistory,
 } from "@/services/researchWorkspace";
-import { WORKSPACE_EMPTY } from "@/src/core/research/workspace";
+import { LAYOUT_EMPTY, WORKSPACE_EMPTY } from "@/src/core/research/workspace";
 
 export default function ResearchPage() {
-  ensureDefaultResearchWorkspace({ name: "Institutional Research Workspace" });
+  const workspace = ensureDefaultResearchWorkspace({
+    name: "Institutional Research Workspace",
+  });
   const health = fetchResearchWorkspaceHealth();
   const view = fetchResearchWorkspaceView();
+  const multi = fetchMultiTabWorkspaceView(workspace.id);
+  const history = fetchWorkspaceHistory();
 
   return (
     <div className="p-6">
@@ -23,18 +29,21 @@ export default function ResearchPage() {
           Institutional Research Workspace
         </h1>
         <p className="mt-0.5 text-sm text-text-muted">
-          Primary analyst working environment ·{" "}
+          Multi-tab research terminal ·{" "}
           {health.workspaceCount > 0
             ? `${health.workspaceCount} workspace${health.workspaceCount === 1 ? "" : "s"}`
             : health.emptyMessage}{" "}
-          · {health.openSessions} open sessions · research{" "}
-          {health.researchCount > 0 ? health.researchCount : WORKSPACE_EMPTY.awaitingResearch}
+          · {health.openTabs} open tabs ·{" "}
+          {health.openSessions} sessions · research{" "}
+          {health.researchCount > 0
+            ? health.researchCount
+            : WORKSPACE_EMPTY.awaitingResearch}
         </p>
       </div>
 
-      {view.empty ? (
+      {view.empty && multi.empty ? (
         <div className="rounded-lg border border-surface-border-subtle px-4 py-10 text-center text-sm text-text-muted">
-          {view.emptyMessage}
+          {multi.emptyMessage || view.emptyMessage}
         </div>
       ) : (
         <div className="space-y-6">
@@ -50,10 +59,49 @@ export default function ResearchPage() {
 
           <section>
             <h2 className="mb-2 text-sm font-medium text-text-secondary">
+              Open tabs
+            </h2>
+            {multi.tabs.length === 0 ? (
+              <p className="text-sm text-text-muted">{LAYOUT_EMPTY.noOpenTabs}</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {multi.tabs.map((tab) => (
+                  <Link
+                    key={tab.id}
+                    href={tab.route}
+                    className="rounded-lg border border-surface-border-subtle px-3 py-1.5 text-xs font-medium text-text-muted transition hover:bg-surface-hover hover:text-text-secondary"
+                  >
+                    {tab.pinned ? "[pin] " : ""}
+                    {tab.title}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section>
+            <h2 className="mb-2 text-sm font-medium text-text-secondary">
+              Docked panels
+            </h2>
+            {multi.dock ? (
+              <p className="text-xs text-text-muted">
+                Left {multi.dock.left.sizePct}% · Center {multi.dock.center.sizePct}% ·
+                Right {multi.dock.right.sizePct}% · Bottom {multi.dock.bottom.sizePct}%
+                {multi.dock.bottom.collapsed ? " (bottom collapsed)" : ""}
+              </p>
+            ) : (
+              <p className="text-sm text-text-muted">{LAYOUT_EMPTY.awaitingWorkspace}</p>
+            )}
+          </section>
+
+          <section>
+            <h2 className="mb-2 text-sm font-medium text-text-secondary">
               Research panels
             </h2>
             {view.panels.length === 0 ? (
-              <p className="text-sm text-text-muted">{WORKSPACE_EMPTY.awaitingResearch}</p>
+              <p className="text-sm text-text-muted">
+                {WORKSPACE_EMPTY.awaitingResearch}
+              </p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {view.panels.map((panel) => (
@@ -66,6 +114,34 @@ export default function ResearchPage() {
                   </Link>
                 ))}
               </div>
+            )}
+          </section>
+
+          <section>
+            <h2 className="mb-2 text-sm font-medium text-text-secondary">
+              Session history
+            </h2>
+            {history.empty ? (
+              <p className="text-sm text-text-muted">{LAYOUT_EMPTY.noSessionHistory}</p>
+            ) : (
+              <ul className="space-y-1 text-sm text-text-primary">
+                {[
+                  ...history.recentTabs,
+                  ...history.recentCompanies,
+                  ...history.recentResearch,
+                ]
+                  .slice(0, 8)
+                  .map((entry) => (
+                    <li key={entry.id}>
+                      <Link href={entry.route} className="hover:text-text-secondary">
+                        {entry.label}
+                      </Link>
+                      <span className="ml-2 text-xs text-text-muted">
+                        {entry.kind}
+                      </span>
+                    </li>
+                  ))}
+              </ul>
             )}
           </section>
 

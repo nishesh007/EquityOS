@@ -82,7 +82,7 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
         <p className="mt-1 text-xs text-text-muted">
           Research workspace ·{" "}
           {researchWorkspace.ready
-            ? `${researchWorkspace.openSessions} open sessions`
+            ? `${researchWorkspace.openSessions} open sessions · ${researchWorkspace.openTabs} tabs`
             : researchWorkspace.emptyMessage}
         </p>
       </div>

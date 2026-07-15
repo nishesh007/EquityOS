@@ -48,7 +48,7 @@ import {
   renameWorkspace,
   resetResearchWorkspace,
   resolvePanelRoute,
-  restoreSession,
+  restoreResearchSession,
   restoreWorkspace,
   safeWorkspaceNumber,
   safeWorkspaceText,
@@ -208,7 +208,7 @@ describe("Sprint 10A.R1 — Institutional Research Workspace", () => {
       expect(openSession(session.id)?.status).toBe("open");
       expect(duplicateSession(session.id)?.name).toContain("copy");
       expect(archiveSession(session.id)?.status).toBe("archived");
-      expect(restoreSession(session.id)?.status).toBe("open");
+      expect(restoreResearchSession(session.id)?.status).toBe("open");
       expect(deleteSession(session.id)).toBe(true);
     });
   });

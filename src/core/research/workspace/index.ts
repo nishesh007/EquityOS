@@ -1,5 +1,5 @@
 /**
- * Institutional Research Workspace — public exports (Sprint 10A.R1).
+ * Institutional Research Workspace — public exports (Sprint 10A.R1–R2).
  * Composition foundation for /research, /dashboard, /company, /results.
  */
 
@@ -38,7 +38,7 @@ export {
   cacheUsageBytes,
   resetLayouts,
   getLayoutCacheCount,
-  WorkspaceLayoutEngine,
+  WorkspaceLayoutEngine as WorkspacePanelLayoutEngine,
 } from "./WorkspaceLayout";
 export type {
   WorkspacePanelState,
@@ -57,7 +57,7 @@ export {
   favoriteSession,
   renameSession,
   archiveSession,
-  restoreSession,
+  restoreSession as restoreResearchSession,
   deleteSession,
   listSessions,
   incrementResearchCount,
@@ -129,3 +129,68 @@ export {
   getResearchWorkspaceView,
   getSessionById,
 } from "./ResearchWorkspace";
+
+/** Sprint 10A.R2 — multi-tab layout engines */
+export {
+  LAYOUT_EMPTY,
+  TAB_KINDS,
+  TAB_KIND_LABELS,
+  DOCK_REGIONS,
+  LAYOUT_PRESETS,
+  emptyTab,
+  normalizeTab,
+  emptyDockLayout,
+  emptySavedLayout,
+  emptyHistoryView,
+  emptyMultiTabView,
+  openTab,
+  closeTab,
+  duplicateTab,
+  pinTab,
+  saveLayout,
+  restoreLayout,
+  restoreSession,
+  getWorkspaceHistory,
+  getMultiTabWorkspaceView,
+  resetLayoutEngines,
+  openTabByKind,
+  openCompanyTab,
+  openResearchTab,
+  openEarningsTab,
+  openAlertsTab,
+  openScreenerTab,
+  openPortfolioTab,
+  openOpportunityTab,
+  openNotesTab,
+  applyLayoutPreset,
+  listOpenTabs,
+  listSavedLayouts,
+  persistSession,
+  ensurePersistedWorkspace,
+  restoreLastSession,
+  dockTab,
+  resizePane,
+  collapsePane,
+  fullscreenPane,
+  reorderTabs,
+  restoreTab,
+  WorkspaceLayoutEngine,
+  WorkspaceTabEngine,
+  WorkspaceDockEngine,
+  WorkspaceFocusEngine,
+  WorkspaceHistoryEngine,
+  WorkspacePersistenceEngine,
+} from "./layout";
+export type {
+  LayoutEmptyMessage,
+  WorkspaceTabKind,
+  DockRegion,
+  LayoutPresetId,
+  WorkspaceTab,
+  DockLayoutState,
+  SavedWorkspaceLayout,
+  WorkspaceHistoryView,
+  PersistedWorkspaceSession,
+  MultiTabWorkspaceView,
+  OpenTabInput,
+} from "./layout";

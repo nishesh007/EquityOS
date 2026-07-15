@@ -63,6 +63,7 @@ import {
   type ResearchWorkspaceView,
   type WorkspaceActivity,
 } from "./WorkspacePresentationModels";
+import { resetLayoutEngines } from "./layout";
 
 const activityLog: WorkspaceActivity[] = [];
 const MAX_ACTIVITY = 50;
@@ -371,6 +372,7 @@ export class ResearchWorkspace {
     activityLog.length = 0;
     resetMetrics();
     resetRegistry();
+    resetLayoutEngines();
   }
 }
 

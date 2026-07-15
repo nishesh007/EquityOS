@@ -92,7 +92,7 @@ export default async function DashboardPage() {
             : screenerHealth.emptyMessage}{" "}
           · research workspace{" "}
           {researchWorkspace.ready
-            ? `${researchWorkspace.workspaceCount} desks`
+            ? `${researchWorkspace.workspaceCount} desks · ${researchWorkspace.openTabs} tabs`
             : researchWorkspace.emptyMessage}{" "}
           ·{" "}
           {new Date().toLocaleDateString("en-IN", {

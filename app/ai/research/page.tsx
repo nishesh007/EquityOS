@@ -54,7 +54,7 @@ export default function AIResearchPage() {
                 : screenerHealth.emptyMessage}{" "}
               · research desk{" "}
               {researchWorkspace.ready
-                ? `${researchWorkspace.openSessions} sessions`
+                ? `${researchWorkspace.openSessions} sessions · ${researchWorkspace.openTabs} tabs`
                 : researchWorkspace.emptyMessage}
               .
             </p>
