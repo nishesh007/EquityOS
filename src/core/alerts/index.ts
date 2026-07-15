@@ -153,3 +153,31 @@ export {
   listAlertSources,
 } from "./AlertFacade";
 export type { AlertEngineRegistrationResult } from "./AlertFacade";
+
+/** Sprint 9C.R2 — Opportunity / Portfolio / Watchlist alert intelligence */
+export {
+  INTELLIGENCE_ALERT_EMPTY,
+  generateOpportunityAlerts,
+  generatePortfolioAlerts,
+  generateWatchlistAlerts,
+  rankAlerts,
+  groupAlerts,
+  deduplicateAlerts,
+  resetAlertIntelligence,
+  decideOpportunityAlerts,
+  decidePortfolioAlerts,
+  decideWatchlistAlerts,
+} from "./intelligence";
+
+export type {
+  IntelligenceAlertBatch,
+  OpportunitySnapshot,
+  PortfolioSnapshot,
+  WatchlistItemSnapshot,
+  OpportunityAlertInput,
+  PortfolioAlertInput,
+  WatchlistAlertInput,
+  RankedAlert,
+  AlertGroup,
+  DeduplicationResult,
+} from "./intelligence";
