@@ -4,6 +4,7 @@ export { PostEarningsPreviewStrip } from "./PostEarningsPreviewStrip";
 export { EarningsIntelligenceHost } from "./EarningsIntelligenceHost";
 export { EarningsIntelligenceDrawer } from "./EarningsIntelligenceDrawer";
 export { PostEarningsDrawer } from "./PostEarningsDrawer";
+export { TranscriptIntelligenceSection } from "./TranscriptIntelligenceSection";
 export { EarningsMetricsStrip } from "./EarningsMetricsStrip";
 export { EarningsSection } from "./EarningsSection";
 export { DashboardEarningsPanel } from "./DashboardEarningsPanel";

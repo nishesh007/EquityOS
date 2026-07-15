@@ -3,6 +3,7 @@
 import { Badge } from "@/components/ui/Badge";
 import { Sparkline } from "@/components/ui/Sparkline";
 import { PostEarningsPreviewStrip } from "@/components/dashboard/earnings/PostEarningsPreviewStrip";
+import { TranscriptIntelligenceSection } from "@/components/dashboard/earnings/TranscriptIntelligenceSection";
 import {
   postBadgeVariant,
   type PostEarningsDrawerView,
@@ -204,6 +205,12 @@ export function PostEarningsDrawer({
               <Section title="Management Commentary Summary">
                 {report.managementCommentary}
               </Section>
+
+              <TranscriptIntelligenceSection
+                ticker={view.event.ticker}
+                resultDate={view.event.resultDate}
+              />
+
               <Section title="AI Verdict">{report.aiVerdict}</Section>
               <Section title="Confidence">{report.confidence}</Section>
               <Section title="Expected Medium-Term Impact">

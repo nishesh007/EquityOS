@@ -3,6 +3,7 @@
 import { Badge } from "@/components/ui/Badge";
 import { Sparkline } from "@/components/ui/Sparkline";
 import { EarningsAIPreviewStrip } from "@/components/dashboard/earnings/EarningsAIPreviewStrip";
+import { TranscriptIntelligenceSection } from "@/components/dashboard/earnings/TranscriptIntelligenceSection";
 import {
   badgeVariant,
   type EarningsDrawerView,
@@ -202,6 +203,12 @@ export function EarningsIntelligenceDrawer({
                   ))}
                 </ul>
               </Section>
+
+              <TranscriptIntelligenceSection
+                ticker={view.event.ticker}
+                resultDate={view.event.resultDate}
+              />
+
               <Section title="Expected Market Reaction">
                 {research.expectedMarketReaction}
               </Section>
