@@ -26,10 +26,18 @@ import {
   registerAIScreener,
   registerScreen,
   runScreen,
+  runTechnicalScreen,
+  runFundamentalScreen,
+  runMultiFactorScreen,
+  buildExplainability,
+  scoreCandidate,
+  SCREEN_INTELLIGENCE_EMPTY,
   type ScreenEngineScores,
   type ScreenRunOptions,
   type ScreenSnapshot,
   type ScreenUniverseCandidate,
+  type IntelligenceScreenResult,
+  type MultiFactorScreenOptions,
 } from "@/src/core/screener";
 
 async function enrichScreenerRows(rows: ScreenerRow[]): Promise<ScreenerRow[]> {
@@ -168,14 +176,20 @@ export {
   listScreens,
   registerAIScreener,
   registerScreen,
+  runTechnicalScreen,
+  runFundamentalScreen,
+  runMultiFactorScreen,
 };
 
-/** Health/status bridge for /dashboard, /results, Research, and /screener. */
+/** Health/status bridge for /dashboard, /results, Research, /screener, /ai/screener. */
 export function fetchInstitutionalScreenerHealth(): {
   registered: boolean;
   screenCount: number;
   metrics: ReturnType<typeof getInstitutionalScreenMetrics>;
   emptyMessage: string;
+  technicalFilters: number;
+  fundamentalFilters: number;
+  intelligenceReady: boolean;
 } {
   const registration = registerAIScreener();
   return {
@@ -183,5 +197,65 @@ export function fetchInstitutionalScreenerHealth(): {
     screenCount: listScreens({ enabledOnly: true }).length,
     metrics: getInstitutionalScreenMetrics(),
     emptyMessage: getInstitutionalScreenResults().emptyMessage,
+    technicalFilters: 19,
+    fundamentalFilters: 19,
+    intelligenceReady: true,
+  };
+}
+
+/**
+ * Run multi-factor / technical / fundamental institutional screens
+ * from filter-engine universe rows (composition only).
+ */
+export function runIntelligenceScreen(
+  mode: "technical" | "fundamental" | "multi-factor",
+  options?: MultiFactorScreenOptions & { rows?: ScreenerRow[] }
+): IntelligenceScreenResult {
+  registerAIScreener();
+  const universe =
+    options?.universe ??
+    (options?.rows ? toScreenUniverseCandidates(options.rows) : undefined);
+  const payload = { ...options, universe };
+  if (mode === "technical") return runTechnicalScreen(payload);
+  if (mode === "fundamental") return runFundamentalScreen(payload);
+  return runMultiFactorScreen(payload);
+}
+
+/** Company / Research Drawer — explainability for a single ticker. */
+export function fetchSymbolScreenerInsight(input: {
+  ticker: string;
+  company?: string | null;
+  metrics?: Record<string, number | string | null | undefined>;
+  price?: number | null;
+  engineScores?: ScreenEngineScores;
+}): {
+  score: number;
+  reasonSummary: string;
+  emptyMessage: string;
+  whyMatched: string;
+} {
+  registerAIScreener();
+  const candidate: ScreenUniverseCandidate = {
+    ticker: input.ticker,
+    company: input.company,
+    price: input.price,
+    metrics: input.metrics,
+  };
+  const factors = scoreCandidate(candidate, input.engineScores);
+  const explain = buildExplainability({
+    ticker: input.ticker,
+    company: input.company,
+    matchedRules: input.engineScores?.matchedRules ?? [],
+    failedRules: [],
+    factors,
+    reasonSummary: input.engineScores?.reasonSummary,
+  });
+  return {
+    score: factors.finalAiScreenerScore,
+    reasonSummary: explain.aiReasoning,
+    emptyMessage: explain.empty
+      ? SCREEN_INTELLIGENCE_EMPTY.awaitingScreening
+      : "",
+    whyMatched: explain.whyMatched,
   };
 }

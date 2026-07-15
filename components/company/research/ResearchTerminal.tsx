@@ -10,16 +10,40 @@ import type { CompanyProfile, CompanyResearch } from "@/types";
 interface ResearchTerminalProps {
   company: CompanyProfile;
   research: CompanyResearch;
+  screenerInsight?: {
+    score: number;
+    reasonSummary: string;
+    emptyMessage: string;
+    whyMatched: string;
+  };
 }
 
 /**
  * Sprint 3 — Equity Research Terminal.
  * Composes the full research layer for a company. Rendered as an additive
  * section on the company page; existing components remain untouched.
+ * Sprint 9D.R2 — optional AI Screener insight strip for Research Drawer.
  */
-export function ResearchTerminal({ company, research }: ResearchTerminalProps) {
+export function ResearchTerminal({
+  company,
+  research,
+  screenerInsight,
+}: ResearchTerminalProps) {
   return (
     <div className="space-y-6">
+      {screenerInsight ? (
+        <div className="rounded-xl border border-surface-border-subtle bg-surface-elevated px-4 py-3 text-sm">
+          <p className="font-medium text-text-primary">
+            AI Screener · Score {screenerInsight.score}
+          </p>
+          <p className="mt-1 text-text-muted">
+            {screenerInsight.emptyMessage ||
+              screenerInsight.whyMatched ||
+              screenerInsight.reasonSummary}
+          </p>
+        </div>
+      ) : null}
+
       <KeyStatsGrid company={company} trading={research.trading} />
 
       <div className="grid grid-cols-1 gap-6 2xl:grid-cols-[minmax(0,1.55fr)_minmax(420px,0.85fr)]">

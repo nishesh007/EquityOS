@@ -13,6 +13,11 @@ import Link from "next/link";
 
 const aiTools = [
   {
+    href: "/ai/screener",
+    title: "AI Screener",
+    description: "Technical, fundamental & multi-factor screens",
+  },
+  {
     href: "/ai/research",
     title: "AI Research Analyst",
     description: "Ask anything about any listed company.",

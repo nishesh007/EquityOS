@@ -1,5 +1,5 @@
 /**
- * Institutional AI Screener — public exports (Sprint 9D.R1).
+ * Institutional AI Screener — public exports (Sprint 9D.R1 / R2).
  * Composition layer only — no duplicated engine calculations.
  */
 
@@ -74,5 +74,57 @@ export {
   getResults,
   getMetrics,
   clearCache,
+  runTechnicalScreen,
+  runFundamentalScreen,
+  runMultiFactorScreen,
+  rankResults,
+  buildExplainability,
 } from "./AIScreener";
 export type { AIScreenerRegistrationResult } from "./AIScreener";
+export type {
+  TechnicalScreenOptions,
+  FundamentalScreenOptions,
+  MultiFactorScreenOptions,
+  IntelligenceScreenResult,
+  ScreenResultCard,
+  ScreenRankingMode,
+  ExplainabilityInput,
+} from "./AIScreener";
+
+export {
+  SCREEN_INTELLIGENCE_EMPTY,
+  SCREEN_GRADES,
+  SCREEN_RANKING_MODES,
+  gradeFromScore,
+  emptyScoreFactors,
+  emptyExplainability,
+  emptyIntelligenceResult,
+  normalizeResultCard,
+  ScreenScoringEngine,
+  composeScreenScoreFactors,
+  deriveTechnicalStrength,
+  deriveFundamentalStrength,
+  deriveMomentumStrength,
+  scoreCandidate,
+  ScreenRankingEngine,
+  rankScreenResults,
+  ScreenExplainabilityEngine,
+  buildScreenExplainability,
+  TechnicalScreenEngine,
+  TECHNICAL_FILTER_IDS,
+  TECHNICAL_FILTERS,
+  FundamentalScreenEngine,
+  FUNDAMENTAL_FILTER_IDS,
+  FUNDAMENTAL_FILTERS,
+  MultiFactorScreenEngine,
+} from "./intelligence";
+export type {
+  ScreenIntelligenceEmptyMessage,
+  ScreenGrade,
+  ScreenScoreFactors,
+  ScreenExplainability,
+  TechnicalFilterId,
+  TechnicalFilterSpec,
+  FundamentalFilterId,
+  FundamentalFilterSpec,
+} from "./intelligence";

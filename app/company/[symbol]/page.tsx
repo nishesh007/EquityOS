@@ -9,6 +9,7 @@ import { EquityIntelligenceEngine } from "@/components/company/intelligence/Equi
 import { fetchCompanyProfile } from "@/services/companyData";
 import { fetchEquityIntelligence } from "@/services/equityIntelligenceData";
 import { fetchCompanyResearch } from "@/services/researchData";
+import { fetchSymbolScreenerInsight } from "@/services/screenerData";
 
 interface CompanyPageProps {
   params: Promise<{ symbol: string }>;
@@ -40,6 +41,30 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
     notFound();
   }
 
+  const indicatorMap = Object.fromEntries(
+    research.technicals.indicators.map((i) => [
+      i.name.toLowerCase(),
+      Number.parseFloat(String(i.value).replace(/[^0-9.\-]/g, "")),
+    ])
+  );
+  const screenerInsight = fetchSymbolScreenerInsight({
+    ticker: company.symbol,
+    company: company.name,
+    price: company.quote?.price ?? null,
+    metrics: {
+      pe: company.financials.pe,
+      pb: company.financials.pb,
+      roe: company.financials.roe,
+      roce: company.financials.roce,
+      debt_equity: company.financials.debtToEquity,
+      revenue_yoy: company.financials.revenueGrowth,
+      profit_yoy: company.financials.netProfitGrowth,
+      rsi: Number.isFinite(indicatorMap.rsi) ? indicatorMap.rsi : null,
+      macd: Number.isFinite(indicatorMap.macd) ? indicatorMap.macd : null,
+      trend_score: research.technicals.score,
+    },
+  });
+
   return (
     <div className="p-6">
       <div className="mb-6">
@@ -49,7 +74,11 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
       <div className="space-y-6">
         <CompanyHeader company={company} />
         <ActionButtons symbol={company.symbol} />
-        <ResearchTerminal company={company} research={research} />
+        <ResearchTerminal
+          company={company}
+          research={research}
+          screenerInsight={screenerInsight}
+        />
         <EquityIntelligenceEngine
           intelligence={intelligence}
           symbol={company.symbol}

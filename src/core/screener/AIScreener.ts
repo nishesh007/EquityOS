@@ -1,8 +1,9 @@
 /**
- * Institutional AI Screener — public façade (Sprint 9D.R1).
+ * Institutional AI Screener — public façade (Sprint 9D.R1 / R2).
  * Composition layer over Research, Opportunity, Validation, Trust, Earnings, Market, Alert.
  *
- * Public API: registerScreen | runScreen | getResults | getMetrics | clearCache
+ * Public API (R1): registerScreen | runScreen | getResults | getMetrics | clearCache
+ * Public API (R2): runTechnicalScreen | runFundamentalScreen | runMultiFactorScreen | rankResults | buildExplainability
  */
 
 import type { ScreenDefinition, ScreenDefinitionInput } from "./ScreenDefinition";
@@ -20,6 +21,22 @@ import type { ScreenRunResults } from "./ScreenResult";
 import type { ScreenOperationalMetrics } from "./ScreenMetrics";
 import type { ScreenSnapshot } from "./ScreenSnapshot";
 import { emptyScreenSnapshot } from "./ScreenSnapshot";
+import {
+  buildExplainability as buildExplainabilityCore,
+  emptyIntelligenceResult,
+  rankResults as rankResultsCore,
+  runFundamentalScreen as runFundamentalScreenCore,
+  runMultiFactorScreen as runMultiFactorScreenCore,
+  runTechnicalScreen as runTechnicalScreenCore,
+  SCREEN_INTELLIGENCE_EMPTY,
+  type ExplainabilityInput,
+  type FundamentalScreenOptions,
+  type IntelligenceScreenResult,
+  type MultiFactorScreenOptions,
+  type ScreenRankingMode,
+  type ScreenResultCard,
+  type TechnicalScreenOptions,
+} from "./intelligence";
 
 export interface AIScreenerRegistrationResult {
   registered: boolean;
@@ -169,6 +186,87 @@ export {
   getScreen,
   setScreenEnabled,
   registerBuiltinScreens,
+};
+
+/** Public API (R2) — technical screen composition. */
+export function runTechnicalScreen(
+  options?: TechnicalScreenOptions
+): IntelligenceScreenResult {
+  registerAIScreener();
+  try {
+    return runTechnicalScreenCore(options);
+  } catch {
+    return emptyIntelligenceResult(
+      "technical",
+      SCREEN_INTELLIGENCE_EMPTY.awaitingScreening
+    );
+  }
+}
+
+/** Public API (R2) — fundamental screen composition. */
+export function runFundamentalScreen(
+  options?: FundamentalScreenOptions
+): IntelligenceScreenResult {
+  registerAIScreener();
+  try {
+    return runFundamentalScreenCore(options);
+  } catch {
+    return emptyIntelligenceResult(
+      "fundamental",
+      SCREEN_INTELLIGENCE_EMPTY.awaitingScreening
+    );
+  }
+}
+
+/** Public API (R2) — multi-factor AI screen composition. */
+export function runMultiFactorScreen(
+  options?: MultiFactorScreenOptions
+): IntelligenceScreenResult {
+  registerAIScreener();
+  try {
+    return runMultiFactorScreenCore(options);
+  } catch {
+    return emptyIntelligenceResult(
+      "multi-factor",
+      SCREEN_INTELLIGENCE_EMPTY.awaitingScreening
+    );
+  }
+}
+
+/** Public API (R2) — rank result cards. */
+export function rankResults(
+  cards: ScreenResultCard[],
+  mode: ScreenRankingMode = "Overall"
+): ScreenResultCard[] {
+  try {
+    return rankResultsCore(cards, mode);
+  } catch {
+    return cards;
+  }
+}
+
+/** Public API (R2) — build explainability for a screened name. */
+export function buildExplainability(input: ExplainabilityInput) {
+  try {
+    return buildExplainabilityCore(input);
+  } catch {
+    return buildExplainabilityCore({
+      ticker: input.ticker,
+      matchedRules: [],
+      failedRules: [],
+      factors: input.factors,
+    });
+  }
+}
+
+export type {
+  TechnicalScreenOptions,
+  FundamentalScreenOptions,
+  MultiFactorScreenOptions,
+  IntelligenceScreenResult,
+  ScreenResultCard,
+  ScreenRankingMode,
+  ExplainabilityInput,
 };
 
 function emptyIntegrations(): AIScreenerRegistrationResult["integrations"] {
