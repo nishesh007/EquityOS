@@ -1,14 +1,16 @@
 "use client";
 
 import { Badge } from "@/components/ui/Badge";
-import { getCompanyRoute } from "@/lib/routes";
+import { EarningsAIPreviewStrip } from "@/components/dashboard/earnings/EarningsAIPreviewStrip";
 import type { EarningsCardView } from "@/src/core/earnings/calendar";
-import { useRouter } from "next/navigation";
+import type { EarningsCardPreviewView } from "@/src/core/earnings/intelligence";
 import { Briefcase, Star } from "lucide-react";
 
 interface EarningsCardProps {
   card: EarningsCardView;
+  preview?: EarningsCardPreviewView | null;
   compact?: boolean;
+  onOpenResearch?: (card: EarningsCardView) => void;
 }
 
 function countdownVariant(
@@ -30,13 +32,16 @@ function countdownVariant(
   }
 }
 
-export function EarningsCard({ card, compact = false }: EarningsCardProps) {
-  const router = useRouter();
-
+export function EarningsCard({
+  card,
+  preview = null,
+  compact = false,
+  onOpenResearch,
+}: EarningsCardProps) {
   return (
     <button
       type="button"
-      onClick={() => router.push(getCompanyRoute(card.ticker))}
+      onClick={() => onOpenResearch?.(card)}
       className="group flex w-full items-start gap-3 rounded-lg border border-surface-border-subtle bg-surface/50 p-3 text-left transition-all hover:border-surface-border hover:bg-surface-hover/50"
     >
       <div className="min-w-0 flex-1">
@@ -93,6 +98,10 @@ export function EarningsCard({ card, compact = false }: EarningsCardProps) {
             {card.resultDate} · {card.sessionLabel} · {card.marketCap}
           </div>
         )}
+
+        {preview ? (
+          <EarningsAIPreviewStrip preview={preview} compact={compact} />
+        ) : null}
       </div>
     </button>
   );

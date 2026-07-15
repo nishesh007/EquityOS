@@ -1,5 +1,5 @@
 import { Card, CardHeader } from "@/components/ui/Card";
-import { EarningsCard } from "@/components/dashboard/earnings/EarningsCard";
+import { EarningsIntelligenceHost } from "@/components/dashboard/earnings/EarningsIntelligenceHost";
 import {
   toEarningsCardView,
   type WatchlistEarningsSurface,
@@ -24,19 +24,11 @@ function Section({
       <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-text-faint">
         {title}
       </p>
-      {events.length === 0 ? (
-        <p className="text-xs text-text-muted">{emptyMessage}</p>
-      ) : (
-        <div className="space-y-2">
-          {events.map((event) => (
-            <EarningsCard
-              key={event.id}
-              card={toEarningsCardView(event)}
-              compact
-            />
-          ))}
-        </div>
-      )}
+      <EarningsIntelligenceHost
+        cards={events.map((event) => toEarningsCardView(event))}
+        compact
+        emptyMessage={emptyMessage}
+      />
     </div>
   );
 }

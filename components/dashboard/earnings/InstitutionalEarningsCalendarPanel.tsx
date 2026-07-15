@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { EarningsCard } from "@/components/dashboard/earnings/EarningsCard";
+import { EarningsIntelligenceHost } from "@/components/dashboard/earnings/EarningsIntelligenceHost";
 import { EarningsMetricsStrip } from "@/components/dashboard/earnings/EarningsMetricsStrip";
 import {
   applyEarningsFilters,
@@ -341,15 +341,11 @@ export function InstitutionalEarningsCalendarPanel({
       </Card>
 
       <Card padding="lg">
-        {cards.length === 0 ? (
-          <p className="text-xs text-text-muted">{emptyMessage}</p>
-        ) : (
-          <div className="space-y-2">
-            {cards.map((card) => (
-              <EarningsCard key={card.id} card={card} />
-            ))}
-          </div>
-        )}
+        <EarningsIntelligenceHost
+          cards={cards}
+          compact={false}
+          emptyMessage={emptyMessage}
+        />
 
         {paged.totalPages > 1 ? (
           <div className="mt-4 flex items-center justify-between">
