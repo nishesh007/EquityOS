@@ -263,3 +263,31 @@ export type {
   AlertConfidenceBreakdownResult,
   AlertDecisionBadge,
 } from "./intelligence";
+
+/** Sprint 9C.R7 — Workspace, rules & personalization */
+export {
+  WORKSPACE_EMPTY,
+  getAlertWorkspace,
+  resetAlertWorkspace,
+  getAlertWorkspaceView,
+  AlertWorkspace,
+  createAlertRule,
+  evaluateRule,
+  AlertRuleEngine,
+  AlertPreferenceEngine,
+  AlertFavoriteEngine,
+  AlertAutomationEngine,
+  AlertTemplateEngine,
+  AlertQuickActionEngine,
+  buildTemplateRules,
+} from "./workspace";
+
+export type {
+  AlertWorkspaceView,
+  AlertRuleDefinition,
+  AlertSavedView,
+  WorkspaceSectionId,
+  AlertWorkspaceTemplateId,
+  WorkspaceMetrics,
+  WorkspaceQuickActionId,
+} from "./workspace";
