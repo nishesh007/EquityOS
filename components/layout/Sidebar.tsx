@@ -16,11 +16,13 @@ import {
   ChevronRight,
   Building2,
   ArrowLeft,
+  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard, exact: true },
+  { label: "Research", href: "/research", icon: BookOpen },
   { label: "Markets", href: "/markets", icon: LineChart },
   { label: "Portfolio", href: "/portfolio", icon: Briefcase },
   { label: "Watchlist", href: "/watchlist", icon: Star },

@@ -9,6 +9,7 @@ import {
   fetchWatchlistEarningsSurface,
 } from "@/services/earningsCalendar";
 import { fetchInstitutionalScreenerHealth } from "@/services/screenerData";
+import { fetchResearchWorkspaceHealth } from "@/services/researchWorkspace";
 
 export default async function ResultsPage() {
   const [
@@ -19,6 +20,7 @@ export default async function ResultsPage() {
     portfolioRows,
     watchlistSurface,
     screenerHealth,
+    researchWorkspace,
   ] = await Promise.all([
     fetchEarningsDashboard({ pageSize: 8 }),
     fetchUpcomingEarningsEvents(),
@@ -27,13 +29,14 @@ export default async function ResultsPage() {
     fetchPortfolioEarningsRows(),
     fetchWatchlistEarningsSurface(),
     Promise.resolve(fetchInstitutionalScreenerHealth()),
+    Promise.resolve(fetchResearchWorkspaceHealth()),
   ]);
 
   return (
     <div className="p-6">
       <PageHeader
         title="Executive Earnings Hub"
-        subtitle={`Sprint 9B complete · institutional calendar, AI, transcripts, workspace & reports · Screener institutional ${screenerHealth.institutionalReady ? "ready" : screenerHealth.emptyMessage} · discovery ${screenerHealth.discoveryReady ? "ready" : screenerHealth.emptyMessage} · screener workspace ${screenerHealth.workspaceReady ? "ready" : screenerHealth.emptyMessage} · executive ${screenerHealth.executiveReady ? (screenerHealth.sprint9DFrozen ? "9D frozen" : screenerHealth.executiveSummary) : screenerHealth.emptyMessage}`}
+        subtitle={`Sprint 9B complete · institutional calendar, AI, transcripts, workspace & reports · Screener institutional ${screenerHealth.institutionalReady ? "ready" : screenerHealth.emptyMessage} · discovery ${screenerHealth.discoveryReady ? "ready" : screenerHealth.emptyMessage} · screener workspace ${screenerHealth.workspaceReady ? "ready" : screenerHealth.emptyMessage} · executive ${screenerHealth.executiveReady ? (screenerHealth.sprint9DFrozen ? "9D frozen" : screenerHealth.executiveSummary) : screenerHealth.emptyMessage} · research workspace ${researchWorkspace.ready ? `${researchWorkspace.openSessions} sessions` : researchWorkspace.emptyMessage}`}
       />
 
       <section className="animate-fade-in-up">

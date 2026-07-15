@@ -30,6 +30,7 @@ import {
 import { fetchOpportunityEngineState } from "@/services/opportunityEngine";
 import { fetchPortfolioDoctorAnalysis } from "@/services/portfolioAnalysisData";
 import { fetchInstitutionalScreenerHealth } from "@/services/screenerData";
+import { fetchResearchWorkspaceHealth } from "@/services/researchWorkspace";
 
 export default async function DashboardPage() {
   const [
@@ -47,6 +48,7 @@ export default async function DashboardPage() {
     rankedDashboard,
     alertEvents,
     screenerHealth,
+    researchWorkspace,
   ] = await Promise.all([
     fetchMarketIndices(),
     fetchPortfolioSummary(),
@@ -62,6 +64,7 @@ export default async function DashboardPage() {
     fetchEarningsDashboard({ pageSize: 6, sortBy: "institutional_rank" }),
     fetchUpcomingEarningsEvents(),
     Promise.resolve(fetchInstitutionalScreenerHealth()),
+    Promise.resolve(fetchResearchWorkspaceHealth()),
   ]);
 
   return (
@@ -87,6 +90,10 @@ export default async function DashboardPage() {
               ? "9D frozen"
               : screenerHealth.executiveSummary
             : screenerHealth.emptyMessage}{" "}
+          · research workspace{" "}
+          {researchWorkspace.ready
+            ? `${researchWorkspace.workspaceCount} desks`
+            : researchWorkspace.emptyMessage}{" "}
           ·{" "}
           {new Date().toLocaleDateString("en-IN", {
             weekday: "long",

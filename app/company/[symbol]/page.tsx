@@ -10,6 +10,10 @@ import { fetchCompanyProfile } from "@/services/companyData";
 import { fetchEquityIntelligence } from "@/services/equityIntelligenceData";
 import { fetchCompanyResearch } from "@/services/researchData";
 import { fetchSymbolScreenerInsight } from "@/services/screenerData";
+import {
+  ensureDefaultResearchWorkspace,
+  fetchResearchWorkspaceHealth,
+} from "@/services/researchWorkspace";
 
 interface CompanyPageProps {
   params: Promise<{ symbol: string }>;
@@ -65,10 +69,22 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
     },
   });
 
+  ensureDefaultResearchWorkspace({
+    name: `Research · ${company.symbol}`,
+    ticker: company.symbol,
+  });
+  const researchWorkspace = fetchResearchWorkspaceHealth();
+
   return (
     <div className="p-6">
       <div className="mb-6">
         <CompanyBreadcrumb symbol={company.symbol} name={company.name} />
+        <p className="mt-1 text-xs text-text-muted">
+          Research workspace ·{" "}
+          {researchWorkspace.ready
+            ? `${researchWorkspace.openSessions} open sessions`
+            : researchWorkspace.emptyMessage}
+        </p>
       </div>
 
       <div className="space-y-6">

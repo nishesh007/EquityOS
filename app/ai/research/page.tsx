@@ -1,6 +1,10 @@
 import { ResearchWorkspace } from "@/components/ai/ResearchWorkspace";
 import Link from "next/link";
 import { fetchInstitutionalScreenerHealth } from "@/services/screenerData";
+import {
+  ensureDefaultResearchWorkspace,
+  fetchResearchWorkspaceHealth,
+} from "@/services/researchWorkspace";
 
 const suggestions = [
   "Analyse Tata Motors",
@@ -20,6 +24,8 @@ const quickLinks = [
 
 export default function AIResearchPage() {
   const screenerHealth = fetchInstitutionalScreenerHealth();
+  ensureDefaultResearchWorkspace({ name: "AI Research Analyst Desk" });
+  const researchWorkspace = fetchResearchWorkspaceHealth();
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
@@ -45,12 +51,22 @@ export default function AIResearchPage() {
                 ? screenerHealth.sprint9DFrozen
                   ? "9D frozen"
                   : screenerHealth.executiveSummary
-                : screenerHealth.emptyMessage}
+                : screenerHealth.emptyMessage}{" "}
+              · research desk{" "}
+              {researchWorkspace.ready
+                ? `${researchWorkspace.openSessions} sessions`
+                : researchWorkspace.emptyMessage}
               .
             </p>
           </div>
 
           <div className="flex flex-wrap gap-2">
+            <Link
+              href="/research"
+              className="rounded-lg border border-surface-border-subtle px-3 py-1.5 text-xs font-medium text-text-muted transition hover:bg-surface-hover hover:text-text-secondary"
+            >
+              Research Workspace
+            </Link>
             {quickLinks.map((link) => (
               <Link
                 key={link.href}
