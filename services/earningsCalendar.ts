@@ -30,6 +30,14 @@ import {
   type EarningsAlert,
 } from "@/src/core/earnings/alerts";
 import {
+  getWorkspace,
+  resetEarningsWorkspaceEngine,
+  resetPortfolioImpactEngine,
+  resetWatchlistImpactEngine,
+  type HoldingWeightInput,
+  type WorkspaceContext,
+} from "@/src/core/earnings/workspace";
+import {
   fetchPortfolioSummary,
   fetchWatchlist,
 } from "@/services/marketData";
@@ -143,10 +151,39 @@ export async function fetchWatchlistEarningsAlerts(): Promise<EarningsAlert[]> {
   return getWatchlistAlerts();
 }
 
+/** Institutional earnings workspace context (Sprint 9B.R7). */
+export async function fetchEarningsWorkspaceContext(): Promise<WorkspaceContext> {
+  const [portfolio, watchlist] = await Promise.all([
+    fetchPortfolioSummary(),
+    fetchWatchlist(),
+  ]);
+  await withMembership();
+  const holdings: HoldingWeightInput[] = portfolio.holdings.map((h) => ({
+    symbol: h.symbol,
+    name: h.name,
+    quantity: h.quantity,
+    currentPrice: h.currentPrice,
+  }));
+  return {
+    holdings,
+    totalValue: portfolio.totalValue,
+    watchlistSymbols: watchlist.map((w) => w.symbol),
+    portfolioSymbols: portfolio.holdings.map((h) => h.symbol),
+  };
+}
+
+export async function fetchEarningsWorkspace() {
+  const context = await fetchEarningsWorkspaceContext();
+  return getWorkspace({ context, includeReport: false });
+}
+
 export function resetEarningsCalendarForTests(): void {
   resetEarningsCalendarService();
   resetEarningsDashboardEngine();
   resetEarningsAlertEngine();
   resetAlertHistoryStore();
   resetEarningsNotificationCenter();
+  resetEarningsWorkspaceEngine();
+  resetPortfolioImpactEngine();
+  resetWatchlistImpactEngine();
 }
