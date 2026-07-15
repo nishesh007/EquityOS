@@ -1,46 +1,52 @@
-import {
-  EarningsNotificationCenterPanel,
-  EarningsWorkspacePanel,
-  InstitutionalEarningsDashboardPanel,
-} from "@/components/dashboard/earnings";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { ExecutiveEarningsHub } from "@/src/presentation/dashboard/earnings";
 import {
+  fetchCalendarMetrics,
   fetchEarningsDashboard,
   fetchEarningsWorkspaceContext,
+  fetchPortfolioEarningsRows,
   fetchUpcomingEarningsEvents,
+  fetchWatchlistEarningsSurface,
 } from "@/services/earningsCalendar";
 
 export default async function ResultsPage() {
-  const [dashboard, events, workspaceCtx] = await Promise.all([
+  const [
+    dashboard,
+    events,
+    workspaceCtx,
+    calendarMetrics,
+    portfolioRows,
+    watchlistSurface,
+  ] = await Promise.all([
     fetchEarningsDashboard({ pageSize: 8 }),
     fetchUpcomingEarningsEvents(),
     fetchEarningsWorkspaceContext(),
+    fetchCalendarMetrics(),
+    fetchPortfolioEarningsRows(),
+    fetchWatchlistEarningsSurface(),
   ]);
 
   return (
     <div className="p-6">
       <PageHeader
-        title="Institutional Earnings Dashboard"
-        subtitle="Rank, filter and prioritize upcoming earnings with AI scorecards"
+        title="Executive Earnings Hub"
+        subtitle="Sprint 9B complete · institutional calendar, AI, transcripts, workspace & reports"
       />
 
-      <section className="mb-6 animate-fade-in-up max-w-6xl">
-        <EarningsWorkspacePanel
+      <section className="animate-fade-in-up">
+        <ExecutiveEarningsHub
+          events={events}
+          dashboardMetrics={dashboard.metrics}
+          rankedItems={dashboard.items}
+          calendarMetrics={calendarMetrics}
+          portfolioRows={portfolioRows}
+          watchlistSurface={watchlistSurface}
+          workspaceContext={workspaceCtx}
           holdings={workspaceCtx.holdings}
           totalValue={workspaceCtx.totalValue}
           watchlistSymbols={workspaceCtx.watchlistSymbols}
-        />
-      </section>
-
-      <section className="mb-6 animate-fade-in-up max-w-6xl">
-        <EarningsNotificationCenterPanel events={events} />
-      </section>
-
-      <section className="animate-fade-in-up max-w-6xl">
-        <InstitutionalEarningsDashboardPanel
-          events={events}
-          initialMetrics={dashboard.metrics}
-          pageSize={8}
+          role="subscriber"
+          subscriptionTier="pro"
         />
       </section>
     </div>
