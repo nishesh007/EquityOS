@@ -1,6 +1,7 @@
 /**
  * Sprint 9D — AI Screener data service.
  * Server-side universe building and screening orchestration.
+ * Bridges lib/screener filter engine with src/core/screener composition layer.
  */
 
 import { CACHE_TTL, cacheKey, getCached } from "@/lib/cache";
@@ -17,6 +18,19 @@ import {
   type ScreenerUniverseSnapshot,
   type FilterCategory,
 } from "@/lib/screener";
+import {
+  clearCache as clearInstitutionalScreenCache,
+  getMetrics as getInstitutionalScreenMetrics,
+  getResults as getInstitutionalScreenResults,
+  listScreens,
+  registerAIScreener,
+  registerScreen,
+  runScreen,
+  type ScreenEngineScores,
+  type ScreenRunOptions,
+  type ScreenSnapshot,
+  type ScreenUniverseCandidate,
+} from "@/src/core/screener";
 
 async function enrichScreenerRows(rows: ScreenerRow[]): Promise<ScreenerRow[]> {
   const symbols = rows.map((row) => String(row.metrics.symbol ?? ""));
@@ -102,4 +116,72 @@ export async function fetchScreenerInitialData(): Promise<{
     fetchScreenerCatalog(),
   ]);
   return { universe, catalog };
+}
+
+/** Map filter-engine rows into institutional screener candidates. */
+export function toScreenUniverseCandidates(
+  rows: ScreenerRow[]
+): ScreenUniverseCandidate[] {
+  return rows.map((row) => ({
+    ticker: row.symbol,
+    company: row.name,
+    sector: row.sector,
+    industry: row.industry,
+    price:
+      typeof row.metrics.cmp === "number"
+        ? row.metrics.cmp
+        : typeof row.quote?.price === "number"
+          ? row.quote.price
+          : null,
+    marketCap:
+      typeof row.metrics.market_cap === "number" ? row.metrics.market_cap : null,
+    metrics: row.metrics,
+  }));
+}
+
+/**
+ * Run an institutional AI screen composing Opportunity / Trust / Validation scores.
+ * Used by /screener, /dashboard, /results, and Research surfaces.
+ */
+export function runInstitutionalScreen(
+  screenId: string,
+  options?: ScreenRunOptions & {
+    rows?: ScreenerRow[];
+    engineScores?: ScreenEngineScores[];
+  }
+): ScreenSnapshot {
+  registerAIScreener();
+  const universe =
+    options?.universe ??
+    (options?.rows ? toScreenUniverseCandidates(options.rows) : undefined);
+  return runScreen(screenId, {
+    ...options,
+    universe,
+    engineScores: options?.engineScores,
+  });
+}
+
+export {
+  clearInstitutionalScreenCache,
+  getInstitutionalScreenMetrics,
+  getInstitutionalScreenResults,
+  listScreens,
+  registerAIScreener,
+  registerScreen,
+};
+
+/** Health/status bridge for /dashboard, /results, Research, and /screener. */
+export function fetchInstitutionalScreenerHealth(): {
+  registered: boolean;
+  screenCount: number;
+  metrics: ReturnType<typeof getInstitutionalScreenMetrics>;
+  emptyMessage: string;
+} {
+  const registration = registerAIScreener();
+  return {
+    registered: registration.registered || registration.skipped,
+    screenCount: listScreens({ enabledOnly: true }).length,
+    metrics: getInstitutionalScreenMetrics(),
+    emptyMessage: getInstitutionalScreenResults().emptyMessage,
+  };
 }

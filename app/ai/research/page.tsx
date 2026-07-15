@@ -1,5 +1,6 @@
 import { ResearchWorkspace } from "@/components/ai/ResearchWorkspace";
 import Link from "next/link";
+import { fetchInstitutionalScreenerHealth } from "@/services/screenerData";
 
 const suggestions = [
   "Analyse Tata Motors",
@@ -18,6 +19,8 @@ const quickLinks = [
 ] as const;
 
 export default function AIResearchPage() {
+  const screenerHealth = fetchInstitutionalScreenerHealth();
+
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
       <div className="flex-shrink-0 border-b border-surface-border-subtle px-4 py-4 md:px-6">
@@ -27,7 +30,8 @@ export default function AIResearchPage() {
               AI Research Analyst
             </h1>
             <p className="mt-1 text-sm text-text-muted md:mt-2">
-              Institutional-grade equity research powered by AI.
+              Institutional-grade equity research powered by AI ·{" "}
+              {screenerHealth.screenCount} AI screens ready.
             </p>
           </div>
 

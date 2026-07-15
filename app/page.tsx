@@ -29,6 +29,7 @@ import {
 } from "@/services/researchDashboardData";
 import { fetchOpportunityEngineState } from "@/services/opportunityEngine";
 import { fetchPortfolioDoctorAnalysis } from "@/services/portfolioAnalysisData";
+import { fetchInstitutionalScreenerHealth } from "@/services/screenerData";
 
 export default async function DashboardPage() {
   const [
@@ -45,6 +46,7 @@ export default async function DashboardPage() {
     earningsDashboard,
     rankedDashboard,
     alertEvents,
+    screenerHealth,
   ] = await Promise.all([
     fetchMarketIndices(),
     fetchPortfolioSummary(),
@@ -59,6 +61,7 @@ export default async function DashboardPage() {
     fetchEarningsCalendarDashboard(),
     fetchEarningsDashboard({ pageSize: 6, sortBy: "institutional_rank" }),
     fetchUpcomingEarningsEvents(),
+    Promise.resolve(fetchInstitutionalScreenerHealth()),
   ]);
 
   return (
@@ -69,6 +72,7 @@ export default async function DashboardPage() {
         </h1>
         <p className="mt-0.5 text-sm text-text-muted">
           Indian markets, institutional flow and AI-ranked opportunities ·{" "}
+          {screenerHealth.screenCount} AI screens ·{" "}
           {new Date().toLocaleDateString("en-IN", {
             weekday: "long",
             year: "numeric",

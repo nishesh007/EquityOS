@@ -8,6 +8,7 @@ import {
   fetchUpcomingEarningsEvents,
   fetchWatchlistEarningsSurface,
 } from "@/services/earningsCalendar";
+import { fetchInstitutionalScreenerHealth } from "@/services/screenerData";
 
 export default async function ResultsPage() {
   const [
@@ -17,6 +18,7 @@ export default async function ResultsPage() {
     calendarMetrics,
     portfolioRows,
     watchlistSurface,
+    screenerHealth,
   ] = await Promise.all([
     fetchEarningsDashboard({ pageSize: 8 }),
     fetchUpcomingEarningsEvents(),
@@ -24,13 +26,14 @@ export default async function ResultsPage() {
     fetchCalendarMetrics(),
     fetchPortfolioEarningsRows(),
     fetchWatchlistEarningsSurface(),
+    Promise.resolve(fetchInstitutionalScreenerHealth()),
   ]);
 
   return (
     <div className="p-6">
       <PageHeader
         title="Executive Earnings Hub"
-        subtitle="Sprint 9B complete · institutional calendar, AI, transcripts, workspace & reports"
+        subtitle={`Sprint 9B complete · institutional calendar, AI, transcripts, workspace & reports · Screener ${screenerHealth.emptyMessage}`}
       />
 
       <section className="animate-fade-in-up">
