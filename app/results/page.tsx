@@ -1,27 +1,27 @@
-import { InstitutionalEarningsCalendarPanel } from "@/components/dashboard/earnings";
+import { InstitutionalEarningsDashboardPanel } from "@/components/dashboard/earnings";
 import { PageHeader } from "@/components/layout/PageHeader";
 import {
-  fetchEarningsCalendarResultsPage,
+  fetchEarningsDashboard,
   fetchUpcomingEarningsEvents,
 } from "@/services/earningsCalendar";
 
 export default async function ResultsPage() {
-  const [resultsView, events] = await Promise.all([
-    fetchEarningsCalendarResultsPage({ pageSize: 8 }),
+  const [dashboard, events] = await Promise.all([
+    fetchEarningsDashboard({ pageSize: 8 }),
     fetchUpcomingEarningsEvents(),
   ]);
 
   return (
     <div className="p-6">
       <PageHeader
-        title="Results Calendar"
-        subtitle="Institutional earnings calendar — upcoming announcements and quarterly results"
+        title="Institutional Earnings Dashboard"
+        subtitle="Rank, filter and prioritize upcoming earnings with AI scorecards"
       />
 
-      <section className="animate-fade-in-up max-w-5xl">
-        <InstitutionalEarningsCalendarPanel
+      <section className="animate-fade-in-up max-w-6xl">
+        <InstitutionalEarningsDashboardPanel
           events={events}
-          metrics={resultsView.metrics}
+          initialMetrics={dashboard.metrics}
           pageSize={8}
         />
       </section>

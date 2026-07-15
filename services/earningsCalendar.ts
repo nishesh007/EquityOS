@@ -15,6 +15,12 @@ import {
   type WatchlistEarningsSurface,
 } from "@/src/core/earnings/calendar";
 import {
+  getDashboard,
+  resetEarningsDashboardEngine,
+  type EarningsDashboardQuery,
+  type EarningsDashboardViewModel,
+} from "@/src/core/earnings/dashboard";
+import {
   fetchPortfolioSummary,
   fetchWatchlist,
 } from "@/services/marketData";
@@ -39,6 +45,14 @@ export async function fetchEarningsCalendarDashboard(
 ): Promise<DashboardEarningsView> {
   const service = await withMembership();
   return service.getDashboardView(now);
+}
+
+/** Institutional ranked/filtered earnings dashboard (Sprint 9B.R5). */
+export async function fetchEarningsDashboard(
+  query: EarningsDashboardQuery = {}
+): Promise<EarningsDashboardViewModel> {
+  await withMembership();
+  return getDashboard(query);
 }
 
 export async function fetchEarningsCalendarResultsPage(
@@ -106,4 +120,5 @@ export async function fetchUpcomingResultsFromCalendar(): Promise<
 
 export function resetEarningsCalendarForTests(): void {
   resetEarningsCalendarService();
+  resetEarningsDashboardEngine();
 }

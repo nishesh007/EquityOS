@@ -18,7 +18,10 @@ import {
   fetchMarketNews,
   fetchUpcomingResults,
 } from "@/services/marketData";
-import { fetchEarningsCalendarDashboard } from "@/services/earningsCalendar";
+import {
+  fetchEarningsCalendarDashboard,
+  fetchEarningsDashboard,
+} from "@/services/earningsCalendar";
 import {
   fetchMarketBreadth,
   fetchMarketPulse,
@@ -39,6 +42,7 @@ export default async function DashboardPage() {
     opportunityState,
     doctorAnalysis,
     earningsDashboard,
+    rankedDashboard,
   ] = await Promise.all([
     fetchMarketIndices(),
     fetchPortfolioSummary(),
@@ -51,6 +55,7 @@ export default async function DashboardPage() {
     fetchOpportunityEngineState(),
     fetchPortfolioDoctorAnalysis(),
     fetchEarningsCalendarDashboard(),
+    fetchEarningsDashboard({ pageSize: 6, sortBy: "institutional_rank" }),
   ]);
 
   return (
@@ -133,7 +138,11 @@ export default async function DashboardPage() {
       </section>
 
       <section className="mb-6 animate-fade-in-up [animation-delay:400ms]">
-        <DashboardEarningsPanel view={earningsDashboard} />
+        <DashboardEarningsPanel
+          view={earningsDashboard}
+          rankedMetrics={rankedDashboard.metrics}
+          topRanked={rankedDashboard.items}
+        />
       </section>
 
       <section className="grid animate-fade-in-up grid-cols-1 gap-6 [animation-delay:420ms] xl:grid-cols-2">
