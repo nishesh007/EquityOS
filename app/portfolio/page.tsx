@@ -15,6 +15,7 @@ import { fetchPortfolioEarningsRows } from "@/services/earningsCalendar";
 import { fetchPortfolioDoctorAnalysis } from "@/services/portfolioAnalysisData";
 import { fetchOpportunityEngineState } from "@/services/opportunityEngine";
 import { fetchInstitutionalScreenerHealth } from "@/services/screenerData";
+import { fetchResearchWorkspaceHealth } from "@/services/researchWorkspace";
 
 export default async function PortfolioPage() {
   const [
@@ -25,6 +26,7 @@ export default async function PortfolioPage() {
     results,
     portfolioEarnings,
     screenerHealth,
+    researchWorkspace,
   ] = await Promise.all([
     fetchPortfolioSummary(),
     fetchWatchlist(),
@@ -33,13 +35,14 @@ export default async function PortfolioPage() {
     fetchUpcomingResults(),
     fetchPortfolioEarningsRows(),
     Promise.resolve(fetchInstitutionalScreenerHealth()),
+    Promise.resolve(fetchResearchWorkspaceHealth()),
   ]);
 
   return (
     <div className="p-6">
       <PageHeader
         title="Portfolio"
-        subtitle={`Holdings, performance and monitored opportunities · ${screenerHealth.portfolioScreens} institutional portfolio screens · workspace ${screenerHealth.workspaceReady ? "ready" : screenerHealth.emptyMessage}`}
+        subtitle={`Holdings, performance and monitored opportunities · ${screenerHealth.portfolioScreens} institutional portfolio screens · workspace ${screenerHealth.workspaceReady ? "ready" : screenerHealth.emptyMessage} · research ${researchWorkspace.ready ? `${researchWorkspace.openTabs} tabs · company ${researchWorkspace.companyReady ? "ready" : researchWorkspace.companyEmptyMessage}` : researchWorkspace.emptyMessage}`}
       />
 
       <section className="mb-6 animate-fade-in-up">

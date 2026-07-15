@@ -13,6 +13,7 @@ import { fetchSymbolScreenerInsight } from "@/services/screenerData";
 import {
   ensureDefaultResearchWorkspace,
   fetchResearchWorkspaceHealth,
+  openCompanyResearchWorkspace,
 } from "@/services/researchWorkspace";
 
 interface CompanyPageProps {
@@ -73,6 +74,11 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
     name: `Research · ${company.symbol}`,
     ticker: company.symbol,
   });
+  const companyWorkspace = openCompanyResearchWorkspace({
+    profile: company,
+    research,
+    intelligence,
+  });
   const researchWorkspace = fetchResearchWorkspaceHealth();
 
   return (
@@ -80,11 +86,28 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
       <div className="mb-6">
         <CompanyBreadcrumb symbol={company.symbol} name={company.name} />
         <p className="mt-1 text-xs text-text-muted">
-          Research workspace ·{" "}
+          Company research workspace ·{" "}
+          {companyWorkspace.empty
+            ? companyWorkspace.emptyMessage
+            : `${companyWorkspace.panels.length} panels · ${companyWorkspace.overview.aiRecommendation}`}{" "}
+          ·{" "}
           {researchWorkspace.ready
-            ? `${researchWorkspace.openSessions} open sessions · ${researchWorkspace.openTabs} tabs`
+            ? `${researchWorkspace.openSessions} sessions · ${researchWorkspace.openTabs} tabs`
             : researchWorkspace.emptyMessage}
         </p>
+        {!companyWorkspace.empty ? (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {companyWorkspace.quickActions.slice(0, 6).map((action) => (
+              <a
+                key={action.id}
+                href={action.href}
+                className="rounded-lg border border-surface-border-subtle px-2.5 py-1 text-[11px] font-medium text-text-muted transition hover:bg-surface-hover hover:text-text-secondary"
+              >
+                {action.label}
+              </a>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       <div className="space-y-6">

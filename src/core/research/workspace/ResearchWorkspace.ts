@@ -64,6 +64,7 @@ import {
   type WorkspaceActivity,
 } from "./WorkspacePresentationModels";
 import { resetLayoutEngines } from "./layout";
+import { resetCompanyWorkspace } from "./company";
 
 const activityLog: WorkspaceActivity[] = [];
 const MAX_ACTIVITY = 50;
@@ -373,6 +374,7 @@ export class ResearchWorkspace {
     resetMetrics();
     resetRegistry();
     resetLayoutEngines();
+    resetCompanyWorkspace();
   }
 }
 
@@ -386,6 +388,12 @@ export function getResearchWorkspace(): ResearchWorkspace {
 export function resetResearchWorkspace(): void {
   singleton?.reset();
   singleton = null;
+  // Always clear shared stores even if façade was never constructed
+  // (R2/R3 engines can mutate registry/layout/company without the singleton).
+  resetMetrics();
+  resetRegistry();
+  resetLayoutEngines();
+  resetCompanyWorkspace();
 }
 
 /** Public API — Sprint 10A.R1 */

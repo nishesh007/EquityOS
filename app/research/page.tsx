@@ -5,13 +5,16 @@
 
 import Link from "next/link";
 import {
+  COMPANY_WORKSPACE_EMPTY,
+  LAYOUT_EMPTY,
+  WORKSPACE_EMPTY,
   ensureDefaultResearchWorkspace,
+  fetchCompanyResearchWorkspaceView,
   fetchMultiTabWorkspaceView,
   fetchResearchWorkspaceHealth,
   fetchResearchWorkspaceView,
   fetchWorkspaceHistory,
 } from "@/services/researchWorkspace";
-import { LAYOUT_EMPTY, WORKSPACE_EMPTY } from "@/src/core/research/workspace";
 
 export default function ResearchPage() {
   const workspace = ensureDefaultResearchWorkspace({
@@ -21,6 +24,7 @@ export default function ResearchPage() {
   const view = fetchResearchWorkspaceView();
   const multi = fetchMultiTabWorkspaceView(workspace.id);
   const history = fetchWorkspaceHistory();
+  const company = fetchCompanyResearchWorkspaceView();
 
   return (
     <div className="p-6">
@@ -37,7 +41,11 @@ export default function ResearchPage() {
           {health.openSessions} sessions · research{" "}
           {health.researchCount > 0
             ? health.researchCount
-            : WORKSPACE_EMPTY.awaitingResearch}
+            : WORKSPACE_EMPTY.awaitingResearch}{" "}
+          · company{" "}
+          {company.empty
+            ? COMPANY_WORKSPACE_EMPTY.noCompanySelected
+            : `${company.overview.ticker} · ${company.panels.length} panels`}
         </p>
       </div>
 
@@ -75,6 +83,45 @@ export default function ResearchPage() {
                     {tab.title}
                   </Link>
                 ))}
+              </div>
+            )}
+          </section>
+
+          <section>
+            <h2 className="mb-2 text-sm font-medium text-text-secondary">
+              Company research panels
+            </h2>
+            {company.empty ? (
+              <p className="text-sm text-text-muted">
+                {COMPANY_WORKSPACE_EMPTY.noCompanySelected}
+              </p>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-text-primary">
+                  {company.overview.stickySummary}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {company.panels.map((panel) => (
+                    <span
+                      key={panel.id}
+                      className="rounded-lg border border-surface-border-subtle px-3 py-1.5 text-xs text-text-muted"
+                    >
+                      {panel.title}
+                      {panel.empty ? ` · ${panel.emptyMessage}` : ""}
+                    </span>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {company.quickActions.slice(0, 6).map((action) => (
+                    <Link
+                      key={action.id}
+                      href={action.href}
+                      className="rounded-lg border border-surface-border-subtle px-3 py-1.5 text-xs font-medium text-text-muted transition hover:bg-surface-hover hover:text-text-secondary"
+                    >
+                      {action.label}
+                    </Link>
+                  ))}
+                </div>
               </div>
             )}
           </section>

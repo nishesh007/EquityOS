@@ -194,3 +194,41 @@ export type {
   MultiTabWorkspaceView,
   OpenTabInput,
 } from "./layout";
+
+/** Sprint 10A.R3 — company research workspace */
+export {
+  COMPANY_WORKSPACE_EMPTY,
+  COMPANY_PANEL_IDS,
+  COMPANY_PANEL_LABELS,
+  emptySnapshot,
+  normalizeSnapshot,
+  openCompanyWorkspace,
+  refreshCompanyWorkspace,
+  getCompanyOverview,
+  getResearchPanels,
+  syncWorkspacePanels,
+  getCompanyWorkspaceView,
+  pinCompanyWorkspace,
+  favoriteCompanyWorkspace,
+  buildQuickActions,
+  emptyCompanyWorkspaceView,
+  resetCompanyWorkspace,
+  CompanyWorkspaceEngine,
+  buildOverviewPanel,
+  buildFinancialAnalysisPanel,
+  buildTechnicalAnalysisPanel,
+  buildValuationPanel,
+  buildBusinessQualityPanel,
+  buildRiskAnalysisPanel,
+  buildResearchInsightsPanel,
+} from "./company";
+export type {
+  CompanyWorkspaceEmptyMessage,
+  CompanyPanelId,
+  CompanyWorkspaceSnapshot,
+  CompanySyncContext,
+  CompanyPanelView,
+  CompanyOverviewView,
+  CompanyWorkspaceView,
+  CompanyQuickAction,
+} from "./company";
