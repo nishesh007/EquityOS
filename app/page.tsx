@@ -21,6 +21,7 @@ import {
 import {
   fetchEarningsCalendarDashboard,
   fetchEarningsDashboard,
+  fetchUpcomingEarningsEvents,
 } from "@/services/earningsCalendar";
 import {
   fetchMarketBreadth,
@@ -43,6 +44,7 @@ export default async function DashboardPage() {
     doctorAnalysis,
     earningsDashboard,
     rankedDashboard,
+    alertEvents,
   ] = await Promise.all([
     fetchMarketIndices(),
     fetchPortfolioSummary(),
@@ -56,6 +58,7 @@ export default async function DashboardPage() {
     fetchPortfolioDoctorAnalysis(),
     fetchEarningsCalendarDashboard(),
     fetchEarningsDashboard({ pageSize: 6, sortBy: "institutional_rank" }),
+    fetchUpcomingEarningsEvents(),
   ]);
 
   return (
@@ -142,6 +145,7 @@ export default async function DashboardPage() {
           view={earningsDashboard}
           rankedMetrics={rankedDashboard.metrics}
           topRanked={rankedDashboard.items}
+          alertEvents={alertEvents}
         />
       </section>
 

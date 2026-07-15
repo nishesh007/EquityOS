@@ -1,9 +1,15 @@
+"use client";
+
 import { Card, CardHeader } from "@/components/ui/Card";
 import { EarningsMetricsStrip } from "@/components/dashboard/earnings/EarningsMetricsStrip";
 import { EarningsSection } from "@/components/dashboard/earnings/EarningsSection";
+import { EarningsNotificationCenterPanel } from "@/components/dashboard/earnings/EarningsNotificationCenterPanel";
 import { InstitutionalDashboardMetrics } from "@/components/dashboard/earnings/InstitutionalDashboardMetrics";
 import { InstitutionalScorecard } from "@/components/dashboard/earnings/InstitutionalScorecard";
-import type { DashboardEarningsView } from "@/src/core/earnings/calendar";
+import type {
+  DashboardEarningsView,
+  EarningsCalendarEvent,
+} from "@/src/core/earnings/calendar";
 import type {
   EarningsDashboardMetrics,
   RankedEarningsItem,
@@ -15,6 +21,7 @@ interface DashboardEarningsPanelProps {
   view: DashboardEarningsView;
   rankedMetrics?: EarningsDashboardMetrics | null;
   topRanked?: RankedEarningsItem[];
+  alertEvents?: EarningsCalendarEvent[];
   compact?: boolean;
 }
 
@@ -22,6 +29,7 @@ export function DashboardEarningsPanel({
   view,
   rankedMetrics = null,
   topRanked = [],
+  alertEvents = [],
   compact = false,
 }: DashboardEarningsPanelProps) {
   return (
@@ -70,6 +78,10 @@ export function DashboardEarningsPanel({
             ))}
           </div>
         </Card>
+      ) : null}
+
+      {alertEvents.length > 0 ? (
+        <EarningsNotificationCenterPanel events={alertEvents} compact />
       ) : null}
 
       <div

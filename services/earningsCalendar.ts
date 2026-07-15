@@ -21,6 +21,15 @@ import {
   type EarningsDashboardViewModel,
 } from "@/src/core/earnings/dashboard";
 import {
+  getPortfolioAlerts,
+  getUpcomingAlerts,
+  getWatchlistAlerts,
+  resetEarningsAlertEngine,
+  resetAlertHistoryStore,
+  resetEarningsNotificationCenter,
+  type EarningsAlert,
+} from "@/src/core/earnings/alerts";
+import {
   fetchPortfolioSummary,
   fetchWatchlist,
 } from "@/services/marketData";
@@ -118,7 +127,26 @@ export async function fetchUpcomingResultsFromCalendar(): Promise<
   return service.toUpcomingResults();
 }
 
+/** Institutional earnings alerts (Sprint 9B.R6). */
+export async function fetchUpcomingEarningsAlerts(): Promise<EarningsAlert[]> {
+  await withMembership();
+  return getUpcomingAlerts();
+}
+
+export async function fetchPortfolioEarningsAlerts(): Promise<EarningsAlert[]> {
+  await withMembership();
+  return getPortfolioAlerts();
+}
+
+export async function fetchWatchlistEarningsAlerts(): Promise<EarningsAlert[]> {
+  await withMembership();
+  return getWatchlistAlerts();
+}
+
 export function resetEarningsCalendarForTests(): void {
   resetEarningsCalendarService();
   resetEarningsDashboardEngine();
+  resetEarningsAlertEngine();
+  resetAlertHistoryStore();
+  resetEarningsNotificationCenter();
 }

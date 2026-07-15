@@ -1,4 +1,7 @@
-import { InstitutionalEarningsDashboardPanel } from "@/components/dashboard/earnings";
+import {
+  EarningsNotificationCenterPanel,
+  InstitutionalEarningsDashboardPanel,
+} from "@/components/dashboard/earnings";
 import { PageHeader } from "@/components/layout/PageHeader";
 import {
   fetchEarningsDashboard,
@@ -17,6 +20,10 @@ export default async function ResultsPage() {
         title="Institutional Earnings Dashboard"
         subtitle="Rank, filter and prioritize upcoming earnings with AI scorecards"
       />
+
+      <section className="mb-6 animate-fade-in-up max-w-6xl">
+        <EarningsNotificationCenterPanel events={events} />
+      </section>
 
       <section className="animate-fade-in-up max-w-6xl">
         <InstitutionalEarningsDashboardPanel
