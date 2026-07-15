@@ -199,5 +199,9 @@ export async function register() {
       "@/src/core/earnings/parser"
     );
     registerFinancialParser();
+
+    // Sprint 9C.R1 — idempotent Institutional AI Alert Engine registration
+    const { registerAlertEngine } = await import("@/src/core/alerts");
+    registerAlertEngine();
   }
 }
