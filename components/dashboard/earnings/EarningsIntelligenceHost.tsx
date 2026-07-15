@@ -9,11 +9,24 @@ import {
   type EarningsCardPreviewView,
   type EarningsDrawerView,
 } from "@/src/core/earnings/intelligence";
+import {
+  getPostEarningsEngine,
+  type PostEarningsCardView,
+  type PostEarningsDrawerView,
+} from "@/src/core/earnings/postAnalysis";
 
 const EarningsIntelligenceDrawer = dynamic(
   () =>
     import("@/components/dashboard/earnings/EarningsIntelligenceDrawer").then(
       (mod) => mod.EarningsIntelligenceDrawer
+    ),
+  { ssr: false }
+);
+
+const PostEarningsDrawer = dynamic(
+  () =>
+    import("@/components/dashboard/earnings/PostEarningsDrawer").then(
+      (mod) => mod.PostEarningsDrawer
     ),
   { ssr: false }
 );
@@ -36,7 +49,13 @@ export function EarningsIntelligenceHost({
   const [previews, setPreviews] = useState<
     Record<string, EarningsCardPreviewView>
   >({});
-  const [drawer, setDrawer] = useState<EarningsDrawerView | null>(null);
+  const [postViews, setPostViews] = useState<
+    Record<string, PostEarningsCardView>
+  >({});
+  const [preDrawer, setPreDrawer] = useState<EarningsDrawerView | null>(null);
+  const [postDrawer, setPostDrawer] = useState<PostEarningsDrawerView | null>(
+    null
+  );
 
   const visibilityKey = useMemo(
     () => cards.map((card) => previewKey(card)).join("|"),
@@ -44,18 +63,26 @@ export function EarningsIntelligenceHost({
   );
 
   useEffect(() => {
-    const engine = getEarningsPreviewEngine();
-    const next: Record<string, EarningsCardPreviewView> = {};
+    const previewEngine = getEarningsPreviewEngine();
+    const postEngine = getPostEarningsEngine();
+    const nextPreviews: Record<string, EarningsCardPreviewView> = {};
+    const nextPost: Record<string, PostEarningsCardView> = {};
 
-    // Precompute AI previews only for currently visible earnings cards.
+    // Precompute only for currently visible cards.
     for (const card of cards) {
-      next[previewKey(card)] = engine.getCardPreviewForTicker(
-        card.ticker,
-        card.resultDate
-      );
+      const key = previewKey(card);
+      if (card.countdown.isReleased || card.countdown.isExpired) {
+        nextPost[key] = postEngine.getCardView(card.ticker, new Date(), card.resultDate);
+      } else {
+        nextPreviews[key] = previewEngine.getCardPreviewForTicker(
+          card.ticker,
+          card.resultDate
+        );
+      }
     }
 
-    setPreviews(next);
+    setPreviews(nextPreviews);
+    setPostViews(nextPost);
   }, [visibilityKey, cards]);
 
   if (cards.length === 0) {
@@ -69,30 +96,58 @@ export function EarningsIntelligenceHost({
   return (
     <>
       <div className="space-y-2">
-        {cards.map((card) => (
-          <EarningsCard
-            key={card.id}
-            card={card}
-            compact={compact}
-            preview={previews[previewKey(card)] ?? null}
-            onOpenResearch={(selected) => {
-              const engine = getEarningsPreviewEngine();
-              setDrawer(
-                engine.getDrawerViewForTicker(
-                  selected.ticker,
-                  selected.resultDate
-                )
-              );
-            }}
-          />
-        ))}
+        {cards.map((card) => {
+          const key = previewKey(card);
+          const released =
+            card.countdown.isReleased || card.countdown.isExpired;
+          return (
+            <EarningsCard
+              key={card.id}
+              card={card}
+              compact={compact}
+              preview={released ? null : previews[key] ?? null}
+              postAnalysis={released ? postViews[key] ?? null : null}
+              onOpenResearch={(selected) => {
+                if (
+                  selected.countdown.isReleased ||
+                  selected.countdown.isExpired
+                ) {
+                  setPreDrawer(null);
+                  setPostDrawer(
+                    getPostEarningsEngine().getDrawerView(
+                      selected.ticker,
+                      new Date(),
+                      selected.resultDate
+                    )
+                  );
+                } else {
+                  setPostDrawer(null);
+                  setPreDrawer(
+                    getEarningsPreviewEngine().getDrawerViewForTicker(
+                      selected.ticker,
+                      selected.resultDate
+                    )
+                  );
+                }
+              }}
+            />
+          );
+        })}
       </div>
 
-      {drawer ? (
+      {preDrawer ? (
         <EarningsIntelligenceDrawer
-          view={drawer}
+          view={preDrawer}
           open
-          onClose={() => setDrawer(null)}
+          onClose={() => setPreDrawer(null)}
+        />
+      ) : null}
+
+      {postDrawer ? (
+        <PostEarningsDrawer
+          view={postDrawer}
+          open
+          onClose={() => setPostDrawer(null)}
         />
       ) : null}
     </>

@@ -2,13 +2,16 @@
 
 import { Badge } from "@/components/ui/Badge";
 import { EarningsAIPreviewStrip } from "@/components/dashboard/earnings/EarningsAIPreviewStrip";
+import { PostEarningsPreviewStrip } from "@/components/dashboard/earnings/PostEarningsPreviewStrip";
 import type { EarningsCardView } from "@/src/core/earnings/calendar";
 import type { EarningsCardPreviewView } from "@/src/core/earnings/intelligence";
+import type { PostEarningsCardView } from "@/src/core/earnings/postAnalysis";
 import { Briefcase, Star } from "lucide-react";
 
 interface EarningsCardProps {
   card: EarningsCardView;
   preview?: EarningsCardPreviewView | null;
+  postAnalysis?: PostEarningsCardView | null;
   compact?: boolean;
   onOpenResearch?: (card: EarningsCardView) => void;
 }
@@ -35,9 +38,14 @@ function countdownVariant(
 export function EarningsCard({
   card,
   preview = null,
+  postAnalysis = null,
   compact = false,
   onOpenResearch,
 }: EarningsCardProps) {
+  const showPost =
+    Boolean(postAnalysis) &&
+    (card.countdown.isReleased || card.countdown.isExpired);
+
   return (
     <button
       type="button"
@@ -99,7 +107,9 @@ export function EarningsCard({
           </div>
         )}
 
-        {preview ? (
+        {showPost && postAnalysis ? (
+          <PostEarningsPreviewStrip view={postAnalysis} compact={compact} />
+        ) : preview ? (
           <EarningsAIPreviewStrip preview={preview} compact={compact} />
         ) : null}
       </div>
