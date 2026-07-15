@@ -1,6 +1,6 @@
 /**
- * Alert intelligence — public exports (Sprint 9C.R2).
- * Opportunity / Portfolio / Watchlist alert generation on top of R1 Alert Engine.
+ * Alert intelligence — public exports (Sprint 9C.R2 + R3).
+ * Opportunity / Portfolio / Watchlist / Earnings / News / Corporate Action intelligence.
  */
 
 export {
@@ -94,12 +94,110 @@ export {
 } from "./WatchlistAlertEngine";
 export type { WatchlistAlertInput } from "./WatchlistAlertEngine";
 
+/** Sprint 9C.R3 — Earnings / News / Corporate Action / Transcript */
+export {
+  EVENT_ALERT_EMPTY,
+  EARNINGS_EVENT_ALERT_KINDS,
+  NEWS_ALERT_KINDS,
+  CORPORATE_ACTION_ALERT_KINDS,
+  EARNINGS_EVENT_KIND_LABELS,
+  NEWS_KIND_LABELS,
+  CORPORATE_ACTION_KIND_LABELS,
+  toEventAlertInsightCard,
+  buildEventDecision,
+  classifyNewsKinds,
+  mapCorporateActionKind,
+} from "./AlertInsightModels";
+export type {
+  EarningsEventAlertKind,
+  NewsAlertKind,
+  CorporateActionAlertKind,
+  EarningsEventSnapshot,
+  NewsAlertSnapshot,
+  CorporateActionAlertSnapshot,
+  TranscriptAlertSnapshot,
+  ManagementCommentarySnapshot,
+  EventAlertInsightCard,
+} from "./AlertInsightModels";
+
+export {
+  EarningsAlertEngine,
+  decideEarningsEventAlerts,
+  mapEarningsCalendarToSnapshot,
+  getEarningsIntelAlertEngine,
+  resetEarningsIntelAlertEngine,
+  generateEarningsAlerts,
+} from "./EarningsAlertEngine";
+export type { EarningsIntelAlertInput } from "./EarningsAlertEngine";
+
+export {
+  TranscriptAlertEngine,
+  decideTranscriptAlerts,
+  getTranscriptAlertEngine,
+  resetTranscriptAlertEngine,
+  generateTranscriptAlerts,
+} from "./TranscriptAlertEngine";
+export type { TranscriptAlertInput } from "./TranscriptAlertEngine";
+
+export {
+  ManagementCommentaryAlertEngine,
+  decideManagementCommentaryAlerts,
+  getManagementCommentaryAlertEngine,
+  resetManagementCommentaryAlertEngine,
+  generateManagementCommentaryAlerts,
+} from "./ManagementCommentaryAlertEngine";
+export type { ManagementCommentaryAlertInput } from "./ManagementCommentaryAlertEngine";
+
+export {
+  NewsAlertEngine,
+  decideNewsAlerts,
+  getNewsAlertEngine,
+  resetNewsAlertEngine,
+  generateNewsAlerts,
+} from "./NewsAlertEngine";
+export type { NewsAlertInput } from "./NewsAlertEngine";
+
+export {
+  CorporateActionAlertEngine,
+  decideCorporateActionAlerts,
+  getCorporateActionAlertEngine,
+  resetCorporateActionAlertEngine,
+  generateCorporateActionAlerts,
+} from "./CorporateActionAlertEngine";
+export type { CorporateActionAlertInput } from "./CorporateActionAlertEngine";
+
+export {
+  extractNewsRankingFactors,
+  scoreNewsRankingFactors,
+  rankNewsAlerts,
+} from "./NewsRankingEngine";
+export type { NewsRankingFactors, RankedNewsAlert } from "./NewsRankingEngine";
+
+export { correlateAlerts } from "./AlertEventCorrelationEngine";
+export type {
+  CorrelationDimension,
+  CorrelatedAlertCluster,
+  CorrelationResult,
+} from "./AlertEventCorrelationEngine";
+
+export type { EventIntelBatch } from "./emitEventIntelBatch";
+
 import { resetOpportunityAlertEngine } from "./OpportunityAlertEngine";
 import { resetPortfolioAlertEngine } from "./PortfolioAlertEngine";
 import { resetWatchlistAlertIntelligenceEngine } from "./WatchlistAlertEngine";
+import { resetEarningsIntelAlertEngine } from "./EarningsAlertEngine";
+import { resetTranscriptAlertEngine } from "./TranscriptAlertEngine";
+import { resetManagementCommentaryAlertEngine } from "./ManagementCommentaryAlertEngine";
+import { resetNewsAlertEngine } from "./NewsAlertEngine";
+import { resetCorporateActionAlertEngine } from "./CorporateActionAlertEngine";
 
 export function resetAlertIntelligence(): void {
   resetOpportunityAlertEngine();
   resetPortfolioAlertEngine();
   resetWatchlistAlertIntelligenceEngine();
+  resetEarningsIntelAlertEngine();
+  resetTranscriptAlertEngine();
+  resetManagementCommentaryAlertEngine();
+  resetNewsAlertEngine();
+  resetCorporateActionAlertEngine();
 }

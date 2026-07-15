@@ -11,6 +11,11 @@ export const INTELLIGENCE_ALERT_EMPTY = {
   noPortfolio: "No Portfolio Alerts",
   noWatchlist: "No Watchlist Alerts",
   awaitingAnalysis: "Awaiting Analysis",
+  noEarnings: "No Earnings Alerts",
+  noNews: "No News Alerts",
+  noCorporateActions: "No Corporate Actions",
+  awaitingResults: "Awaiting Results",
+  transcriptPending: "Transcript Pending",
 } as const;
 
 export type IntelligenceEmptyMessage =

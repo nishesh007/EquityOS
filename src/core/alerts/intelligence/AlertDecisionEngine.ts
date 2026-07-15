@@ -25,8 +25,22 @@ import { safeAlertText } from "../AlertModels";
 export interface AlertDecision {
   kind: string;
   label: string;
-  sourceEngine: "AI Research" | "Portfolio" | "Watchlist";
-  suggestedCategory: "Opportunity" | "Portfolio" | "Watchlist" | "Risk";
+  sourceEngine:
+    | "AI Research"
+    | "Portfolio"
+    | "Watchlist"
+    | "Earnings"
+    | "News"
+    | "Corporate Actions";
+  suggestedCategory:
+    | "Opportunity"
+    | "Portfolio"
+    | "Watchlist"
+    | "Risk"
+    | "Earnings"
+    | "News"
+    | "Corporate Action"
+    | "Platform";
   suggestedPriority: AlertPriority;
   suggestedSeverity: AlertSeverity;
   title: string;

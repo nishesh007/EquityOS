@@ -167,6 +167,13 @@ export {
   decideOpportunityAlerts,
   decidePortfolioAlerts,
   decideWatchlistAlerts,
+  generateEarningsAlerts,
+  generateNewsAlerts,
+  generateCorporateActionAlerts,
+  generateTranscriptAlerts,
+  correlateAlerts,
+  rankNewsAlerts,
+  generateManagementCommentaryAlerts,
 } from "./intelligence";
 
 export type {
@@ -180,4 +187,9 @@ export type {
   RankedAlert,
   AlertGroup,
   DeduplicationResult,
+  EventIntelBatch,
+  EarningsEventSnapshot,
+  NewsAlertSnapshot,
+  CorporateActionAlertSnapshot,
+  CorrelationResult,
 } from "./intelligence";
