@@ -291,3 +291,31 @@ export type {
   WorkspaceMetrics,
   WorkspaceQuickActionId,
 } from "./workspace";
+
+/** Sprint 9C.R8 — Executive Alert Hub & platform freeze */
+export {
+  EXECUTIVE_EMPTY,
+  getAlertExecutiveDashboard,
+  resetAlertExecutiveDashboard,
+  getAlertExecutiveView,
+  getHomeAlertStrip,
+  resetExecutiveStack,
+  AlertExecutiveDashboard,
+  AlertExecutiveMetrics,
+  AlertHealthDashboard,
+  AlertExecutiveSnapshot,
+  AlertTimelinePresentation,
+  AlertExecutiveReport,
+  assertNoSentinel,
+} from "./executive";
+
+export type {
+  AlertExecutiveDashboardView,
+  ExecutiveOverview,
+  AlertHealthView,
+  ExecutiveAnalytics,
+  HomeAlertStrip,
+  ExecutiveReportView,
+  ExecutivePanelId,
+  ExecutiveExportResult,
+} from "./executive";
