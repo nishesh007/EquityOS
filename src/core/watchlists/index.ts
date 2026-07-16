@@ -1,5 +1,5 @@
 /**
- * Institutional Watchlist Platform — public exports (Sprint 10B.R1–R7).
+ * Institutional Watchlist Platform — public exports (Sprint 10B.R1–R8).
  * Multi-watchlist architecture for /watchlist, /dashboard, /research, /results, /company.
  */
 
@@ -211,7 +211,7 @@ export {
   loadWatchlist,
   listWatchlists,
   archiveSavedWatchlist,
-  restoreWatchlist as restoreSavedWatchlist,
+  restoreSavedWatchlist,
   duplicateWatchlist,
   cloneSavedWatchlist,
   renameWatchlist,
@@ -310,3 +310,29 @@ export type {
   WatchlistComparisonView,
   ResearchCompanionView,
 } from "./copilot";
+
+/** Sprint 10B.R8 — executive watchlist hub & platform freeze */
+export {
+  EXECUTIVE_WATCHLIST_EMPTY,
+  WATCHLIST_PLATFORM_STATUS,
+  getExecutiveWatchlistOverview,
+  getExecutiveWatchlistHealth,
+  getExecutiveWatchlistMetrics,
+  getExecutiveWatchlistDashboardView,
+  getExecutiveWatchlistTimeline,
+  exportExecutiveWatchlistReport,
+  getExecutiveWatchlistDashboard,
+  isSprint10BFrozen,
+  SPRINT_10B_R8_FROZEN,
+  resetExecutiveWatchlistStack,
+} from "./executive";
+export type {
+  ExecutiveWatchlistEmptyMessage,
+  ExecutiveWatchlistComposeInput,
+  ExecutiveWatchlistDashboardView,
+  ExecutiveWatchlistOverviewView,
+  ExecutiveWatchlistHealthView,
+  ExecutiveWatchlistMetricBundle,
+  ExecutiveWatchlistTimelineView,
+  ExecutiveWatchlistExportResult,
+} from "./executive";

@@ -1,10 +1,11 @@
 /**
- * Institutional Watchlist Platform bridge — Sprint 10B.R1–R7.
+ * Institutional Watchlist Platform bridge — Sprint 10B.R1–R8.
  */
 
 import {
   WATCHLIST_EMPTY,
   ensureDefaultWatchlists,
+  getExecutiveWatchlistDashboardView,
   getInstitutionalWatchlistHealth,
   getInstitutionalWatchlistSummary,
   getSmartWatchlistView,
@@ -22,6 +23,8 @@ import {
   isSprint10BR5Frozen,
   isSprint10BR6Frozen,
   isSprint10BR7Frozen,
+  isSprint10BFrozen,
+  type ExecutiveWatchlistDashboardView,
   type InstitutionalWatchlistHealth,
   type InstitutionalWatchlistSummary,
   type SmartWatchlistView,
@@ -79,6 +82,9 @@ export function fetchWatchlistPlatformHealth(
       savedWatchlistCount: 0,
       workspaceTimelineCount: 0,
       sprint10BR7Frozen: isSprint10BR7Frozen(),
+      executiveReady: false,
+      executiveHealthScore: 0,
+      sprint10BFrozen: isSprint10BFrozen(),
       surfaceHints: {
         watchlist: "/watchlist",
         dashboard: "/",
@@ -178,6 +184,18 @@ export function fetchInstitutionalWorkspaceBundle(
   });
 }
 
+export function fetchExecutiveWatchlistDashboard(
+  context?: WatchlistEngineContext | null
+): ExecutiveWatchlistDashboardView {
+  ensureDefaultWatchlists(context?.now);
+  const active = getWatchlistEngine().getActiveWatchlist();
+  return getExecutiveWatchlistDashboardView({
+    snapshots: context?.snapshots,
+    portfolioSymbols: active?.symbols,
+    now: context?.now,
+  });
+}
+
 export function formatWatchlistPlatformSubtitle(
   health: WatchlistPlatformHealth
 ): string {
@@ -192,6 +210,7 @@ export function formatWatchlistPlatformSubtitle(
     health.sprint10BR5Frozen ? "10B.R5 FROZEN" : "",
     health.sprint10BR6Frozen ? "10B.R6 FROZEN" : "",
     health.sprint10BR7Frozen ? "10B.R7 FROZEN" : "",
+    health.sprint10BFrozen ? "10B FROZEN" : "",
   ]
     .filter(Boolean)
     .join(" · ");
@@ -219,5 +238,9 @@ export function formatWatchlistPlatformSubtitle(
     health.institutionalWorkspaceReady && health.savedWatchlistCount > 0
       ? ` · ${health.savedWatchlistCount} saved`
       : "";
-  return `${health.watchlistCount} watchlists · ${health.pinnedCount} pinned · ${health.favoriteCount} favorites · ${health.companyCount} companies${smart}${intel}${workspace}${analytics}${copilot}${productivity}${frozen ? ` · ${frozen}` : ""}`;
+  const executive =
+    health.executiveReady && health.executiveHealthScore > 0
+      ? ` · executive ${Math.round(health.executiveHealthScore)}`
+      : "";
+  return `${health.watchlistCount} watchlists · ${health.pinnedCount} pinned · ${health.favoriteCount} favorites · ${health.companyCount} companies${smart}${intel}${workspace}${analytics}${copilot}${productivity}${executive}${frozen ? ` · ${frozen}` : ""}`;
 }
