@@ -1,8 +1,13 @@
 import {
+  applyCategoryDeduplication,
   assignSymbolsToCategories,
   deduplicateCategoryCandidates,
 } from "@/lib/opportunity-engine/deduplication";
-import { buildIntradayOpportunities, flattenRankedPool } from "@/lib/opportunity-engine/ranking";
+import {
+  buildBestCalls,
+  buildIntradayOpportunities,
+  flattenRankedPool,
+} from "@/lib/opportunity-engine/ranking";
 import type {
   OpportunityCandidate,
   OpportunityCategory,
@@ -164,6 +169,21 @@ export function derivePostMarketNearestCandidates(
   section: keyof typeof POST_MARKET_NEAREST_CATEGORY
 ): NearestCandidate[] {
   return deriveNearestCandidates(state, POST_MARKET_NEAREST_CATEGORY[section], []);
+}
+
+/**
+ * Highest Conviction Recommendations derived directly from live engine state.
+ * Recommendation generation is independent of post-market report generation:
+ * cards appear as soon as the AI engine produces candidates and remain until
+ * they expire, are invalidated, or are removed from the pool.
+ */
+export function deriveHighestConvictionRecommendations(
+  state: OpportunityEngineState
+): OpportunityCandidate[] {
+  const deduped = applyCategoryDeduplication(state);
+  const pool = flattenRankedPool(deduped);
+  if (pool.length === 0) return [];
+  return buildBestCalls(pool, buildIntradayOpportunities(deduped));
 }
 
 export function getCategoryLabel(category: OpportunityCategory): string {

@@ -37,6 +37,7 @@ import {
   CATEGORY_EMPTY_HEADLINE,
   deriveCategoryCandidates,
   deriveCategoryCount,
+  deriveHighestConvictionRecommendations,
   derivePostMarketNearestCandidates,
   getCategoryLabel,
   getCategorySubtitle,
@@ -1454,6 +1455,7 @@ function PostMarketSection({
   title,
   subtitle,
   candidates,
+  emptyHeadline,
   emptyNote,
   variant = "default",
   nearestCandidates,
@@ -1469,6 +1471,7 @@ function PostMarketSection({
   title: string;
   subtitle: string;
   candidates: OpportunityCandidate[];
+  emptyHeadline?: string;
   emptyNote?: string;
   variant?: "default" | "expired" | "bestCall" | "watchlist";
   nearestCandidates?: NearestCandidate[];
@@ -1518,8 +1521,8 @@ function PostMarketSection({
         )
       ) : (
         <EmptySection
-          headline={CATEGORY_EMPTY_HEADLINE}
-          message={emptyNote ?? CATEGORY_EMPTY_HEADLINE}
+          headline={emptyHeadline ?? CATEGORY_EMPTY_HEADLINE}
+          message={emptyNote ?? emptyHeadline ?? CATEGORY_EMPTY_HEADLINE}
           nearestCandidates={nearestCandidates}
         />
       )}
@@ -1668,13 +1671,6 @@ function PostMarketReports({
         : [],
     [engineState, report.missedOpportunities.length]
   );
-  const bestCallNearest = useMemo(
-    () =>
-      report.bestCallsOfDay.length === 0
-        ? derivePostMarketNearestCandidates(engineState, "bestCallsOfDay")
-        : [],
-    [engineState, report.bestCallsOfDay.length]
-  );
   const tomorrowMeta = useMemo(
     () => buildTomorrowWatchlistMeta(report, report.tomorrowWatchlist),
     [report]
@@ -1724,21 +1720,6 @@ function PostMarketReports({
           onWatchlist={onWatchlist}
           onCopy={onCopy}
         />
-        <PostMarketSection
-          title={RECOMMENDATION_SECTION_LABELS.highestConviction}
-          subtitle={POST_MARKET_SUBTITLES.bestCallsOfDay}
-          candidates={report.bestCallsOfDay}
-          emptyNote={report.sectionNotes?.bestCallsOfDay}
-          nearestCandidates={bestCallNearest}
-          variant="bestCall"
-          pinned={pinned}
-          watchlisted={watchlisted}
-          onPin={onPin}
-          onWatchlist={onWatchlist}
-          onCopy={onCopy}
-          platformSnapshot={platformSnapshot}
-          onInspect={onInspect}
-        />
         {(report.tradeOutcomes?.length ?? 0) > 0 && (
           <Card padding="md" className="border-surface-border-subtle/80">
             <div className="mb-3">
@@ -1775,11 +1756,18 @@ export function OpportunityEnginePanel({ initialState }: OpportunityEnginePanelP
     [state, activeCategory]
   );
 
-  /** Keeps the Highest Conviction Recommendations widget visible before the post-market report exists. */
-  const standaloneBestCallNearest = useMemo(
-    () =>
-      state.postMarket ? [] : derivePostMarketNearestCandidates(state, "bestCallsOfDay"),
+  // Recommendations come straight from the AI engine state — never gated on
+  // post-market report generation (separate pipelines).
+  const highestConvictionRecommendations = useMemo(
+    () => deriveHighestConvictionRecommendations(state),
     [state]
+  );
+  const highestConvictionNearest = useMemo(
+    () =>
+      highestConvictionRecommendations.length === 0
+        ? derivePostMarketNearestCandidates(state, "bestCallsOfDay")
+        : [],
+    [state, highestConvictionRecommendations.length]
   );
 
   const inspectedView = useMemo(() => {
@@ -2074,6 +2062,25 @@ export function OpportunityEnginePanel({ initialState }: OpportunityEnginePanelP
         />
       )}
 
+      <div className="mt-6 border-t border-surface-border-subtle pt-6">
+        <PostMarketSection
+          title={RECOMMENDATION_SECTION_LABELS.highestConviction}
+          subtitle={POST_MARKET_SUBTITLES.bestCallsOfDay}
+          candidates={highestConvictionRecommendations}
+          emptyHeadline="No recommendations generated yet."
+          emptyNote="Recommendation cards appear as soon as the AI engine generates them and remain visible until they expire, are invalidated, or are archived."
+          nearestCandidates={highestConvictionNearest}
+          variant="bestCall"
+          pinned={pinned}
+          watchlisted={watchlisted}
+          onPin={togglePin}
+          onWatchlist={toggleWatchlist}
+          onCopy={copySymbol}
+          platformSnapshot={platformSnapshot}
+          onInspect={setInspectedCandidate}
+        />
+      </div>
+
       {state.postMarket ? (
         <PostMarketReports
           report={state.postMarket}
@@ -2086,25 +2093,7 @@ export function OpportunityEnginePanel({ initialState }: OpportunityEnginePanelP
           platformSnapshot={platformSnapshot}
           onInspect={setInspectedCandidate}
         />
-      ) : (
-        <div className="mt-6 border-t border-surface-border-subtle pt-6">
-          <PostMarketSection
-            title={RECOMMENDATION_SECTION_LABELS.highestConviction}
-            subtitle={POST_MARKET_SUBTITLES.bestCallsOfDay}
-            candidates={[]}
-            emptyNote="Awaiting Recommendation — highest conviction recommendations publish with the post-market report."
-            nearestCandidates={standaloneBestCallNearest}
-            variant="bestCall"
-            pinned={pinned}
-            watchlisted={watchlisted}
-            onPin={togglePin}
-            onWatchlist={toggleWatchlist}
-            onCopy={copySymbol}
-            platformSnapshot={platformSnapshot}
-            onInspect={setInspectedCandidate}
-          />
-        </div>
-      )}
+      ) : null}
 
       {inspectedCandidate && inspectedView ? (
         <OpportunityExplainabilityDrawer
