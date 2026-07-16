@@ -1775,6 +1775,13 @@ export function OpportunityEnginePanel({ initialState }: OpportunityEnginePanelP
     [state, activeCategory]
   );
 
+  /** Keeps the Highest Conviction Recommendations widget visible before the post-market report exists. */
+  const standaloneBestCallNearest = useMemo(
+    () =>
+      state.postMarket ? [] : derivePostMarketNearestCandidates(state, "bestCallsOfDay"),
+    [state]
+  );
+
   const inspectedView = useMemo(() => {
     if (!inspectedCandidate) return null;
     return buildInstitutionalCandidateView(
@@ -2067,7 +2074,7 @@ export function OpportunityEnginePanel({ initialState }: OpportunityEnginePanelP
         />
       )}
 
-      {state.postMarket && (
+      {state.postMarket ? (
         <PostMarketReports
           report={state.postMarket}
           engineState={state}
@@ -2079,6 +2086,24 @@ export function OpportunityEnginePanel({ initialState }: OpportunityEnginePanelP
           platformSnapshot={platformSnapshot}
           onInspect={setInspectedCandidate}
         />
+      ) : (
+        <div className="mt-6 border-t border-surface-border-subtle pt-6">
+          <PostMarketSection
+            title={RECOMMENDATION_SECTION_LABELS.highestConviction}
+            subtitle={POST_MARKET_SUBTITLES.bestCallsOfDay}
+            candidates={[]}
+            emptyNote="Awaiting Recommendation — highest conviction recommendations publish with the post-market report."
+            nearestCandidates={standaloneBestCallNearest}
+            variant="bestCall"
+            pinned={pinned}
+            watchlisted={watchlisted}
+            onPin={togglePin}
+            onWatchlist={toggleWatchlist}
+            onCopy={copySymbol}
+            platformSnapshot={platformSnapshot}
+            onInspect={setInspectedCandidate}
+          />
+        </div>
       )}
 
       {inspectedCandidate && inspectedView ? (
