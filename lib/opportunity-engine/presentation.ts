@@ -1,13 +1,12 @@
 import {
-  applyCategoryDeduplication,
   assignSymbolsToCategories,
   deduplicateCategoryCandidates,
 } from "@/lib/opportunity-engine/deduplication";
 import {
-  buildBestCalls,
   buildIntradayOpportunities,
   flattenRankedPool,
 } from "@/lib/opportunity-engine/ranking";
+import { listActiveRecommendationCandidates } from "@/lib/opportunity-engine/recommendation-memory";
 import type {
   OpportunityCandidate,
   OpportunityCategory,
@@ -172,18 +171,13 @@ export function derivePostMarketNearestCandidates(
 }
 
 /**
- * Highest Conviction Recommendations derived directly from live engine state.
- * Recommendation generation is independent of post-market report generation:
- * cards appear as soon as the AI engine produces candidates and remain until
- * they expire, are invalidated, or are removed from the pool.
+ * The active dashboard is a filtered view over permanent recommendation
+ * memory. Expired, invalidated, and archived records remain in history/replay.
  */
 export function deriveHighestConvictionRecommendations(
   state: OpportunityEngineState
 ): OpportunityCandidate[] {
-  const deduped = applyCategoryDeduplication(state);
-  const pool = flattenRankedPool(deduped);
-  if (pool.length === 0) return [];
-  return buildBestCalls(pool, buildIntradayOpportunities(deduped));
+  return listActiveRecommendationCandidates(state);
 }
 
 export function getCategoryLabel(category: OpportunityCategory): string {

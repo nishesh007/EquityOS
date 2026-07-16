@@ -59,6 +59,7 @@ export function buildFreshTradingDayState(
     scanCount: 0,
     universeSize: 0,
     categories: emptyOpportunityCategories(),
+    recommendations: [],
     postMarket: null,
     scanHistory: [],
     lastScanMetrics: null,

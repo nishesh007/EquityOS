@@ -13,6 +13,12 @@ export { ensureTradingDayLifecycle } from "@/lib/opportunity-engine/store";
 export {
   loadArchivedOpportunitySnapshot,
 } from "@/lib/opportunity-engine/persistence";
+export {
+  listActiveRecommendationCandidates,
+  listRecommendationHistory,
+  replayRecommendation,
+} from "@/lib/opportunity-engine/recommendation-memory";
+export { updateRecommendationStatus } from "@/lib/opportunity-engine/store";
 export { getTradingDateKey, isTradingDay } from "@/lib/market/session";
 export {
   getSchedulerHealth,

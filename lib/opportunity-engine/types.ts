@@ -101,7 +101,35 @@ export interface OpportunityCandidate {
   lastDetectedAt: string;
   lastUpdatedAt: string;
   timeHorizon?: string;
+  /** Presentation status for recommendation-backed candidate views. */
+  status?: RecommendationRecordStatus;
   quote?: EnrichedQuote;
+}
+
+export type RecommendationRecordStatus =
+  | "ACTIVE"
+  | "EXPIRED"
+  | "INVALIDATED"
+  | "ARCHIVED";
+
+export interface RecommendationLifecycleEvent {
+  readonly status: RecommendationRecordStatus;
+  readonly occurredAt: string;
+  readonly reason: string;
+}
+
+/**
+ * Append-only recommendation memory. The candidate is the original,
+ * point-in-time recommendation and is never replaced or rescored.
+ * Lifecycle changes are recorded separately in lifecycleEvents.
+ */
+export interface OpportunityRecommendationRecord {
+  readonly recommendationId: string;
+  readonly candidate: OpportunityCandidate;
+  readonly generatedAt: string;
+  readonly status: RecommendationRecordStatus;
+  readonly statusChangedAt: string;
+  readonly lifecycleEvents: readonly RecommendationLifecycleEvent[];
 }
 
 export interface PostMarketMarketSummary {
@@ -162,6 +190,8 @@ export interface OpportunityEngineState {
   scanCount: number;
   universeSize: number;
   categories: Record<OpportunityCategory, OpportunityCandidate[]>;
+  /** Permanent recommendation memory; active dashboard views filter this list. */
+  recommendations: OpportunityRecommendationRecord[];
   postMarket: PostMarketReport | null;
   scanHistory: ScanHistoryEntry[];
   lastScanMetrics: ScanMetrics | null;

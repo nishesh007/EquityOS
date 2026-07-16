@@ -13,6 +13,12 @@ import {
   loadPersistedData,
   persistEngineData,
 } from "@/lib/opportunity-engine/persistence";
+import {
+  replayRecommendation,
+  syncRecommendationMemory,
+  transitionRecommendation,
+} from "@/lib/opportunity-engine/recommendation-memory";
+import type { RecommendationRecordStatus } from "@/lib/opportunity-engine/types";
 import { recordPersistenceWrite } from "@/lib/opportunity-engine/scheduler-observability";
 import {
   buildFreshTradingDayState,
@@ -34,6 +40,7 @@ function createInitialState(tradingDate: string | null = null): OpportunityEngin
     scanCount: 0,
     universeSize: 0,
     categories: emptyOpportunityCategories(),
+    recommendations: [],
     postMarket: null,
     scanHistory: [],
     lastScanMetrics: null,
@@ -74,10 +81,27 @@ function hydrateFromDisk(): void {
       ...emptyOpportunityCategories(),
       ...persisted.state.categories,
     },
+    recommendations: persisted.state.recommendations ?? [],
     scanHistory: persisted.state.scanHistory ?? [],
     lastScanMetrics: persisted.state.lastScanMetrics ?? null,
   };
   firstDetectedMap = new Map(Object.entries(persisted.firstDetectedMap));
+
+  // One-time migration for state files created before permanent
+  // recommendation memory existed.
+  if (
+    state.recommendations.length === 0 &&
+    Object.values(state.categories).some((candidates) => candidates.length > 0)
+  ) {
+    state = {
+      ...state,
+      recommendations: syncRecommendationMemory(
+        state,
+        state.lastScannedAt ?? new Date().toISOString()
+      ),
+    };
+    persistNow();
+  }
 }
 
 /**
@@ -115,6 +139,19 @@ export function ensureTradingDayLifecycle(
     };
   }
 
+  const expiredRecommendations = state.recommendations.reduce(
+    (records, record) =>
+      record.status === "ACTIVE"
+        ? transitionRecommendation(
+            records,
+            record.recommendationId,
+            "EXPIRED",
+            "Trading session ended"
+          )
+        : records,
+    state.recommendations
+  );
+
   archiveOpportunitySnapshot({
     tradingDate: previousTradingDate,
     archivedAt: new Date().toISOString(),
@@ -124,13 +161,17 @@ export function ensureTradingDayLifecycle(
       categories: { ...state.categories },
       scanHistory: [...state.scanHistory],
       lastScanMetrics: state.lastScanMetrics ? { ...state.lastScanMetrics } : null,
+      recommendations: expiredRecommendations,
       postMarket: state.postMarket,
     },
     firstDetectedMap: Object.fromEntries(firstDetectedMap),
   });
 
   firstDetectedMap.clear();
-  state = buildFreshTradingDayState(tradingDate, isMarketOpen());
+  state = {
+    ...buildFreshTradingDayState(tradingDate, isMarketOpen()),
+    recommendations: expiredRecommendations,
+  };
   persistNow();
 
   return {
@@ -269,7 +310,33 @@ export function finalizeScan(
     },
     scanHistory: [historyEntry, ...state.scanHistory].slice(0, MAX_SCAN_HISTORY),
   };
+  state = {
+    ...state,
+    recommendations: syncRecommendationMemory(state, scannedAt),
+  };
   persistNow();
+}
+
+export function updateRecommendationStatus(
+  recommendationId: string,
+  status: Exclude<RecommendationRecordStatus, "ACTIVE">,
+  reason: string
+) {
+  hydrateFromDisk();
+  ensureTradingDayLifecycle();
+  const existing = replayRecommendation(state, recommendationId);
+  if (!existing) return undefined;
+  state = {
+    ...state,
+    recommendations: transitionRecommendation(
+      state.recommendations,
+      recommendationId,
+      status,
+      reason
+    ),
+  };
+  persistNow();
+  return replayRecommendation(state, recommendationId);
 }
 
 export function freezeScan(postMarket: PostMarketReport): void {
