@@ -1,5 +1,5 @@
 /**
- * Research Workspace bridge — platform wiring for Sprint 10A.R1–R7.
+ * Research Workspace bridge — platform wiring for Sprint 10A.R1–R8.
  * Reuses existing routes/modules; does not rebuild Sprint 9 engines.
  */
 
@@ -52,6 +52,10 @@ import {
   getFavoritesView,
   getProductivityView,
   trackCompanyResearched,
+  EXECUTIVE_RESEARCH_EMPTY,
+  getExecutiveResearchHub,
+  getExecutiveResearchSummary,
+  isSprint10AFrozen,
   type ResearchWorkspaceMetrics,
   type ResearchWorkspaceRecord,
   type ResearchWorkspaceView,
@@ -75,6 +79,7 @@ import {
   type TemplateView,
   type FavoritesView,
   type ProductivityView,
+  type ExecutiveResearchDashboardView,
 } from "@/src/core/research/workspace";
 
 export type ResearchWorkspaceHealth = {
@@ -89,6 +94,8 @@ export type ResearchWorkspaceHealth = {
   integrationReady: boolean;
   copilotReady: boolean;
   automationReady: boolean;
+  executiveReady: boolean;
+  sprint10AFrozen: boolean;
   noteCount: number;
   evidenceCount: number;
   timelineCount: number;
@@ -105,6 +112,8 @@ export type ResearchWorkspaceHealth = {
   integrationEmptyMessage: string;
   copilotEmptyMessage: string;
   automationEmptyMessage: string;
+  executiveEmptyMessage: string;
+  executiveSummary: string;
   surface: {
     research: string;
     dashboard: string;
@@ -372,6 +381,10 @@ export function fetchResearchWorkspaceHealth(): ResearchWorkspaceHealth {
     const tasks = getTasksView({ workspaceId: active?.id });
     const templates = getTemplateView({ workspaceId: active?.id });
     const favorites = getFavoritesView({ workspaceId: active?.id });
+    const executive = getExecutiveResearchHub().getView({
+      workspaceId: active?.id,
+      ticker: companyView.overview.ticker || undefined,
+    });
     return {
       ready: workspaces.length > 0 || !metrics.empty,
       workspaceCount: metrics.workspaceCount,
@@ -384,6 +397,8 @@ export function fetchResearchWorkspaceHealth(): ResearchWorkspaceHealth {
       integrationReady: !timeline.empty,
       copilotReady: !summary.empty,
       automationReady: !analytics.empty,
+      executiveReady: !executive.empty,
+      sprint10AFrozen: isSprint10AFrozen(),
       noteCount: knowledge.notes.length,
       evidenceCount: knowledge.evidence.items.length,
       timelineCount: timeline.entries.length,
@@ -413,6 +428,13 @@ export function fetchResearchWorkspaceHealth(): ResearchWorkspaceHealth {
       automationEmptyMessage: analytics.empty
         ? AUTOMATION_EMPTY.awaitingWorkspace
         : AUTOMATION_EMPTY.noAutomationRules,
+      executiveEmptyMessage: executive.empty
+        ? EXECUTIVE_RESEARCH_EMPTY.awaitingResearch
+        : EXECUTIVE_RESEARCH_EMPTY.noOpenResearch,
+      executiveSummary: getExecutiveResearchSummary({
+        workspaceId: active?.id,
+        ticker: companyView.overview.ticker || undefined,
+      }),
       surface: {
         research: "/research",
         dashboard: "/",
@@ -436,6 +458,8 @@ export function fetchResearchWorkspaceHealth(): ResearchWorkspaceHealth {
       integrationReady: false,
       copilotReady: false,
       automationReady: false,
+      executiveReady: false,
+      sprint10AFrozen: isSprint10AFrozen(),
       noteCount: 0,
       evidenceCount: 0,
       timelineCount: 0,
@@ -452,6 +476,8 @@ export function fetchResearchWorkspaceHealth(): ResearchWorkspaceHealth {
       integrationEmptyMessage: INTEGRATION_EMPTY.noTimeline,
       copilotEmptyMessage: COPILOT_EMPTY.noAiSummary,
       automationEmptyMessage: AUTOMATION_EMPTY.awaitingWorkspace,
+      executiveEmptyMessage: EXECUTIVE_RESEARCH_EMPTY.awaitingResearch,
+      executiveSummary: EXECUTIVE_RESEARCH_EMPTY.awaitingResearch,
       surface: {
         research: "/research",
         dashboard: "/",
@@ -643,6 +669,28 @@ export function fetchWorkspaceProductivityView(options?: {
   });
 }
 
+export function fetchExecutiveResearchView(options?: {
+  workspaceId?: string | null;
+  ticker?: string | null;
+}): ExecutiveResearchDashboardView {
+  const active = getActiveWorkspace();
+  return getExecutiveResearchHub().getView({
+    workspaceId: options?.workspaceId ?? active?.id,
+    ticker: options?.ticker,
+  });
+}
+
+export function fetchExecutiveResearchSummary(options?: {
+  workspaceId?: string | null;
+  ticker?: string | null;
+}): string {
+  const active = getActiveWorkspace();
+  return getExecutiveResearchSummary({
+    workspaceId: options?.workspaceId ?? active?.id,
+    ticker: options?.ticker,
+  });
+}
+
 export function ensureDefaultResearchWorkspace(options?: {
   name?: string;
   ticker?: string | null;
@@ -701,6 +749,8 @@ export {
   INTEGRATION_EMPTY,
   COPILOT_EMPTY,
   AUTOMATION_EMPTY,
+  EXECUTIVE_RESEARCH_EMPTY,
+  RESEARCH_WORKSPACE_STATUS,
   createWorkspace,
   openWorkspace,
   listWorkspaces,
@@ -737,4 +787,6 @@ export {
   applyTemplate,
   runAutomation,
   getWorkspaceAnalytics,
+  getExecutiveResearchSummary,
+  isSprint10AFrozen,
 } from "@/src/core/research/workspace";

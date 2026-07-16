@@ -1,5 +1,5 @@
 /**
- * Institutional Research Workspace — primary analyst surface (Sprint 10A.R1–R2).
+ * Institutional Research Workspace — primary analyst surface (Sprint 10A.R1–R8).
  * Multi-tab terminal composing existing module routes.
  */
 
@@ -7,6 +7,8 @@ import Link from "next/link";
 import {
   COMPANY_WORKSPACE_EMPTY,
   AUTOMATION_EMPTY,
+  EXECUTIVE_RESEARCH_EMPTY,
+  fetchExecutiveResearchView,
   COPILOT_EMPTY,
   INTEGRATION_EMPTY,
   KNOWLEDGE_EMPTY,
@@ -74,6 +76,10 @@ export default function ResearchPage() {
   const favorites = fetchWorkspaceFavoritesView({ workspaceId: workspace.id });
   const productivity = fetchWorkspaceProductivityView({ workspaceId: workspace.id });
   const analytics = fetchWorkspaceAnalyticsView({ workspaceId: workspace.id });
+  const executive = fetchExecutiveResearchView({
+    workspaceId: workspace.id,
+    ticker: company.overview.ticker || undefined,
+  });
 
   return (
     <div className="p-6">
@@ -110,7 +116,11 @@ export default function ResearchPage() {
           · automation{" "}
           {analytics.empty
             ? AUTOMATION_EMPTY.awaitingWorkspace
-            : `${tasks.pending.length} tasks · ${templates.templates.length} templates`}
+            : `${tasks.pending.length} tasks · ${templates.templates.length} templates`}{" "}
+          · executive{" "}
+          {executive.empty
+            ? EXECUTIVE_RESEARCH_EMPTY.awaitingResearch
+            : executive.homeStrip.executiveSummary}
         </p>
       </div>
 
@@ -374,6 +384,32 @@ export default function ResearchPage() {
                 {productivity.shortcuts.slice(0, 3).map((sc) => (
                   <p key={sc.id}>
                     {sc.keys} → {sc.label}
+                  </p>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section>
+            <h2 className="mb-2 text-sm font-medium text-text-secondary">
+              Executive Research Hub
+            </h2>
+            {executive.empty ? (
+              <p className="text-sm text-text-muted">
+                {EXECUTIVE_RESEARCH_EMPTY.awaitingResearch}
+              </p>
+            ) : (
+              <div className="space-y-1 text-xs text-text-muted">
+                <p>{executive.homeStrip.researchProgress}</p>
+                <p>{executive.homeStrip.coverageSummary}</p>
+                <p>
+                  Health {executive.health.overallHealthLabel} ·{" "}
+                  {executive.metrics.labels.companiesResearched} companies ·{" "}
+                  {executive.metrics.labels.researchQuality} quality
+                </p>
+                {executive.health.layers.slice(0, 4).map((layer) => (
+                  <p key={layer.id}>
+                    {layer.label}: {layer.scoreLabel}
                   </p>
                 ))}
               </div>

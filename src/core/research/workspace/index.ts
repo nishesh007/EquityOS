@@ -433,3 +433,29 @@ export type {
   AddFavoriteInput,
   CreateTaskInput,
 } from "./automation";
+
+/** Sprint 10A.R8 — executive research hub */
+export {
+  EXECUTIVE_RESEARCH_EMPTY,
+  EXECUTIVE_RESEARCH_QUICK_ACTIONS,
+  RESEARCH_WORKSPACE_STATUS,
+  assertNoSentinel,
+  getExecutiveResearchOverview,
+  getExecutiveResearchMetrics,
+  getExecutiveResearchHealth,
+  getExecutiveResearchSummary,
+  exportExecutiveResearchReport,
+  isSprint10AFrozen,
+  resetExecutiveResearchStack,
+  getExecutiveResearchHub,
+  ExecutiveResearchHub,
+} from "./executive";
+export type {
+  ExecutiveResearchEmptyMessage,
+  ExecutiveResearchDashboardView,
+  ExecutiveResearchHealthView,
+  ExecutiveResearchOverview,
+  ExecutiveResearchMetricBundle,
+  ExecutiveResearchExportResult,
+  HomeResearchStrip,
+} from "./executive";

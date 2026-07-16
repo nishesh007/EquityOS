@@ -59,7 +59,11 @@ export default async function OpportunitiesPage() {
           researchWorkspace.automationReady
             ? `${researchWorkspace.templateCount} templates`
             : researchWorkspace.automationEmptyMessage
-        } · research copilot ${
+        } · research executive ${
+          researchWorkspace.executiveReady
+            ? researchWorkspace.executiveSummary
+            : researchWorkspace.executiveEmptyMessage
+        }${researchWorkspace.sprint10AFrozen ? " · 10A FROZEN" : ""} · research copilot ${
           researchWorkspace.copilotReady
             ? "ready"
             : researchWorkspace.copilotEmptyMessage

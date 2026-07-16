@@ -12,6 +12,7 @@ import { fetchCompanyResearch } from "@/services/researchData";
 import { fetchSymbolScreenerInsight } from "@/services/screenerData";
 import {
   fetchResearchKnowledgeView,
+  fetchExecutiveResearchView,
   fetchResearchSummaryView,
   fetchWorkspaceAnalyticsView,
   fetchResearchTimelineView,
@@ -89,6 +90,7 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
     ticker: company.symbol,
   });
   const analytics = fetchWorkspaceAnalyticsView();
+  const executive = fetchExecutiveResearchView({ ticker: company.symbol });
 
   return (
     <div className="p-6">
@@ -113,6 +115,10 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
           {analytics.empty
             ? analytics.emptyMessage
             : `${analytics.researchProductivity} productivity`}{" "}
+          · executive{" "}
+          {executive.empty
+            ? executive.emptyMessage
+            : executive.overview.researchProgress + "% progress"}{" "}
           ·{" "}
           {researchWorkspace.ready
             ? `${researchWorkspace.openSessions} sessions · ${researchWorkspace.openTabs} tabs`
