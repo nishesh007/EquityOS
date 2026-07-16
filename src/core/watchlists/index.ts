@@ -1,5 +1,5 @@
 /**
- * Institutional Watchlist Platform — public exports (Sprint 10B.R1–R5).
+ * Institutional Watchlist Platform — public exports (Sprint 10B.R1–R6).
  * Multi-watchlist architecture for /watchlist, /dashboard, /research, /results, /company.
  */
 
@@ -250,3 +250,35 @@ export type {
   WatchlistAIReviewView,
   WatchlistScorecardView,
 } from "./analytics";
+
+/** Sprint 10B.R6 — AI copilot, decision assistant, Q&A */
+export {
+  WATCHLIST_COPILOT_EMPTY,
+  DECISION_KINDS,
+  COPILOT_QUESTION_KINDS,
+  getWatchlistBrief,
+  getDecisionAssistant,
+  askWatchlist,
+  compareWatchlists,
+  compareCompanies,
+  getResearchCompanion,
+  getWatchlistCopilot,
+  getExecutiveSummary,
+  getWatchlistCopilotHealth,
+  resetWatchlistCopilot,
+  isSprint10BR6Frozen,
+  SPRINT_10B_R6_FROZEN,
+  emptyCopilotBundle,
+} from "./copilot";
+export type {
+  WatchlistCopilotEmptyMessage,
+  WatchlistCopilotContext,
+  WatchlistCopilotBundle,
+  WatchlistBriefView,
+  DecisionAssistantView,
+  ExecutiveSummaryView,
+  CopilotAnswer,
+  CompanyComparisonView,
+  WatchlistComparisonView,
+  ResearchCompanionView,
+} from "./copilot";
