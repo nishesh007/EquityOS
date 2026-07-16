@@ -1,5 +1,5 @@
 /**
- * Institutional Watchlist Platform bridge — Sprint 10B.R1–R3.
+ * Institutional Watchlist Platform bridge — Sprint 10B.R1–R4.
  */
 
 import {
@@ -10,15 +10,18 @@ import {
   getSmartWatchlistView,
   getWatchlistInsightEngine,
   getWatchlistPlatformView,
+  getWatchlistWorkspace,
   isSprint10BR1Frozen,
   isSprint10BR2Frozen,
   isSprint10BR3Frozen,
+  isSprint10BR4Frozen,
   type InstitutionalWatchlistHealth,
   type InstitutionalWatchlistSummary,
   type SmartWatchlistView,
   type WatchlistEngineContext,
   type WatchlistIntelligenceBundle,
   type WatchlistPlatformView,
+  type WatchlistWorkspaceView,
 } from "@/src/core/watchlists";
 
 export type WatchlistPlatformHealth = InstitutionalWatchlistHealth;
@@ -50,6 +53,10 @@ export function fetchWatchlistPlatformHealth(
       opportunityCount: 0,
       insightBuckets: 0,
       sprint10BR3Frozen: isSprint10BR3Frozen(),
+      workspaceReady: false,
+      actionCount: 0,
+      timelineCount: 0,
+      sprint10BR4Frozen: isSprint10BR4Frozen(),
       surfaceHints: {
         watchlist: "/watchlist",
         dashboard: "/",
@@ -92,6 +99,18 @@ export function fetchWatchlistIntelligenceBundle(
   });
 }
 
+export function fetchWatchlistWorkspaceView(
+  context?: WatchlistEngineContext | null
+): WatchlistWorkspaceView {
+  ensureDefaultWatchlists(context?.now);
+  const health = getInstitutionalWatchlistHealth(context);
+  return getWatchlistWorkspace({
+    watchlistId: health.activeWatchlistId || undefined,
+    snapshots: context?.snapshots,
+    now: context?.now,
+  });
+}
+
 export function formatWatchlistPlatformSubtitle(
   health: WatchlistPlatformHealth
 ): string {
@@ -102,6 +121,7 @@ export function formatWatchlistPlatformSubtitle(
     health.sprint10BR1Frozen ? "10B.R1 FROZEN" : "",
     health.sprint10BR2Frozen ? "10B.R2 FROZEN" : "",
     health.sprint10BR3Frozen ? "10B.R3 FROZEN" : "",
+    health.sprint10BR4Frozen ? "10B.R4 FROZEN" : "",
   ]
     .filter(Boolean)
     .join(" · ");
@@ -113,5 +133,9 @@ export function formatWatchlistPlatformSubtitle(
     health.intelligenceReady && health.opportunityCount > 0
       ? ` · ${health.opportunityCount} opportunities`
       : "";
-  return `${health.watchlistCount} watchlists · ${health.pinnedCount} pinned · ${health.favoriteCount} favorites · ${health.companyCount} companies${smart}${intel}${frozen ? ` · ${frozen}` : ""}`;
+  const workspace =
+    health.workspaceReady && health.actionCount > 0
+      ? ` · ${health.actionCount} actions`
+      : "";
+  return `${health.watchlistCount} watchlists · ${health.pinnedCount} pinned · ${health.favoriteCount} favorites · ${health.companyCount} companies${smart}${intel}${workspace}${frozen ? ` · ${frozen}` : ""}`;
 }

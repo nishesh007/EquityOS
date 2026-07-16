@@ -1,5 +1,5 @@
 /**
- * Institutional Watchlist Platform — executive hub (Sprint 10B.R1–R3).
+ * Institutional Watchlist Platform — executive hub (Sprint 10B.R1–R4).
  */
 
 import { BUILTIN_WATCHLIST_DEFINITIONS } from "./WatchlistDefinition";
@@ -35,6 +35,11 @@ import {
   resetWatchlistIntelligence,
   SPRINT_10B_R3_FROZEN,
 } from "./intelligence";
+import {
+  getWatchlistWorkspaceHealth,
+  resetWatchlistWorkspace,
+  SPRINT_10B_R4_FROZEN,
+} from "./workspace";
 
 export const INSTITUTIONAL_WATCHLIST_EMPTY = WATCHLIST_EMPTY;
 
@@ -60,6 +65,10 @@ export interface InstitutionalWatchlistHealth {
   opportunityCount: number;
   insightBuckets: number;
   sprint10BR3Frozen: boolean;
+  workspaceReady: boolean;
+  actionCount: number;
+  timelineCount: number;
+  sprint10BR4Frozen: boolean;
   surfaceHints: typeof WATCHLIST_SURFACE_ROUTES;
 }
 
@@ -93,6 +102,13 @@ export class InstitutionalWatchlists {
       snapshots: context?.snapshots,
       now: context?.now,
     } satisfies WatchlistIntelligenceContext);
+    const workspace = getWatchlistWorkspaceHealth({
+      watchlistId: active?.id,
+      symbols: active?.symbols ?? [],
+      snapshots: context?.snapshots,
+      workspaceId: context?.watchlistId,
+      now: context?.now,
+    });
 
     const ready = activeRecords.length > 0;
     return {
@@ -115,6 +131,10 @@ export class InstitutionalWatchlists {
       opportunityCount: intel.opportunityCount,
       insightBuckets: intel.insightBuckets,
       sprint10BR3Frozen: SPRINT_10B_R3_FROZEN,
+      workspaceReady: workspace.ready,
+      actionCount: workspace.actionCount,
+      timelineCount: workspace.timelineCount,
+      sprint10BR4Frozen: SPRINT_10B_R4_FROZEN,
       surfaceHints: { ...WATCHLIST_SURFACE_ROUTES },
     };
   }
@@ -144,6 +164,7 @@ export function resetInstitutionalWatchlists(): void {
   resetWatchlistEngine();
   resetSmartWatchlistEngine();
   resetWatchlistIntelligence();
+  resetWatchlistWorkspace();
   hubInstance = null;
 }
 
