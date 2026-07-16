@@ -7,7 +7,7 @@ import { OPPORTUNITY_CATEGORIES } from "@/lib/opportunity-engine/types";
 
 /**
  * Category priority for one-stock-one-category deduplication.
- * Best Calls is a derived post-market section (handled separately in ranking).
+ * Highest Conviction Recommendations is a derived post-market section (handled separately in ranking).
  */
 export const CATEGORY_DEDUP_PRIORITY: OpportunityCategory[] = [
   "intraday",

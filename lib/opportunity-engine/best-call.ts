@@ -198,59 +198,59 @@ export function buildBestCallReasons(
 
   const topScore = [...allScores].sort((a, b) => b.score - a.score)[0];
   if (topScore?.candidate.symbol === candidate.symbol) {
-    reasons.push("Highest probability setup");
+    reasons.push("Highest Institutional Conviction setup");
   }
 
   const topConviction = [...allScores].sort(
     (a, b) => b.candidate.aiConvictionScore - a.candidate.aiConvictionScore
   )[0];
   if (topConviction?.candidate.symbol === candidate.symbol) {
-    reasons.push("Highest institutional quality");
+    reasons.push("Top AI Conviction across ranked set");
   }
 
   const topRr = [...allScores].sort(
     (a, b) => b.candidate.riskReward - a.candidate.riskReward
   )[0];
   if (topRr?.candidate.symbol === candidate.symbol && candidate.riskReward >= 2) {
-    reasons.push(`Highest expected reward (1:${candidate.riskReward.toFixed(1)})`);
+    reasons.push(`Favorable Risk Reward 1:${candidate.riskReward.toFixed(1)}`);
   } else if (candidate.riskReward >= 2.5) {
-    reasons.push(`Favorable R:R 1:${candidate.riskReward.toFixed(1)}`);
+    reasons.push(`Favorable Risk Reward 1:${candidate.riskReward.toFixed(1)}`);
   }
 
   const adx = num(metrics, "adx") ?? 0;
   if (adx >= 28 && factors.trendStrength >= 65) {
-    reasons.push("Strong trend confirmation");
+    reasons.push("Trend above 50 EMA");
   }
 
   if (factors.sectorStrength >= 70) {
-    reasons.push("Strong sector leadership");
+    reasons.push("Sector Leadership");
   } else if (factors.sectorStrength >= 58) {
-    reasons.push("Sector outperformer");
+    reasons.push("Strong Relative Strength");
   }
 
   const delivery = num(metrics, "delivery_percent") ?? 0;
   const volumeRatio = num(metrics, "volume_ratio") ?? 0;
   if (delivery >= 35 && volumeRatio >= 1.3) {
-    reasons.push("High liquidity & institutional participation");
+    reasons.push("Institutional Accumulation");
   } else if (volumeRatio >= 2) {
-    reasons.push("High liquidity");
+    reasons.push("High Relative Volume");
   }
 
   if (factors.downsideRisk >= 70) {
-    reasons.push("Low downside risk");
+    reasons.push("Contained Downside Risk");
   }
 
   const priceToHigh = num(metrics, "price_to_52w_high") ?? 0;
   if (candidate.category === "breakout" || priceToHigh >= 92) {
-    reasons.push("Breakout confirmed");
+    reasons.push("Breakout Structure Confirmed");
   }
 
   if (factors.fundamentalQuality >= 65) {
-    reasons.push("Strong fundamental quality");
+    reasons.push("Earnings Revision Positive");
   }
 
   if (reasons.length === 0 && candidate.aiConvictionScore >= 75) {
-    reasons.push(`High conviction (${candidate.aiConvictionScore})`);
+    reasons.push(`High Conviction (${candidate.aiConvictionScore})`);
   }
 
   return reasons.slice(0, 6);

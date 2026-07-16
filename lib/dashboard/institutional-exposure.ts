@@ -9,6 +9,11 @@ import {
   formatOptionalTimestamp,
   hasValidationActivity,
 } from "@/lib/dashboard/display-value";
+import {
+  RECOMMENDATION_LIFECYCLE_STATUS_LABELS,
+  formatInstitutionalConviction,
+  presentCandidateRecommendationMeta,
+} from "@/src/core/recommendations";
 
 export type MetricTone = "excellent" | "healthy" | "caution" | "critical" | "neutral";
 export type MetricTrend = "UP" | "DOWN" | "FLAT" | "UNKNOWN";
@@ -69,6 +74,10 @@ export interface InstitutionalExplainabilityPanelView {
 
 export interface InstitutionalRecommendationPanelView {
   recommendation: string;
+  strategy: string;
+  expectedHoldingPeriod: string;
+  statusLabel: string;
+  convictionDrivers: string[];
   whyThisStock: string[];
   whyNotOthers: string[];
   supportingSignals: string[];
@@ -76,6 +85,11 @@ export interface InstitutionalRecommendationPanelView {
   expectedCatalyst: string;
   sectorContribution: string;
   historicalSimilarity: string;
+  institutionalConviction: string;
+  conviction: string;
+  trust: string;
+  validation: string;
+  /** @deprecated Use institutionalConviction — kept for transitional consumers. */
   qualityScore: string;
   empty: boolean;
   emptyMessage: string;
@@ -822,13 +836,36 @@ export function buildRecommendationPanelView(
     candidate?.recommendationQuality ??
     snapshot?.dashboard?.summary.recommendationQuality ??
     null;
+  const trustScore =
+    candidate?.trustScore ??
+    snapshot?.trust?.averageTrustScore ??
+    snapshot?.dashboard?.summary.averageTrustScore ??
+    null;
+  const validationScore =
+    candidate?.validationScore ??
+    snapshot?.dashboard?.summary.averageIntegrityScore ??
+    null;
   const hasActivity =
     candidate != null ||
     (snapshot?.dashboard?.summary.totalValidations ?? 0) > 0;
+  const emptyMeta = presentCandidateRecommendationMeta({});
+
+  const emptyBase = {
+    strategy: emptyMeta.strategy,
+    expectedHoldingPeriod: emptyMeta.expectedHoldingPeriod,
+    statusLabel: emptyMeta.statusLabel,
+    conviction: "Pending Validation",
+    trust: "Pending Validation",
+    validation: "Pending Validation",
+    institutionalConviction: "Pending Validation",
+    qualityScore: "Pending Validation",
+  };
 
   if (!snapshot && !candidate) {
     return {
       recommendation: "Pending Validation",
+      ...emptyBase,
+      convictionDrivers: [],
       whyThisStock: [],
       whyNotOthers: [],
       supportingSignals: [],
@@ -836,15 +873,23 @@ export function buildRecommendationPanelView(
       expectedCatalyst: "Not Available",
       sectorContribution: "Not Available",
       historicalSimilarity: "Not Available",
-      qualityScore: "Pending Validation",
       empty: true,
       emptyMessage,
     };
   }
 
   if (!candidate) {
+    const qualityDisplay = institutionalScoreDisplay(quality, {
+      hasActivity,
+      collectingLabel: "Pending Validation",
+      unavailableLabel: "Not Available",
+    });
     return {
       recommendation: "Waiting For Next Scan",
+      ...emptyBase,
+      institutionalConviction: qualityDisplay,
+      qualityScore: qualityDisplay,
+      convictionDrivers: ["No active institutional candidate selected."],
       whyThisStock: ["No active institutional candidate selected."],
       whyNotOthers: ["N/A"],
       supportingSignals: ["Pending Validation"],
@@ -852,24 +897,69 @@ export function buildRecommendationPanelView(
       expectedCatalyst: "Not Available",
       sectorContribution: "Not Available",
       historicalSimilarity: "Not Available",
-      qualityScore: institutionalScoreDisplay(quality, {
-        hasActivity,
-        collectingLabel: "Pending Validation",
-        unavailableLabel: "Not Available",
-      }),
       empty: true,
       emptyMessage,
     };
   }
 
+  const meta = presentCandidateRecommendationMeta({
+    strategy: "Swing",
+    status: "ENTRY_PENDING",
+  });
+  const convictionDrivers =
+    candidate.primaryReasons.length > 0
+      ? candidate.primaryReasons
+      : candidate.supportingFactors.length > 0
+        ? candidate.supportingFactors.map((f) => f.label)
+        : ["Not Available"];
+  const riskFactors =
+    candidate.riskFactors.length > 0
+      ? candidate.riskFactors.map((f) => `${f.label} (${f.contribution})`)
+      : candidate.topNegativeDrivers.length > 0
+        ? candidate.topNegativeDrivers.map((f) => f.label)
+        : ["N/A"];
+  const convictionDisplay = institutionalScoreDisplay(
+    candidate.overallScore ?? quality,
+    {
+      hasActivity: true,
+      collectingLabel: "Pending Validation",
+      unavailableLabel: "Not Available",
+    }
+  );
+  const trustDisplay = institutionalScoreDisplay(
+    candidate.trustScore ?? trustScore,
+    {
+      hasActivity: true,
+      collectingLabel: "Pending Validation",
+      unavailableLabel: "Not Available",
+    }
+  );
+  const validationDisplay = institutionalScoreDisplay(
+    candidate.validationScore ?? validationScore,
+    {
+      hasActivity: true,
+      collectingLabel: "Pending Validation",
+      unavailableLabel: "Not Available",
+    }
+  );
+  const institutionalDisplay =
+    typeof (candidate.recommendationQuality ?? quality) === "number" &&
+    Number.isFinite(candidate.recommendationQuality ?? quality)
+      ? formatInstitutionalConviction(
+          (candidate.recommendationQuality ?? quality) as number
+        )
+      : convictionDisplay;
+
   return {
     recommendation:
       candidate.primaryReasons[0] ??
-      `Institutional candidate · score ${candidate.overallScore}`,
-    whyThisStock:
-      candidate.primaryReasons.length > 0
-        ? candidate.primaryReasons
-        : ["Not Available"],
+      `Institutional candidate · ${institutionalDisplay}`,
+    strategy: meta.strategy,
+    expectedHoldingPeriod: meta.expectedHoldingPeriod,
+    statusLabel:
+      meta.statusLabel || RECOMMENDATION_LIFECYCLE_STATUS_LABELS.ENTRY_PENDING,
+    convictionDrivers,
+    whyThisStock: convictionDrivers,
     whyNotOthers:
       candidate.negativeFactors.length > 0
         ? candidate.negativeFactors.map(
@@ -882,21 +972,18 @@ export function buildRecommendationPanelView(
             (f) => `${f.label} (+${f.contribution})`
           )
         : ["Not Available"],
-    riskFactors:
-      candidate.riskFactors.length > 0
-        ? candidate.riskFactors.map((f) => `${f.label} (${f.contribution})`)
-        : ["N/A"],
+    riskFactors,
     expectedCatalyst: candidate.expectedCatalyst ?? "Not Available",
     sectorContribution:
       candidate.sectorContribution != null
         ? String(candidate.sectorContribution)
         : "Not Available",
     historicalSimilarity: candidate.historicalSimilarity ?? "Not Available",
-    qualityScore: institutionalScoreDisplay(quality, {
-      hasActivity: true,
-      collectingLabel: "Pending Validation",
-      unavailableLabel: "Not Available",
-    }),
+    institutionalConviction: institutionalDisplay,
+    conviction: convictionDisplay,
+    trust: trustDisplay,
+    validation: validationDisplay,
+    qualityScore: institutionalDisplay,
     empty: false,
     emptyMessage,
   };

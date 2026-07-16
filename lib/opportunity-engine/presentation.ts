@@ -23,7 +23,7 @@ export const SECTION_SUBTITLES: Record<OpportunityCategory, string> = {
 export const POST_MARKET_SUBTITLES = {
   tomorrowWatchlist: "What should I monitor tomorrow?",
   missedOpportunities: "Signals that weakened before completion.",
-  bestCallsOfDay: "Highest institutional quality — independent of intraday ranking",
+  bestCallsOfDay: "Highest conviction recommendations — independent of intraday ranking",
 } as const;
 
 export const CATEGORY_EMPTY_HEADLINE =

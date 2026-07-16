@@ -10,6 +10,7 @@ import { buildRecommendationPanelView } from "@/lib/dashboard/institutional-expo
 import { InstitutionalPanelSkeleton } from "@/components/dashboard/opportunity-intelligence/InstitutionalPanelSkeleton";
 import { TraceList } from "@/components/dashboard/opportunity-intelligence/MetricBlocks";
 import { InstitutionalTimelinePanel } from "@/components/dashboard/institutional/InstitutionalTimelinePanel";
+import { RECOMMENDATION_METRIC_LABELS } from "@/src/core/recommendations";
 
 export function InstitutionalRecommendationPanel({
   snapshot,
@@ -42,7 +43,8 @@ export function InstitutionalRecommendationPanel({
           </p>
         </div>
         <p className="font-mono text-[11px] text-text-secondary">
-          Quality {view.qualityScore}
+          {RECOMMENDATION_METRIC_LABELS.institutionalConviction}{" "}
+          {view.institutionalConviction}
         </p>
       </div>
 
@@ -50,13 +52,43 @@ export function InstitutionalRecommendationPanel({
         <p className="mb-2 text-[11px] text-text-muted">{view.emptyMessage}</p>
       ) : null}
 
-      <p className="mb-3 text-sm text-text-primary">{view.recommendation}</p>
+      <p className="mb-2 text-sm text-text-primary">{view.recommendation}</p>
+      <p className="mb-3 text-[10px] uppercase tracking-wider text-text-faint">
+        {view.strategy} · {view.expectedHoldingPeriod} · {view.statusLabel}
+      </p>
+
+      <div className="mb-3 grid grid-cols-3 gap-2">
+        <div>
+          <p className="text-[9px] uppercase tracking-wider text-text-faint">
+            {RECOMMENDATION_METRIC_LABELS.conviction}
+          </p>
+          <p className="font-mono text-[11px] text-text-secondary">{view.conviction}</p>
+        </div>
+        <div>
+          <p className="text-[9px] uppercase tracking-wider text-text-faint">
+            {RECOMMENDATION_METRIC_LABELS.trust}
+          </p>
+          <p className="font-mono text-[11px] text-text-secondary">{view.trust}</p>
+        </div>
+        <div>
+          <p className="text-[9px] uppercase tracking-wider text-text-faint">
+            {RECOMMENDATION_METRIC_LABELS.validation}
+          </p>
+          <p className="font-mono text-[11px] text-text-secondary">{view.validation}</p>
+        </div>
+      </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <TraceList title="Why This Stock" lines={view.whyThisStock} />
-        <TraceList title="Why Not Others" lines={view.whyNotOthers} />
+        <TraceList
+          title={RECOMMENDATION_METRIC_LABELS.convictionDrivers}
+          lines={view.convictionDrivers}
+        />
+        <TraceList
+          title={RECOMMENDATION_METRIC_LABELS.riskFactors}
+          lines={view.riskFactors}
+        />
         <TraceList title="Supporting Signals" lines={view.supportingSignals} />
-        <TraceList title="Risk Factors" lines={view.riskFactors} />
+        <TraceList title="Why Not Others" lines={view.whyNotOthers} />
         <div>
           <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-text-faint">
             Expected Catalyst

@@ -93,9 +93,9 @@ function RadarScoreLayout({ scorecard }: { scorecard: ResearchScorecardView }) {
       <MetricGrid
         items={[
           { label: "AI Conviction", value: scorecard.aiConviction },
-          { label: "Validation Score", value: scorecard.validationScore },
-          { label: "Trust Score", value: scorecard.trustScore },
-          { label: "Quality Score", value: scorecard.qualityScore },
+          { label: "Validation", value: scorecard.validationScore },
+          { label: "Trust", value: scorecard.trustScore },
+          { label: "Institutional Conviction", value: scorecard.qualityScore },
           { label: "Risk Score", value: scorecard.riskScore },
           { label: "Execution Score", value: scorecard.executionScore },
           { label: "Overall Grade", value: scorecard.overallGrade },
@@ -274,7 +274,7 @@ export function InstitutionalResearchPanelContent({
         />
       </Section>
 
-      <Section title="Why This Stock">
+      <Section title="Conviction Drivers">
         <DriverGroups groups={research.whyThisStock} />
       </Section>
 

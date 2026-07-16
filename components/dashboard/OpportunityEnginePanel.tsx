@@ -17,6 +17,12 @@ import { PostMarketCertificationStrip } from "@/components/dashboard/opportunity
 import { TomorrowWatchlistMetaHeader } from "@/components/dashboard/opportunity-intelligence/TomorrowWatchlistMetaHeader";
 import { bestCallStarRating, buildBestCallScoreBreakdown } from "@/lib/opportunity-engine/best-call";
 import {
+  RECOMMENDATION_METRIC_LABELS,
+  RECOMMENDATION_SECTION_LABELS,
+  formatInstitutionalConviction,
+  presentCandidateRecommendationMeta,
+} from "@/src/core/recommendations";
+import {
   buildInstitutionalCandidateView,
   buildTomorrowWatchlistMeta,
   type InstitutionalPlatformSnapshot,
@@ -362,7 +368,7 @@ function ReasonCell({ candidate }: { candidate: OpportunityCandidate }) {
   );
 }
 
-function BestCallScoreCell({ candidate }: { candidate: OpportunityCandidate }) {
+function InstitutionalConvictionCell({ candidate }: { candidate: OpportunityCandidate }) {
   const [hovered, setHovered] = useState(false);
   const score = candidate.bestCallScore ?? candidate.aiConvictionScore;
   const breakdown = buildBestCallScoreBreakdown(candidate);
@@ -370,6 +376,7 @@ function BestCallScoreCell({ candidate }: { candidate: OpportunityCandidate }) {
   const riskAdjustments = breakdown
     .filter((item) => item.contribution < 0)
     .map((item) => ({ label: item.label, contribution: item.contribution }));
+  const meta = presentCandidateRecommendationMeta(candidate);
 
   return (
     <div
@@ -377,14 +384,27 @@ function BestCallScoreCell({ candidate }: { candidate: OpportunityCandidate }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <p className="text-sm tracking-wider text-gain" title={`Best Call Score ${score}/100`}>
+      <p
+        className="text-sm tracking-wider text-gain"
+        title={`${RECOMMENDATION_METRIC_LABELS.institutionalConviction} ${formatInstitutionalConviction(score)}`}
+      >
         {bestCallStarRating(score)}
       </p>
-      <p className="font-mono text-[10px] text-text-muted tabular-nums">Best Call Score {score}</p>
+      <p className="font-mono text-[10px] text-text-muted tabular-nums">
+        {RECOMMENDATION_METRIC_LABELS.institutionalConviction}{" "}
+        {formatInstitutionalConviction(score)}
+      </p>
+      <p className="font-mono text-[9px] text-text-faint tabular-nums">
+        {RECOMMENDATION_METRIC_LABELS.conviction} {candidate.aiConvictionScore} ·{" "}
+        {RECOMMENDATION_METRIC_LABELS.trust} {candidate.confidencePercent}
+      </p>
       {hovered && (
         <div className="absolute right-0 z-30 mt-1 w-56 rounded-lg border border-surface-border bg-surface-raised p-3 shadow-lg">
           <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-text-faint">
-            Best Call Score Breakdown
+            {RECOMMENDATION_METRIC_LABELS.institutionalConviction} Breakdown
+          </p>
+          <p className="mb-2 text-[10px] text-text-muted">
+            {meta.strategy} · {meta.expectedHoldingPeriod} · {meta.statusLabel}
           </p>
           <DriverBreakdownSections
             positives={positives.map((item) => ({
@@ -392,7 +412,7 @@ function BestCallScoreCell({ candidate }: { candidate: OpportunityCandidate }) {
               contribution: item.contribution,
             }))}
             riskAdjustments={riskAdjustments}
-            finalLabel="Best Call Score"
+            finalLabel={RECOMMENDATION_METRIC_LABELS.institutionalConviction}
             finalValue={score}
           />
         </div>
@@ -420,17 +440,21 @@ function expiredOutcomeVariant(outcome: ExpiredSetupOutcome): "gain" | "loss" | 
   return "default";
 }
 
-function BestCallReasonCell({ candidate }: { candidate: OpportunityCandidate }) {
+function ConvictionDriversCell({ candidate }: { candidate: OpportunityCandidate }) {
   const reasons = candidate.bestCallReasons ?? [];
+  const meta = presentCandidateRecommendationMeta(candidate);
 
   if (reasons.length === 0) {
     return <ReasonCell candidate={candidate} />;
   }
 
   return (
-    <div className="max-w-[260px]">
+    <div className="max-w-[280px]">
       <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-text-faint">
-        Best Call because:
+        {meta.strategy} · {meta.expectedHoldingPeriod}
+      </p>
+      <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-text-faint">
+        {RECOMMENDATION_METRIC_LABELS.convictionDrivers}
       </p>
       <ul className="space-y-0.5 text-[11px] leading-relaxed text-text-muted">
         {reasons.map((reason) => (
@@ -440,6 +464,7 @@ function BestCallReasonCell({ candidate }: { candidate: OpportunityCandidate }) 
           </li>
         ))}
       </ul>
+      <p className="mt-1 text-[10px] text-text-faint">{meta.statusLabel}</p>
     </div>
   );
 }
@@ -911,7 +936,7 @@ function OpportunityTable({
               <th className={`${headerClass} text-right`}>R/R</th>
               <th className={`${headerClass} text-right`}>
                 <SortButton
-                  label="Best Call Score"
+                  label={RECOMMENDATION_METRIC_LABELS.institutionalConviction}
                   active={sortKey === "bestCallScore"}
                   direction={sortDirection}
                   onClick={() => toggleSort("bestCallScore")}
@@ -973,10 +998,10 @@ function OpportunityTable({
                     </span>
                   </td>
                   <td className={`${cellClass} text-right`}>
-                    <BestCallScoreCell candidate={candidate} />
+                    <InstitutionalConvictionCell candidate={candidate} />
                   </td>
                   <td className={cellClass}>
-                    <BestCallReasonCell candidate={candidate} />
+                    <ConvictionDriversCell candidate={candidate} />
                   </td>
                 </tr>
               ))}
@@ -1700,7 +1725,7 @@ function PostMarketReports({
           onCopy={onCopy}
         />
         <PostMarketSection
-          title="Best Calls of the Day"
+          title={RECOMMENDATION_SECTION_LABELS.highestConviction}
           subtitle={POST_MARKET_SUBTITLES.bestCallsOfDay}
           candidates={report.bestCallsOfDay}
           emptyNote={report.sectionNotes?.bestCallsOfDay}

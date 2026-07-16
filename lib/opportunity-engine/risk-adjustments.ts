@@ -96,7 +96,7 @@ export function buildConvictionRiskAdjustments(
 }
 
 /**
- * Explainable risk deductions for Best Call score hover breakdown.
+ * Explainable risk deductions for Institutional Conviction hover breakdown.
  * Raw amounts mirror penaltyScore(); weighted display is applied separately.
  */
 export function buildBestCallRiskAdjustments(

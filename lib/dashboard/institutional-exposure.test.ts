@@ -245,9 +245,14 @@ describe("institutional exposure — recommendation panel", () => {
     const candidate = buildInstitutionalCandidateView(makeCandidate(), snapshot);
     const view = buildRecommendationPanelView(snapshot, candidate);
     expect(view.empty).toBe(false);
+    expect(view.convictionDrivers[0]).toContain("Breakout");
     expect(view.whyThisStock[0]).toContain("Breakout");
     expect(view.supportingSignals.length).toBeGreaterThan(0);
     expect(view.expectedCatalyst).toBe("Sector rotation");
+    expect(view.strategy).toBeTruthy();
+    expect(view.expectedHoldingPeriod).toBeTruthy();
+    expect(view.statusLabel).toBe("Entry Pending");
+    expect(view.institutionalConviction).not.toMatch(/Pending|Not Available/);
     expect(view.qualityScore).not.toMatch(/Pending|Not Available/);
   });
 
