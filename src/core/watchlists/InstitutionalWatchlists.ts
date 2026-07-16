@@ -1,6 +1,5 @@
 /**
- * Institutional Watchlist Platform — executive hub (Sprint 10B.R1).
- * Built-in watchlists, platform health, and sprint freeze marker.
+ * Institutional Watchlist Platform — executive hub (Sprint 10B.R1–R2).
  */
 
 import { BUILTIN_WATCHLIST_DEFINITIONS } from "./WatchlistDefinition";
@@ -24,6 +23,12 @@ import {
 } from "./WatchlistRegistry";
 import type { WatchlistPlatformView } from "./WatchlistPresentationModels";
 import type { WatchlistMetricsBundle } from "./WatchlistMetrics";
+import {
+  getSmartWatchlistEngine,
+  getSmartWatchlistHealth,
+  resetSmartWatchlistEngine,
+  SPRINT_10B_R2_FROZEN,
+} from "./smart";
 
 export const INSTITUTIONAL_WATCHLIST_EMPTY = WATCHLIST_EMPTY;
 
@@ -41,6 +46,10 @@ export interface InstitutionalWatchlistHealth {
   activeWatchlistId: string;
   emptyMessage: string;
   sprint10BR1Frozen: boolean;
+  dynamicCount: number;
+  smartReady: boolean;
+  recommendationCount: number;
+  sprint10BR2Frozen: boolean;
   surfaceHints: typeof WATCHLIST_SURFACE_ROUTES;
 }
 
@@ -53,7 +62,9 @@ export interface InstitutionalWatchlistSummary {
 export class InstitutionalWatchlists {
   ensureDefaults(now?: Date | null): WatchlistRecord[] {
     registerBuiltinWatchlistDefinitions();
-    return ensureDefaultWatchlists(now);
+    const records = ensureDefaultWatchlists(now);
+    getSmartWatchlistEngine().ensureBuiltinDynamicWatchlists(now);
+    return records;
   }
 
   getHealth(context?: WatchlistEngineContext | null): InstitutionalWatchlistHealth {
@@ -65,6 +76,7 @@ export class InstitutionalWatchlists {
     const favorites = activeRecords.filter((r) => r.favorite);
     const active = engine.getActiveWatchlist();
     const metrics = active ? getMetrics(active.id, context) : getMetrics(null, context);
+    const smart = getSmartWatchlistHealth();
 
     const ready = activeRecords.length > 0;
     return {
@@ -79,6 +91,10 @@ export class InstitutionalWatchlists {
       activeWatchlistId: active?.id ?? "",
       emptyMessage: ready ? "" : WATCHLIST_EMPTY.noWatchlists,
       sprint10BR1Frozen: SPRINT_10B_R1_FROZEN,
+      dynamicCount: smart.dynamicCount,
+      smartReady: smart.ready,
+      recommendationCount: smart.recommendationCount,
+      sprint10BR2Frozen: SPRINT_10B_R2_FROZEN,
       surfaceHints: { ...WATCHLIST_SURFACE_ROUTES },
     };
   }
@@ -106,6 +122,7 @@ export function getInstitutionalWatchlists(): InstitutionalWatchlists {
 
 export function resetInstitutionalWatchlists(): void {
   resetWatchlistEngine();
+  resetSmartWatchlistEngine();
   hubInstance = null;
 }
 

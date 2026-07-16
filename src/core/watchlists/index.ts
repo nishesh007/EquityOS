@@ -1,5 +1,5 @@
 /**
- * Institutional Watchlist Platform — public exports (Sprint 10B.R1).
+ * Institutional Watchlist Platform — public exports (Sprint 10B.R1–R2).
  * Multi-watchlist architecture for /watchlist, /dashboard, /research, /results, /company.
  */
 
@@ -123,3 +123,37 @@ export type {
   InstitutionalWatchlistHealth,
   InstitutionalWatchlistSummary,
 } from "./InstitutionalWatchlists";
+
+/** Sprint 10B.R2 — smart watchlists, dynamic rules, AI organization */
+export {
+  SMART_WATCHLIST_EMPTY,
+  DYNAMIC_WATCHLIST_TEMPLATES,
+  DYNAMIC_TEMPLATE_LABELS,
+  WATCHLIST_RULE_FIELDS,
+  GROUPING_DIMENSIONS,
+  createDynamicWatchlist,
+  createRule,
+  createRuleGroup,
+  runDynamicWatchlist,
+  getRecommendations,
+  groupWatchlist,
+  tagCompanies,
+  getSmartWatchlistView,
+  getSmartWatchlistHealth,
+  getSmartWatchlistEngine,
+  resetSmartWatchlistEngine,
+  isSprint10BR2Frozen,
+  SPRINT_10B_R2_FROZEN,
+} from "./smart";
+export type {
+  SmartWatchlistEmptyMessage,
+  DynamicWatchlistTemplateId,
+  SmartWatchlistCandidate,
+  DynamicWatchlistDefinition,
+  DynamicWatchlistRunResult,
+  CompanyTag,
+  WatchlistGroupingView,
+  WatchlistRecommendationsView,
+  SmartWatchlistView,
+  SmartWatchlistHealth,
+} from "./smart";

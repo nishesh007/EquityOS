@@ -1,6 +1,5 @@
 /**
- * Institutional Watchlist Platform bridge — Sprint 10B.R1.
- * Wires core watchlists into /watchlist, /dashboard, /research, /results, /company.
+ * Institutional Watchlist Platform bridge — Sprint 10B.R1–R2.
  */
 
 import {
@@ -8,10 +7,13 @@ import {
   ensureDefaultWatchlists,
   getInstitutionalWatchlistHealth,
   getInstitutionalWatchlistSummary,
+  getSmartWatchlistView,
   getWatchlistPlatformView,
   isSprint10BR1Frozen,
+  isSprint10BR2Frozen,
   type InstitutionalWatchlistHealth,
   type InstitutionalWatchlistSummary,
+  type SmartWatchlistView,
   type WatchlistEngineContext,
   type WatchlistPlatformView,
 } from "@/src/core/watchlists";
@@ -37,6 +39,10 @@ export function fetchWatchlistPlatformHealth(
       activeWatchlistId: "",
       emptyMessage: WATCHLIST_EMPTY.noWatchlists,
       sprint10BR1Frozen: isSprint10BR1Frozen(),
+      dynamicCount: 0,
+      smartReady: false,
+      recommendationCount: 0,
+      sprint10BR2Frozen: isSprint10BR2Frozen(),
       surfaceHints: {
         watchlist: "/watchlist",
         dashboard: "/",
@@ -62,12 +68,28 @@ export function fetchInstitutionalWatchlistSummary(
   return getInstitutionalWatchlistSummary(context);
 }
 
+export function fetchSmartWatchlistView(
+  context?: WatchlistEngineContext | null
+): SmartWatchlistView {
+  ensureDefaultWatchlists(context?.now);
+  return getSmartWatchlistView({ now: context?.now });
+}
+
 export function formatWatchlistPlatformSubtitle(
   health: WatchlistPlatformHealth
 ): string {
   if (!health.ready) {
     return health.emptyMessage || WATCHLIST_EMPTY.noWatchlists;
   }
-  const frozen = health.sprint10BR1Frozen ? " · 10B.R1 FROZEN" : "";
-  return `${health.watchlistCount} watchlists · ${health.pinnedCount} pinned · ${health.favoriteCount} favorites · ${health.companyCount} companies${frozen}`;
+  const frozen = [
+    health.sprint10BR1Frozen ? "10B.R1 FROZEN" : "",
+    health.sprint10BR2Frozen ? "10B.R2 FROZEN" : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const smart =
+    health.smartReady && health.dynamicCount > 0
+      ? ` · ${health.dynamicCount} dynamic`
+      : "";
+  return `${health.watchlistCount} watchlists · ${health.pinnedCount} pinned · ${health.favoriteCount} favorites · ${health.companyCount} companies${smart}${frozen ? ` · ${frozen}` : ""}`;
 }
