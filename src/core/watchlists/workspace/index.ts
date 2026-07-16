@@ -1,5 +1,5 @@
 /**
- * Watchlist Workspace — public exports & orchestrator (Sprint 10B.R4).
+ * Watchlist Workspace — public exports & orchestrator (Sprint 10B.R4–R7).
  */
 
 export {
@@ -74,6 +74,9 @@ import { getWatchlistResearch } from "./WatchlistResearchBridge";
 import { getWatchlistActions } from "./WatchlistActionCenter";
 import { getWatchlistTimeline, resetWatchlistTimeline } from "./WatchlistActivityTimeline";
 import { getCollaborationView, resetWatchlistCollaboration } from "./WatchlistCollaborationEngine";
+import { resetWorkspaceHistory } from "./WatchlistHistoryEngine";
+import { resetRecentActivity } from "./WatchlistRecentActivity";
+import { resetInstitutionalWorkspace } from "./WatchlistWorkspaceEngine";
 import {
   WORKSPACE_EMPTY,
   emptyWatchlistWorkspace,
@@ -170,4 +173,75 @@ export function resetWatchlistWorkspace(): void {
   resetWatchlistAlertBridge();
   resetWatchlistTimeline();
   resetWatchlistCollaboration();
+  resetWorkspaceHistory();
+  resetRecentActivity();
+  resetInstitutionalWorkspace();
 }
+
+/** Sprint 10B.R7 — institutional workspace, history, productivity */
+export {
+  WORKSPACE_PRODUCTIVITY_EMPTY,
+  WORKSPACE_HISTORY_KINDS,
+  QUICK_ACTIONS,
+  emptyInstitutionalWorkspace,
+} from "./WorkspacePresentationModels";
+export type {
+  WorkspaceProductivityEmptyMessage,
+  WorkspaceHistoryKind,
+  QuickActionId,
+  InstitutionalWorkspaceContext,
+  InstitutionalWorkspaceBundle,
+  SavedWatchlistsView,
+  WorkspaceHistoryView,
+  WorkspaceComparisonView,
+  WorkspaceResearchBridgeView,
+  ProductivityView,
+} from "./WorkspacePresentationModels";
+
+export {
+  saveWatchlist,
+  loadWatchlist,
+  listWatchlists,
+  archiveWatchlist as archiveSavedWatchlist,
+  restoreWatchlist as restoreSavedWatchlist,
+  duplicateWatchlist,
+  cloneWatchlist as cloneSavedWatchlist,
+  renameWatchlist,
+  pinWatchlist,
+  favoriteWatchlist,
+  SavedWatchlistEngine,
+} from "./SavedWatchlistEngine";
+
+export {
+  recordWorkspaceHistoryEvent,
+  getWorkspaceHistory,
+  getWorkspaceTimeline,
+  resetWorkspaceHistory,
+  WatchlistHistoryEngine,
+} from "./WatchlistHistoryEngine";
+
+export {
+  compareWatchlists,
+  compareWatchlists as compareWorkspaceWatchlists,
+  WatchlistComparisonWorkspace,
+} from "./WatchlistComparisonWorkspace";
+
+export {
+  getProductivityView,
+  trackWatchlistActivity,
+  logExportedWatchlist,
+  resetRecentActivity,
+  WatchlistRecentActivity,
+} from "./WatchlistRecentActivity";
+
+export { getWorkspaceResearchBridge } from "./WatchlistResearchBridge";
+
+export {
+  WatchlistWorkspaceEngine,
+  getInstitutionalWorkspaceEngine,
+  getInstitutionalWorkspace,
+  getInstitutionalWorkspaceHealth,
+  resetInstitutionalWorkspace,
+  isSprint10BR7Frozen,
+  SPRINT_10B_R7_FROZEN,
+} from "./WatchlistWorkspaceEngine";

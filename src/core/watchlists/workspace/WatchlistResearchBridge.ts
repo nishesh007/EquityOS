@@ -14,6 +14,12 @@ import {
   type WatchlistResearchView,
   type WatchlistWorkspaceContext,
 } from "./WatchlistWorkspaceModels";
+import type {
+  InstitutionalWorkspaceContext,
+  ResearchBridgeLink,
+  WorkspaceResearchBridgeView,
+} from "./WorkspacePresentationModels";
+import { WORKSPACE_PRODUCTIVITY_EMPTY } from "./WorkspacePresentationModels";
 
 export function getWatchlistResearch(
   context?: WatchlistWorkspaceContext | null
@@ -85,4 +91,86 @@ export function getWatchlistResearch(
 
 export function resetWatchlistResearchBridge(): void {
   /* stateless compose */
+}
+
+export function getWorkspaceResearchBridge(
+  context?: InstitutionalWorkspaceContext | null
+): WorkspaceResearchBridgeView {
+  const watchlistId = safeWorkspaceText(context?.watchlistId, "watchlist");
+  const symbols = (context?.symbols ?? []).map((s) => s.toUpperCase());
+  const ticker = safeWorkspaceText(context?.ticker, symbols[0] ?? "").toUpperCase();
+
+  if (!symbols.length && !ticker) {
+    return {
+      watchlistId,
+      links: [],
+      empty: true,
+      emptyMessage: WORKSPACE_PRODUCTIVITY_EMPTY.awaitingWorkspace,
+    };
+  }
+
+  const base = getWatchlistResearch(context);
+  const links: ResearchBridgeLink[] = [
+    {
+      kind: "research",
+      label: "Open Research",
+      route: ticker
+        ? `${WATCHLIST_WORKSPACE_ROUTES.research}?ticker=${ticker}`
+        : WATCHLIST_WORKSPACE_ROUTES.research,
+      ticker: ticker || undefined,
+    },
+    {
+      kind: "company",
+      label: "Open Company",
+      route: ticker
+        ? `${WATCHLIST_WORKSPACE_ROUTES.company}/${ticker}`
+        : WATCHLIST_WORKSPACE_ROUTES.company,
+      ticker: ticker || undefined,
+    },
+    {
+      kind: "earnings",
+      label: "Open Earnings",
+      route: ticker
+        ? `${WATCHLIST_WORKSPACE_ROUTES.company}/${ticker}?tab=earnings`
+        : WATCHLIST_WORKSPACE_ROUTES.results,
+      ticker: ticker || undefined,
+    },
+    {
+      kind: "reports",
+      label: "Open Reports",
+      route: WATCHLIST_WORKSPACE_ROUTES.results,
+    },
+    {
+      kind: "notes",
+      label: "Open Notes",
+      route: ticker
+        ? `${WATCHLIST_WORKSPACE_ROUTES.research}?ticker=${ticker}&panel=notes`
+        : WATCHLIST_WORKSPACE_ROUTES.research,
+      ticker: ticker || undefined,
+    },
+    {
+      kind: "decision_journal",
+      label: "Decision Journal",
+      route: ticker
+        ? `${WATCHLIST_WORKSPACE_ROUTES.research}?ticker=${ticker}&panel=journal`
+        : WATCHLIST_WORKSPACE_ROUTES.research,
+      ticker: ticker || undefined,
+    },
+  ];
+
+  for (const link of base.links.slice(0, 4)) {
+    links.push({
+      kind: "company",
+      label: `Research: ${link.ticker}`,
+      route: link.route,
+      ticker: link.ticker,
+    });
+  }
+
+  return {
+    watchlistId,
+    links,
+    empty: false,
+    emptyMessage: WORKSPACE_PRODUCTIVITY_EMPTY.awaitingWorkspace,
+  };
 }

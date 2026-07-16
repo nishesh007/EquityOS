@@ -1,5 +1,5 @@
 /**
- * Institutional Watchlist Platform bridge — Sprint 10B.R1–R6.
+ * Institutional Watchlist Platform bridge — Sprint 10B.R1–R7.
  */
 
 import {
@@ -14,12 +14,14 @@ import {
   getWatchlistWorkspace,
   getWatchlistAnalytics,
   getWatchlistCopilot,
+  getInstitutionalWorkspace,
   isSprint10BR1Frozen,
   isSprint10BR2Frozen,
   isSprint10BR3Frozen,
   isSprint10BR4Frozen,
   isSprint10BR5Frozen,
   isSprint10BR6Frozen,
+  isSprint10BR7Frozen,
   type InstitutionalWatchlistHealth,
   type InstitutionalWatchlistSummary,
   type SmartWatchlistView,
@@ -29,6 +31,7 @@ import {
   type WatchlistWorkspaceView,
   type WatchlistAnalyticsBundle,
   type WatchlistCopilotBundle,
+  type InstitutionalWorkspaceBundle,
 } from "@/src/core/watchlists";
 
 export type WatchlistPlatformHealth = InstitutionalWatchlistHealth;
@@ -72,6 +75,10 @@ export function fetchWatchlistPlatformHealth(
       decisionCount: 0,
       suggestionCount: 0,
       sprint10BR6Frozen: isSprint10BR6Frozen(),
+      institutionalWorkspaceReady: false,
+      savedWatchlistCount: 0,
+      workspaceTimelineCount: 0,
+      sprint10BR7Frozen: isSprint10BR7Frozen(),
       surfaceHints: {
         watchlist: "/watchlist",
         dashboard: "/",
@@ -156,6 +163,21 @@ export function fetchWatchlistCopilotBundle(
   });
 }
 
+export function fetchInstitutionalWorkspaceBundle(
+  context?: WatchlistEngineContext | null
+): InstitutionalWorkspaceBundle {
+  ensureDefaultWatchlists(context?.now);
+  const health = getInstitutionalWatchlistHealth(context);
+  const active = getWatchlistEngine().getActiveWatchlist();
+  return getInstitutionalWorkspace({
+    watchlistId: health.activeWatchlistId || undefined,
+    symbols: active?.symbols ?? [],
+    snapshots: context?.snapshots,
+    workspaceId: health.activeWatchlistId || undefined,
+    now: context?.now,
+  });
+}
+
 export function formatWatchlistPlatformSubtitle(
   health: WatchlistPlatformHealth
 ): string {
@@ -169,6 +191,7 @@ export function formatWatchlistPlatformSubtitle(
     health.sprint10BR4Frozen ? "10B.R4 FROZEN" : "",
     health.sprint10BR5Frozen ? "10B.R5 FROZEN" : "",
     health.sprint10BR6Frozen ? "10B.R6 FROZEN" : "",
+    health.sprint10BR7Frozen ? "10B.R7 FROZEN" : "",
   ]
     .filter(Boolean)
     .join(" · ");
@@ -192,5 +215,9 @@ export function formatWatchlistPlatformSubtitle(
     health.copilotReady && health.decisionCount > 0
       ? ` · ${health.decisionCount} decisions`
       : "";
-  return `${health.watchlistCount} watchlists · ${health.pinnedCount} pinned · ${health.favoriteCount} favorites · ${health.companyCount} companies${smart}${intel}${workspace}${analytics}${copilot}${frozen ? ` · ${frozen}` : ""}`;
+  const productivity =
+    health.institutionalWorkspaceReady && health.savedWatchlistCount > 0
+      ? ` · ${health.savedWatchlistCount} saved`
+      : "";
+  return `${health.watchlistCount} watchlists · ${health.pinnedCount} pinned · ${health.favoriteCount} favorites · ${health.companyCount} companies${smart}${intel}${workspace}${analytics}${copilot}${productivity}${frozen ? ` · ${frozen}` : ""}`;
 }

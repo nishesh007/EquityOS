@@ -1,5 +1,5 @@
 /**
- * Institutional Watchlist Platform — public exports (Sprint 10B.R1–R6).
+ * Institutional Watchlist Platform — public exports (Sprint 10B.R1–R7).
  * Multi-watchlist architecture for /watchlist, /dashboard, /research, /results, /company.
  */
 
@@ -189,12 +189,15 @@ export type {
   WatchlistIntelligenceBundle,
 } from "./intelligence";
 
-/** Sprint 10B.R4 — portfolio, alerts, research, action center */
+/** Sprint 10B.R4/R7 — workspace, portfolio, productivity */
 export {
   WORKSPACE_EMPTY,
   ACTION_CENTER_ACTIONS,
   TIMELINE_EVENT_KINDS,
   WATCHLIST_WORKSPACE_ROUTES,
+  WORKSPACE_PRODUCTIVITY_EMPTY,
+  WORKSPACE_HISTORY_KINDS,
+  QUICK_ACTIONS,
   getWatchlistWorkspace,
   getPortfolioBridge,
   getWatchlistTimeline,
@@ -204,10 +207,27 @@ export {
   getWatchlistAlerts,
   getWatchlistResearch,
   getWatchlistWorkspaceHealth,
+  saveWatchlist,
+  loadWatchlist,
+  listWatchlists,
+  archiveSavedWatchlist,
+  restoreWatchlist as restoreSavedWatchlist,
+  duplicateWatchlist,
+  cloneSavedWatchlist,
+  renameWatchlist,
+  getWorkspaceTimeline,
+  compareWorkspaceWatchlists,
+  getWorkspaceResearchBridge,
+  getInstitutionalWorkspace,
+  getInstitutionalWorkspaceHealth,
+  getProductivityView,
   resetWatchlistWorkspace,
   isSprint10BR4Frozen,
+  isSprint10BR7Frozen,
   SPRINT_10B_R4_FROZEN,
+  SPRINT_10B_R7_FROZEN,
   emptyWatchlistWorkspace,
+  emptyInstitutionalWorkspace,
 } from "./workspace";
 export type {
   WorkspaceEmptyMessage,
@@ -219,6 +239,14 @@ export type {
   WatchlistActionsView,
   WatchlistTimelineView,
   WatchlistCollaborationView,
+  WorkspaceProductivityEmptyMessage,
+  InstitutionalWorkspaceContext,
+  InstitutionalWorkspaceBundle,
+  SavedWatchlistsView,
+  WorkspaceHistoryView,
+  WorkspaceComparisonView,
+  WorkspaceResearchBridgeView,
+  ProductivityView,
 } from "./workspace";
 
 /** Sprint 10B.R5 — analytics, performance, benchmarks, scorecard */
