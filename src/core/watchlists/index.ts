@@ -1,5 +1,5 @@
 /**
- * Institutional Watchlist Platform — public exports (Sprint 10B.R1–R4).
+ * Institutional Watchlist Platform — public exports (Sprint 10B.R1–R5).
  * Multi-watchlist architecture for /watchlist, /dashboard, /research, /results, /company.
  */
 
@@ -220,3 +220,33 @@ export type {
   WatchlistTimelineView,
   WatchlistCollaborationView,
 } from "./workspace";
+
+/** Sprint 10B.R5 — analytics, performance, benchmarks, scorecard */
+export {
+  WATCHLIST_ANALYTICS_EMPTY,
+  BENCHMARK_KINDS,
+  SCORECARD_GRADES,
+  getWatchlistAnalytics,
+  getPerformance,
+  getBenchmark,
+  getScorecard,
+  getAIReview,
+  getWatchlistHistory,
+  getAnalyticsView,
+  getWatchlistAnalyticsHealth,
+  resetWatchlistAnalytics,
+  isSprint10BR5Frozen,
+  SPRINT_10B_R5_FROZEN,
+  emptyAnalyticsBundle,
+} from "./analytics";
+export type {
+  WatchlistAnalyticsEmptyMessage,
+  WatchlistAnalyticsContext,
+  WatchlistAnalyticsBundle,
+  WatchlistPerformanceView,
+  WatchlistAnalyticsView,
+  WatchlistHistoryView,
+  WatchlistBenchmarkView,
+  WatchlistAIReviewView,
+  WatchlistScorecardView,
+} from "./analytics";
