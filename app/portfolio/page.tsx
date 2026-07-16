@@ -42,7 +42,7 @@ export default async function PortfolioPage() {
     <div className="p-6">
       <PageHeader
         title="Portfolio"
-        subtitle={`Holdings, performance and monitored opportunities · ${screenerHealth.portfolioScreens} institutional portfolio screens · workspace ${screenerHealth.workspaceReady ? "ready" : screenerHealth.emptyMessage} · research ${researchWorkspace.ready ? `${researchWorkspace.openTabs} tabs · company ${researchWorkspace.companyReady ? "ready" : researchWorkspace.companyEmptyMessage}` : researchWorkspace.emptyMessage}`}
+        subtitle={`Holdings, performance and monitored opportunities · ${screenerHealth.portfolioScreens} institutional portfolio screens · workspace ${screenerHealth.workspaceReady ? "ready" : screenerHealth.emptyMessage} · research ${researchWorkspace.ready ? `${researchWorkspace.openTabs} tabs · company ${researchWorkspace.companyReady ? "ready" : researchWorkspace.companyEmptyMessage} · knowledge ${researchWorkspace.knowledgeReady ? `${researchWorkspace.noteCount} notes` : researchWorkspace.knowledgeEmptyMessage}` : researchWorkspace.emptyMessage}`}
       />
 
       <section className="mb-6 animate-fade-in-up">

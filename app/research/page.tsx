@@ -6,11 +6,13 @@
 import Link from "next/link";
 import {
   COMPANY_WORKSPACE_EMPTY,
+  KNOWLEDGE_EMPTY,
   LAYOUT_EMPTY,
   WORKSPACE_EMPTY,
   ensureDefaultResearchWorkspace,
   fetchCompanyResearchWorkspaceView,
   fetchMultiTabWorkspaceView,
+  fetchResearchKnowledgeView,
   fetchResearchWorkspaceHealth,
   fetchResearchWorkspaceView,
   fetchWorkspaceHistory,
@@ -25,6 +27,10 @@ export default function ResearchPage() {
   const multi = fetchMultiTabWorkspaceView(workspace.id);
   const history = fetchWorkspaceHistory();
   const company = fetchCompanyResearchWorkspaceView();
+  const knowledge = fetchResearchKnowledgeView({
+    workspaceId: workspace.id,
+    ticker: company.overview.ticker || undefined,
+  });
 
   return (
     <div className="p-6">
@@ -45,7 +51,11 @@ export default function ResearchPage() {
           · company{" "}
           {company.empty
             ? COMPANY_WORKSPACE_EMPTY.noCompanySelected
-            : `${company.overview.ticker} · ${company.panels.length} panels`}
+            : `${company.overview.ticker} · ${company.panels.length} panels`}{" "}
+          · knowledge{" "}
+          {knowledge.empty
+            ? KNOWLEDGE_EMPTY.knowledgeBaseEmpty
+            : `${knowledge.notes.length} notes · ${knowledge.evidence.items.length} evidence`}
         </p>
       </div>
 
@@ -122,6 +132,33 @@ export default function ResearchPage() {
                     </Link>
                   ))}
                 </div>
+              </div>
+            )}
+          </section>
+
+          <section>
+            <h2 className="mb-2 text-sm font-medium text-text-secondary">
+              Research knowledge
+            </h2>
+            {knowledge.empty ? (
+              <p className="text-sm text-text-muted">
+                {KNOWLEDGE_EMPTY.knowledgeBaseEmpty}
+              </p>
+            ) : (
+              <div className="space-y-2 text-sm text-text-primary">
+                <p className="text-xs text-text-muted">
+                  {knowledge.notes.length} notes · {knowledge.annotations.length}{" "}
+                  annotations · {knowledge.bookmarks.length} bookmarks ·{" "}
+                  {knowledge.evidence.items.length} evidence items
+                </p>
+                <ul className="space-y-1 text-xs text-text-muted">
+                  {knowledge.notes.slice(0, 4).map((note) => (
+                    <li key={note.id}>
+                      {note.pinned ? "[pin] " : ""}
+                      {note.title}
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
           </section>

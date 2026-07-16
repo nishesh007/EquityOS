@@ -11,7 +11,7 @@ import { fetchEquityIntelligence } from "@/services/equityIntelligenceData";
 import { fetchCompanyResearch } from "@/services/researchData";
 import { fetchSymbolScreenerInsight } from "@/services/screenerData";
 import {
-  ensureDefaultResearchWorkspace,
+  fetchResearchKnowledgeView,
   fetchResearchWorkspaceHealth,
   openCompanyResearchWorkspace,
 } from "@/services/researchWorkspace";
@@ -70,16 +70,15 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
     },
   });
 
-  ensureDefaultResearchWorkspace({
-    name: `Research · ${company.symbol}`,
-    ticker: company.symbol,
-  });
   const companyWorkspace = openCompanyResearchWorkspace({
     profile: company,
     research,
     intelligence,
   });
   const researchWorkspace = fetchResearchWorkspaceHealth();
+  const knowledge = fetchResearchKnowledgeView({
+    ticker: company.symbol,
+  });
 
   return (
     <div className="p-6">
@@ -90,6 +89,10 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
           {companyWorkspace.empty
             ? companyWorkspace.emptyMessage
             : `${companyWorkspace.panels.length} panels · ${companyWorkspace.overview.aiRecommendation}`}{" "}
+          · knowledge{" "}
+          {knowledge.empty
+            ? knowledge.emptyMessage
+            : `${knowledge.notes.length} notes · ${knowledge.evidence.items.length} evidence`}{" "}
           ·{" "}
           {researchWorkspace.ready
             ? `${researchWorkspace.openSessions} sessions · ${researchWorkspace.openTabs} tabs`

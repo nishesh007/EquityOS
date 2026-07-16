@@ -1,5 +1,5 @@
 /**
- * Research Workspace bridge — platform wiring for Sprint 10A.R1–R3.
+ * Research Workspace bridge — platform wiring for Sprint 10A.R1–R4.
  * Reuses existing routes/modules; does not rebuild Sprint 9 engines.
  */
 
@@ -8,6 +8,7 @@ import {
   WORKSPACE_EMPTY,
   LAYOUT_EMPTY,
   COMPANY_WORKSPACE_EMPTY,
+  KNOWLEDGE_EMPTY,
   createWorkspace,
   getActiveWorkspace,
   getResearchWorkspaceView,
@@ -23,6 +24,9 @@ import {
   openCompanyWorkspace,
   ensurePersistedWorkspace,
   restoreSession,
+  getKnowledge,
+  ingestEvidenceBag,
+  createNote,
   type ResearchWorkspaceMetrics,
   type ResearchWorkspaceRecord,
   type ResearchWorkspaceView,
@@ -30,6 +34,7 @@ import {
   type WorkspaceHistoryView,
   type CompanyWorkspaceView,
   type CompanyWorkspaceSnapshot,
+  type KnowledgeView,
 } from "@/src/core/research/workspace";
 
 export type ResearchWorkspaceHealth = {
@@ -40,10 +45,14 @@ export type ResearchWorkspaceHealth = {
   researchCount: number;
   openTabs: number;
   companyReady: boolean;
+  knowledgeReady: boolean;
+  noteCount: number;
+  evidenceCount: number;
   activeWorkspaceId: string;
   emptyMessage: string;
   layoutEmptyMessage: string;
   companyEmptyMessage: string;
+  knowledgeEmptyMessage: string;
   surface: {
     research: string;
     dashboard: string;
@@ -206,11 +215,40 @@ export function openCompanyResearchWorkspace(input: {
   intelligence?: EquityIntelligence | null;
 }): CompanyWorkspaceView {
   const snapshot = buildCompanyWorkspaceSnapshot(input);
-  ensureDefaultResearchWorkspace({
+  const workspace = ensureDefaultResearchWorkspace({
     name: `Research · ${snapshot.ticker}`,
     ticker: snapshot.ticker,
   });
-  return openCompanyWorkspace(snapshot);
+  const view = openCompanyWorkspace(snapshot);
+
+  if (!workspace.empty && snapshot.ticker) {
+    ingestEvidenceBag({
+      workspaceId: workspace.id,
+      ticker: snapshot.ticker,
+      bull: snapshot.insights.bullCase,
+      bear: snapshot.insights.bearCase,
+      catalysts: snapshot.insights.catalysts,
+      risks: [
+        ...snapshot.risk.business,
+        ...snapshot.risk.financial,
+        ...snapshot.risk.valuation,
+      ],
+      financial: snapshot.insights.keyTakeaways,
+      technical: [snapshot.technicals.trend, snapshot.technicals.momentum].filter(
+        (v) => v && v !== COMPANY_WORKSPACE_EMPTY.noTechnicalData
+      ),
+      confidence: [snapshot.badges.confidence, snapshot.badges.validation],
+    });
+    createNote({
+      workspaceId: workspace.id,
+      ticker: snapshot.ticker,
+      title: `Research · ${snapshot.ticker}`,
+      body: snapshot.insights.investmentThesis,
+      format: "markdown",
+    });
+  }
+
+  return view;
 }
 
 /** Health/status bridge for /research, /, /company, /results, /portfolio, /watchlist. */
@@ -221,6 +259,10 @@ export function fetchResearchWorkspaceHealth(): ResearchWorkspaceHealth {
     const workspaces = listWorkspaces({ includeArchived: true });
     const openTabs = active ? listOpenTabs(active.id).length : 0;
     const companyView = getCompanyWorkspaceView();
+    const knowledge = getKnowledge({
+      workspaceId: active?.id,
+      ticker: companyView.overview.ticker || undefined,
+    });
     return {
       ready: workspaces.length > 0 || !metrics.empty,
       workspaceCount: metrics.workspaceCount,
@@ -229,6 +271,9 @@ export function fetchResearchWorkspaceHealth(): ResearchWorkspaceHealth {
       researchCount: metrics.researchCount,
       openTabs,
       companyReady: !companyView.empty,
+      knowledgeReady: !knowledge.empty,
+      noteCount: knowledge.notes.length,
+      evidenceCount: knowledge.evidence.items.length,
       activeWorkspaceId: active?.id ?? metrics.activeWorkspaceId,
       emptyMessage: metrics.empty
         ? WORKSPACE_EMPTY.noWorkspace
@@ -238,6 +283,9 @@ export function fetchResearchWorkspaceHealth(): ResearchWorkspaceHealth {
       companyEmptyMessage: companyView.empty
         ? COMPANY_WORKSPACE_EMPTY.noCompanySelected
         : COMPANY_WORKSPACE_EMPTY.awaitingAnalysis,
+      knowledgeEmptyMessage: knowledge.empty
+        ? KNOWLEDGE_EMPTY.knowledgeBaseEmpty
+        : KNOWLEDGE_EMPTY.awaitingResearch,
       surface: {
         research: "/research",
         dashboard: "/",
@@ -256,10 +304,14 @@ export function fetchResearchWorkspaceHealth(): ResearchWorkspaceHealth {
       researchCount: 0,
       openTabs: 0,
       companyReady: false,
+      knowledgeReady: false,
+      noteCount: 0,
+      evidenceCount: 0,
       activeWorkspaceId: "",
       emptyMessage: WORKSPACE_EMPTY.noWorkspace,
       layoutEmptyMessage: LAYOUT_EMPTY.awaitingWorkspace,
       companyEmptyMessage: COMPANY_WORKSPACE_EMPTY.noCompanySelected,
+      knowledgeEmptyMessage: KNOWLEDGE_EMPTY.knowledgeBaseEmpty,
       surface: {
         research: "/research",
         dashboard: "/",
@@ -296,6 +348,19 @@ export function fetchCompanyResearchWorkspaceView(
   ticker?: string | null
 ): CompanyWorkspaceView {
   return getCompanyWorkspaceView(ticker);
+}
+
+export function fetchResearchKnowledgeView(options?: {
+  workspaceId?: string | null;
+  ticker?: string | null;
+  sector?: string | null;
+}): KnowledgeView {
+  const active = getActiveWorkspace();
+  return getKnowledge({
+    workspaceId: options?.workspaceId ?? active?.id,
+    ticker: options?.ticker,
+    sector: options?.sector,
+  });
 }
 
 export function ensureDefaultResearchWorkspace(options?: {
@@ -352,6 +417,7 @@ export {
   WORKSPACE_EMPTY,
   LAYOUT_EMPTY,
   COMPANY_WORKSPACE_EMPTY,
+  KNOWLEDGE_EMPTY,
   createWorkspace,
   openWorkspace,
   listWorkspaces,
@@ -369,4 +435,8 @@ export {
   getCompanyOverview,
   getResearchPanels,
   syncWorkspacePanels,
+  getKnowledge,
+  createNote,
+  bookmarkResearch,
+  createAnnotation,
 } from "@/src/core/research/workspace";
