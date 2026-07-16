@@ -19,6 +19,10 @@ import {
   fetchResearchWorkspaceHealth,
   openCompanyResearchWorkspace,
 } from "@/services/researchWorkspace";
+import {
+  fetchWatchlistPlatformHealth,
+  formatWatchlistPlatformSubtitle,
+} from "@/services/watchlistPlatform";
 
 interface CompanyPageProps {
   params: Promise<{ symbol: string }>;
@@ -80,6 +84,7 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
     intelligence,
   });
   const researchWorkspace = fetchResearchWorkspaceHealth();
+  const watchlistPlatform = fetchWatchlistPlatformHealth();
   const knowledge = fetchResearchKnowledgeView({
     ticker: company.symbol,
   });
@@ -122,7 +127,8 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
           ·{" "}
           {researchWorkspace.ready
             ? `${researchWorkspace.openSessions} sessions · ${researchWorkspace.openTabs} tabs`
-            : researchWorkspace.emptyMessage}
+            : researchWorkspace.emptyMessage}{" "}
+          · watchlists {formatWatchlistPlatformSubtitle(watchlistPlatform)}
         </p>
         {!companyWorkspace.empty ? (
           <div className="mt-2 flex flex-wrap gap-2">

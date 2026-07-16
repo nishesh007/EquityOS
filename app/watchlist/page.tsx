@@ -5,21 +5,26 @@ import { fetchWatchlist } from "@/services/marketData";
 import { fetchWatchlistEarningsSurface } from "@/services/earningsCalendar";
 import { fetchInstitutionalScreenerHealth } from "@/services/screenerData";
 import { fetchResearchWorkspaceHealth } from "@/services/researchWorkspace";
+import {
+  fetchWatchlistPlatformHealth,
+  formatWatchlistPlatformSubtitle,
+} from "@/services/watchlistPlatform";
 
 export default async function WatchlistPage() {
-  const [watchlist, earningsSurface, screenerHealth, researchWorkspace] =
+  const [watchlist, earningsSurface, screenerHealth, researchWorkspace, watchlistPlatform] =
     await Promise.all([
       fetchWatchlist(),
       fetchWatchlistEarningsSurface(),
       Promise.resolve(fetchInstitutionalScreenerHealth()),
       Promise.resolve(fetchResearchWorkspaceHealth()),
+      Promise.resolve(fetchWatchlistPlatformHealth()),
     ]);
 
   return (
     <div className="p-6">
       <PageHeader
         title="Watchlist"
-        subtitle={`Track symbols, price action and upcoming earnings · ${screenerHealth.watchlistScreens} institutional watchlist screens · workspace ${screenerHealth.workspaceReady ? "ready" : screenerHealth.emptyMessage} · research ${researchWorkspace.ready ? `${researchWorkspace.openTabs} tabs · executive ${researchWorkspace.executiveReady ? `${researchWorkspace.decisionCount} decisions` : researchWorkspace.executiveEmptyMessage}` : researchWorkspace.emptyMessage}${researchWorkspace.sprint10AFrozen ? " · 10A FROZEN" : ""}`}
+        subtitle={`Track symbols, price action and upcoming earnings · ${formatWatchlistPlatformSubtitle(watchlistPlatform)} · ${screenerHealth.watchlistScreens} institutional watchlist screens · workspace ${screenerHealth.workspaceReady ? "ready" : screenerHealth.emptyMessage} · research ${researchWorkspace.ready ? `${researchWorkspace.openTabs} tabs · executive ${researchWorkspace.executiveReady ? `${researchWorkspace.decisionCount} decisions` : researchWorkspace.executiveEmptyMessage}` : researchWorkspace.emptyMessage}${researchWorkspace.sprint10AFrozen ? " · 10A FROZEN" : ""}`}
       />
 
       <section className="mb-6 animate-fade-in-up max-w-4xl">

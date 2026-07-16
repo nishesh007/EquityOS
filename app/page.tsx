@@ -31,6 +31,10 @@ import { fetchOpportunityEngineState } from "@/services/opportunityEngine";
 import { fetchPortfolioDoctorAnalysis } from "@/services/portfolioAnalysisData";
 import { fetchInstitutionalScreenerHealth } from "@/services/screenerData";
 import { fetchResearchWorkspaceHealth } from "@/services/researchWorkspace";
+import {
+  fetchWatchlistPlatformHealth,
+  formatWatchlistPlatformSubtitle,
+} from "@/services/watchlistPlatform";
 
 export default async function DashboardPage() {
   const [
@@ -49,6 +53,7 @@ export default async function DashboardPage() {
     alertEvents,
     screenerHealth,
     researchWorkspace,
+    watchlistPlatform,
   ] = await Promise.all([
     fetchMarketIndices(),
     fetchPortfolioSummary(),
@@ -65,6 +70,7 @@ export default async function DashboardPage() {
     fetchUpcomingEarningsEvents(),
     Promise.resolve(fetchInstitutionalScreenerHealth()),
     Promise.resolve(fetchResearchWorkspaceHealth()),
+    Promise.resolve(fetchWatchlistPlatformHealth()),
   ]);
 
   return (
@@ -94,6 +100,8 @@ export default async function DashboardPage() {
           {researchWorkspace.ready
             ? `${researchWorkspace.workspaceCount} desks · ${researchWorkspace.openTabs} tabs · company ${researchWorkspace.companyReady ? "ready" : researchWorkspace.companyEmptyMessage} · knowledge ${researchWorkspace.knowledgeReady ? `${researchWorkspace.noteCount} notes` : researchWorkspace.knowledgeEmptyMessage} · timeline ${researchWorkspace.integrationReady ? `${researchWorkspace.timelineCount} events` : researchWorkspace.integrationEmptyMessage} · copilot ${researchWorkspace.copilotReady ? "ready" : researchWorkspace.copilotEmptyMessage} · automation ${researchWorkspace.automationReady ? `${researchWorkspace.taskCount} tasks` : researchWorkspace.automationEmptyMessage} · executive ${researchWorkspace.executiveReady ? researchWorkspace.executiveSummary : researchWorkspace.executiveEmptyMessage}${researchWorkspace.sprint10AFrozen ? " · 10A FROZEN" : ""}`
             : researchWorkspace.emptyMessage}{" "}
+          · watchlists{" "}
+          {formatWatchlistPlatformSubtitle(watchlistPlatform)}{" "}
           ·{" "}
           {new Date().toLocaleDateString("en-IN", {
             weekday: "long",

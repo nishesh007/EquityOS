@@ -33,12 +33,17 @@ import {
   fetchWorkspaceHistory,
   fetchWorkspaceInsightsView,
 } from "@/services/researchWorkspace";
+import {
+  fetchWatchlistPlatformHealth,
+  formatWatchlistPlatformSubtitle,
+} from "@/services/watchlistPlatform";
 
 export default function ResearchPage() {
   const workspace = ensureDefaultResearchWorkspace({
     name: "Institutional Research Workspace",
   });
   const health = fetchResearchWorkspaceHealth();
+  const watchlistPlatform = fetchWatchlistPlatformHealth();
   const view = fetchResearchWorkspaceView();
   const multi = fetchMultiTabWorkspaceView(workspace.id);
   const history = fetchWorkspaceHistory();
@@ -120,7 +125,8 @@ export default function ResearchPage() {
           · executive{" "}
           {executive.empty
             ? EXECUTIVE_RESEARCH_EMPTY.awaitingResearch
-            : executive.homeStrip.executiveSummary}
+            : executive.homeStrip.executiveSummary}{" "}
+          · watchlists {formatWatchlistPlatformSubtitle(watchlistPlatform)}
         </p>
       </div>
 
