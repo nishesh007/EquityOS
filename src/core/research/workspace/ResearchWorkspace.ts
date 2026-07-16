@@ -66,6 +66,7 @@ import {
 import { resetLayoutEngines } from "./layout";
 import { resetCompanyWorkspace } from "./company";
 import { resetKnowledgeEngines } from "./knowledge";
+import { resetIntegrationEngines } from "./integration";
 
 const activityLog: WorkspaceActivity[] = [];
 const MAX_ACTIVITY = 50;
@@ -396,6 +397,7 @@ export function resetResearchWorkspace(): void {
   resetLayoutEngines();
   resetCompanyWorkspace();
   resetKnowledgeEngines();
+  resetIntegrationEngines();
 }
 
 /** Public API — Sprint 10A.R1 */

@@ -10,7 +10,7 @@ import { listBookmarks } from "./BookmarkEngine";
 import { getEvidence } from "./EvidenceManager";
 import {
   getAiObservations,
-  getResearchTimeline,
+  getMemoryTimeline,
 } from "./ResearchMemoryEngine";
 import {
   KNOWLEDGE_EMPTY,
@@ -55,7 +55,7 @@ export function buildKnowledgeBase(options?: {
     ? options.themes.map((t) => safeWorkspaceText(t, "")).filter(Boolean)
     : [];
 
-  const researchHistory = getResearchTimeline({ ticker: ticker ?? undefined });
+  const researchHistory = getMemoryTimeline({ ticker: ticker ?? undefined });
   const aiMemory = getAiObservations(ticker);
 
   const empty =
@@ -103,7 +103,7 @@ export function getKnowledge(options?: {
     });
     const knowledge = buildKnowledgeBase(options);
     const evidence = getEvidence({ workspaceId: wid ?? undefined, ticker: ticker ?? undefined });
-    const memory = getResearchTimeline({ ticker: ticker ?? undefined });
+    const memory = getMemoryTimeline({ ticker: ticker ?? undefined });
 
     const empty =
       notes.length === 0 &&

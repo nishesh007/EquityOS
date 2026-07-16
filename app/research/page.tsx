@@ -6,16 +6,20 @@
 import Link from "next/link";
 import {
   COMPANY_WORKSPACE_EMPTY,
+  INTEGRATION_EMPTY,
   KNOWLEDGE_EMPTY,
   LAYOUT_EMPTY,
   WORKSPACE_EMPTY,
   ensureDefaultResearchWorkspace,
   fetchCompanyResearchWorkspaceView,
+  fetchDecisionJournalView,
   fetchMultiTabWorkspaceView,
   fetchResearchKnowledgeView,
+  fetchResearchTimelineView,
   fetchResearchWorkspaceHealth,
   fetchResearchWorkspaceView,
   fetchWorkspaceHistory,
+  fetchWorkspaceInsightsView,
 } from "@/services/researchWorkspace";
 
 export default function ResearchPage() {
@@ -28,6 +32,18 @@ export default function ResearchPage() {
   const history = fetchWorkspaceHistory();
   const company = fetchCompanyResearchWorkspaceView();
   const knowledge = fetchResearchKnowledgeView({
+    workspaceId: workspace.id,
+    ticker: company.overview.ticker || undefined,
+  });
+  const timeline = fetchResearchTimelineView({
+    workspaceId: workspace.id,
+    ticker: company.overview.ticker || undefined,
+  });
+  const insights = fetchWorkspaceInsightsView({
+    workspaceId: workspace.id,
+    ticker: company.overview.ticker || undefined,
+  });
+  const decisions = fetchDecisionJournalView({
     workspaceId: workspace.id,
     ticker: company.overview.ticker || undefined,
   });
@@ -55,7 +71,11 @@ export default function ResearchPage() {
           · knowledge{" "}
           {knowledge.empty
             ? KNOWLEDGE_EMPTY.knowledgeBaseEmpty
-            : `${knowledge.notes.length} notes · ${knowledge.evidence.items.length} evidence`}
+            : `${knowledge.notes.length} notes · ${knowledge.evidence.items.length} evidence`}{" "}
+          · timeline{" "}
+          {timeline.empty
+            ? INTEGRATION_EMPTY.noTimeline
+            : `${timeline.entries.length} events · ${decisions.entries.length} decisions`}
         </p>
       </div>
 
@@ -160,6 +180,60 @@ export default function ResearchPage() {
                   ))}
                 </ul>
               </div>
+            )}
+          </section>
+
+          <section>
+            <h2 className="mb-2 text-sm font-medium text-text-secondary">
+              Unified research timeline
+            </h2>
+            {timeline.empty ? (
+              <p className="text-sm text-text-muted">{INTEGRATION_EMPTY.noTimeline}</p>
+            ) : (
+              <ul className="space-y-1 text-xs text-text-muted">
+                {timeline.entries.slice(0, 6).map((entry) => (
+                  <li key={entry.id}>
+                    [{entry.module}] {entry.label} · {entry.kind}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section>
+            <h2 className="mb-2 text-sm font-medium text-text-secondary">
+              Workspace insights
+            </h2>
+            {insights.empty ? (
+              <p className="text-sm text-text-muted">
+                {INTEGRATION_EMPTY.awaitingResearchActivity}
+              </p>
+            ) : (
+              <div className="space-y-2 text-sm text-text-primary">
+                <p className="text-xs text-text-muted">{insights.aiSummary}</p>
+                <ul className="space-y-1 text-xs text-text-muted">
+                  {insights.recommendedActions.slice(0, 4).map((action) => (
+                    <li key={action}>{action}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </section>
+
+          <section>
+            <h2 className="mb-2 text-sm font-medium text-text-secondary">
+              Decision journal
+            </h2>
+            {decisions.empty ? (
+              <p className="text-sm text-text-muted">{INTEGRATION_EMPTY.noDecisions}</p>
+            ) : (
+              <ul className="space-y-1 text-xs text-text-muted">
+                {decisions.entries.slice(0, 4).map((entry) => (
+                  <li key={entry.id}>
+                    {entry.title} · {entry.kind}
+                  </li>
+                ))}
+              </ul>
             )}
           </section>
 

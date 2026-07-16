@@ -12,6 +12,7 @@ import { fetchCompanyResearch } from "@/services/researchData";
 import { fetchSymbolScreenerInsight } from "@/services/screenerData";
 import {
   fetchResearchKnowledgeView,
+  fetchResearchTimelineView,
   fetchResearchWorkspaceHealth,
   openCompanyResearchWorkspace,
 } from "@/services/researchWorkspace";
@@ -79,6 +80,9 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
   const knowledge = fetchResearchKnowledgeView({
     ticker: company.symbol,
   });
+  const timeline = fetchResearchTimelineView({
+    ticker: company.symbol,
+  });
 
   return (
     <div className="p-6">
@@ -93,6 +97,10 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
           {knowledge.empty
             ? knowledge.emptyMessage
             : `${knowledge.notes.length} notes · ${knowledge.evidence.items.length} evidence`}{" "}
+          · timeline{" "}
+          {timeline.empty
+            ? timeline.emptyMessage
+            : `${timeline.entries.length} events`}{" "}
           ·{" "}
           {researchWorkspace.ready
             ? `${researchWorkspace.openSessions} sessions · ${researchWorkspace.openTabs} tabs`

@@ -81,10 +81,10 @@ export type { BookmarkResearchInput } from "./BookmarkEngine";
 
 export {
   recordConclusion,
-  recordDecision,
+  recordDecision as recordMemoryDecision,
   recordObservation,
   recordNoteMemory,
-  getResearchTimeline,
+  getMemoryTimeline,
   getPreviousConclusions,
   getHistoricalDecisions,
   getAiObservations,

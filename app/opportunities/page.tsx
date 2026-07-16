@@ -6,11 +6,13 @@ import {
   runDiscoveryScan,
   toScreenUniverseCandidates,
 } from "@/services/screenerData";
+import { fetchResearchWorkspaceHealth } from "@/services/researchWorkspace";
 
 export default async function OpportunitiesPage() {
-  const [{ universe }, health] = await Promise.all([
+  const [{ universe }, health, researchWorkspace] = await Promise.all([
     fetchScreenerInitialData(),
     Promise.resolve(fetchInstitutionalScreenerHealth()),
+    Promise.resolve(fetchResearchWorkspaceHealth()),
   ]);
 
   const candidates = toScreenUniverseCandidates(universe.rows.slice(0, 40)).map(
@@ -53,6 +55,10 @@ export default async function OpportunitiesPage() {
         title="AI Opportunities"
         subtitle={`Sprint 9D FROZEN · Discovery · ${health.ideaKindsCount} idea kinds · ${health.themeCount} themes · executive ${
           health.executiveReady ? health.executiveSummary : health.emptyMessage
+        } · research timeline ${
+          researchWorkspace.integrationReady
+            ? `${researchWorkspace.timelineCount} events`
+            : researchWorkspace.integrationEmptyMessage
         }`}
       />
 

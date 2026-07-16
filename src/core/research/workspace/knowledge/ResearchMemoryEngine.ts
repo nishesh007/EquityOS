@@ -95,7 +95,7 @@ export function recordNoteMemory(
   });
 }
 
-export function getResearchTimeline(options?: {
+export function getMemoryTimeline(options?: {
   ticker?: string | null;
   limit?: number;
 }): MemoryTimelineEntry[] {
@@ -110,15 +110,15 @@ export function getResearchTimeline(options?: {
 }
 
 export function getPreviousConclusions(ticker: string): MemoryTimelineEntry[] {
-  return getResearchTimeline({ ticker }).filter((e) => e.kind === "conclusion");
+  return getMemoryTimeline({ ticker }).filter((e) => e.kind === "conclusion");
 }
 
 export function getHistoricalDecisions(ticker: string): MemoryTimelineEntry[] {
-  return getResearchTimeline({ ticker }).filter((e) => e.kind === "decision");
+  return getMemoryTimeline({ ticker }).filter((e) => e.kind === "decision");
 }
 
 export function getAiObservations(ticker?: string | null): MemoryTimelineEntry[] {
-  return getResearchTimeline({ ticker: ticker ?? undefined }).filter(
+  return getMemoryTimeline({ ticker: ticker ?? undefined }).filter(
     (e) => e.kind === "observation"
   );
 }
@@ -130,6 +130,6 @@ export function resetResearchMemory(): void {
 export class ResearchMemoryEngine {
   recordConclusion = recordConclusion;
   recordDecision = recordDecision;
-  getResearchTimeline = getResearchTimeline;
+  getMemoryTimeline = getMemoryTimeline;
   reset = resetResearchMemory;
 }

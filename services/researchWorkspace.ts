@@ -1,5 +1,5 @@
 /**
- * Research Workspace bridge — platform wiring for Sprint 10A.R1–R4.
+ * Research Workspace bridge — platform wiring for Sprint 10A.R1–R5.
  * Reuses existing routes/modules; does not rebuild Sprint 9 engines.
  */
 
@@ -9,6 +9,7 @@ import {
   LAYOUT_EMPTY,
   COMPANY_WORKSPACE_EMPTY,
   KNOWLEDGE_EMPTY,
+  INTEGRATION_EMPTY,
   createWorkspace,
   getActiveWorkspace,
   getResearchWorkspaceView,
@@ -27,6 +28,13 @@ import {
   getKnowledge,
   ingestEvidenceBag,
   createNote,
+  getResearchTimeline,
+  getWorkspaceInsights,
+  getDecisionJournal,
+  getSnapshotTimeline,
+  syncCrossModuleResearch,
+  createSnapshot,
+  recordDecision,
   type ResearchWorkspaceMetrics,
   type ResearchWorkspaceRecord,
   type ResearchWorkspaceView,
@@ -35,6 +43,10 @@ import {
   type CompanyWorkspaceView,
   type CompanyWorkspaceSnapshot,
   type KnowledgeView,
+  type ResearchTimelineView,
+  type WorkspaceInsights,
+  type DecisionJournalView,
+  type SnapshotTimelineView,
 } from "@/src/core/research/workspace";
 
 export type ResearchWorkspaceHealth = {
@@ -46,13 +58,18 @@ export type ResearchWorkspaceHealth = {
   openTabs: number;
   companyReady: boolean;
   knowledgeReady: boolean;
+  integrationReady: boolean;
   noteCount: number;
   evidenceCount: number;
+  timelineCount: number;
+  decisionCount: number;
+  snapshotCount: number;
   activeWorkspaceId: string;
   emptyMessage: string;
   layoutEmptyMessage: string;
   companyEmptyMessage: string;
   knowledgeEmptyMessage: string;
+  integrationEmptyMessage: string;
   surface: {
     research: string;
     dashboard: string;
@@ -60,6 +77,7 @@ export type ResearchWorkspaceHealth = {
     results: string;
     portfolio: string;
     watchlist: string;
+    opportunities: string;
   };
 };
 
@@ -246,6 +264,30 @@ export function openCompanyResearchWorkspace(input: {
       body: snapshot.insights.investmentThesis,
       format: "markdown",
     });
+    syncCrossModuleResearch({
+      workspaceId: workspace.id,
+      ticker: snapshot.ticker,
+      earningsLines: snapshot.insights.catalysts.slice(0, 3),
+      alertLines: snapshot.risk.business.slice(0, 2),
+      screenerLines: [snapshot.badges.validation].filter(Boolean),
+      validationLines: [snapshot.badges.validation].filter(Boolean),
+      trustLines: [snapshot.badges.trust].filter(Boolean),
+      opportunityLines: snapshot.insights.keyTakeaways.slice(0, 2),
+      portfolioLines: [`Portfolio context · ${snapshot.ticker}`],
+      watchlistLines: [`Watchlist context · ${snapshot.ticker}`],
+    });
+    createSnapshot({
+      workspaceId: workspace.id,
+      ticker: snapshot.ticker,
+      label: `Snapshot · ${snapshot.ticker}`,
+    });
+    recordDecision({
+      workspaceId: workspace.id,
+      ticker: snapshot.ticker,
+      kind: "initial_thesis",
+      body: snapshot.insights.investmentThesis,
+      confidence: snapshot.quality.score,
+    });
   }
 
   return view;
@@ -263,6 +305,18 @@ export function fetchResearchWorkspaceHealth(): ResearchWorkspaceHealth {
       workspaceId: active?.id,
       ticker: companyView.overview.ticker || undefined,
     });
+    const timeline = getResearchTimeline({
+      workspaceId: active?.id,
+      ticker: companyView.overview.ticker || undefined,
+    });
+    const decisions = getDecisionJournal({
+      workspaceId: active?.id,
+      ticker: companyView.overview.ticker || undefined,
+    });
+    const snapshots = getSnapshotTimeline({
+      workspaceId: active?.id,
+      ticker: companyView.overview.ticker || undefined,
+    });
     return {
       ready: workspaces.length > 0 || !metrics.empty,
       workspaceCount: metrics.workspaceCount,
@@ -272,8 +326,12 @@ export function fetchResearchWorkspaceHealth(): ResearchWorkspaceHealth {
       openTabs,
       companyReady: !companyView.empty,
       knowledgeReady: !knowledge.empty,
+      integrationReady: !timeline.empty,
       noteCount: knowledge.notes.length,
       evidenceCount: knowledge.evidence.items.length,
+      timelineCount: timeline.entries.length,
+      decisionCount: decisions.entries.length,
+      snapshotCount: snapshots.snapshots.length,
       activeWorkspaceId: active?.id ?? metrics.activeWorkspaceId,
       emptyMessage: metrics.empty
         ? WORKSPACE_EMPTY.noWorkspace
@@ -286,6 +344,9 @@ export function fetchResearchWorkspaceHealth(): ResearchWorkspaceHealth {
       knowledgeEmptyMessage: knowledge.empty
         ? KNOWLEDGE_EMPTY.knowledgeBaseEmpty
         : KNOWLEDGE_EMPTY.awaitingResearch,
+      integrationEmptyMessage: timeline.empty
+        ? INTEGRATION_EMPTY.noTimeline
+        : INTEGRATION_EMPTY.awaitingResearchActivity,
       surface: {
         research: "/research",
         dashboard: "/",
@@ -293,6 +354,7 @@ export function fetchResearchWorkspaceHealth(): ResearchWorkspaceHealth {
         results: "/results",
         portfolio: "/portfolio",
         watchlist: "/watchlist",
+        opportunities: "/opportunities",
       },
     };
   } catch {
@@ -305,13 +367,18 @@ export function fetchResearchWorkspaceHealth(): ResearchWorkspaceHealth {
       openTabs: 0,
       companyReady: false,
       knowledgeReady: false,
+      integrationReady: false,
       noteCount: 0,
       evidenceCount: 0,
+      timelineCount: 0,
+      decisionCount: 0,
+      snapshotCount: 0,
       activeWorkspaceId: "",
       emptyMessage: WORKSPACE_EMPTY.noWorkspace,
       layoutEmptyMessage: LAYOUT_EMPTY.awaitingWorkspace,
       companyEmptyMessage: COMPANY_WORKSPACE_EMPTY.noCompanySelected,
       knowledgeEmptyMessage: KNOWLEDGE_EMPTY.knowledgeBaseEmpty,
+      integrationEmptyMessage: INTEGRATION_EMPTY.noTimeline,
       surface: {
         research: "/research",
         dashboard: "/",
@@ -319,6 +386,7 @@ export function fetchResearchWorkspaceHealth(): ResearchWorkspaceHealth {
         results: "/results",
         portfolio: "/portfolio",
         watchlist: "/watchlist",
+        opportunities: "/opportunities",
       },
     };
   }
@@ -360,6 +428,50 @@ export function fetchResearchKnowledgeView(options?: {
     workspaceId: options?.workspaceId ?? active?.id,
     ticker: options?.ticker,
     sector: options?.sector,
+  });
+}
+
+export function fetchResearchTimelineView(options?: {
+  workspaceId?: string | null;
+  ticker?: string | null;
+}): ResearchTimelineView {
+  const active = getActiveWorkspace();
+  return getResearchTimeline({
+    workspaceId: options?.workspaceId ?? active?.id,
+    ticker: options?.ticker,
+  });
+}
+
+export function fetchWorkspaceInsightsView(options?: {
+  workspaceId?: string | null;
+  ticker?: string | null;
+}): WorkspaceInsights {
+  const active = getActiveWorkspace();
+  return getWorkspaceInsights({
+    workspaceId: options?.workspaceId ?? active?.id,
+    ticker: options?.ticker,
+  });
+}
+
+export function fetchDecisionJournalView(options?: {
+  workspaceId?: string | null;
+  ticker?: string | null;
+}): DecisionJournalView {
+  const active = getActiveWorkspace();
+  return getDecisionJournal({
+    workspaceId: options?.workspaceId ?? active?.id,
+    ticker: options?.ticker,
+  });
+}
+
+export function fetchSnapshotTimelineView(options?: {
+  workspaceId?: string | null;
+  ticker?: string | null;
+}): SnapshotTimelineView {
+  const active = getActiveWorkspace();
+  return getSnapshotTimeline({
+    workspaceId: options?.workspaceId ?? active?.id,
+    ticker: options?.ticker,
   });
 }
 
@@ -418,6 +530,7 @@ export {
   LAYOUT_EMPTY,
   COMPANY_WORKSPACE_EMPTY,
   KNOWLEDGE_EMPTY,
+  INTEGRATION_EMPTY,
   createWorkspace,
   openWorkspace,
   listWorkspaces,
@@ -439,4 +552,9 @@ export {
   createNote,
   bookmarkResearch,
   createAnnotation,
+  getResearchTimeline,
+  recordDecision,
+  createSnapshot,
+  compareSnapshots,
+  getWorkspaceInsights,
 } from "@/src/core/research/workspace";

@@ -15,8 +15,8 @@ import {
   getAiObservations,
   getEvidence,
   getKnowledge,
+  getMemoryTimeline,
   getPreviousConclusions,
-  getResearchTimeline,
   highlightAiInsight,
   highlightMetric,
   ingestEvidenceBag,
@@ -26,7 +26,7 @@ import {
   normalizeNote,
   pinNote,
   recordConclusion,
-  recordDecision,
+  recordMemoryDecision,
   recordObservation,
   resetResearchWorkspace,
   updateNote,
@@ -138,7 +138,7 @@ describe("Sprint 10A.R4 — Research Knowledge Layer", () => {
         title: "Memory note",
         body: "Saved thesis",
       });
-      const timeline = getResearchTimeline({ ticker: "WIPRO" });
+      const timeline = getMemoryTimeline({ ticker: "WIPRO" });
       expect(timeline.some((e) => e.kind === "note")).toBe(true);
     });
   });
@@ -334,7 +334,7 @@ describe("Sprint 10A.R4 — Research Knowledge Layer", () => {
         bull: ["Quality compounder"],
       });
       recordConclusion("INFY", "Accumulate on weakness");
-      recordDecision("INFY", "Add 2% position");
+      recordMemoryDecision("INFY", "Add 2% position");
       recordObservation("INFY", "AI flagged improving margins");
 
       const knowledge = getKnowledge({
@@ -380,16 +380,16 @@ describe("Sprint 10A.R4 — Research Knowledge Layer", () => {
   describe("memory", () => {
     it("tracks conclusions decisions observations timeline", () => {
       recordConclusion("TCS", "Hold");
-      recordDecision("TCS", "Trim on strength");
+      recordMemoryDecision("TCS", "Trim on strength");
       recordObservation("TCS", "Valuation stretched");
       expect(getPreviousConclusions("TCS").length).toBe(1);
-      expect(getResearchTimeline({ ticker: "TCS" }).length).toBe(3);
+      expect(getMemoryTimeline({ ticker: "TCS" }).length).toBe(3);
       expect(getAiObservations("TCS").length).toBe(1);
     });
 
-    it("getResearchTimeline includes decision entries", () => {
-      recordDecision("INFY", "Hold position");
-      const decisions = getResearchTimeline({ ticker: "INFY" }).filter(
+    it("getMemoryTimeline includes decision entries", () => {
+      recordMemoryDecision("INFY", "Hold position");
+      const decisions = getMemoryTimeline({ ticker: "INFY" }).filter(
         (e) => e.kind === "decision"
       );
       expect(decisions.length).toBe(1);
