@@ -6,6 +6,7 @@
 import Link from "next/link";
 import {
   COMPANY_WORKSPACE_EMPTY,
+  AUTOMATION_EMPTY,
   COPILOT_EMPTY,
   INTEGRATION_EMPTY,
   KNOWLEDGE_EMPTY,
@@ -17,6 +18,11 @@ import {
   fetchDecisionJournalView,
   fetchMultiTabWorkspaceView,
   fetchResearchKnowledgeView,
+  fetchWorkspaceFavoritesView,
+  fetchWorkspaceProductivityView,
+  fetchWorkspaceTasksView,
+  fetchWorkspaceTemplatesView,
+  fetchWorkspaceAnalyticsView,
   fetchResearchRecommendationsView,
   fetchResearchSummaryView,
   fetchResearchTimelineView,
@@ -63,6 +69,11 @@ export default function ResearchPage() {
     workspaceId: workspace.id,
     ticker: company.overview.ticker || undefined,
   });
+  const templates = fetchWorkspaceTemplatesView({ workspaceId: workspace.id });
+  const tasks = fetchWorkspaceTasksView({ workspaceId: workspace.id });
+  const favorites = fetchWorkspaceFavoritesView({ workspaceId: workspace.id });
+  const productivity = fetchWorkspaceProductivityView({ workspaceId: workspace.id });
+  const analytics = fetchWorkspaceAnalyticsView({ workspaceId: workspace.id });
 
   return (
     <div className="p-6">
@@ -95,7 +106,11 @@ export default function ResearchPage() {
           · copilot{" "}
           {summary.empty
             ? COPILOT_EMPTY.noAiSummary
-            : summary.finalConclusion}
+            : summary.finalConclusion}{" "}
+          · automation{" "}
+          {analytics.empty
+            ? AUTOMATION_EMPTY.awaitingWorkspace
+            : `${tasks.pending.length} tasks · ${templates.templates.length} templates`}
         </p>
       </div>
 
@@ -306,6 +321,62 @@ export default function ResearchPage() {
                   <li key={action}>{action}</li>
                 ))}
               </ul>
+            )}
+          </section>
+
+          <section>
+            <h2 className="mb-2 text-sm font-medium text-text-secondary">
+              Workspace templates
+            </h2>
+            {templates.empty ? (
+              <p className="text-sm text-text-muted">{AUTOMATION_EMPTY.noTemplates}</p>
+            ) : (
+              <ul className="space-y-1 text-xs text-text-muted">
+                {templates.templates.slice(0, 5).map((tpl) => (
+                  <li key={tpl.id}>
+                    {tpl.name} · {tpl.kind}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section>
+            <h2 className="mb-2 text-sm font-medium text-text-secondary">
+              Research tasks
+            </h2>
+            {tasks.empty ? (
+              <p className="text-sm text-text-muted">{AUTOMATION_EMPTY.noTasks}</p>
+            ) : (
+              <ul className="space-y-1 text-xs text-text-muted">
+                {tasks.pending.slice(0, 4).map((task) => (
+                  <li key={task.id}>
+                    [{task.priority}] {task.title}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section>
+            <h2 className="mb-2 text-sm font-medium text-text-secondary">
+              Favorites & productivity
+            </h2>
+            {favorites.empty && productivity.recentActions.length === 0 ? (
+              <p className="text-sm text-text-muted">{AUTOMATION_EMPTY.noFavorites}</p>
+            ) : (
+              <div className="space-y-1 text-xs text-text-muted">
+                <p>
+                  {favorites.favorites.length} favorites ·{" "}
+                  {analytics.completionRate}% completion ·{" "}
+                  {analytics.researchProductivity} productivity
+                </p>
+                {productivity.shortcuts.slice(0, 3).map((sc) => (
+                  <p key={sc.id}>
+                    {sc.keys} → {sc.label}
+                  </p>
+                ))}
+              </div>
             )}
           </section>
 

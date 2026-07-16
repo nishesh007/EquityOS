@@ -13,6 +13,7 @@ import { fetchSymbolScreenerInsight } from "@/services/screenerData";
 import {
   fetchResearchKnowledgeView,
   fetchResearchSummaryView,
+  fetchWorkspaceAnalyticsView,
   fetchResearchTimelineView,
   fetchResearchWorkspaceHealth,
   openCompanyResearchWorkspace,
@@ -87,6 +88,7 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
   const summary = fetchResearchSummaryView({
     ticker: company.symbol,
   });
+  const analytics = fetchWorkspaceAnalyticsView();
 
   return (
     <div className="p-6">
@@ -107,6 +109,10 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
             : `${timeline.entries.length} events`}{" "}
           · copilot{" "}
           {summary.empty ? summary.emptyMessage : summary.finalConclusion}{" "}
+          · automation{" "}
+          {analytics.empty
+            ? analytics.emptyMessage
+            : `${analytics.researchProductivity} productivity`}{" "}
           ·{" "}
           {researchWorkspace.ready
             ? `${researchWorkspace.openSessions} sessions · ${researchWorkspace.openTabs} tabs`

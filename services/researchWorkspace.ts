@@ -1,5 +1,5 @@
 /**
- * Research Workspace bridge — platform wiring for Sprint 10A.R1–R6.
+ * Research Workspace bridge — platform wiring for Sprint 10A.R1–R7.
  * Reuses existing routes/modules; does not rebuild Sprint 9 engines.
  */
 
@@ -11,6 +11,7 @@ import {
   KNOWLEDGE_EMPTY,
   INTEGRATION_EMPTY,
   COPILOT_EMPTY,
+  AUTOMATION_EMPTY,
   createWorkspace,
   getActiveWorkspace,
   getResearchWorkspaceView,
@@ -42,6 +43,15 @@ import {
   buildDecisionAssistant,
   getResearchRecommendations,
   buildCopilotExplainability,
+  createTemplate,
+  applyTemplate,
+  runAutomation,
+  getWorkspaceAnalytics,
+  getTasksView,
+  getTemplateView,
+  getFavoritesView,
+  getProductivityView,
+  trackCompanyResearched,
   type ResearchWorkspaceMetrics,
   type ResearchWorkspaceRecord,
   type ResearchWorkspaceView,
@@ -60,6 +70,11 @@ import {
   type DecisionAssistantView,
   type ResearchRecommendationView,
   type CopilotExplainabilityView,
+  type WorkspaceAnalytics,
+  type TasksView,
+  type TemplateView,
+  type FavoritesView,
+  type ProductivityView,
 } from "@/src/core/research/workspace";
 
 export type ResearchWorkspaceHealth = {
@@ -73,11 +88,15 @@ export type ResearchWorkspaceHealth = {
   knowledgeReady: boolean;
   integrationReady: boolean;
   copilotReady: boolean;
+  automationReady: boolean;
   noteCount: number;
   evidenceCount: number;
   timelineCount: number;
   decisionCount: number;
   snapshotCount: number;
+  templateCount: number;
+  taskCount: number;
+  favoriteCount: number;
   activeWorkspaceId: string;
   emptyMessage: string;
   layoutEmptyMessage: string;
@@ -85,6 +104,7 @@ export type ResearchWorkspaceHealth = {
   knowledgeEmptyMessage: string;
   integrationEmptyMessage: string;
   copilotEmptyMessage: string;
+  automationEmptyMessage: string;
   surface: {
     research: string;
     dashboard: string;
@@ -301,7 +321,19 @@ export function openCompanyResearchWorkspace(input: {
       ticker: snapshot.ticker,
       kind: "initial_thesis",
       body: snapshot.insights.investmentThesis,
-      confidence: snapshot.quality.score,
+      confidence: snapshot.quality.moatScore,
+    });
+    trackCompanyResearched(snapshot.ticker);
+    const earningsTpl = createTemplate({
+      workspaceId: workspace.id,
+      kind: "company_deep_dive",
+      ticker: snapshot.ticker,
+    });
+    runAutomation({
+      workspaceId: workspace.id,
+      ticker: snapshot.ticker,
+      templateId: earningsTpl.id,
+      rules: ["auto_open_research", "auto_load_notes"],
     });
   }
 
@@ -336,6 +368,10 @@ export function fetchResearchWorkspaceHealth(): ResearchWorkspaceHealth {
       workspaceId: active?.id,
       ticker: companyView.overview.ticker || undefined,
     });
+    const analytics = getWorkspaceAnalytics({ workspaceId: active?.id });
+    const tasks = getTasksView({ workspaceId: active?.id });
+    const templates = getTemplateView({ workspaceId: active?.id });
+    const favorites = getFavoritesView({ workspaceId: active?.id });
     return {
       ready: workspaces.length > 0 || !metrics.empty,
       workspaceCount: metrics.workspaceCount,
@@ -347,11 +383,15 @@ export function fetchResearchWorkspaceHealth(): ResearchWorkspaceHealth {
       knowledgeReady: !knowledge.empty,
       integrationReady: !timeline.empty,
       copilotReady: !summary.empty,
+      automationReady: !analytics.empty,
       noteCount: knowledge.notes.length,
       evidenceCount: knowledge.evidence.items.length,
       timelineCount: timeline.entries.length,
       decisionCount: decisions.entries.length,
       snapshotCount: snapshots.snapshots.length,
+      templateCount: templates.templates.length,
+      taskCount: tasks.tasks.length,
+      favoriteCount: favorites.favorites.length,
       activeWorkspaceId: active?.id ?? metrics.activeWorkspaceId,
       emptyMessage: metrics.empty
         ? WORKSPACE_EMPTY.noWorkspace
@@ -370,6 +410,9 @@ export function fetchResearchWorkspaceHealth(): ResearchWorkspaceHealth {
       copilotEmptyMessage: summary.empty
         ? COPILOT_EMPTY.noAiSummary
         : COPILOT_EMPTY.awaitingAnalysis,
+      automationEmptyMessage: analytics.empty
+        ? AUTOMATION_EMPTY.awaitingWorkspace
+        : AUTOMATION_EMPTY.noAutomationRules,
       surface: {
         research: "/research",
         dashboard: "/",
@@ -392,11 +435,15 @@ export function fetchResearchWorkspaceHealth(): ResearchWorkspaceHealth {
       knowledgeReady: false,
       integrationReady: false,
       copilotReady: false,
+      automationReady: false,
       noteCount: 0,
       evidenceCount: 0,
       timelineCount: 0,
       decisionCount: 0,
       snapshotCount: 0,
+      templateCount: 0,
+      taskCount: 0,
+      favoriteCount: 0,
       activeWorkspaceId: "",
       emptyMessage: WORKSPACE_EMPTY.noWorkspace,
       layoutEmptyMessage: LAYOUT_EMPTY.awaitingWorkspace,
@@ -404,6 +451,7 @@ export function fetchResearchWorkspaceHealth(): ResearchWorkspaceHealth {
       knowledgeEmptyMessage: KNOWLEDGE_EMPTY.knowledgeBaseEmpty,
       integrationEmptyMessage: INTEGRATION_EMPTY.noTimeline,
       copilotEmptyMessage: COPILOT_EMPTY.noAiSummary,
+      automationEmptyMessage: AUTOMATION_EMPTY.awaitingWorkspace,
       surface: {
         research: "/research",
         dashboard: "/",
@@ -556,6 +604,45 @@ export function fetchCopilotExplainabilityView(options?: {
   });
 }
 
+export function fetchWorkspaceAnalyticsView(options?: {
+  workspaceId?: string | null;
+}): WorkspaceAnalytics {
+  const active = getActiveWorkspace();
+  return getWorkspaceAnalytics({ workspaceId: options?.workspaceId ?? active?.id });
+}
+
+export function fetchWorkspaceTasksView(options?: {
+  workspaceId?: string | null;
+}): TasksView {
+  const active = getActiveWorkspace();
+  return getTasksView({ workspaceId: options?.workspaceId ?? active?.id });
+}
+
+export function fetchWorkspaceTemplatesView(options?: {
+  workspaceId?: string | null;
+}): TemplateView {
+  const active = getActiveWorkspace();
+  return getTemplateView({ workspaceId: options?.workspaceId ?? active?.id });
+}
+
+export function fetchWorkspaceFavoritesView(options?: {
+  workspaceId?: string | null;
+}): FavoritesView {
+  const active = getActiveWorkspace();
+  return getFavoritesView({ workspaceId: options?.workspaceId ?? active?.id });
+}
+
+export function fetchWorkspaceProductivityView(options?: {
+  workspaceId?: string | null;
+  query?: string | null;
+}): ProductivityView {
+  const active = getActiveWorkspace();
+  return getProductivityView({
+    workspaceId: options?.workspaceId ?? active?.id,
+    query: options?.query,
+  });
+}
+
 export function ensureDefaultResearchWorkspace(options?: {
   name?: string;
   ticker?: string | null;
@@ -613,6 +700,7 @@ export {
   KNOWLEDGE_EMPTY,
   INTEGRATION_EMPTY,
   COPILOT_EMPTY,
+  AUTOMATION_EMPTY,
   createWorkspace,
   openWorkspace,
   listWorkspaces,
@@ -645,4 +733,8 @@ export {
   buildDecisionAssistant,
   getResearchRecommendations,
   buildCopilotExplainability,
+  createTemplate,
+  applyTemplate,
+  runAutomation,
+  getWorkspaceAnalytics,
 } from "@/src/core/research/workspace";
