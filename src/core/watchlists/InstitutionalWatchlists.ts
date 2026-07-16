@@ -1,5 +1,5 @@
 /**
- * Institutional Watchlist Platform — executive hub (Sprint 10B.R1–R2).
+ * Institutional Watchlist Platform — executive hub (Sprint 10B.R1–R3).
  */
 
 import { BUILTIN_WATCHLIST_DEFINITIONS } from "./WatchlistDefinition";
@@ -17,6 +17,7 @@ import {
   resetWatchlistEngine,
   type WatchlistEngineContext,
 } from "./WatchlistEngine";
+import type { WatchlistIntelligenceContext } from "./intelligence";
 import {
   getWatchlistCacheCount,
   registerBuiltinWatchlistDefinitions,
@@ -29,6 +30,11 @@ import {
   resetSmartWatchlistEngine,
   SPRINT_10B_R2_FROZEN,
 } from "./smart";
+import {
+  getWatchlistIntelligenceHealth,
+  resetWatchlistIntelligence,
+  SPRINT_10B_R3_FROZEN,
+} from "./intelligence";
 
 export const INSTITUTIONAL_WATCHLIST_EMPTY = WATCHLIST_EMPTY;
 
@@ -50,6 +56,10 @@ export interface InstitutionalWatchlistHealth {
   smartReady: boolean;
   recommendationCount: number;
   sprint10BR2Frozen: boolean;
+  intelligenceReady: boolean;
+  opportunityCount: number;
+  insightBuckets: number;
+  sprint10BR3Frozen: boolean;
   surfaceHints: typeof WATCHLIST_SURFACE_ROUTES;
 }
 
@@ -77,6 +87,12 @@ export class InstitutionalWatchlists {
     const active = engine.getActiveWatchlist();
     const metrics = active ? getMetrics(active.id, context) : getMetrics(null, context);
     const smart = getSmartWatchlistHealth();
+    const intel = getWatchlistIntelligenceHealth({
+      watchlistId: active?.id,
+      symbols: active?.symbols ?? [],
+      snapshots: context?.snapshots,
+      now: context?.now,
+    } satisfies WatchlistIntelligenceContext);
 
     const ready = activeRecords.length > 0;
     return {
@@ -95,6 +111,10 @@ export class InstitutionalWatchlists {
       smartReady: smart.ready,
       recommendationCount: smart.recommendationCount,
       sprint10BR2Frozen: SPRINT_10B_R2_FROZEN,
+      intelligenceReady: intel.ready,
+      opportunityCount: intel.opportunityCount,
+      insightBuckets: intel.insightBuckets,
+      sprint10BR3Frozen: SPRINT_10B_R3_FROZEN,
       surfaceHints: { ...WATCHLIST_SURFACE_ROUTES },
     };
   }
@@ -123,6 +143,7 @@ export function getInstitutionalWatchlists(): InstitutionalWatchlists {
 export function resetInstitutionalWatchlists(): void {
   resetWatchlistEngine();
   resetSmartWatchlistEngine();
+  resetWatchlistIntelligence();
   hubInstance = null;
 }
 

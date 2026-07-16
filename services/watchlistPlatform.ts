@@ -1,5 +1,5 @@
 /**
- * Institutional Watchlist Platform bridge — Sprint 10B.R1–R2.
+ * Institutional Watchlist Platform bridge — Sprint 10B.R1–R3.
  */
 
 import {
@@ -8,13 +8,16 @@ import {
   getInstitutionalWatchlistHealth,
   getInstitutionalWatchlistSummary,
   getSmartWatchlistView,
+  getWatchlistInsightEngine,
   getWatchlistPlatformView,
   isSprint10BR1Frozen,
   isSprint10BR2Frozen,
+  isSprint10BR3Frozen,
   type InstitutionalWatchlistHealth,
   type InstitutionalWatchlistSummary,
   type SmartWatchlistView,
   type WatchlistEngineContext,
+  type WatchlistIntelligenceBundle,
   type WatchlistPlatformView,
 } from "@/src/core/watchlists";
 
@@ -43,6 +46,10 @@ export function fetchWatchlistPlatformHealth(
       smartReady: false,
       recommendationCount: 0,
       sprint10BR2Frozen: isSprint10BR2Frozen(),
+      intelligenceReady: false,
+      opportunityCount: 0,
+      insightBuckets: 0,
+      sprint10BR3Frozen: isSprint10BR3Frozen(),
       surfaceHints: {
         watchlist: "/watchlist",
         dashboard: "/",
@@ -75,6 +82,16 @@ export function fetchSmartWatchlistView(
   return getSmartWatchlistView({ now: context?.now });
 }
 
+export function fetchWatchlistIntelligenceBundle(
+  context?: WatchlistEngineContext | null
+): WatchlistIntelligenceBundle {
+  ensureDefaultWatchlists(context?.now);
+  return getWatchlistInsightEngine().buildBundle({
+    snapshots: context?.snapshots,
+    now: context?.now,
+  });
+}
+
 export function formatWatchlistPlatformSubtitle(
   health: WatchlistPlatformHealth
 ): string {
@@ -84,6 +101,7 @@ export function formatWatchlistPlatformSubtitle(
   const frozen = [
     health.sprint10BR1Frozen ? "10B.R1 FROZEN" : "",
     health.sprint10BR2Frozen ? "10B.R2 FROZEN" : "",
+    health.sprint10BR3Frozen ? "10B.R3 FROZEN" : "",
   ]
     .filter(Boolean)
     .join(" · ");
@@ -91,5 +109,9 @@ export function formatWatchlistPlatformSubtitle(
     health.smartReady && health.dynamicCount > 0
       ? ` · ${health.dynamicCount} dynamic`
       : "";
-  return `${health.watchlistCount} watchlists · ${health.pinnedCount} pinned · ${health.favoriteCount} favorites · ${health.companyCount} companies${smart}${frozen ? ` · ${frozen}` : ""}`;
+  const intel =
+    health.intelligenceReady && health.opportunityCount > 0
+      ? ` · ${health.opportunityCount} opportunities`
+      : "";
+  return `${health.watchlistCount} watchlists · ${health.pinnedCount} pinned · ${health.favoriteCount} favorites · ${health.companyCount} companies${smart}${intel}${frozen ? ` · ${frozen}` : ""}`;
 }

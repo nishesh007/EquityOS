@@ -1,5 +1,5 @@
 /**
- * Institutional Watchlist Platform — public exports (Sprint 10B.R1–R2).
+ * Institutional Watchlist Platform — public exports (Sprint 10B.R1–R3).
  * Multi-watchlist architecture for /watchlist, /dashboard, /research, /results, /company.
  */
 
@@ -157,3 +157,34 @@ export type {
   SmartWatchlistView,
   SmartWatchlistHealth,
 } from "./smart";
+
+/** Sprint 10B.R3 — watchlist intelligence, AI insights, opportunity monitoring */
+export {
+  WATCHLIST_INTELLIGENCE_EMPTY,
+  OPPORTUNITY_KINDS,
+  INTELLIGENCE_RECOMMENDATION_ACTIONS,
+  CHANGE_KINDS,
+  getWatchlistSummary,
+  getWatchlistInsights,
+  getWatchlistHealth,
+  getWatchlistOpportunities,
+  getWatchlistRecommendations,
+  getWatchlistChanges,
+  getWatchlistInsightEngine,
+  getWatchlistIntelligenceHealth,
+  resetWatchlistIntelligence,
+  isSprint10BR3Frozen,
+  SPRINT_10B_R3_FROZEN,
+  emptyIntelligenceBundle,
+} from "./intelligence";
+export type {
+  WatchlistIntelligenceEmptyMessage,
+  WatchlistIntelligenceContext,
+  WatchlistHealthView,
+  WatchlistSummaryView,
+  WatchlistOpportunitiesView,
+  WatchlistChangesView,
+  IntelligenceRecommendationsView,
+  WatchlistInsightsView,
+  WatchlistIntelligenceBundle,
+} from "./intelligence";
