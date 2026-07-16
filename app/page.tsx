@@ -92,7 +92,7 @@ export default async function DashboardPage() {
             : screenerHealth.emptyMessage}{" "}
           · research workspace{" "}
           {researchWorkspace.ready
-            ? `${researchWorkspace.workspaceCount} desks · ${researchWorkspace.openTabs} tabs · company ${researchWorkspace.companyReady ? "ready" : researchWorkspace.companyEmptyMessage} · knowledge ${researchWorkspace.knowledgeReady ? `${researchWorkspace.noteCount} notes` : researchWorkspace.knowledgeEmptyMessage} · timeline ${researchWorkspace.integrationReady ? `${researchWorkspace.timelineCount} events` : researchWorkspace.integrationEmptyMessage}`
+            ? `${researchWorkspace.workspaceCount} desks · ${researchWorkspace.openTabs} tabs · company ${researchWorkspace.companyReady ? "ready" : researchWorkspace.companyEmptyMessage} · knowledge ${researchWorkspace.knowledgeReady ? `${researchWorkspace.noteCount} notes` : researchWorkspace.knowledgeEmptyMessage} · timeline ${researchWorkspace.integrationReady ? `${researchWorkspace.timelineCount} events` : researchWorkspace.integrationEmptyMessage} · copilot ${researchWorkspace.copilotReady ? "ready" : researchWorkspace.copilotEmptyMessage}`
             : researchWorkspace.emptyMessage}{" "}
           ·{" "}
           {new Date().toLocaleDateString("en-IN", {

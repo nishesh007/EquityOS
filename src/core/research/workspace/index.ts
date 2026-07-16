@@ -339,3 +339,43 @@ export type {
   CreateSnapshotInput,
   InsightAggregationInput,
 } from "./integration";
+
+/** Sprint 10A.R6 — AI research copilot */
+export {
+  COPILOT_EMPTY,
+  DECISION_GUIDANCE_IDS,
+  QUESTION_INTENTS,
+  askResearchQuestion,
+  generateResearchSummary,
+  compareResearch,
+  buildDecisionAssistant,
+  getResearchRecommendations,
+  buildCopilotExplainability,
+  resetCopilotEngines,
+  ResearchCopilotEngine,
+  emptyQuestionAnswer,
+  emptyResearchSummary,
+  emptyComparisonView,
+  emptyDecisionAssistant,
+  emptyRecommendations,
+  emptyExplainabilityView,
+} from "./copilot";
+export type {
+  CopilotEmptyMessage,
+  DecisionGuidanceId,
+  QuestionIntent,
+  ExplainabilityContext,
+  ResearchQuestionInput,
+  ResearchQuestionAnswer,
+  ResearchSummaryView,
+  ResearchComparisonView,
+  DecisionGuidance,
+  DecisionAssistantView,
+  ResearchRecommendationView,
+  CopilotExplainabilityView,
+  GenerateSummaryInput,
+  CompareResearchInput,
+  BuildDecisionAssistantInput,
+  RecommendationInput,
+  BuildExplainabilityInput,
+} from "./copilot";

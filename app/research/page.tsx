@@ -6,15 +6,19 @@
 import Link from "next/link";
 import {
   COMPANY_WORKSPACE_EMPTY,
+  COPILOT_EMPTY,
   INTEGRATION_EMPTY,
   KNOWLEDGE_EMPTY,
   LAYOUT_EMPTY,
   WORKSPACE_EMPTY,
   ensureDefaultResearchWorkspace,
   fetchCompanyResearchWorkspaceView,
+  fetchDecisionAssistantView,
   fetchDecisionJournalView,
   fetchMultiTabWorkspaceView,
   fetchResearchKnowledgeView,
+  fetchResearchRecommendationsView,
+  fetchResearchSummaryView,
   fetchResearchTimelineView,
   fetchResearchWorkspaceHealth,
   fetchResearchWorkspaceView,
@@ -47,6 +51,18 @@ export default function ResearchPage() {
     workspaceId: workspace.id,
     ticker: company.overview.ticker || undefined,
   });
+  const summary = fetchResearchSummaryView({
+    workspaceId: workspace.id,
+    ticker: company.overview.ticker || undefined,
+  });
+  const assistant = fetchDecisionAssistantView({
+    workspaceId: workspace.id,
+    ticker: company.overview.ticker || undefined,
+  });
+  const recommendations = fetchResearchRecommendationsView({
+    workspaceId: workspace.id,
+    ticker: company.overview.ticker || undefined,
+  });
 
   return (
     <div className="p-6">
@@ -75,7 +91,11 @@ export default function ResearchPage() {
           · timeline{" "}
           {timeline.empty
             ? INTEGRATION_EMPTY.noTimeline
-            : `${timeline.entries.length} events · ${decisions.entries.length} decisions`}
+            : `${timeline.entries.length} events · ${decisions.entries.length} decisions`}{" "}
+          · copilot{" "}
+          {summary.empty
+            ? COPILOT_EMPTY.noAiSummary
+            : summary.finalConclusion}
         </p>
       </div>
 
@@ -232,6 +252,58 @@ export default function ResearchPage() {
                   <li key={entry.id}>
                     {entry.title} · {entry.kind}
                   </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section>
+            <h2 className="mb-2 text-sm font-medium text-text-secondary">
+              AI research copilot
+            </h2>
+            {summary.empty ? (
+              <p className="text-sm text-text-muted">{COPILOT_EMPTY.awaitingAnalysis}</p>
+            ) : (
+              <div className="space-y-2 text-sm text-text-primary">
+                <p className="text-xs text-text-muted">{summary.executiveSummary}</p>
+                <p className="text-xs text-text-muted">
+                  {summary.bullCase.length} bull · {summary.bearCase.length} bear ·{" "}
+                  {summary.catalysts.length} catalysts
+                </p>
+                <p className="text-xs font-medium text-text-secondary">
+                  {summary.finalConclusion}
+                </p>
+              </div>
+            )}
+          </section>
+
+          <section>
+            <h2 className="mb-2 text-sm font-medium text-text-secondary">
+              Decision assistant
+            </h2>
+            {assistant.empty ? (
+              <p className="text-sm text-text-muted">{COPILOT_EMPTY.awaitingAnalysis}</p>
+            ) : (
+              <ul className="space-y-1 text-xs text-text-muted">
+                {assistant.guidance.slice(0, 5).map((item) => (
+                  <li key={item.id}>
+                    {item.label}: {item.recommendation}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section>
+            <h2 className="mb-2 text-sm font-medium text-text-secondary">
+              Recommendations
+            </h2>
+            {recommendations.empty ? (
+              <p className="text-sm text-text-muted">{COPILOT_EMPTY.awaitingAnalysis}</p>
+            ) : (
+              <ul className="space-y-1 text-xs text-text-muted">
+                {recommendations.immediateActions.slice(0, 4).map((action) => (
+                  <li key={action}>{action}</li>
                 ))}
               </ul>
             )}

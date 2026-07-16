@@ -55,6 +55,10 @@ export default async function OpportunitiesPage() {
         title="AI Opportunities"
         subtitle={`Sprint 9D FROZEN · Discovery · ${health.ideaKindsCount} idea kinds · ${health.themeCount} themes · executive ${
           health.executiveReady ? health.executiveSummary : health.emptyMessage
+        } · research copilot ${
+          researchWorkspace.copilotReady
+            ? "ready"
+            : researchWorkspace.copilotEmptyMessage
         } · research timeline ${
           researchWorkspace.integrationReady
             ? `${researchWorkspace.timelineCount} events`

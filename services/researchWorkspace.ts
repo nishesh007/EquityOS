@@ -1,5 +1,5 @@
 /**
- * Research Workspace bridge — platform wiring for Sprint 10A.R1–R5.
+ * Research Workspace bridge — platform wiring for Sprint 10A.R1–R6.
  * Reuses existing routes/modules; does not rebuild Sprint 9 engines.
  */
 
@@ -10,6 +10,7 @@ import {
   COMPANY_WORKSPACE_EMPTY,
   KNOWLEDGE_EMPTY,
   INTEGRATION_EMPTY,
+  COPILOT_EMPTY,
   createWorkspace,
   getActiveWorkspace,
   getResearchWorkspaceView,
@@ -35,6 +36,12 @@ import {
   syncCrossModuleResearch,
   createSnapshot,
   recordDecision,
+  askResearchQuestion,
+  generateResearchSummary,
+  compareResearch,
+  buildDecisionAssistant,
+  getResearchRecommendations,
+  buildCopilotExplainability,
   type ResearchWorkspaceMetrics,
   type ResearchWorkspaceRecord,
   type ResearchWorkspaceView,
@@ -47,6 +54,12 @@ import {
   type WorkspaceInsights,
   type DecisionJournalView,
   type SnapshotTimelineView,
+  type ResearchQuestionAnswer,
+  type ResearchSummaryView,
+  type ResearchComparisonView,
+  type DecisionAssistantView,
+  type ResearchRecommendationView,
+  type CopilotExplainabilityView,
 } from "@/src/core/research/workspace";
 
 export type ResearchWorkspaceHealth = {
@@ -59,6 +72,7 @@ export type ResearchWorkspaceHealth = {
   companyReady: boolean;
   knowledgeReady: boolean;
   integrationReady: boolean;
+  copilotReady: boolean;
   noteCount: number;
   evidenceCount: number;
   timelineCount: number;
@@ -70,6 +84,7 @@ export type ResearchWorkspaceHealth = {
   companyEmptyMessage: string;
   knowledgeEmptyMessage: string;
   integrationEmptyMessage: string;
+  copilotEmptyMessage: string;
   surface: {
     research: string;
     dashboard: string;
@@ -317,6 +332,10 @@ export function fetchResearchWorkspaceHealth(): ResearchWorkspaceHealth {
       workspaceId: active?.id,
       ticker: companyView.overview.ticker || undefined,
     });
+    const summary = generateResearchSummary({
+      workspaceId: active?.id,
+      ticker: companyView.overview.ticker || undefined,
+    });
     return {
       ready: workspaces.length > 0 || !metrics.empty,
       workspaceCount: metrics.workspaceCount,
@@ -327,6 +346,7 @@ export function fetchResearchWorkspaceHealth(): ResearchWorkspaceHealth {
       companyReady: !companyView.empty,
       knowledgeReady: !knowledge.empty,
       integrationReady: !timeline.empty,
+      copilotReady: !summary.empty,
       noteCount: knowledge.notes.length,
       evidenceCount: knowledge.evidence.items.length,
       timelineCount: timeline.entries.length,
@@ -347,6 +367,9 @@ export function fetchResearchWorkspaceHealth(): ResearchWorkspaceHealth {
       integrationEmptyMessage: timeline.empty
         ? INTEGRATION_EMPTY.noTimeline
         : INTEGRATION_EMPTY.awaitingResearchActivity,
+      copilotEmptyMessage: summary.empty
+        ? COPILOT_EMPTY.noAiSummary
+        : COPILOT_EMPTY.awaitingAnalysis,
       surface: {
         research: "/research",
         dashboard: "/",
@@ -368,6 +391,7 @@ export function fetchResearchWorkspaceHealth(): ResearchWorkspaceHealth {
       companyReady: false,
       knowledgeReady: false,
       integrationReady: false,
+      copilotReady: false,
       noteCount: 0,
       evidenceCount: 0,
       timelineCount: 0,
@@ -379,6 +403,7 @@ export function fetchResearchWorkspaceHealth(): ResearchWorkspaceHealth {
       companyEmptyMessage: COMPANY_WORKSPACE_EMPTY.noCompanySelected,
       knowledgeEmptyMessage: KNOWLEDGE_EMPTY.knowledgeBaseEmpty,
       integrationEmptyMessage: INTEGRATION_EMPTY.noTimeline,
+      copilotEmptyMessage: COPILOT_EMPTY.noAiSummary,
       surface: {
         research: "/research",
         dashboard: "/",
@@ -475,6 +500,62 @@ export function fetchSnapshotTimelineView(options?: {
   });
 }
 
+export function fetchResearchSummaryView(options?: {
+  workspaceId?: string | null;
+  ticker?: string | null;
+}): ResearchSummaryView {
+  const active = getActiveWorkspace();
+  return generateResearchSummary({
+    workspaceId: options?.workspaceId ?? active?.id,
+    ticker: options?.ticker,
+  });
+}
+
+export function fetchDecisionAssistantView(options?: {
+  workspaceId?: string | null;
+  ticker?: string | null;
+}): DecisionAssistantView {
+  const active = getActiveWorkspace();
+  return buildDecisionAssistant({
+    workspaceId: options?.workspaceId ?? active?.id,
+    ticker: options?.ticker,
+  });
+}
+
+export function fetchResearchRecommendationsView(options?: {
+  workspaceId?: string | null;
+  ticker?: string | null;
+  earningsLines?: string[] | null;
+  alertLines?: string[] | null;
+  portfolioLines?: string[] | null;
+}): ResearchRecommendationView {
+  const active = getActiveWorkspace();
+  return getResearchRecommendations({
+    workspaceId: options?.workspaceId ?? active?.id,
+    ticker: options?.ticker,
+    earningsLines: options?.earningsLines,
+    alertLines: options?.alertLines,
+    portfolioLines: options?.portfolioLines,
+  });
+}
+
+export function fetchCopilotExplainabilityView(options?: {
+  workspaceId?: string | null;
+  ticker?: string | null;
+  validationStatus?: string | null;
+  trustScore?: string | null;
+}): CopilotExplainabilityView {
+  const active = getActiveWorkspace();
+  return buildCopilotExplainability({
+    workspaceId: options?.workspaceId ?? active?.id,
+    ticker: options?.ticker,
+    explainability: {
+      validationStatus: options?.validationStatus,
+      trustScore: options?.trustScore,
+    },
+  });
+}
+
 export function ensureDefaultResearchWorkspace(options?: {
   name?: string;
   ticker?: string | null;
@@ -531,6 +612,7 @@ export {
   COMPANY_WORKSPACE_EMPTY,
   KNOWLEDGE_EMPTY,
   INTEGRATION_EMPTY,
+  COPILOT_EMPTY,
   createWorkspace,
   openWorkspace,
   listWorkspaces,
@@ -557,4 +639,10 @@ export {
   createSnapshot,
   compareSnapshots,
   getWorkspaceInsights,
+  askResearchQuestion,
+  generateResearchSummary,
+  compareResearch,
+  buildDecisionAssistant,
+  getResearchRecommendations,
+  buildCopilotExplainability,
 } from "@/src/core/research/workspace";
