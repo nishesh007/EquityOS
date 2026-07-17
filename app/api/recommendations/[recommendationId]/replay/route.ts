@@ -3,14 +3,15 @@ import {
   getOpportunityState,
   replayRecommendation,
 } from "@/lib/opportunity-engine";
+import { wireRecommendationReplay } from "@/src/core/recommendations";
 
 type RouteContext = {
   params: Promise<{ recommendationId: string }>;
 };
 
 /**
- * Replays the immutable recommendation exactly as generated. No current
- * market data, rescoring, or report generation is involved.
+ * Replays the immutable recommendation exactly as generated, plus R2
+ * lifecycle timeline / progress when the living record exists.
  */
 export async function GET(_request: NextRequest, context: RouteContext) {
   const { recommendationId } = await context.params;
@@ -18,11 +19,14 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     getOpportunityState(),
     recommendationId
   );
-  if (!recommendation) {
+  const lifecycle = wireRecommendationReplay(recommendationId);
+
+  if (!recommendation && lifecycle.recommendation.empty) {
     return NextResponse.json(
       { error: "Recommendation not found" },
       { status: 404 }
     );
   }
-  return NextResponse.json({ recommendation });
+
+  return NextResponse.json({ recommendation, lifecycle });
 }

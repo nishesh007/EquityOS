@@ -78,6 +78,57 @@ export function InstitutionalRecommendationPanel({
         </div>
       </div>
 
+      <div className="mb-3 grid grid-cols-3 gap-2 rounded-md border border-surface-border-subtle/60 bg-surface-hover/30 px-2 py-2 sm:grid-cols-6">
+        <div>
+          <p className="text-[9px] uppercase tracking-wider text-text-faint">
+            {RECOMMENDATION_METRIC_LABELS.originalConviction}
+          </p>
+          <p className="font-mono text-[11px] text-text-secondary">
+            {view.originalConviction}
+          </p>
+        </div>
+        <div>
+          <p className="text-[9px] uppercase tracking-wider text-text-faint">
+            {RECOMMENDATION_METRIC_LABELS.currentHealth}
+          </p>
+          <p className="font-mono text-[11px] text-text-secondary">
+            {view.currentHealth}
+          </p>
+        </div>
+        <div>
+          <p className="text-[9px] uppercase tracking-wider text-text-faint">
+            Current Trust
+          </p>
+          <p className="font-mono text-[11px] text-text-secondary">
+            {view.currentTrust}
+          </p>
+        </div>
+        <div>
+          <p className="text-[9px] uppercase tracking-wider text-text-faint">
+            Current Validation
+          </p>
+          <p className="font-mono text-[11px] text-text-secondary">
+            {view.currentValidation}
+          </p>
+        </div>
+        <div>
+          <p className="text-[9px] uppercase tracking-wider text-text-faint">
+            Current Risk
+          </p>
+          <p className="font-mono text-[11px] text-text-secondary">
+            {view.currentRisk}
+          </p>
+        </div>
+        <div>
+          <p className="text-[9px] uppercase tracking-wider text-text-faint">
+            Lifecycle Status
+          </p>
+          <p className="font-mono text-[11px] text-text-secondary">
+            {view.lifecycleStatus}
+          </p>
+        </div>
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-2">
         <TraceList
           title={RECOMMENDATION_METRIC_LABELS.convictionDrivers}

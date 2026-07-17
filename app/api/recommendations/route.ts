@@ -4,6 +4,7 @@ import {
   listRecommendationHistory,
   type RecommendationRecordStatus,
 } from "@/lib/opportunity-engine";
+import { wireRecommendationHistory } from "@/src/core/recommendations";
 
 const STATUSES = new Set<RecommendationRecordStatus>([
   "ACTIVE",
@@ -28,5 +29,8 @@ export async function GET(request: NextRequest) {
     getOpportunityState(),
     requestedStatus
   );
-  return NextResponse.json({ recommendations });
+  return NextResponse.json({
+    recommendations,
+    lifecycle: wireRecommendationHistory(),
+  });
 }

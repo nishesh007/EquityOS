@@ -89,6 +89,13 @@ export interface InstitutionalRecommendationPanelView {
   conviction: string;
   trust: string;
   validation: string;
+  /** Original conviction — never overwritten by current health. */
+  originalConviction: string;
+  currentHealth: string;
+  currentTrust: string;
+  currentValidation: string;
+  currentRisk: string;
+  lifecycleStatus: string;
   /** @deprecated Use institutionalConviction — kept for transitional consumers. */
   qualityScore: string;
   empty: boolean;
@@ -859,6 +866,12 @@ export function buildRecommendationPanelView(
     validation: "Pending Validation",
     institutionalConviction: "Pending Validation",
     qualityScore: "Pending Validation",
+    originalConviction: "Pending Validation",
+    currentHealth: "Awaiting Progress",
+    currentTrust: "Pending Validation",
+    currentValidation: "Pending Validation",
+    currentRisk: "Awaiting Progress",
+    lifecycleStatus: emptyMeta.statusLabel,
   };
 
   if (!snapshot && !candidate) {
@@ -983,6 +996,12 @@ export function buildRecommendationPanelView(
     conviction: convictionDisplay,
     trust: trustDisplay,
     validation: validationDisplay,
+    originalConviction: convictionDisplay,
+    currentHealth: convictionDisplay,
+    currentTrust: trustDisplay,
+    currentValidation: validationDisplay,
+    currentRisk: "Awaiting Progress",
+    lifecycleStatus: meta.statusLabel,
     qualityScore: institutionalDisplay,
     empty: false,
     emptyMessage,
