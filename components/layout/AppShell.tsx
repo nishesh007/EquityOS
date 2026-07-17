@@ -4,7 +4,8 @@ import { AIWorkspaceProvider } from "@/components/ai/AskAIButton";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TopNav } from "@/components/layout/TopNav";
-import { useState } from "react";
+import { matchShortcut } from "@/src/design/workspace/workspaceShortcuts";
+import { useEffect, useState } from "react";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -13,6 +14,20 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const sidebarWidth = sidebarCollapsed ? "68px" : "240px";
+
+  // Sprint 10C.R6 — Ctrl+B toggles the sidebar (workspace shortcut).
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target && /^(input|textarea|select)$/i.test(target.tagName)) return;
+      if (matchShortcut(event) === "toggle-sidebar") {
+        event.preventDefault();
+        setSidebarCollapsed((collapsed) => !collapsed);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   return (
     <div className="min-h-screen">

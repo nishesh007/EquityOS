@@ -357,3 +357,71 @@ export {
 
 // Skeleton loaders (Sprint 10C.R5)
 export { Skeleton, type SkeletonVariant } from "./components/Skeleton";
+
+// Workspace engine + customizable dashboard (Sprint 10C.R6)
+export {
+  createWorkspace,
+  saveWorkspace,
+  loadWorkspace,
+  listWorkspaces,
+  loadWorkspaceStore,
+  saveWorkspaceStore,
+  getActiveWorkspace,
+  setActiveWorkspace,
+  getDefaultWorkspace,
+  duplicateWorkspace,
+  renameWorkspace,
+  deleteWorkspace,
+  resetWorkspace,
+  applyTemplate,
+  exportWorkspace,
+  importWorkspace,
+  moveWidget,
+  swapWidgets,
+  resizeWidget,
+  setWidgetVisible,
+  setWidgetPinned,
+  setWidgetCollapsed,
+  hiddenWidgets,
+  restoreHiddenWidgets,
+  addWidgetToWorkspace,
+  removeWidgetFromWorkspace,
+  placementsForRegion,
+  WORKSPACE_SHORTCUTS,
+  matchShortcut,
+  WorkspaceDashboard,
+  type Workspace,
+  type WorkspaceStore,
+  type WorkspaceStorage,
+  type WorkspaceExport,
+  type WorkspaceShortcut,
+  type WorkspaceShortcutId,
+  type ShortcutKeyEvent,
+} from "./workspace";
+
+// Dockable widget registry (Sprint 10C.R6)
+export {
+  WORKSPACE_REGIONS,
+  WORKSPACE_SIZES,
+  WORKSPACE_SIZE_SPANS,
+  WORKSPACE_SIZE_LABELS,
+  sizeFromSpan,
+  registerWidget,
+  getWidgetDefinition,
+  listWidgetDefinitions,
+  searchWidgets,
+  type WorkspaceRegion,
+  type WorkspaceSize,
+  type WidgetCategory,
+  type WidgetDefinition,
+} from "./widgets";
+
+// Dashboard templates (Sprint 10C.R6)
+export {
+  DASHBOARD_TEMPLATES,
+  DEFAULT_TEMPLATE_ID,
+  getTemplate,
+  searchTemplates,
+  type DashboardTemplate,
+  type WidgetPlacement,
+} from "./layouts";

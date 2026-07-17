@@ -14,3 +14,21 @@ export { RiskGauge } from "./RiskGauge";
 export { HeatMeter } from "./HeatMeter";
 export { StatusIndicator, type IndicatorState } from "./StatusIndicator";
 export { WidgetToolbar, type WidgetToolbarProps } from "./WidgetToolbar";
+
+// Sprint 10C.R6 — dockable widget registry
+export {
+  WORKSPACE_REGIONS,
+  WORKSPACE_SIZES,
+  WORKSPACE_SIZE_SPANS,
+  WORKSPACE_SIZE_LABELS,
+  sizeFromSpan,
+  registerWidget,
+  getWidgetDefinition,
+  listWidgetDefinitions,
+  searchWidgets,
+  resetWidgetRegistryForTests,
+  type WorkspaceRegion,
+  type WorkspaceSize,
+  type WidgetCategory,
+  type WidgetDefinition,
+} from "./widgetRegistry";

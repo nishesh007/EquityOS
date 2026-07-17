@@ -34,7 +34,8 @@ import {
   fetchWatchlistPlatformHealth,
   formatWatchlistPlatformSubtitle,
 } from "@/services/watchlistPlatform";
-import { MainGrid, PageContainer } from "@/src/design";
+import Link from "next/link";
+import { PageContainer, WorkspaceDashboard } from "@/src/design";
 
 export default async function DashboardPage() {
   const [
@@ -112,21 +113,20 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      {/* Market snapshot band — indices, pulse, breadth (full width). */}
-      <section className="mb-6 space-y-6 animate-fade-in-up [animation-delay:60ms]">
-        <MarketOverviewCards indices={indices} />
-        <MarketPulse pulse={pulse} />
-        <MarketBreadth breadth={breadth} />
-      </section>
-
-      {/* Institutional main grid — 70% work column, 30% context rail. */}
-      <section className="mb-6 animate-fade-in-up [animation-delay:180ms]">
-        <MainGrid
-          primary={
-            <>
-              {/* Sprint 10C.R4 — validation moved to the dedicated /validation page. */}
+      {/* Sprint 10C.R6 — customizable workspace. Content renders on the
+          server; arrangement (drag & drop, resize, visibility, profiles)
+          is personalized on the client and auto-saved. */}
+      <div className="animate-fade-in-up [animation-delay:60ms]">
+        <WorkspaceDashboard
+          widgets={{
+            "market-snapshot": <MarketOverviewCards indices={indices} />,
+            "market-pulse": <MarketPulse pulse={pulse} />,
+            "market-breadth": <MarketBreadth breadth={breadth} />,
+            "ai-opportunities": (
               <OpportunityEnginePanel initialState={opportunityState} />
-              <PortfolioSummary portfolio={portfolio} />
+            ),
+            "portfolio-summary": <PortfolioSummary portfolio={portfolio} />,
+            "portfolio-health": (
               <InstitutionalPortfolioPanel
                 portfolio={portfolio}
                 doctor={doctorAnalysis}
@@ -134,11 +134,9 @@ export default async function DashboardPage() {
                 showReportViewer={false}
                 title="Dashboard · Portfolio Health"
               />
-            </>
-          }
-          secondary={
-            <>
-              <Watchlist initialItems={watchlist} />
+            ),
+            watchlist: <Watchlist initialItems={watchlist} />,
+            "ai-brief": (
               <AIMarketSummary
                 summary={aiSummary}
                 meta={{
@@ -161,22 +159,39 @@ export default async function DashboardPage() {
                       ?.lastUpdated ?? null,
                 }}
               />
-              <UpcomingResultsCalendar results={results} />
-              <LatestMarketNews news={news} />
-            </>
-          }
+            ),
+            "results-calendar": <UpcomingResultsCalendar results={results} />,
+            "market-news": <LatestMarketNews news={news} />,
+            "earnings-intelligence": (
+              <DashboardEarningsPanel
+                view={earningsDashboard}
+                rankedMetrics={rankedDashboard.metrics}
+                topRanked={rankedDashboard.items}
+                alertEvents={alertEvents}
+              />
+            ),
+            "validation-center": (
+              <Link
+                href="/validation"
+                className="flex h-full flex-col justify-between rounded-lg border border-surface-border bg-card p-4 transition-colors hover:border-accent/50"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-text-primary">
+                    Validation Center
+                  </p>
+                  <p className="mt-1 text-xs text-text-muted">
+                    Institutional health, module validation and system checks
+                    live on the dedicated validation page.
+                  </p>
+                </div>
+                <span className="mt-3 text-xs font-medium text-accent">
+                  Open Validation Center →
+                </span>
+              </Link>
+            ),
+          }}
         />
-      </section>
-
-      {/* Bottom band — earnings intelligence, history and secondary feeds. */}
-      <section className="animate-fade-in-up [animation-delay:300ms]">
-        <DashboardEarningsPanel
-          view={earningsDashboard}
-          rankedMetrics={rankedDashboard.metrics}
-          topRanked={rankedDashboard.items}
-          alertEvents={alertEvents}
-        />
-      </section>
+      </div>
     </PageContainer>
   );
 }
