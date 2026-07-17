@@ -96,7 +96,7 @@ describe("theme switching", () => {
 });
 
 describe("token consistency", () => {
-  it("registers all five built-in themes", () => {
+  it("registers all eight built-in themes", () => {
     const ids = getThemeEngine()
       .listThemes()
       .map((theme) => theme.id);
@@ -104,12 +104,15 @@ describe("token consistency", () => {
       expect.arrayContaining([
         "institutional-dark",
         "institutional-light",
+        "bloomberg",
         "midnight-blue",
         "graphite",
         "emerald",
+        "trading-desk",
+        "carbon-black",
       ]),
     );
-    expect(BUILT_IN_THEMES).toHaveLength(5);
+    expect(BUILT_IN_THEMES).toHaveLength(8);
   });
 
   it("gives every theme a complete palette of valid hex colors", () => {
@@ -312,7 +315,7 @@ describe("regression", () => {
   it("getDesignSystem() exposes a frozen aggregate of every token family", () => {
     const system = getDesignSystem();
     expect(Object.isFrozen(system)).toBe(true);
-    expect(system.themes).toHaveLength(5);
+    expect(system.themes).toHaveLength(8);
     expect(system.defaultThemeId).toBe("institutional-dark");
     expect(system.spacing).toBe(SPACING_SCALE);
     expect(system.radius).toBe(RADIUS_SCALE);

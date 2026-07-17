@@ -1,5 +1,6 @@
 import { FeaturePlaceholder } from "@/components/layout/FeaturePlaceholder";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { AppearanceSettings } from "@/components/settings/AppearanceSettings";
 import { ThemeSelector } from "@/components/settings/ThemeSelector";
 import { PageContainer } from "@/src/design";
 import { Settings } from "lucide-react";
@@ -13,6 +14,7 @@ export default function SettingsPage() {
       />
 
       <ThemeSelector />
+      <AppearanceSettings />
 
       <FeaturePlaceholder
         icon={Settings}

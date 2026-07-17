@@ -161,3 +161,24 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Sprint 10C.R5 — motion preference engine (src/design/motion).
+   Mirrors the media query so users can force reduced motion in Settings. */
+html[data-motion="reduced"] *,
+html[data-motion="reduced"] *::before,
+html[data-motion="reduced"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* Sprint 10C.R5 — global font size preference (src/design/typography).
+   Rem-based sizes across the app rescale from the root. */
+html[data-font-size="small"] {
+  font-size: 15px;
+}
+
+html[data-font-size="large"] {
+  font-size: 17px;
+}

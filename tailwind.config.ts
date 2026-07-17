@@ -73,12 +73,27 @@ const config: Config = {
       animation: {
         "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         "fade-in-up": "fadeInUp 0.45s ease-out both",
+        "fade-in": "fadeIn 0.2s ease-out both",
+        "scale-in": "scaleIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) both",
+        "slide-in": "slideIn 0.32s cubic-bezier(0, 0, 0.2, 1) both",
         "terminal-scan": "terminalScan 4s ease-in-out infinite",
       },
       keyframes: {
         fadeInUp: {
           "0%": { opacity: "0", transform: "translateY(10px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        fadeIn: {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        scaleIn: {
+          "0%": { opacity: "0", transform: "scale(0.96)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
+        slideIn: {
+          "0%": { opacity: "0", transform: "translateX(16px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
         },
         terminalScan: {
           "0%, 100%": { opacity: "0", transform: "translateX(-35%)" },

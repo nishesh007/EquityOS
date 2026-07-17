@@ -293,7 +293,7 @@ describe("regression", () => {
   });
 
   it("R1 and R2 systems remain intact", () => {
-    expect(getDesignSystem().themes).toHaveLength(5);
+    expect(getDesignSystem().themes).toHaveLength(8);
     expect(Object.isFrozen(getDashboardGrid())).toBe(true);
   });
 });

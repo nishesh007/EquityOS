@@ -277,3 +277,83 @@ export {
 
 // Table toolbars (Sprint 10C.R4)
 export { TableToolbar } from "./toolbars";
+
+// Premium themes, accent engine and appearance tokens (Sprint 10C.R5)
+export {
+  PREMIUM_THEMES,
+  ACCENT_COLORS,
+  getAccentColorById,
+  resolveAccentVariables,
+  setAccentColor,
+  getAccentColor,
+  subscribeAccent,
+  hydrateAccentFromStorage,
+  ACCENT_STORAGE_KEY,
+  STATUS_COLORS,
+  STATUS_COLOR_ROLES,
+  ELEVATION_SHADOWS,
+  ELEVATION_ORDER,
+  RADIUS_ALIASES,
+  ICON_SIZES,
+  ICON_STROKE_WIDTHS,
+  UI_DENSITIES,
+  getUiDensity,
+  setUiDensity,
+  hydrateDensityFromStorage,
+  type AccentColor,
+  type AccentColorId,
+  type StatusColorRole,
+  type StatusColorSpec,
+  type ElevationToken,
+  type RadiusAlias,
+  type IconSizeToken,
+  type UiDensity,
+} from "./themes";
+
+// Motion system (Sprint 10C.R5)
+export {
+  MOTION_PREFERENCES,
+  MOTION_CLASSES,
+  MOTION_PRESET_NAMES,
+  getMotionPreference,
+  setMotionPreference,
+  hydrateMotionFromStorage,
+  resolveEffectiveMotion,
+  CountUp,
+  type MotionPreference,
+  type MotionPresetName,
+} from "./motion";
+
+// Typography system (Sprint 10C.R5)
+export {
+  TYPE_SCALE,
+  TYPE_CLASSES,
+  TYPE_VARIANTS,
+  FONT_SCALES,
+  FONT_SCALE_LABELS,
+  FONT_SCALE_ROOT_PX,
+  getFontScale,
+  setFontScale,
+  hydrateFontScaleFromStorage,
+  Text,
+  type TypeVariant,
+  type FontScale,
+} from "./typography";
+
+// Glassmorphism (Sprint 10C.R5)
+export {
+  GLASS_SURFACE,
+  GLASS_CLASSES,
+  GLASS_SURFACE_TOKENS,
+  GlassPanel,
+  GlassToolbar,
+  GlassModal,
+  GlassDropdown,
+  GlassSidebar,
+  GlassTooltip,
+  GlassBadge,
+  type GlassSurfaceToken,
+} from "./glass";
+
+// Skeleton loaders (Sprint 10C.R5)
+export { Skeleton, type SkeletonVariant } from "./components/Skeleton";

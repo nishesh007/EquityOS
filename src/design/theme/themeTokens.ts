@@ -11,6 +11,7 @@
 
 import type { ThemeColors } from "./colorTokens";
 import type { ThemeMode } from "./shadowTokens";
+import { PREMIUM_THEMES } from "../themes/premiumThemes";
 
 export interface Theme {
   /** Stable identifier, used for persistence and the data-theme attribute. */
@@ -25,9 +26,12 @@ export interface Theme {
 export type BuiltInThemeId =
   | "institutional-dark"
   | "institutional-light"
+  | "bloomberg"
   | "midnight-blue"
   | "graphite"
-  | "emerald";
+  | "emerald"
+  | "trading-desk"
+  | "carbon-black";
 
 export const DEFAULT_THEME_ID: BuiltInThemeId = "institutional-dark";
 
@@ -183,4 +187,6 @@ export const BUILT_IN_THEMES: readonly Theme[] = Object.freeze([
   midnightBlue,
   graphite,
   emerald,
+  // Sprint 10C.R5 premium pack (src/design/themes/premiumThemes.ts).
+  ...PREMIUM_THEMES,
 ]);

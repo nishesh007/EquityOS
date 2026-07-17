@@ -225,7 +225,7 @@ describe("tables", () => {
 describe("cards and regression", () => {
   it("R1 design system remains intact", async () => {
     const system = getDesignSystem();
-    expect(system.themes).toHaveLength(5);
+    expect(system.themes).toHaveLength(8);
     expect(Object.values(system.spacing).sort((a, b) => a - b)).toEqual([
       ...SPACING_VALUES,
     ]);
