@@ -31,6 +31,10 @@ import {
   bindRecommendationOutcomeSnapshotLoader,
   resetRecommendationOutcomes,
 } from "./outcomes";
+import {
+  bindRecommendationLearningSnapshotLoader,
+  resetAdaptiveLearning,
+} from "./learning";
 
 export * from "./RecommendationIdentity";
 export * from "./RecommendationMetadata";
@@ -192,11 +196,52 @@ export type {
   RecommendationPricePathInput,
 } from "./outcomes";
 
+export {
+  learnFromRecommendation,
+  getLearningSummary,
+  getCalibration,
+  getHistoricalPatterns,
+  getAILessons,
+  getHistoricalLearning,
+  calibrateFutureRecommendation,
+  resetAdaptiveLearning,
+  presentLearningDashboard,
+  presentCalibration,
+  presentPatterns,
+  presentLearningForSurface,
+  wireLearningAIResearch,
+  wireLearningAIScreener,
+  wireLearningDashboard,
+  wireLearningRecommendationCenter,
+  wireLearningValidation,
+  wireLearningReplay,
+  wireLearningHistory,
+  RECOMMENDATION_LEARNING_EMPTY,
+  RECOMMENDATION_LEARNING_FACTORS,
+  AdaptiveLearningEngine,
+  RecommendationCalibrationEngine,
+  HistoricalLearningEngine,
+  PatternLearningEngine,
+} from "./learning";
+export type {
+  RecommendationLearningSource,
+  RecommendationLearningEvidence,
+  RecommendationLearningSummary,
+  RecommendationCalibration,
+  RecommendationLearnedPattern,
+  RecommendationAILessons,
+  RecommendationHistoricalLearning,
+  FutureRecommendationCalibrationInput,
+  CalibratedFutureRecommendation,
+  LearningSurfaceBundle,
+} from "./learning";
+
 const recommendationRegistry = new RecommendationRegistry();
 bindRecommendationSnapshotLoader((id) => recommendationRegistry.load(id));
 bindRecommendationHealthSnapshotLoader((id) => recommendationRegistry.load(id));
 bindRecommendationReplaySnapshotLoader((id) => recommendationRegistry.load(id));
 bindRecommendationOutcomeSnapshotLoader((id) => recommendationRegistry.load(id));
+bindRecommendationLearningSnapshotLoader((id) => recommendationRegistry.load(id));
 
 export function createRecommendation(
   input: CreateRecommendationSnapshotInput,
@@ -278,4 +323,5 @@ export function resetRecommendationRegistry(): void {
   resetRecommendationHealth();
   resetRecommendationReplay();
   resetRecommendationOutcomes();
+  resetAdaptiveLearning();
 }

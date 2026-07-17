@@ -6,6 +6,7 @@ import {
 } from "@/lib/opportunity-engine";
 import {
   wireHealthDashboard,
+  wireLearningHistory,
   wireOutcomeDashboard,
   wireRecommendationHistory,
   wireReplayHistory,
@@ -40,5 +41,6 @@ export async function GET(request: NextRequest) {
     health: wireHealthDashboard(),
     replay: wireReplayHistory(),
     outcomes: wireOutcomeDashboard(),
+    learning: wireLearningHistory(),
   });
 }

@@ -7,6 +7,7 @@ import {
   getRecommendationOutcome,
   getRecommendationReplay,
   wireHealthReplay,
+  wireLearningReplay,
   wireOutcomeReplay,
   wireRecommendationReplay,
   wireReplaySurface,
@@ -18,7 +19,7 @@ type RouteContext = {
 
 /**
  * Replays the immutable recommendation with R2 lifecycle, R3 health,
- * R4 decision journal / audit, and R5 lifecycle-complete outcomes.
+ * R4 decision journal / audit, R5 lifecycle-complete outcomes, and R6 learning.
  */
 export async function GET(_request: NextRequest, context: RouteContext) {
   const { recommendationId } = await context.params;
@@ -56,6 +57,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     comparison: decisionReplay?.comparison ?? null,
     lessons: decisionReplay?.lessons ?? [],
     outcomes,
+    learning: wireLearningReplay(),
     institutionalVerdict: outcome?.verdict ?? outcomes.row.finalGrade,
     expectedHoldingPeriod: outcome?.expectedHoldingPeriod ?? null,
   });
