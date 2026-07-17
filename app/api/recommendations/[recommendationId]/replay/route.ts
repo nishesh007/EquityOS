@@ -11,6 +11,7 @@ import {
   wireOutcomeReplay,
   wireRecommendationReplay,
   wireReplaySurface,
+  wireWorkspaceReplay,
 } from "@/src/core/recommendations";
 
 type RouteContext = {
@@ -19,7 +20,8 @@ type RouteContext = {
 
 /**
  * Replays the immutable recommendation with R2 lifecycle, R3 health,
- * R4 decision journal / audit, R5 lifecycle-complete outcomes, and R6 learning.
+ * R4 decision journal / audit, R5 lifecycle-complete outcomes, R6 learning,
+ * and R7 institutional workspace.
  */
 export async function GET(_request: NextRequest, context: RouteContext) {
   const { recommendationId } = await context.params;
@@ -58,6 +60,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     lessons: decisionReplay?.lessons ?? [],
     outcomes,
     learning: wireLearningReplay(),
+    workspace: wireWorkspaceReplay(),
     institutionalVerdict: outcome?.verdict ?? outcomes.row.finalGrade,
     expectedHoldingPeriod: outcome?.expectedHoldingPeriod ?? null,
   });

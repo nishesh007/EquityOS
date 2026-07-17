@@ -35,6 +35,10 @@ import {
   bindRecommendationLearningSnapshotLoader,
   resetAdaptiveLearning,
 } from "./learning";
+import {
+  bindRecommendationWorkspaceSnapshotLoader,
+  resetRecommendationWorkspace,
+} from "./workspace";
 
 export * from "./RecommendationIdentity";
 export * from "./RecommendationMetadata";
@@ -236,12 +240,56 @@ export type {
   LearningSurfaceBundle,
 } from "./learning";
 
+export {
+  getRecommendationWorkspace,
+  searchRecommendations,
+  filterRecommendations,
+  compareRecommendations,
+  getRecommendationAnalytics,
+  exportRecommendationWorkspace,
+  archiveWorkspaceRecommendation,
+  resetRecommendationWorkspace,
+  presentWorkspaceCard,
+  presentWorkspaceAnalytics,
+  presentWorkspaceSearchResults,
+  presentComparison,
+  presentRecommendationWorkspaceForSurface,
+  wireWorkspaceDashboard,
+  wireWorkspaceCompany,
+  wireWorkspaceResearch,
+  wireWorkspaceRecommendationCenter,
+  wireWorkspaceReplay,
+  wireWorkspaceHistory,
+  wireWorkspacePortfolio,
+  wireWorkspaceWatchlists,
+  RECOMMENDATION_WORKSPACE_EMPTY,
+  RecommendationWorkspaceEngine,
+  RecommendationSearchEngine,
+  RecommendationFilterEngine,
+  RecommendationAnalyticsEngine,
+} from "./workspace";
+export type {
+  RecommendationWorkspace,
+  RecommendationWorkspaceRecord,
+  RecommendationSearchCriteria,
+  RecommendationFilterCriteria,
+  RecommendationComparisonView,
+  RecommendationWorkspaceAnalytics,
+  RecommendationWorkspaceExportFormat,
+  RecommendationWorkspaceExportResult,
+  WorkspaceSurfaceBundle,
+} from "./workspace";
+
 const recommendationRegistry = new RecommendationRegistry();
 bindRecommendationSnapshotLoader((id) => recommendationRegistry.load(id));
 bindRecommendationHealthSnapshotLoader((id) => recommendationRegistry.load(id));
 bindRecommendationReplaySnapshotLoader((id) => recommendationRegistry.load(id));
 bindRecommendationOutcomeSnapshotLoader((id) => recommendationRegistry.load(id));
 bindRecommendationLearningSnapshotLoader((id) => recommendationRegistry.load(id));
+bindRecommendationWorkspaceSnapshotLoader(
+  (id) => recommendationRegistry.load(id),
+  () => recommendationRegistry.list()
+);
 
 export function createRecommendation(
   input: CreateRecommendationSnapshotInput,
@@ -324,4 +372,5 @@ export function resetRecommendationRegistry(): void {
   resetRecommendationReplay();
   resetRecommendationOutcomes();
   resetAdaptiveLearning();
+  resetRecommendationWorkspace();
 }

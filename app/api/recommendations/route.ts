@@ -10,6 +10,7 @@ import {
   wireOutcomeDashboard,
   wireRecommendationHistory,
   wireReplayHistory,
+  wireWorkspaceHistory,
 } from "@/src/core/recommendations";
 
 const STATUSES = new Set<RecommendationRecordStatus>([
@@ -42,5 +43,6 @@ export async function GET(request: NextRequest) {
     replay: wireReplayHistory(),
     outcomes: wireOutcomeDashboard(),
     learning: wireLearningHistory(),
+    workspace: wireWorkspaceHistory(),
   });
 }
