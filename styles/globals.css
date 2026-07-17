@@ -2,6 +2,44 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * EquityOS design-system variables.
+ * These :root defaults mirror the Institutional Dark theme so server-rendered
+ * HTML is correct before hydration. The ThemeEngine
+ * (src/design/theme/ThemeEngine.ts) overwrites them when the theme changes.
+ * Colors are RGB triplets consumed via rgb(var(--token) / <alpha>).
+ */
+:root {
+  --eos-color-primary: 59 130 246;
+  --eos-color-secondary: 139 92 246;
+  --eos-color-accent: 59 130 246;
+  --eos-color-accent-muted: 37 99 235;
+  --eos-color-success: 34 197 94;
+  --eos-color-success-muted: 22 163 74;
+  --eos-color-warning: 245 158 11;
+  --eos-color-danger: 239 68 68;
+  --eos-color-danger-muted: 220 38 38;
+  --eos-color-info: 56 189 248;
+  --eos-color-background: 12 12 16;
+  --eos-color-surface: 17 17 22;
+  --eos-color-card: 22 22 29;
+  --eos-color-surface-hover: 26 26 34;
+  --eos-color-border: 34 34 46;
+  --eos-color-border-subtle: 26 26 36;
+  --eos-color-muted: 39 39 47;
+  --eos-color-text-primary: 244 244 245;
+  --eos-color-text-secondary: 161 161 170;
+  --eos-color-text-muted: 139 139 148;
+  --eos-color-text-faint: 82 82 91;
+
+  --eos-shadow-card: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 4px 24px rgba(0, 0, 0, 0.4);
+  --eos-shadow-floating: 0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35);
+  --eos-shadow-overlay: 0 16px 56px rgba(0, 0, 0, 0.6);
+  --eos-shadow-popup: 0 12px 40px rgba(0, 0, 0, 0.55), 0 4px 12px rgba(0, 0, 0, 0.4);
+  --eos-shadow-dropdown: 0 8px 28px rgba(0, 0, 0, 0.5);
+  --eos-shadow-glass: 0 0 0 1px rgba(255, 255, 255, 0.05), 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
 @layer base {
   * {
     @apply border-surface-border;
@@ -15,15 +53,21 @@
     @apply bg-surface text-text-primary font-sans;
     background-image: radial-gradient(
         ellipse 80% 50% at 50% -20%,
-        rgba(59, 130, 246, 0.08),
+        rgb(var(--eos-color-accent) / 0.08),
         transparent
       ),
       radial-gradient(
         ellipse 60% 40% at 100% 100%,
-        rgba(34, 197, 94, 0.04),
+        rgb(var(--eos-color-success) / 0.04),
         transparent
       );
     min-height: 100vh;
+  }
+
+  /* Visible keyboard focus everywhere, themed via the accent token. */
+  :focus-visible {
+    outline: 2px solid rgb(var(--eos-color-accent));
+    outline-offset: 2px;
   }
 
   ::-webkit-scrollbar {
