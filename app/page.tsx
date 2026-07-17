@@ -35,6 +35,7 @@ import {
   fetchWatchlistPlatformHealth,
   formatWatchlistPlatformSubtitle,
 } from "@/services/watchlistPlatform";
+import { MainGrid, PageContainer } from "@/src/design";
 
 export default async function DashboardPage() {
   const [
@@ -74,7 +75,7 @@ export default async function DashboardPage() {
   ]);
 
   return (
-    <div className="p-6">
+    <PageContainer>
       <div className="mb-6 animate-fade-in-up">
         <h1 className="text-xl font-semibold tracking-tight text-text-primary">
           Equity Research Terminal
@@ -112,69 +113,69 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      <section className="mb-6 animate-fade-in-up [animation-delay:60ms]">
+      {/* Market snapshot band — indices, pulse, breadth (full width). */}
+      <section className="mb-6 space-y-6 animate-fade-in-up [animation-delay:60ms]">
         <MarketOverviewCards indices={indices} />
-      </section>
-
-      <section className="mb-6 animate-fade-in-up [animation-delay:120ms]">
         <MarketPulse pulse={pulse} />
-      </section>
-
-      <section className="mb-6 animate-fade-in-up [animation-delay:180ms]">
         <MarketBreadth breadth={breadth} />
       </section>
 
-      <section className="mb-6 animate-fade-in-up [animation-delay:210ms]">
-        <ExecutiveInstitutionalDashboard
-          portfolio={portfolio}
-          doctor={doctorAnalysis}
-          opportunityState={opportunityState}
-          earnings={results}
+      {/* Institutional main grid — 70% work column, 30% context rail. */}
+      <section className="mb-6 animate-fade-in-up [animation-delay:180ms]">
+        <MainGrid
+          primary={
+            <>
+              <ExecutiveInstitutionalDashboard
+                portfolio={portfolio}
+                doctor={doctorAnalysis}
+                opportunityState={opportunityState}
+                earnings={results}
+              />
+              <OpportunityEnginePanel initialState={opportunityState} />
+              <PortfolioSummary portfolio={portfolio} />
+              <InstitutionalPortfolioPanel
+                portfolio={portfolio}
+                doctor={doctorAnalysis}
+                compact
+                showReportViewer={false}
+                title="Dashboard · Portfolio Health"
+              />
+            </>
+          }
+          secondary={
+            <>
+              <Watchlist initialItems={watchlist} />
+              <AIMarketSummary
+                summary={aiSummary}
+                meta={{
+                  marketData: indices.some((index) => index.value > 0)
+                    ? "Live"
+                    : null,
+                  news: news.length > 0 ? `${news.length} headlines` : null,
+                  breadth:
+                    breadth.advances + breadth.declines > 0
+                      ? `${breadth.advances} adv / ${breadth.declines} dec`
+                      : null,
+                  trend:
+                    aiSummary.sentiment === "bullish"
+                      ? "Bullish"
+                      : aiSummary.sentiment === "bearish"
+                        ? "Bearish"
+                        : "Neutral",
+                  generatedAt:
+                    indices.find((index) => index.quote?.lastUpdated)?.quote
+                      ?.lastUpdated ?? null,
+                }}
+              />
+              <UpcomingResultsCalendar results={results} />
+              <LatestMarketNews news={news} />
+            </>
+          }
         />
       </section>
 
-      <section className="mb-6 animate-fade-in-up [animation-delay:240ms]">
-        <OpportunityEnginePanel initialState={opportunityState} />
-      </section>
-
-      <section className="mb-6 grid animate-fade-in-up grid-cols-1 gap-6 [animation-delay:300ms] xl:grid-cols-2">
-        <div className="space-y-4">
-          <PortfolioSummary portfolio={portfolio} />
-          <InstitutionalPortfolioPanel
-            portfolio={portfolio}
-            doctor={doctorAnalysis}
-            compact
-            showReportViewer={false}
-            title="Dashboard · Portfolio Health"
-          />
-        </div>
-        <Watchlist initialItems={watchlist} />
-      </section>
-
-      <section className="mb-6 animate-fade-in-up [animation-delay:360ms]">
-        <AIMarketSummary
-          summary={aiSummary}
-          meta={{
-            marketData: indices.some((index) => index.value > 0) ? "Live" : null,
-            news: news.length > 0 ? `${news.length} headlines` : null,
-            breadth:
-              breadth.advances + breadth.declines > 0
-                ? `${breadth.advances} adv / ${breadth.declines} dec`
-                : null,
-            trend:
-              aiSummary.sentiment === "bullish"
-                ? "Bullish"
-                : aiSummary.sentiment === "bearish"
-                  ? "Bearish"
-                  : "Neutral",
-            generatedAt:
-              indices.find((index) => index.quote?.lastUpdated)?.quote
-                ?.lastUpdated ?? null,
-          }}
-        />
-      </section>
-
-      <section className="mb-6 animate-fade-in-up [animation-delay:400ms]">
+      {/* Bottom band — earnings intelligence, history and secondary feeds. */}
+      <section className="animate-fade-in-up [animation-delay:300ms]">
         <DashboardEarningsPanel
           view={earningsDashboard}
           rankedMetrics={rankedDashboard.metrics}
@@ -182,11 +183,6 @@ export default async function DashboardPage() {
           alertEvents={alertEvents}
         />
       </section>
-
-      <section className="grid animate-fade-in-up grid-cols-1 gap-6 [animation-delay:420ms] xl:grid-cols-2">
-        <LatestMarketNews news={news} />
-        <UpcomingResultsCalendar results={results} />
-      </section>
-    </div>
+    </PageContainer>
   );
 }

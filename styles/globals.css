@@ -101,6 +101,43 @@
     @apply font-mono text-text-primary tabular-nums;
   }
 
+  /* Institutional tables — sticky header, hover rows, aligned numerics.
+     Canonical class names live in src/design/layout/tableStyles.ts. */
+  .institutional-table-container {
+    @apply max-h-[480px] overflow-auto rounded-lg border border-surface-border-subtle;
+  }
+
+  .institutional-table {
+    @apply w-full border-collapse text-sm;
+  }
+
+  .institutional-table thead th {
+    @apply sticky top-0 z-10 border-b border-surface-border bg-surface-raised px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wider text-text-muted;
+  }
+
+  .institutional-table tbody td {
+    @apply border-b border-surface-border-subtle px-3 py-2 text-text-secondary;
+  }
+
+  .institutional-table tbody tr {
+    @apply transition-colors duration-200;
+  }
+
+  .institutional-table tbody tr:hover {
+    @apply bg-surface-hover;
+  }
+
+  .institutional-table tbody tr:last-child td {
+    @apply border-b-0;
+  }
+
+  .institutional-table-numeric {
+    @apply text-right font-mono tabular-nums text-text-primary;
+  }
+
+  .institutional-table-highlight {
+    @apply bg-accent/10;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

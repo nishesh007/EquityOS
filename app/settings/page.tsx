@@ -1,11 +1,12 @@
 import { FeaturePlaceholder } from "@/components/layout/FeaturePlaceholder";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ThemeSelector } from "@/components/settings/ThemeSelector";
+import { PageContainer } from "@/src/design";
 import { Settings } from "lucide-react";
 
 export default function SettingsPage() {
   return (
-    <div className="p-6">
+    <PageContainer>
       <PageHeader
         title="Settings"
         subtitle="Account preferences, notifications and terminal configuration"
@@ -24,6 +25,6 @@ export default function SettingsPage() {
           "Export and privacy settings for your research data",
         ]}
       />
-    </div>
+    </PageContainer>
   );
 }

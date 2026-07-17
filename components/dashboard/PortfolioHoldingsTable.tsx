@@ -10,6 +10,7 @@ import { formatCurrency } from "@/lib/utils";
 import { getCompanyRoute } from "@/lib/routes";
 import { buildInitialQuotesMap } from "@/services/marketData";
 import type { PortfolioHolding } from "@/types";
+import { TABLE_CLASSES } from "@/src/design";
 import { Briefcase } from "lucide-react";
 
 interface PortfolioHoldingsTableProps {
@@ -37,31 +38,17 @@ export function PortfolioHoldingsTable({
         }
       />
 
-      <div className="overflow-x-auto">
-        <table className="w-full">
+      <div className={TABLE_CLASSES.container}>
+        <table className={TABLE_CLASSES.table}>
           <thead>
-            <tr className="border-b border-surface-border-subtle text-left">
-              <th className="pb-2 text-[10px] font-medium uppercase tracking-wider text-text-faint">
-                Symbol
-              </th>
-              <th className="pb-2 text-right text-[10px] font-medium uppercase tracking-wider text-text-faint">
-                Qty
-              </th>
-              <th className="pb-2 text-right text-[10px] font-medium uppercase tracking-wider text-text-faint">
-                Avg Price
-              </th>
-              <th className="pb-2 text-right text-[10px] font-medium uppercase tracking-wider text-text-faint">
-                LTP
-              </th>
-              <th className="pb-2 text-right text-[10px] font-medium uppercase tracking-wider text-text-faint">
-                Day Change
-              </th>
-              <th className="pb-2 text-right text-[10px] font-medium uppercase tracking-wider text-text-faint">
-                Value
-              </th>
-              <th className="pb-2 text-right text-[10px] font-medium uppercase tracking-wider text-text-faint">
-                P&amp;L
-              </th>
+            <tr>
+              <th>Symbol</th>
+              <th className="!text-right">Qty</th>
+              <th className="!text-right">Avg Price</th>
+              <th className="!text-right">LTP</th>
+              <th className="!text-right">Day Change</th>
+              <th className="!text-right">Value</th>
+              <th className="!text-right">P&amp;L</th>
             </tr>
           </thead>
           <tbody>
@@ -82,9 +69,9 @@ export function PortfolioHoldingsTable({
                 <tr
                   key={holding.id}
                   onClick={() => router.push(getCompanyRoute(holding.symbol))}
-                  className="group cursor-pointer border-b border-surface-border-subtle/50 transition-colors hover:bg-surface-hover/30"
+                  className="group cursor-pointer"
                 >
-                  <td className="py-3">
+                  <td>
                     <div>
                       <p className="text-sm font-medium text-text-primary group-hover:text-accent">
                         {holding.symbol}
@@ -94,32 +81,28 @@ export function PortfolioHoldingsTable({
                       </p>
                     </div>
                   </td>
-                  <td className="py-3 text-right">
-                    <p className="text-sm font-mono text-text-primary tabular-nums">
-                      {holding.quantity}
-                    </p>
+                  <td className={TABLE_CLASSES.numericCell}>
+                    <p className="text-sm">{holding.quantity}</p>
                   </td>
-                  <td className="py-3 text-right">
-                    <p className="text-sm font-mono text-text-muted tabular-nums">
+                  <td className={TABLE_CLASSES.numericCell}>
+                    <p className="text-sm text-text-muted">
                       ₹{holding.avgPrice.toLocaleString("en-IN")}
                     </p>
                   </td>
-                  <td className="py-3 text-right">
+                  <td className={TABLE_CLASSES.numericCell}>
                     <QuoteDisplayCompact quote={quote} className="flex flex-col items-end" />
                   </td>
-                  <td className="py-3 text-right">
+                  <td className={TABLE_CLASSES.numericCell}>
                     <ChangeIndicator
                       value={changePercent}
                       size="sm"
                       showIcon={false}
                     />
                   </td>
-                  <td className="py-3 text-right">
-                    <p className="text-sm font-mono text-text-primary tabular-nums">
-                      {formatCurrency(currentValue, true)}
-                    </p>
+                  <td className={TABLE_CLASSES.numericCell}>
+                    <p className="text-sm">{formatCurrency(currentValue, true)}</p>
                   </td>
-                  <td className="py-3 text-right">
+                  <td className={TABLE_CLASSES.numericCell}>
                     <div className="flex flex-col items-end gap-0.5">
                       <p
                         className={`text-sm font-mono tabular-nums ${

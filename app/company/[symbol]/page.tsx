@@ -23,6 +23,7 @@ import {
   fetchWatchlistPlatformHealth,
   formatWatchlistPlatformSubtitle,
 } from "@/services/watchlistPlatform";
+import { PageContainer } from "@/src/design";
 
 interface CompanyPageProps {
   params: Promise<{ symbol: string }>;
@@ -98,7 +99,7 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
   const executive = fetchExecutiveResearchView({ ticker: company.symbol });
 
   return (
-    <div className="p-6">
+    <PageContainer>
       <div className="mb-6">
         <CompanyBreadcrumb symbol={company.symbol} name={company.name} />
         <p className="mt-1 text-xs text-text-muted">
@@ -161,6 +162,6 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
         <FinancialSummaryCards financials={company.financials} dataTransparency={intelligence.dataTransparency} />
         <CompanyTabs company={company} dataTransparency={intelligence.dataTransparency} />
       </div>
-    </div>
+    </PageContainer>
   );
 }

@@ -9,6 +9,7 @@ import {
   fetchWatchlistPlatformHealth,
   formatWatchlistPlatformSubtitle,
 } from "@/services/watchlistPlatform";
+import { MainGrid, PageContainer } from "@/src/design";
 
 export default async function WatchlistPage() {
   const [watchlist, earningsSurface, screenerHealth, researchWorkspace, watchlistPlatform] =
@@ -21,19 +22,18 @@ export default async function WatchlistPage() {
     ]);
 
   return (
-    <div className="p-6">
+    <PageContainer>
       <PageHeader
         title="Watchlist"
         subtitle={`Track symbols, price action and upcoming earnings · ${formatWatchlistPlatformSubtitle(watchlistPlatform)} · ${screenerHealth.watchlistScreens} institutional watchlist screens · workspace ${screenerHealth.workspaceReady ? "ready" : screenerHealth.emptyMessage} · research ${researchWorkspace.ready ? `${researchWorkspace.openTabs} tabs · executive ${researchWorkspace.executiveReady ? `${researchWorkspace.decisionCount} decisions` : researchWorkspace.executiveEmptyMessage}` : researchWorkspace.emptyMessage}${researchWorkspace.sprint10AFrozen ? " · 10A FROZEN" : ""}`}
       />
 
-      <section className="mb-6 animate-fade-in-up max-w-4xl">
-        <Watchlist initialItems={watchlist} />
+      <section className="animate-fade-in-up">
+        <MainGrid
+          primary={<Watchlist initialItems={watchlist} />}
+          secondary={<WatchlistEarningsPanel surface={earningsSurface} />}
+        />
       </section>
-
-      <section className="animate-fade-in-up max-w-4xl">
-        <WatchlistEarningsPanel surface={earningsSurface} />
-      </section>
-    </div>
+    </PageContainer>
   );
 }

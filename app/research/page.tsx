@@ -37,6 +37,7 @@ import {
   fetchWatchlistPlatformHealth,
   formatWatchlistPlatformSubtitle,
 } from "@/services/watchlistPlatform";
+import { PageContainer } from "@/src/design";
 
 export default function ResearchPage() {
   const workspace = ensureDefaultResearchWorkspace({
@@ -87,7 +88,7 @@ export default function ResearchPage() {
   });
 
   return (
-    <div className="p-6">
+    <PageContainer>
       <div className="mb-6">
         <h1 className="text-xl font-semibold tracking-tight text-text-primary">
           Institutional Research Workspace
@@ -511,6 +512,6 @@ export default function ResearchPage() {
           </section>
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }

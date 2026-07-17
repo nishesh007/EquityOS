@@ -107,3 +107,50 @@ export {
   MetricBadge,
   type StatusTone,
 } from "./components";
+
+// Layout / grid system
+export {
+  DashboardGrid,
+  GridItem,
+  MainGrid,
+  GRID_COLUMN_OPTIONS,
+  GRID_COLUMN_CLASSES,
+  GRID_SPAN_CLASSES,
+  GRID_GAP_CLASSES,
+  GRID_GAP_PX,
+  MAIN_GRID_SPLIT,
+  resolveGridColumns,
+  getDashboardGrid,
+  TABLE_CLASSES,
+  TABLE_CLASS_TOKENS,
+  type GridColumns,
+  type GridGap,
+  type DashboardGridConfig,
+  type TableClassToken,
+} from "./layout";
+
+// Widget framework
+export {
+  Widget,
+  WidgetEmptyState,
+  WidgetSkeleton,
+  WIDGET_SIZES,
+  WIDGET_SIZE_SPECS,
+  resolveWidgetSize,
+  type WidgetProps,
+  type WidgetSize,
+  type WidgetSizeSpec,
+} from "./widgets";
+
+// Dashboard layout registry
+export {
+  DASHBOARD_REGIONS,
+  PRIORITY_RANK,
+  getDashboardLayout,
+  getWidgetLayout,
+  sortByHierarchy,
+  type DashboardLayout,
+  type DashboardRegion,
+  type WidgetLayout,
+  type WidgetPriority,
+} from "./dashboard";

@@ -16,6 +16,7 @@ import { fetchPortfolioDoctorAnalysis } from "@/services/portfolioAnalysisData";
 import { fetchOpportunityEngineState } from "@/services/opportunityEngine";
 import { fetchInstitutionalScreenerHealth } from "@/services/screenerData";
 import { fetchResearchWorkspaceHealth } from "@/services/researchWorkspace";
+import { MainGrid, PageContainer } from "@/src/design";
 
 export default async function PortfolioPage() {
   const [
@@ -39,56 +40,47 @@ export default async function PortfolioPage() {
   ]);
 
   return (
-    <div className="p-6">
+    <PageContainer>
       <PageHeader
         title="Portfolio"
         subtitle={`Holdings, performance and monitored opportunities · ${screenerHealth.portfolioScreens} institutional portfolio screens · workspace ${screenerHealth.workspaceReady ? "ready" : screenerHealth.emptyMessage} · research ${researchWorkspace.ready ? `${researchWorkspace.openTabs} tabs · executive ${researchWorkspace.executiveReady ? researchWorkspace.executiveSummary : researchWorkspace.executiveEmptyMessage}` : researchWorkspace.emptyMessage}${researchWorkspace.sprint10AFrozen ? " · 10A FROZEN" : ""}`}
       />
 
-      <section className="mb-6 animate-fade-in-up">
-        <ExecutiveInstitutionalDashboard
-          portfolio={portfolio}
-          doctor={doctorAnalysis}
-          opportunityState={opportunityState}
-          earnings={results}
-          compact
+      <section className="animate-fade-in-up">
+        <MainGrid
+          primary={
+            <>
+              <ExecutiveInstitutionalDashboard
+                portfolio={portfolio}
+                doctor={doctorAnalysis}
+                opportunityState={opportunityState}
+                earnings={results}
+                compact
+              />
+              <InstitutionalPortfolioPanel
+                portfolio={portfolio}
+                doctor={doctorAnalysis}
+                title="Institutional Portfolio Management"
+              />
+              <PortfolioSummary
+                portfolio={portfolio}
+                showTopHoldings={false}
+                showViewAllLink={false}
+              />
+              <div id="holdings">
+                <PortfolioHoldingsTable holdings={portfolio.holdings} />
+              </div>
+              <PortfolioDoctor analysis={doctorAnalysis} />
+            </>
+          }
+          secondary={
+            <>
+              <Watchlist initialItems={watchlist} />
+              <PortfolioEarningsPanel rows={portfolioEarnings} />
+            </>
+          }
         />
       </section>
-
-      <section className="mb-6 animate-fade-in-up [animation-delay:40ms]">
-        <InstitutionalPortfolioPanel
-          portfolio={portfolio}
-          doctor={doctorAnalysis}
-          title="Institutional Portfolio Management"
-        />
-      </section>
-
-      <section className="mb-6 animate-fade-in-up [animation-delay:40ms]">
-        <PortfolioSummary
-          portfolio={portfolio}
-          showTopHoldings={false}
-          showViewAllLink={false}
-        />
-      </section>
-
-      <section
-        id="holdings"
-        className="mb-6 animate-fade-in-up [animation-delay:60ms]"
-      >
-        <PortfolioHoldingsTable holdings={portfolio.holdings} />
-      </section>
-
-      <section className="mb-6 animate-fade-in-up [animation-delay:90ms]">
-        <PortfolioEarningsPanel rows={portfolioEarnings} />
-      </section>
-
-      <section className="mb-6 animate-fade-in-up [animation-delay:120ms]">
-        <Watchlist initialItems={watchlist} />
-      </section>
-
-      <section className="animate-fade-in-up [animation-delay:180ms]">
-        <PortfolioDoctor analysis={doctorAnalysis} />
-      </section>
-    </div>
+    </PageContainer>
   );
 }

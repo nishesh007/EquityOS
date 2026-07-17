@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/layout/PageHeader";
+import { PageContainer } from "@/src/design";
 import Link from "next/link";
 import {
   fetchInstitutionalScreenerHealth,
@@ -50,7 +51,7 @@ export default async function OpportunitiesPage() {
   });
 
   return (
-    <div className="p-6">
+    <PageContainer>
       <PageHeader
         title="AI Opportunities"
         subtitle={`Sprint 9D FROZEN · Discovery · ${health.ideaKindsCount} idea kinds · ${health.themeCount} themes · executive ${
@@ -127,6 +128,6 @@ export default async function OpportunitiesPage() {
           </ul>
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }
