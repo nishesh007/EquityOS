@@ -27,6 +27,10 @@ import {
   bindRecommendationReplaySnapshotLoader,
   resetRecommendationReplay,
 } from "./replay";
+import {
+  bindRecommendationOutcomeSnapshotLoader,
+  resetRecommendationOutcomes,
+} from "./outcomes";
 
 export * from "./RecommendationIdentity";
 export * from "./RecommendationMetadata";
@@ -152,10 +156,47 @@ export type {
   RecommendationReplaySurfaceBundle,
 } from "./replay";
 
+export {
+  getRecommendationOutcome,
+  trackRecommendationTargets,
+  getRecommendationPerformance,
+  getInstitutionalVerdict,
+  getOutcomeSummary,
+  evaluateRecommendationOutcome,
+  evaluateAndStoreOutcome,
+  listRecommendationOutcomes,
+  resetRecommendationOutcomes,
+  presentOutcomePanelRow,
+  presentHighestConvictionOutcomeCard,
+  presentRecommendationOutcomesForSurface,
+  wireOutcomeDashboard,
+  wireOutcomeCompany,
+  wireOutcomeResearch,
+  wireOutcomeRecommendationCenter,
+  wireOutcomePortfolio,
+  wireOutcomeReplay,
+  wireOutcomeHistory,
+  wireOutcomeWatchlists,
+  RECOMMENDATION_OUTCOME_EMPTY,
+  INSTITUTIONAL_VERDICTS,
+  RecommendationOutcomeEngine,
+  institutionalVerdictFromSessionStatus,
+} from "./outcomes";
+export type {
+  RecommendationOutcomeAssessment,
+  RecommendationOutcomeSummary,
+  RecommendationPerformanceMetrics,
+  InstitutionalVerdict,
+  RecommendationOutcomePanelRow,
+  RecommendationOutcomeSurfaceBundle,
+  RecommendationPricePathInput,
+} from "./outcomes";
+
 const recommendationRegistry = new RecommendationRegistry();
 bindRecommendationSnapshotLoader((id) => recommendationRegistry.load(id));
 bindRecommendationHealthSnapshotLoader((id) => recommendationRegistry.load(id));
 bindRecommendationReplaySnapshotLoader((id) => recommendationRegistry.load(id));
+bindRecommendationOutcomeSnapshotLoader((id) => recommendationRegistry.load(id));
 
 export function createRecommendation(
   input: CreateRecommendationSnapshotInput,
@@ -236,4 +277,5 @@ export function resetRecommendationRegistry(): void {
   resetRecommendationLifecycle();
   resetRecommendationHealth();
   resetRecommendationReplay();
+  resetRecommendationOutcomes();
 }

@@ -21,6 +21,7 @@ import {
   RECOMMENDATION_SECTION_LABELS,
   formatInstitutionalConviction,
   presentCandidateRecommendationMeta,
+  institutionalVerdictFromSessionStatus,
 } from "@/src/core/recommendations";
 import {
   buildInstitutionalCandidateView,
@@ -1326,16 +1327,16 @@ function TradeOutcomesTable({ outcomes }: { outcomes: TradeOutcome[] }) {
   const statusLabel: Record<TradeOutcome["currentStatus"], string> = {
     target2_hit: "Target 2 Hit",
     target1_hit: "Target 1 Hit",
-    stopped: "Stopped Out",
-    open: "Open",
-    breakeven: "Breakeven",
+    stopped: "Stop Loss Hit",
+    open: "Running",
+    breakeven: "Neutral",
   };
 
   const visible = outcomes.slice(0, TABLE_MAX_VISIBLE_ROWS);
 
   return (
     <ScrollTableWrapper>
-      <table className="w-full min-w-[960px]">
+      <table className="w-full min-w-[1100px]">
         <thead>
           <tr className="border-b border-surface-border-subtle text-left">
             <th className={headerClass}>#</th>
@@ -1344,60 +1345,82 @@ function TradeOutcomesTable({ outcomes }: { outcomes: TradeOutcome[] }) {
             <th className={`${headerClass} text-right`}>SL</th>
             <th className={`${headerClass} text-right`}>T1</th>
             <th className={`${headerClass} text-right`}>T2</th>
-            <th className={`${headerClass} text-right`}>Highest Gain</th>
-            <th className={`${headerClass} text-right`}>Max Drawdown</th>
-            <th className={headerClass}>Status</th>
-            <th className={`${headerClass} text-right`}>Grade</th>
+            <th className={`${headerClass} text-right`}>Current Return</th>
+            <th className={`${headerClass} text-right`}>Maximum Gain</th>
+            <th className={`${headerClass} text-right`}>Maximum Drawdown</th>
+            <th className={headerClass}>Lifecycle Status</th>
+            <th className={`${headerClass} text-right`}>Institutional Verdict</th>
           </tr>
         </thead>
         <tbody>
-          {visible.map((outcome, index) => (
-            <tr
-              key={outcome.candidateId}
-              className="group border-b border-surface-border-subtle/50 transition-colors last:border-0 hover:bg-surface-hover/40"
-            >
-              <td className={cellClass}>
-                <RankBadge rank={index + 1} />
-              </td>
-              <td className={cellClass}>
-                <StockLink symbol={outcome.symbol}>
-                  <p className="text-xs font-semibold text-text-primary group-hover:text-accent">
-                    {outcome.symbol}
-                  </p>
-                </StockLink>
-              </td>
-              <td className={`${cellClass} text-right`}>
-                <Price value={outcome.entry} />
-              </td>
-              <td className={`${cellClass} text-right`}>
-                <Price value={outcome.stopLoss} />
-              </td>
-              <td className={`${cellClass} text-right`}>
-                <Price value={outcome.target1} />
-              </td>
-              <td className={`${cellClass} text-right`}>
-                <Price value={outcome.target2} />
-              </td>
-              <td className={`${cellClass} text-right font-mono text-xs text-gain tabular-nums`}>
-                +{outcome.highestGainPercent.toFixed(2)}%
-              </td>
-              <td className={`${cellClass} text-right font-mono text-xs text-loss tabular-nums`}>
-                {outcome.lowestDrawdownPercent.toFixed(2)}%
-              </td>
-              <td className={`${cellClass} text-[11px] text-text-muted`}>
-                {statusLabel[outcome.currentStatus]}
-              </td>
-              <td className={`${cellClass} text-right`}>
-                <Badge
-                  variant={
-                    outcome.tradeGrade === "A" || outcome.tradeGrade === "B" ? "gain" : "default"
-                  }
+          {visible.map((outcome, index) => {
+            const verdict = institutionalVerdictFromSessionStatus(outcome.currentStatus);
+            const currentReturn =
+              outcome.currentStatus === "stopped"
+                ? outcome.lowestDrawdownPercent
+                : outcome.highestGainPercent;
+            return (
+              <tr
+                key={outcome.candidateId}
+                className="group border-b border-surface-border-subtle/50 transition-colors last:border-0 hover:bg-surface-hover/40"
+              >
+                <td className={cellClass}>
+                  <RankBadge rank={index + 1} />
+                </td>
+                <td className={cellClass}>
+                  <StockLink symbol={outcome.symbol}>
+                    <p className="text-xs font-semibold text-text-primary group-hover:text-accent">
+                      {outcome.symbol}
+                    </p>
+                  </StockLink>
+                </td>
+                <td className={`${cellClass} text-right`}>
+                  <Price value={outcome.entry} />
+                </td>
+                <td className={`${cellClass} text-right`}>
+                  <Price value={outcome.stopLoss} />
+                </td>
+                <td className={`${cellClass} text-right`}>
+                  <Price value={outcome.target1} />
+                </td>
+                <td className={`${cellClass} text-right`}>
+                  <Price value={outcome.target2} />
+                </td>
+                <td
+                  className={`${cellClass} text-right font-mono text-xs tabular-nums ${
+                    currentReturn >= 0 ? "text-gain" : "text-loss"
+                  }`}
                 >
-                  {outcome.tradeGrade}
-                </Badge>
-              </td>
-            </tr>
-          ))}
+                  {currentReturn >= 0 ? "+" : ""}
+                  {currentReturn.toFixed(2)}%
+                </td>
+                <td className={`${cellClass} text-right font-mono text-xs text-gain tabular-nums`}>
+                  +{outcome.highestGainPercent.toFixed(2)}%
+                </td>
+                <td className={`${cellClass} text-right font-mono text-xs text-loss tabular-nums`}>
+                  {outcome.lowestDrawdownPercent.toFixed(2)}%
+                </td>
+                <td className={`${cellClass} text-[11px] text-text-muted`}>
+                  {statusLabel[outcome.currentStatus]}
+                </td>
+                <td className={`${cellClass} text-right`}>
+                  <Badge
+                    variant={
+                      verdict === "Outstanding" ||
+                      verdict === "Successful" ||
+                      verdict === "Partially Successful"
+                        ? "gain"
+                        : verdict === "Failed" || verdict === "Invalidated"
+                          ? "loss"
+                          : "default"
+                    }
+                  >
+                    {verdict}
+                  </Badge>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </ScrollTableWrapper>
@@ -1723,9 +1746,11 @@ function PostMarketReports({
         {(report.tradeOutcomes?.length ?? 0) > 0 && (
           <Card padding="md" className="border-surface-border-subtle/80">
             <div className="mb-3">
-              <h3 className="text-sm font-semibold text-text-primary">Trade Outcomes</h3>
+              <h3 className="text-sm font-semibold text-text-primary">
+                Recommendation Outcomes
+              </h3>
               <p className="text-xs text-text-muted">
-                Session performance vs entry, stop, and target levels
+                Lifecycle-complete evaluation — institutional verdicts replace session letter grades
               </p>
             </div>
             <TradeOutcomesTable outcomes={report.tradeOutcomes ?? []} />

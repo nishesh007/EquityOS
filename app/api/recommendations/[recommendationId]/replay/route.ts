@@ -4,8 +4,10 @@ import {
   replayRecommendation,
 } from "@/lib/opportunity-engine";
 import {
+  getRecommendationOutcome,
   getRecommendationReplay,
   wireHealthReplay,
+  wireOutcomeReplay,
   wireRecommendationReplay,
   wireReplaySurface,
 } from "@/src/core/recommendations";
@@ -15,8 +17,8 @@ type RouteContext = {
 };
 
 /**
- * Replays the immutable recommendation exactly as generated, plus R2
- * lifecycle, R3 health / conviction drift, and R4 decision journal / audit.
+ * Replays the immutable recommendation with R2 lifecycle, R3 health,
+ * R4 decision journal / audit, and R5 lifecycle-complete outcomes.
  */
 export async function GET(_request: NextRequest, context: RouteContext) {
   const { recommendationId } = await context.params;
@@ -28,12 +30,15 @@ export async function GET(_request: NextRequest, context: RouteContext) {
   const health = wireHealthReplay(recommendationId);
   const accountability = wireReplaySurface(recommendationId);
   const decisionReplay = getRecommendationReplay(recommendationId);
+  const outcomes = wireOutcomeReplay(recommendationId);
+  const outcome = getRecommendationOutcome(recommendationId);
 
   if (
     !recommendation &&
     lifecycle.recommendation.empty &&
     health.card.empty &&
-    accountability.card.empty
+    accountability.card.empty &&
+    outcomes.row.empty
   ) {
     return NextResponse.json(
       { error: "Recommendation not found" },
@@ -50,5 +55,8 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     audit: decisionReplay?.audit ?? null,
     comparison: decisionReplay?.comparison ?? null,
     lessons: decisionReplay?.lessons ?? [],
+    outcomes,
+    institutionalVerdict: outcome?.verdict ?? outcomes.row.finalGrade,
+    expectedHoldingPeriod: outcome?.expectedHoldingPeriod ?? null,
   });
 }
