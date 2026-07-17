@@ -96,6 +96,9 @@ export interface InstitutionalRecommendationPanelView {
   currentValidation: string;
   currentRisk: string;
   lifecycleStatus: string;
+  healthTrend: string;
+  healthBadge: string;
+  statusBadge: string;
   /** @deprecated Use institutionalConviction — kept for transitional consumers. */
   qualityScore: string;
   empty: boolean;
@@ -867,11 +870,14 @@ export function buildRecommendationPanelView(
     institutionalConviction: "Pending Validation",
     qualityScore: "Pending Validation",
     originalConviction: "Pending Validation",
-    currentHealth: "Awaiting Progress",
+    currentHealth: "Awaiting Update",
     currentTrust: "Pending Validation",
     currentValidation: "Pending Validation",
-    currentRisk: "Awaiting Progress",
+    currentRisk: "Awaiting Update",
     lifecycleStatus: emptyMeta.statusLabel,
+    healthTrend: "Health Pending",
+    healthBadge: "Health Pending",
+    statusBadge: "Health Pending",
   };
 
   if (!snapshot && !candidate) {
@@ -1000,8 +1006,11 @@ export function buildRecommendationPanelView(
     currentHealth: convictionDisplay,
     currentTrust: trustDisplay,
     currentValidation: validationDisplay,
-    currentRisk: "Awaiting Progress",
+    currentRisk: "Awaiting Update",
     lifecycleStatus: meta.statusLabel,
+    healthTrend: "Stable",
+    healthBadge: "Healthy",
+    statusBadge: "Stable",
     qualityScore: institutionalDisplay,
     empty: false,
     emptyMessage,

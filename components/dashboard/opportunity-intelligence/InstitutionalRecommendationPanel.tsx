@@ -78,7 +78,7 @@ export function InstitutionalRecommendationPanel({
         </div>
       </div>
 
-      <div className="mb-3 grid grid-cols-3 gap-2 rounded-md border border-surface-border-subtle/60 bg-surface-hover/30 px-2 py-2 sm:grid-cols-6">
+      <div className="mb-3 grid grid-cols-3 gap-2 rounded-md border border-surface-border-subtle/60 bg-surface-hover/30 px-2 py-2 sm:grid-cols-3 lg:grid-cols-9">
         <div>
           <p className="text-[9px] uppercase tracking-wider text-text-faint">
             {RECOMMENDATION_METRIC_LABELS.originalConviction}
@@ -125,6 +125,30 @@ export function InstitutionalRecommendationPanel({
           </p>
           <p className="font-mono text-[11px] text-text-secondary">
             {view.lifecycleStatus}
+          </p>
+        </div>
+        <div>
+          <p className="text-[9px] uppercase tracking-wider text-text-faint">
+            Trend
+          </p>
+          <p className="font-mono text-[11px] text-text-secondary">
+            {view.healthTrend}
+          </p>
+        </div>
+        <div>
+          <p className="text-[9px] uppercase tracking-wider text-text-faint">
+            Status Badge
+          </p>
+          <p className="font-mono text-[11px] text-text-secondary">
+            {view.statusBadge}
+          </p>
+        </div>
+        <div>
+          <p className="text-[9px] uppercase tracking-wider text-text-faint">
+            Health Badge
+          </p>
+          <p className="font-mono text-[11px] text-text-secondary">
+            {view.healthBadge}
           </p>
         </div>
       </div>

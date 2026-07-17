@@ -19,6 +19,10 @@ import {
   type RecommendationHealthInput,
   type LivingRecommendation,
 } from "./lifecycle";
+import {
+  bindRecommendationHealthSnapshotLoader,
+  resetRecommendationHealth,
+} from "./health";
 
 export * from "./RecommendationIdentity";
 export * from "./RecommendationMetadata";
@@ -72,8 +76,45 @@ export type {
   UpdateRecommendationStatusInput,
 } from "./lifecycle";
 
+export {
+  getRecommendationHealth,
+  calculateHealth,
+  calculateConvictionDrift,
+  getHealthFactors,
+  getHealthExplanation,
+  calculateHealthForRecommendation,
+  calculateHealthAssessment,
+  listRecommendationHealth,
+  resetRecommendationHealth,
+  presentRecommendationHealthCard,
+  presentRecommendationHealthDetail,
+  presentRecommendationHealthForSurface,
+  wireHealthDashboard,
+  wireHealthCompany,
+  wireHealthResearch,
+  wireHealthRecommendationCenter,
+  wireHealthPortfolio,
+  wireHealthWatchlists,
+  wireHealthReplay,
+  RECOMMENDATION_HEALTH_EMPTY,
+  RECOMMENDATION_HEALTH_STATES,
+  RECOMMENDATION_HEALTH_FACTORS,
+  RecommendationHealthEngine,
+} from "./health";
+export type {
+  RecommendationHealthAssessment,
+  RecommendationHealthFactor,
+  RecommendationHealthExplanation,
+  ConvictionDriftResult,
+  RecommendationHealthFactorInput,
+  RecommendationHealthState,
+  RecommendationHealthTrend,
+  RecommendationHealthSurfaceBundle,
+} from "./health";
+
 const recommendationRegistry = new RecommendationRegistry();
 bindRecommendationSnapshotLoader((id) => recommendationRegistry.load(id));
+bindRecommendationHealthSnapshotLoader((id) => recommendationRegistry.load(id));
 
 export function createRecommendation(
   input: CreateRecommendationSnapshotInput,
@@ -152,4 +193,5 @@ export function recommendationExists(recommendationId: string): boolean {
 export function resetRecommendationRegistry(): void {
   recommendationRegistry.clear();
   resetRecommendationLifecycle();
+  resetRecommendationHealth();
 }
