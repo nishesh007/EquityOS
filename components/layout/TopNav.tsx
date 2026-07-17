@@ -2,13 +2,26 @@
 
 import { AskAIButton } from "@/components/ai/AskAIButton";
 import { GlobalSearch } from "@/components/layout/GlobalSearch";
+import { showNotificationCenter } from "@/src/design/command/uiBus";
+import {
+  subscribeNotifications,
+  unreadCount,
+} from "@/src/design/productivity/notificationEngine";
 import { Bell, User } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface TopNavProps {
   sidebarWidth?: string;
 }
 
 export function TopNav({ sidebarWidth = "240px" }: TopNavProps) {
+  const [unread, setUnread] = useState(0);
+
+  useEffect(() => {
+    setUnread(unreadCount());
+    return subscribeNotifications(() => setUnread(unreadCount()));
+  }, []);
+
   return (
     <header
       className="fixed right-0 top-0 z-30 flex h-14 items-center justify-between border-b border-surface-border-subtle bg-surface/80 px-6 backdrop-blur-xl transition-[left] duration-300"
@@ -29,9 +42,15 @@ export function TopNav({ sidebarWidth = "240px" }: TopNavProps) {
           <span className="text-xs text-text-muted">NSE · BSE</span>
         </div>
 
-        <button className="relative rounded-lg p-2 text-text-muted transition-colors hover:bg-surface-hover hover:text-text-secondary">
+        <button
+          onClick={() => showNotificationCenter()}
+          aria-label={`Notifications${unread > 0 ? ` (${unread} unread)` : ""}`}
+          className="relative rounded-lg p-2 text-text-muted transition-colors hover:bg-surface-hover hover:text-text-secondary"
+        >
           <Bell className="h-4 w-4" />
-          <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-accent" />
+          {unread > 0 && (
+            <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-accent" />
+          )}
         </button>
 
         <button className="flex items-center gap-2 rounded-lg border border-surface-border bg-surface-overlay px-2 py-1.5 transition-colors hover:bg-surface-hover">

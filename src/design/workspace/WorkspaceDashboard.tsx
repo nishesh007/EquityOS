@@ -26,6 +26,8 @@ import {
   PinOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ContextMenu } from "../productivity/ContextMenu";
+import { recordActivity } from "../productivity/activityFeed";
 import {
   WORKSPACE_REGIONS,
   WORKSPACE_SIZES,
@@ -276,6 +278,7 @@ export function WorkspaceDashboard({ widgets }: WorkspaceDashboardProps) {
     anchor.download = `equityos-workspace-${workspace.name.toLowerCase().replace(/\s+/g, "-")}.json`;
     anchor.click();
     URL.revokeObjectURL(url);
+    recordActivity("export", `Exported workspace "${workspace.name}" as JSON`);
   };
 
   const hidden = hiddenWidgets(workspace);
@@ -378,14 +381,44 @@ export function WorkspaceDashboard({ widgets }: WorkspaceDashboardProps) {
           </button>
         </div>
 
-        {placement.collapsed ? (
-          <div className="flex items-center justify-between rounded-lg border border-surface-border bg-card px-4 py-2.5">
-            <span className="text-xs font-medium text-text-secondary">{label}</span>
-            <span className="text-[10px] uppercase tracking-wider text-text-muted">Collapsed</span>
-          </div>
-        ) : (
-          <div className="min-w-0">{content}</div>
-        )}
+        {/* Sprint 10C.R7 — right-click context menu on every widget. */}
+        <ContextMenu
+          items={[
+            {
+              id: "pin",
+              label: placement.pinned ? "Unpin widget" : "Pin widget",
+              icon: placement.pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />,
+              onSelect: () => commit(setWidgetPinned(workspace, placement.widgetId, !placement.pinned)),
+            },
+            {
+              id: "collapse",
+              label: placement.collapsed ? "Expand widget" : "Collapse widget",
+              icon: placement.collapsed ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />,
+              onSelect: () => commit(setWidgetCollapsed(workspace, placement.widgetId, !placement.collapsed)),
+            },
+            ...WORKSPACE_SIZES.filter((size) => size !== placement.size).map((size) => ({
+              id: `size-${size}`,
+              label: `Resize · ${WORKSPACE_SIZE_LABELS[size]}`,
+              onSelect: () => commit(resizeWidget(workspace, placement.widgetId, size)),
+            })),
+            {
+              id: "hide",
+              label: "Hide widget",
+              icon: <EyeOff className="h-3.5 w-3.5" />,
+              danger: true,
+              onSelect: () => commit(setWidgetVisible(workspace, placement.widgetId, false)),
+            },
+          ]}
+        >
+          {placement.collapsed ? (
+            <div className="flex items-center justify-between rounded-lg border border-surface-border bg-card px-4 py-2.5">
+              <span className="text-xs font-medium text-text-secondary">{label}</span>
+              <span className="text-[10px] uppercase tracking-wider text-text-muted">Collapsed</span>
+            </div>
+          ) : (
+            <div className="min-w-0">{content}</div>
+          )}
+        </ContextMenu>
 
         {/* Resize drag handle — right edge. */}
         {!placement.collapsed && (
@@ -418,6 +451,7 @@ export function WorkspaceDashboard({ widgets }: WorkspaceDashboardProps) {
         }}
         onCreate={(name, templateId) => {
           createWorkspace(name, templateId);
+          recordActivity("workspace", `Created workspace profile "${name}"`);
           sync();
         }}
         onRename={(name) => {
@@ -434,15 +468,18 @@ export function WorkspaceDashboard({ widgets }: WorkspaceDashboardProps) {
         }}
         onReset={() => {
           resetWorkspace(workspace.id);
+          recordActivity("workspace", `Reset workspace "${workspace.name}" to its template`);
           sync();
         }}
         onApplyTemplate={(templateId) => {
           applyTemplate(workspace.id, templateId);
+          recordActivity("workspace", `Applied the "${templateId}" dashboard template`);
           sync();
         }}
         onExport={handleExport}
         onImport={(json) => {
           importWorkspace(json);
+          recordActivity("workspace", "Imported a workspace from JSON backup");
           sync();
         }}
         onAddWidget={handleAddWidget}
