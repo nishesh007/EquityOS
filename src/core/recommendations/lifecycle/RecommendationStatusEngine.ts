@@ -118,8 +118,9 @@ export function inferMarketDrivenState(
   const t1 = targetPrice(snapshot, 0);
   const t2 = targetPrice(snapshot, 1);
 
+  // STOP_LOSS_HIT is already excluded by the terminal-state guards above.
   const stopHit = long ? price <= stop : price >= stop;
-  if (stopHit && state !== "STOP_LOSS_HIT") {
+  if (stopHit) {
     return "STOP_LOSS_HIT";
   }
 

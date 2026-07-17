@@ -39,6 +39,7 @@ import {
   bindRecommendationWorkspaceSnapshotLoader,
   resetRecommendationWorkspace,
 } from "./workspace";
+import { bindRecommendationIntegrationSnapshotLister } from "./integration";
 
 export * from "./RecommendationIdentity";
 export * from "./RecommendationMetadata";
@@ -273,12 +274,29 @@ export type {
   RecommendationWorkspaceRecord,
   RecommendationSearchCriteria,
   RecommendationFilterCriteria,
-  RecommendationComparisonView,
+  RecommendationComparisonView as WorkspaceComparisonView,
   RecommendationWorkspaceAnalytics,
   RecommendationWorkspaceExportFormat,
   RecommendationWorkspaceExportResult,
   WorkspaceSurfaceBundle,
 } from "./workspace";
+
+export {
+  getRecommendationPlatformHealth,
+  validateRecommendationPlatform,
+  getRecommendationIntegrationStatus,
+  isSprint9F1Frozen,
+  SPRINT_9F1_STATUS,
+  RECOMMENDATION_PLATFORM_TERMINOLOGY,
+  RECOMMENDATION_FORBIDDEN_TERMINOLOGY,
+} from "./integration";
+export type {
+  RecommendationPlatformHealth,
+  RecommendationPlatformValidation,
+  RecommendationPlatformCheck,
+  RecommendationIntegrationStatus,
+  RecommendationSurfaceIntegration,
+} from "./integration";
 
 const recommendationRegistry = new RecommendationRegistry();
 bindRecommendationSnapshotLoader((id) => recommendationRegistry.load(id));
@@ -289,6 +307,9 @@ bindRecommendationLearningSnapshotLoader((id) => recommendationRegistry.load(id)
 bindRecommendationWorkspaceSnapshotLoader(
   (id) => recommendationRegistry.load(id),
   () => recommendationRegistry.list()
+);
+bindRecommendationIntegrationSnapshotLister(() =>
+  recommendationRegistry.list()
 );
 
 export function createRecommendation(
