@@ -8,3 +8,9 @@ export {
   type WidgetSize,
   type WidgetSizeSpec,
 } from "./widgetSizes";
+export { KpiTile } from "./KpiTile";
+export { ConvictionMeter } from "./ConvictionMeter";
+export { RiskGauge } from "./RiskGauge";
+export { HeatMeter } from "./HeatMeter";
+export { StatusIndicator, type IndicatorState } from "./StatusIndicator";
+export { WidgetToolbar, type WidgetToolbarProps } from "./WidgetToolbar";

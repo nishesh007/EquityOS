@@ -2,7 +2,7 @@
 
 import { Card } from "@/components/ui/Card";
 import { QuoteDisplay } from "@/components/market/QuoteDisplay";
-import { Sparkline } from "@/components/ui/Sparkline";
+import { Sparkline } from "@/src/design";
 import { useMarketQuotes } from "@/hooks/useMarketQuotes";
 import { createUnavailableQuote } from "@/lib/market-data/enriched-quote";
 import { formatNumber } from "@/lib/utils";
@@ -52,19 +52,39 @@ export function MarketOverviewCards({ indices }: MarketOverviewCardsProps) {
               <QuoteDisplay quote={quote} size="md" />
             </div>
 
-            <div className="mt-3 flex gap-4 border-t border-surface-border-subtle pt-3">
-              <div>
-                <p className="text-[10px] text-text-faint">H</p>
-                <p className="text-xs font-mono text-text-secondary tabular-nums">
-                  {formatNumber(high)}
-                </p>
+            <div className="mt-3 border-t border-surface-border-subtle pt-3">
+              <div className="flex gap-4">
+                <div>
+                  <p className="text-[10px] text-text-faint">H</p>
+                  <p className="text-xs font-mono text-text-secondary tabular-nums">
+                    {formatNumber(high)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-text-faint">L</p>
+                  <p className="text-xs font-mono text-text-secondary tabular-nums">
+                    {formatNumber(low)}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-[10px] text-text-faint">L</p>
-                <p className="text-xs font-mono text-text-secondary tabular-nums">
-                  {formatNumber(low)}
-                </p>
-              </div>
+              {high > low && quote.price !== null && quote.price > 0 && (
+                <div className="mt-2">
+                  <div className="relative h-1 rounded-full bg-surface-border">
+                    <span
+                      aria-hidden="true"
+                      className={`absolute -top-0.5 h-2 w-2 -translate-x-1/2 rounded-full ${
+                        changePercent >= 0 ? "bg-gain" : "bg-loss"
+                      }`}
+                      style={{
+                        left: `${Math.min(100, Math.max(0, ((quote.price - low) / (high - low)) * 100))}%`,
+                      }}
+                    />
+                  </div>
+                  <p className="mt-1 text-[9px] uppercase tracking-wider text-text-faint">
+                    Session range
+                  </p>
+                </div>
+              )}
             </div>
           </Card>
         );

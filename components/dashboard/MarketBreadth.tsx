@@ -8,6 +8,7 @@ import { useMarketQuotes } from "@/hooks/useMarketQuotes";
 import { createUnavailableQuote } from "@/lib/market-data/enriched-quote";
 import { buildInitialQuotesMap } from "@/services/marketData";
 import type { MarketBreadth as MarketBreadthType, MarketMover } from "@/types";
+import { HeatMeter } from "@/src/design";
 import { BarChart3, CircleArrowDown, CircleArrowUp, Layers3 } from "lucide-react";
 
 interface MarketBreadthProps {
@@ -108,6 +109,14 @@ function AdvanceDecline({ breadth }: MarketBreadthProps) {
           style={{ width: `${declineWidth}%` }}
         />
       </div>
+
+      <HeatMeter
+        className="mt-4"
+        label="Market Mood"
+        value={total > 0 ? (breadth.advances / (breadth.advances + breadth.declines)) * 100 : 50}
+        lowLabel="Bearish"
+        highLabel="Bullish"
+      />
 
       <div className="mt-4 grid grid-cols-3 gap-2">
         <div>

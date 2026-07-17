@@ -154,3 +154,68 @@ export {
   type WidgetLayout,
   type WidgetPriority,
 } from "./dashboard";
+
+// Visualization math (pure) + public APIs
+export {
+  getVisualizationTheme,
+  renderSparkline,
+  renderGauge,
+  renderHeatmap,
+  renderAllocationChart,
+  renderProgressWidget,
+  classifyBand,
+  describeArc,
+  CONVICTION_BANDS,
+  RISK_BANDS,
+  GAUGE_START_ANGLE,
+  GAUGE_END_ANGLE,
+  GAUGE_SWEEP,
+  type VisualizationTheme,
+  type SparklineRender,
+  type SparklineOptions,
+  type TrendDirection,
+  type GaugeBand,
+  type GaugeRender,
+  type HeatmapCell,
+  type HeatmapCellInput,
+  type HeatmapOptions,
+  type HeatmapRender,
+  type AllocationRender,
+  type AllocationSegment,
+  type AllocationSliceInput,
+  type AllocationOptions,
+  type ProgressRender,
+  type ProgressOptions,
+  type ProgressVariant,
+} from "./visualizations";
+
+// Charts
+export {
+  Sparkline,
+  GaugeChart,
+  AllocationRing,
+  Heatmap,
+  ProgressBar,
+  ProgressRing,
+  ScoreDistribution,
+  TimelineChart,
+  CHART_SERIES_COLORS,
+  CHART_COLORS,
+  TONE_TEXT_CLASS,
+  TONE_STROKE_COLOR,
+  type ChartTone,
+  type ScoreBucket,
+  type TimelineEvent,
+} from "./charts";
+
+// Advanced widgets
+export {
+  KpiTile,
+  ConvictionMeter,
+  RiskGauge,
+  HeatMeter,
+  StatusIndicator,
+  WidgetToolbar,
+  type IndicatorState,
+  type WidgetToolbarProps,
+} from "./widgets";

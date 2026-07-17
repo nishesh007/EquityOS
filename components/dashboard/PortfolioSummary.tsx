@@ -2,7 +2,6 @@
 
 import { useCallback, useMemo } from "react";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { ChangeIndicator } from "@/components/ui/ChangeIndicator";
 import { QuoteDisplayCompact } from "@/components/market/QuoteDisplay";
 import { StockLink } from "@/components/ui/StockLink";
 import { ViewFullPortfolioLink } from "@/components/dashboard/ViewFullPortfolioLink";
@@ -11,6 +10,7 @@ import { createUnavailableQuote, type EnrichedQuote } from "@/lib/market-data/en
 import { formatCurrency } from "@/lib/utils";
 import { buildInitialQuotesMap } from "@/services/marketData";
 import type { PortfolioSummary as PortfolioSummaryType } from "@/types";
+import { AllocationRing, KpiTile } from "@/src/design";
 import { Wallet } from "lucide-react";
 
 interface PortfolioSummaryProps {
@@ -94,45 +94,48 @@ export function PortfolioSummary({
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className="rounded-lg border border-surface-border-subtle bg-surface-overlay/50 p-4">
-          <p className="data-label">Total Value</p>
-          <p className="mt-1 data-value text-lg font-semibold">
-            {formatCurrency(liveMetrics.totalValue, true)}
-          </p>
-        </div>
-        <div className="rounded-lg border border-surface-border-subtle bg-surface-overlay/50 p-4">
-          <p className="data-label">Day P&L</p>
-          <div className="mt-1 flex items-center gap-2">
-            <p
-              className={`data-value text-lg font-semibold ${
-                liveMetrics.dayChange >= 0 ? "text-gain" : "text-loss"
-              }`}
-            >
-              {formatCurrency(liveMetrics.dayChange, true)}
-            </p>
-            <ChangeIndicator value={liveMetrics.dayChangePercent} size="sm" />
-          </div>
-        </div>
-        <div className="rounded-lg border border-surface-border-subtle bg-surface-overlay/50 p-4">
-          <p className="data-label">Total Invested</p>
-          <p className="mt-1 data-value text-lg font-semibold">
-            {formatCurrency(liveMetrics.totalInvested, true)}
-          </p>
-        </div>
-        <div className="rounded-lg border border-surface-border-subtle bg-surface-overlay/50 p-4">
-          <p className="data-label">Unrealized P&L</p>
-          <div className="mt-1 flex items-center gap-2">
-            <p
-              className={`data-value text-lg font-semibold ${
-                liveMetrics.totalGain >= 0 ? "text-gain" : "text-loss"
-              }`}
-            >
-              {formatCurrency(liveMetrics.totalGain, true)}
-            </p>
-            <ChangeIndicator value={liveMetrics.totalGainPercent} size="sm" />
-          </div>
-        </div>
+        <KpiTile
+          label="Total Value"
+          value={formatCurrency(liveMetrics.totalValue, true)}
+        />
+        <KpiTile
+          label="Day P&L"
+          value={formatCurrency(liveMetrics.dayChange, true)}
+          delta={liveMetrics.dayChangePercent}
+        />
+        <KpiTile
+          label="Total Invested"
+          value={formatCurrency(liveMetrics.totalInvested, true)}
+        />
+        <KpiTile
+          label="Unrealized P&L"
+          value={formatCurrency(liveMetrics.totalGain, true)}
+          delta={liveMetrics.totalGainPercent}
+        />
       </div>
+
+      {portfolio.holdings.length > 0 && (
+        <div className="mt-5">
+          <p className="mb-3 text-xs font-medium text-text-muted">
+            Capital Allocation
+          </p>
+          <AllocationRing
+            size={112}
+            centerLabel={formatCurrency(liveMetrics.totalValue, true)}
+            centerCaption="Deployed"
+            slices={portfolio.holdings.map((holding) => {
+              const quote = resolveQuote(holding.symbol, holding.quote);
+              const price =
+                quote.price && quote.price > 0 ? quote.price : holding.avgPrice;
+              return {
+                id: holding.id,
+                label: holding.symbol,
+                value: price * holding.quantity,
+              };
+            })}
+          />
+        </div>
+      )}
 
       {showTopHoldings && (
         <div className="mt-5">
