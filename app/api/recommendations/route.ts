@@ -7,6 +7,7 @@ import {
 import {
   wireHealthDashboard,
   wireRecommendationHistory,
+  wireReplayHistory,
 } from "@/src/core/recommendations";
 
 const STATUSES = new Set<RecommendationRecordStatus>([
@@ -36,5 +37,6 @@ export async function GET(request: NextRequest) {
     recommendations,
     lifecycle: wireRecommendationHistory(),
     health: wireHealthDashboard(),
+    replay: wireReplayHistory(),
   });
 }

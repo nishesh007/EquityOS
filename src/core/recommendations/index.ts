@@ -23,6 +23,10 @@ import {
   bindRecommendationHealthSnapshotLoader,
   resetRecommendationHealth,
 } from "./health";
+import {
+  bindRecommendationReplaySnapshotLoader,
+  resetRecommendationReplay,
+} from "./replay";
 
 export * from "./RecommendationIdentity";
 export * from "./RecommendationMetadata";
@@ -112,9 +116,46 @@ export type {
   RecommendationHealthSurfaceBundle,
 } from "./health";
 
+export {
+  getRecommendationReplay,
+  getDecisionJournal,
+  getRecommendationAudit,
+  compareRecommendation,
+  getRecommendationLessons,
+  replayRecommendationSnapshot,
+  listRecommendationReplays,
+  resetRecommendationReplay,
+  presentRecommendationReplayCard,
+  presentRecommendationReplayDetail,
+  presentDecisionJournal,
+  presentRecommendationAudit,
+  presentRecommendationReplayForSurface,
+  wireReplayDashboard,
+  wireReplayResearch,
+  wireReplayCompany,
+  wireReplayRecommendationCenter,
+  wireReplayHistory,
+  wireReplaySurface,
+  wireReplayPortfolio,
+  wireReplayWatchlists,
+  RECOMMENDATION_REPLAY_EMPTY,
+  RECOMMENDATION_OUTCOMES,
+  RecommendationReplayEngine,
+} from "./replay";
+export type {
+  RecommendationReplayBundle,
+  RecommendationDecisionJournal,
+  RecommendationAuditRecord,
+  RecommendationComparisonView,
+  RecommendationOutcome,
+  RecommendationVerdict,
+  RecommendationReplaySurfaceBundle,
+} from "./replay";
+
 const recommendationRegistry = new RecommendationRegistry();
 bindRecommendationSnapshotLoader((id) => recommendationRegistry.load(id));
 bindRecommendationHealthSnapshotLoader((id) => recommendationRegistry.load(id));
+bindRecommendationReplaySnapshotLoader((id) => recommendationRegistry.load(id));
 
 export function createRecommendation(
   input: CreateRecommendationSnapshotInput,
@@ -194,4 +235,5 @@ export function resetRecommendationRegistry(): void {
   recommendationRegistry.clear();
   resetRecommendationLifecycle();
   resetRecommendationHealth();
+  resetRecommendationReplay();
 }
