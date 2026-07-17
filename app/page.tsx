@@ -9,7 +9,6 @@ import { MarketPulse } from "@/components/dashboard/MarketPulse";
 import { MarketBreadth } from "@/components/dashboard/MarketBreadth";
 import { OpportunityEnginePanel } from "@/components/dashboard/OpportunityEnginePanel";
 import { InstitutionalPortfolioPanel } from "@/components/dashboard/institutional/InstitutionalPortfolioPanel";
-import { ExecutiveInstitutionalDashboard } from "@/components/dashboard/institutional/ExecutiveInstitutionalDashboard";
 import {
   fetchMarketIndices,
   fetchPortfolioSummary,
@@ -125,12 +124,7 @@ export default async function DashboardPage() {
         <MainGrid
           primary={
             <>
-              <ExecutiveInstitutionalDashboard
-                portfolio={portfolio}
-                doctor={doctorAnalysis}
-                opportunityState={opportunityState}
-                earnings={results}
-              />
+              {/* Sprint 10C.R4 — validation moved to the dedicated /validation page. */}
               <OpportunityEnginePanel initialState={opportunityState} />
               <PortfolioSummary portfolio={portfolio} />
               <InstitutionalPortfolioPanel

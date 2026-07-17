@@ -13,6 +13,8 @@ export const TABLE_CLASSES = Object.freeze({
   numericCell: "institutional-table-numeric",
   /** Highlighted row (selection / emphasis). */
   highlightRow: "institutional-table-highlight",
+  /** Sticky first column (Sprint 10C.R4). */
+  stickyCol: "institutional-table-sticky-col",
 } as const);
 
 export type TableClassToken = keyof typeof TABLE_CLASSES;
@@ -22,4 +24,5 @@ export const TABLE_CLASS_TOKENS: readonly TableClassToken[] = Object.freeze([
   "table",
   "numericCell",
   "highlightRow",
+  "stickyCol",
 ]);

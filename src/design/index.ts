@@ -219,3 +219,61 @@ export {
   type IndicatorState,
   type WidgetToolbarProps,
 } from "./widgets";
+
+// Institutional table framework (Sprint 10C.R4)
+export {
+  createInstitutionalTable,
+  registerColumn,
+  processTable,
+  sortRows,
+  searchRows,
+  filterRows,
+  paginateRows,
+  visibleColumns,
+  columnValue,
+  toggleColumnVisibility,
+  moveColumn,
+  setColumnWidth,
+  resetTableLayout,
+  moveFocus,
+  toCsv,
+  cycleDensity,
+  isColumnSearchable,
+  defaultColumnAlign,
+  saveTablePreferences,
+  restoreTablePreferences,
+  clearTablePreferences,
+  applyTablePreferences,
+  tablePreferencesFromState,
+  InstitutionalTable,
+  DENSITY_MODES,
+  DENSITY_LABELS,
+  DENSITY_CELL_CLASSES,
+  NUMERIC_CELL_KINDS,
+  type BulkAction,
+  type CellKind,
+  type CellAlign,
+  type CellPosition,
+  type DensityMode,
+  type InstitutionalTableConfig,
+  type InstitutionalTableDef,
+  type ProcessedTable,
+  type SortDirection,
+  type TableColumn,
+  type TableState,
+  type TablePreferences,
+} from "./tables";
+
+// Institutional cell rendering (Sprint 10C.R4)
+export {
+  renderCell,
+  CellRenderer,
+  CELL_TONE_TEXT_CLASS,
+  CELL_TONE_PILL_CLASS,
+  type CellTone,
+  type RenderedCell,
+  type RenderCellOptions,
+} from "./cells";
+
+// Table toolbars (Sprint 10C.R4)
+export { TableToolbar } from "./toolbars";

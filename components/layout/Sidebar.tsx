@@ -17,6 +17,7 @@ import {
   Building2,
   ArrowLeft,
   BookOpen,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +34,7 @@ const navItems = [
 
 const bottomNavItems = [
   { label: "Screener", href: "/screener", icon: TrendingUp },
+  { label: "Validation", href: "/validation", icon: ShieldCheck },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 

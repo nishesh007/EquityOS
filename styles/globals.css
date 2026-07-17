@@ -138,6 +138,17 @@
   .institutional-table-highlight {
     @apply bg-accent/10;
   }
+
+  /* Sticky first column (Sprint 10C.R4). Opaque background so scrolled
+     content never bleeds through. */
+  .institutional-table td.institutional-table-sticky-col,
+  .institutional-table th.institutional-table-sticky-col {
+    @apply sticky left-0 z-[5] bg-surface-raised;
+  }
+
+  .institutional-table tbody tr:hover td.institutional-table-sticky-col {
+    @apply bg-surface-hover;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

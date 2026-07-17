@@ -5,14 +5,10 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { StockLink } from "@/components/ui/StockLink";
 import { SchedulerHealthCard } from "@/components/dashboard/SchedulerHealthCard";
 import { InstitutionalExplainabilityPanel } from "@/components/dashboard/opportunity-intelligence/InstitutionalExplainabilityPanel";
-import { InstitutionalPlatformHealthPanel } from "@/components/dashboard/opportunity-intelligence/InstitutionalPlatformHealthPanel";
 import { InstitutionalRecommendationPanel } from "@/components/dashboard/opportunity-intelligence/InstitutionalRecommendationPanel";
 import { InstitutionalTrustBadges } from "@/components/dashboard/opportunity-intelligence/InstitutionalTrustBadges";
 import { InstitutionalTrustPanel } from "@/components/dashboard/opportunity-intelligence/InstitutionalTrustPanel";
-import { InstitutionalValidationPanel } from "@/components/dashboard/opportunity-intelligence/InstitutionalValidationPanel";
 import { OpportunityExplainabilityDrawer } from "@/components/dashboard/opportunity-intelligence/OpportunityExplainabilityDrawer";
-import { InstitutionalReportViewer } from "@/components/dashboard/institutional/InstitutionalReportViewer";
-import { ExecutiveInstitutionalDashboard } from "@/components/dashboard/institutional/ExecutiveInstitutionalDashboard";
 import { PostMarketCertificationStrip } from "@/components/dashboard/opportunity-intelligence/PostMarketCertificationStrip";
 import { TomorrowWatchlistMetaHeader } from "@/components/dashboard/opportunity-intelligence/TomorrowWatchlistMetaHeader";
 import { bestCallStarRating, buildBestCallScoreBreakdown } from "@/lib/opportunity-engine/best-call";
@@ -1936,24 +1932,7 @@ export function OpportunityEnginePanel({ initialState }: OpportunityEnginePanelP
       )}
 
       <SchedulerHealthCard />
-      <div className="mb-4">
-        <ExecutiveInstitutionalDashboard
-          snapshot={platformSnapshot}
-          opportunityState={state}
-          fetchSnapshot={false}
-          compact
-        />
-      </div>
-      <InstitutionalValidationPanel snapshot={platformSnapshot} />
-      <div className="mb-4">
-        <InstitutionalReportViewer
-          snapshot={platformSnapshot}
-          candidate={featuredCandidateView}
-          compact
-          title="Results · Institutional Report"
-        />
-      </div>
-      <InstitutionalPlatformHealthPanel snapshot={platformSnapshot} />
+      {/* Sprint 10C.R4 — platform validation widgets moved to /validation. */}
       <div className="mb-4 grid gap-3 lg:grid-cols-3">
         <InstitutionalTrustPanel snapshot={platformSnapshot} />
         <InstitutionalExplainabilityPanel
