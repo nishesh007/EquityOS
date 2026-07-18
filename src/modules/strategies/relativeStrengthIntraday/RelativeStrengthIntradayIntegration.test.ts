@@ -1,0 +1,422 @@
+/**
+ * Relative Strength Intraday Integration — tests (Sprint 11B.3G).
+ */
+
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type {
+  BreadthAnalysis,
+  InstitutionalMarketContext,
+  SectorAnalysis,
+  SectorRotationSummary,
+  VolatilityAnalysis,
+} from "@/src/modules/marketContext";
+import type {
+  MarketRegime,
+  RegimeConfidenceAnalysis,
+} from "@/src/modules/marketRegime";
+import type { EligibleStrategy } from "@/src/modules/strategyEligibility";
+import type { TradingPipelineResult } from "@/src/modules/tradingPipeline";
+import {
+  getStrategyFactory,
+  getStrategyRegistry,
+  resetStrategyEngine,
+  type StrategyExecutionContext,
+} from "../index";
+import {
+  RELATIVE_STRENGTH_INTRADAY_STRATEGY_ID,
+  RelativeStrengthIntradayTradeBuilder,
+  buildRelativeStrengthIntradayExplainability,
+  buildRelativeStrengthIntradayInstitutionalScore,
+  buildRelativeStrengthIntradaySummary,
+  calculateRelativeStrengthIntradaySignalGrade,
+  ensureRelativeStrengthIntradayRegistered,
+  executeRelativeStrengthIntradayThroughEngine,
+  executeRelativeStrengthIntradayWithPipeline,
+  getRelativeStrengthIntradayIntegrationStatus,
+  getRelativeStrengthIntradayMetrics,
+  registerRelativeStrengthIntradayStrategy,
+  resetRelativeStrengthIntradayMetrics,
+  type RelativeStrengthIntradayCandle,
+  type RelativeStrengthIntradayDetection,
+  type RelativeStrengthIntradayStrategyInput,
+} from "./index";
+
+function atIST(hour: number, minute: number): Date {
+  return new Date(Date.UTC(2026, 6, 18, hour, minute, 0) - 330 * 60_000);
+}
+
+function candle(
+  hour: number,
+  minute: number,
+  open: number,
+  high: number,
+  low: number,
+  close: number,
+  volume: number
+): RelativeStrengthIntradayCandle {
+  return {
+    timestamp: atIST(hour, minute),
+    open,
+    high,
+    low,
+    close,
+    volume,
+  };
+}
+
+function makeBreadth(score: number): BreadthAnalysis {
+  return {
+    advanceCount: 1200,
+    declineCount: 600,
+    unchangedCount: 50,
+    advanceDeclineRatio: 2,
+    netAdvances: 600,
+    breadthPercent: score,
+    participationPercent: score,
+    equalWeightBreadth: score,
+    largeCapBreadth: score,
+    midCapBreadth: score,
+    smallCapBreadth: score,
+    breadthMomentum: 2,
+    breadthQuality: score >= 60 ? "Strong" : "Weak",
+    score,
+    confidence: 80,
+    reasons: ["Breadth"],
+    lastUpdated: atIST(10, 0),
+  };
+}
+
+function makeSectors(score: number): SectorAnalysis[] {
+  return [
+    {
+      sector: "IT",
+      score,
+      trend: score >= 60 ? "Bull" : "Bear",
+      relativeStrength: score,
+      breadth: score,
+      volume: 60,
+      momentum: score,
+      participation: score,
+      confidence: 80,
+      reasons: ["Sector"],
+    },
+  ];
+}
+
+function makeRotation(sectors: SectorAnalysis[]): SectorRotationSummary {
+  return {
+    improving: sectors.map((s) => s.sector),
+    weakening: [],
+    stable: [],
+    leaders: sectors.map((s) => s.sector),
+    laggards: [],
+    reasons: ["Rotation"],
+  };
+}
+
+function makeVolatility(): VolatilityAnalysis {
+  return {
+    score: 45,
+    regime: "Normal",
+    trend: "Stable",
+    indiaVix: 14,
+    atr: 1.0,
+    historicalVolatility: 14,
+    realizedVolatility: 13,
+    gapPercent: 0.2,
+    dailyRange: 1.2,
+    intradayRange: 0.9,
+    riskMode: "Neutral",
+    confidence: 80,
+    reasons: ["Vol"],
+    vixTrend: "Stable",
+    vixMomentum: 0,
+    atrExpansion: false,
+    atrCompression: false,
+    relativeVolatility: 1,
+    volatilityExpansion: false,
+    volatilityCompression: false,
+    gapDirection: "flat",
+    lastUpdated: atIST(10, 0),
+  };
+}
+
+function makeConfidence(score: number): RegimeConfidenceAnalysis {
+  return {
+    score,
+    grade: score >= 85 ? "High" : score >= 70 ? "Good" : "Moderate",
+    positiveReasons: [],
+    negativeReasons: [],
+    neutralReasons: [],
+    contributions: [],
+    summary: [`Confidence ${score}`],
+  };
+}
+
+function makeRegime(): MarketRegime {
+  return {
+    regime: "Strong Bull",
+    confidence: 80,
+    priority: 80,
+    reasons: ["Strong Bull"],
+    triggeredRules: ["Strong Bull"],
+    timestamp: atIST(10, 0),
+    confidenceAnalysis: makeConfidence(80),
+  };
+}
+
+function makeMarketContext(): InstitutionalMarketContext {
+  const sectors = makeSectors(65);
+  return {
+    timestamp: atIST(10, 0),
+    marketTrend: "Strong Bull",
+    marketStrength: 70,
+    marketBreadth: makeBreadth(65),
+    sectorStrength: sectors,
+    sectorRotation: makeRotation(sectors),
+    volatility: makeVolatility(),
+    riskMode: "Neutral",
+    confidence: 80,
+    healthScore: 70,
+    qualityGrade: "B",
+    summary: ["Fixture"],
+    warnings: [],
+  };
+}
+
+function bullCandles(): RelativeStrengthIntradayCandle[] {
+  return [
+    candle(9, 15, 99.5, 99.8, 99.2, 99.6, 90_000),
+    candle(9, 20, 99.6, 100.1, 99.5, 99.9, 95_000),
+    candle(9, 25, 99.9, 100.5, 99.8, 100.3, 100_000),
+    candle(9, 30, 100.3, 101.0, 100.2, 100.8, 105_000),
+    candle(9, 35, 100.8, 101.6, 100.7, 101.4, 110_000),
+    candle(9, 40, 101.4, 102.0, 101.3, 101.8, 115_000),
+    candle(9, 45, 101.8, 102.05, 101.55, 101.7, 100_000),
+    candle(9, 50, 101.7, 101.9, 101.5, 101.65, 95_000),
+    candle(9, 55, 101.65, 101.85, 101.48, 101.7, 98_000),
+    candle(10, 0, 101.75, 102.6, 101.7, 102.45, 160_000),
+  ];
+}
+
+function bullDetection(
+  overrides: Partial<RelativeStrengthIntradayDetection> = {}
+): RelativeStrengthIntradayDetection {
+  return {
+    detected: true,
+    direction: "BUY",
+    stockRelativeStrength: 85,
+    sectorRelativeStrength: 70,
+    benchmarkRelativeStrength: 60,
+    relativeStrengthScore: 85,
+    outperformsBenchmark: true,
+    outperformsSector: true,
+    ema20: 101.2,
+    ema50: 100.4,
+    vwap: 100.8,
+    strongTrend: true,
+    volumeConfirmed: true,
+    breadthConfirmed: true,
+    sectorConfirmed: true,
+    marketConfirmed: true,
+    confidence: 85,
+    reasons: ["Relative Strength Intraday BUY detected."],
+    warnings: [],
+    ...overrides,
+  };
+}
+
+function makeInput(
+  candles: RelativeStrengthIntradayCandle[] = bullCandles()
+): RelativeStrengthIntradayStrategyInput {
+  const last = candles[candles.length - 1]!;
+  return {
+    symbol: "RELIANCE",
+    lastPrice: last.close,
+    atr: 1.0,
+    relativeStrengthIntraday: {
+      candles5m: candles,
+      vwap: 100.8,
+      atr: 1.0,
+      ema20: 101.2,
+      ema50: 100.4,
+      ema20Series: [100.6, 100.8, 101.0, 101.2],
+      relativeVolume: 1.35,
+      stockRelativeStrength: 85,
+      sectorRelativeStrength: 70,
+      benchmarkRelativeStrength: 60,
+      openingRangeHigh: 101.0,
+    },
+  };
+}
+
+function makeEligible(): EligibleStrategy[] {
+  return [
+    {
+      strategyId: "relative-strength",
+      name: "Relative Strength Intraday",
+      category: "Intraday",
+      eligible: true,
+      priority: 87,
+      score: 85,
+      reasons: ["Eligible"],
+      blockedReasons: [],
+    },
+  ];
+}
+
+function makeContext(): StrategyExecutionContext {
+  const regime = makeRegime();
+  const marketContext = makeMarketContext();
+  return {
+    input: makeInput(),
+    marketContext,
+    regime,
+    confidence: regime.confidenceAnalysis,
+    eligibleStrategies: makeEligible(),
+    riskMode: marketContext.riskMode,
+    timestamp: atIST(10, 5),
+  };
+}
+
+describe("Relative Strength Intraday Integration", () => {
+  beforeEach(() => {
+    resetStrategyEngine();
+    resetRelativeStrengthIntradayMetrics();
+    ensureRelativeStrengthIntradayRegistered();
+  });
+
+  afterEach(() => {
+    resetStrategyEngine();
+    resetRelativeStrengthIntradayMetrics();
+  });
+
+  it("registers with StrategyRegistry", () => {
+    const status = getRelativeStrengthIntradayIntegrationStatus();
+    expect(status.registered).toBe(true);
+    expect(status.strategyId).toBe(RELATIVE_STRENGTH_INTRADAY_STRATEGY_ID);
+    expect(getStrategyRegistry().has(RELATIVE_STRENGTH_INTRADAY_STRATEGY_ID)).toBe(
+      true
+    );
+  });
+
+  it("creates instance via StrategyFactory", () => {
+    expect(getStrategyFactory().has(RELATIVE_STRENGTH_INTRADAY_STRATEGY_ID)).toBe(
+      true
+    );
+    const instance = getStrategyFactory().create(
+      RELATIVE_STRENGTH_INTRADAY_STRATEGY_ID
+    );
+    expect(instance?.id).toBe(RELATIVE_STRENGTH_INTRADAY_STRATEGY_ID);
+  });
+
+  it("executes through StrategyEngine", () => {
+    const result = executeRelativeStrengthIntradayThroughEngine(makeContext(), {
+      skipEligibilityCheck: true,
+    });
+    expect(result.signal.strategyId).toBe(RELATIVE_STRENGTH_INTRADAY_STRATEGY_ID);
+  });
+
+  it("integrates with TradingPipeline adapter", () => {
+    const context = makeContext();
+    const pipeline = {
+      context: context.marketContext,
+      regime: context.regime,
+      confidence: context.confidence,
+      eligibleStrategies: context.eligibleStrategies,
+      timestamp: context.timestamp ?? atIST(10, 5),
+      success: true,
+      warnings: [],
+      errors: [],
+      stages: [],
+      durationMs: 1,
+    } as unknown as TradingPipelineResult;
+
+    const result = executeRelativeStrengthIntradayWithPipeline(
+      pipeline,
+      makeInput(),
+      { skipEligibilityCheck: true }
+    );
+    expect(result.signal.strategyId).toBe(RELATIVE_STRENGTH_INTRADAY_STRATEGY_ID);
+  });
+
+  it("collects Metrics", () => {
+    resetRelativeStrengthIntradayMetrics();
+    const setup = new RelativeStrengthIntradayTradeBuilder().build({
+      detection: bullDetection(),
+      marketContext: makeMarketContext(),
+      input: makeInput(),
+    });
+    expect(setup.entry).toBeGreaterThan(0);
+    const snap = getRelativeStrengthIntradayMetrics().getSnapshot();
+    expect(snap.signalsGenerated).toBeGreaterThanOrEqual(1);
+    expect(snap.executionTimeMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it("scores Signal Grade", () => {
+    const grade = calculateRelativeStrengthIntradaySignalGrade({
+      conviction: 88,
+      qualityScore: 82,
+      riskReward: 2.5,
+      marketStrength: 70,
+    });
+    expect(["A+", "A", "B+", "B", "C", "D", "F"]).toContain(grade);
+  });
+
+  it("builds Explainability and Summary", () => {
+    const detection = bullDetection();
+    const setup = new RelativeStrengthIntradayTradeBuilder().build({
+      detection,
+      marketContext: makeMarketContext(),
+      input: makeInput(),
+    });
+    const score = buildRelativeStrengthIntradayInstitutionalScore({
+      detection,
+      setup,
+      marketContext: makeMarketContext(),
+      rsInput: makeInput(),
+    });
+    const explain = buildRelativeStrengthIntradayExplainability({
+      detection,
+      setup,
+      marketContext: makeMarketContext(),
+      rsInput: makeInput(),
+      institutionalScore: score,
+    });
+    expect(
+      explain.positiveReasons.length + explain.neutralFactors.length
+    ).toBeGreaterThan(0);
+    const summary = buildRelativeStrengthIntradaySummary({
+      detection,
+      setup,
+      positiveReasons: explain.positiveReasons,
+      negativeReasons: explain.negativeReasons,
+      institutionalScore: score,
+    });
+    expect(summary.length).toBeGreaterThan(0);
+    expect(summary.length).toBeLessThanOrEqual(5);
+  });
+
+  it("recovers from Failure without crash", () => {
+    const setup = new RelativeStrengthIntradayTradeBuilder().build({
+      detection: bullDetection({
+        detected: false,
+        direction: "NONE",
+        warnings: ["Synthetic failure path."],
+      }),
+      marketContext: makeMarketContext(),
+      input: makeInput(),
+    });
+    expect(setup.entry).toBe(0);
+    expect(setup.institutionalScore.signalGrade).toBe("F");
+  });
+
+  it("registerRelativeStrengthIntradayStrategy is idempotent-safe via ensure", () => {
+    const registry = getStrategyRegistry();
+    expect(ensureRelativeStrengthIntradayRegistered()).toBe(true);
+    expect(ensureRelativeStrengthIntradayRegistered()).toBe(true);
+    expect(registry.has(RELATIVE_STRENGTH_INTRADAY_STRATEGY_ID)).toBe(true);
+    const dup = registerRelativeStrengthIntradayStrategy(registry);
+    expect(typeof dup).toBe("boolean");
+  });
+});
