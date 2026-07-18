@@ -1,6 +1,7 @@
 /**
- * VWAP Continuation Strategy — Sprint 11B.3C.1 / 11B.3C.2.
- * Detection + trade construction. No portfolio execution or order placement.
+ * VWAP Continuation Strategy — Sprint 11B.3C.1 / 11B.3C.2 / 11B.3C.3.
+ * Detection + trade construction + institutional explainability / scoring.
+ * No portfolio execution or order placement.
  */
 
 import { BaseStrategy } from "../BaseStrategy";
@@ -256,6 +257,14 @@ export class VWAPContinuationStrategy extends BaseStrategy {
       lines.push(
         `VWAPContinuationTradeSetup ready — ${setup.positionType} · RR ${setup.riskReward}.`
       );
+      if (setup.institutionalScore) {
+        lines.push(
+          `Conviction ${setup.institutionalScore.grade} (${setup.institutionalScore.conviction}) · Signal ${setup.institutionalScore.signalGrade}.`
+        );
+      }
+      if (setup.explainability?.summary?.length) {
+        lines.push(...setup.explainability.summary);
+      }
     }
     lines.push(`Framework signal ${signal.signal}.`);
     return lines;
@@ -275,9 +284,9 @@ export function createVWAPContinuationStrategyRegistration(
     category: "Scalp" as const,
     enabled: true,
     eligibilityId: VWAP_CONTINUATION_STRATEGY_ID,
-    version: "11B.3C.2",
+    version: "11B.3C.3",
     description:
-      "VWAP Continuation — detection and institutional trade construction.",
+      "VWAP Continuation — detection, trade construction, and institutional scoring.",
     create: () => new VWAPContinuationStrategy(config, tradeConfig),
   };
 }

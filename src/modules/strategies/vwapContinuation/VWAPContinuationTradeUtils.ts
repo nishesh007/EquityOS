@@ -494,5 +494,19 @@ export function createRejectedVWAPContinuationTradeSetup(
     holdingPeriod: DEFAULT_VWAP_CONTINUATION_TRADE_CONFIG.defaultHoldingPeriod,
     positionType: DEFAULT_VWAP_CONTINUATION_TRADE_CONFIG.defaultPositionType,
     warnings,
+    explainability: {
+      positiveReasons: [],
+      negativeReasons: warnings.slice(0, 3),
+      neutralFactors: [],
+      warnings,
+      summary: ["VWAP Continuation trade setup rejected."],
+      factors: [],
+    },
+    institutionalScore: {
+      conviction: 20,
+      grade: "Weak",
+      signalGrade: "F",
+      confidence: detection.confidence || 0,
+    },
   };
 }

@@ -1,10 +1,13 @@
 /**
- * VWAP Continuation Trade Builder — Sprint 11B.3C.2.
- * Converts validated VWAPContinuationDetection into trade setup (no execution).
+ * VWAP Continuation Trade Builder — Sprint 11B.3C.2 / 11B.3C.3.
+ * Converts validated detection into trade setup with institutional enrichment.
+ * No portfolio execution.
  */
 
 import { round } from "@/lib/engine/utils";
 import type { InstitutionalMarketContext } from "@/src/modules/marketContext";
+import { enrichVWAPContinuationTradeSetup } from "./VWAPContinuationEnrichment";
+import { getVWAPContinuationMetrics } from "./VWAPContinuationMetrics";
 import {
   calculateRiskAmount,
   resolveStopLoss,
@@ -56,6 +59,8 @@ export class VWAPContinuationTradeBuilder {
    * Never throws — returns rejected setup with warnings on failure.
    */
   build(input: VWAPContinuationTradeBuildInput): VWAPContinuationTradeSetup {
+    const started =
+      typeof performance !== "undefined" ? performance.now() : Date.now();
     try {
       const config = resolveVWAPContinuationTradeConfig({
         ...this.config,
@@ -63,13 +68,33 @@ export class VWAPContinuationTradeBuilder {
       });
       const { detection } = input;
 
+      const finalize = (setup: VWAPContinuationTradeSetup): VWAPContinuationTradeSetup => {
+        const enriched = enrichVWAPContinuationTradeSetup({
+          setup,
+          marketContext: input.marketContext,
+          vwapInput: input.input,
+        });
+        this.lastSetup = enriched;
+        try {
+          const ended =
+            typeof performance !== "undefined" ? performance.now() : Date.now();
+          getVWAPContinuationMetrics().record({
+            setup: enriched,
+            executionTimeMs: ended - started,
+          });
+        } catch {
+          // Metrics optional.
+        }
+        return enriched;
+      };
+
       if (!detection.detected || detection.direction === "NONE") {
-        const rejected = createRejectedVWAPContinuationTradeSetup(detection, [
-          "VWAP Continuation detection not validated — trade construction skipped.",
-          ...detection.warnings,
-        ]);
-        this.lastSetup = rejected;
-        return rejected;
+        return finalize(
+          createRejectedVWAPContinuationTradeSetup(detection, [
+            "VWAP Continuation detection not validated — trade construction skipped.",
+            ...detection.warnings,
+          ])
+        );
       }
 
       const warnings: string[] = [...detection.warnings];
@@ -91,12 +116,12 @@ export class VWAPContinuationTradeBuilder {
         config,
       });
       if (entry === null) {
-        const rejected = createRejectedVWAPContinuationTradeSetup(detection, [
-          ...warnings,
-          "Invalid entry.",
-        ]);
-        this.lastSetup = rejected;
-        return rejected;
+        return finalize(
+          createRejectedVWAPContinuationTradeSetup(detection, [
+            ...warnings,
+            "Invalid entry.",
+          ])
+        );
       }
 
       const stopResult = resolveStopLoss({
@@ -113,12 +138,12 @@ export class VWAPContinuationTradeBuilder {
       warnings.push(...stopResult.warnings);
 
       if (stopResult.stopLoss === null) {
-        const rejected = createRejectedVWAPContinuationTradeSetup(detection, [
-          ...warnings,
-          "Invalid stop.",
-        ]);
-        this.lastSetup = rejected;
-        return rejected;
+        return finalize(
+          createRejectedVWAPContinuationTradeSetup(detection, [
+            ...warnings,
+            "Invalid stop.",
+          ])
+        );
       }
 
       const riskCheck = validateTradeRisk({
@@ -128,12 +153,12 @@ export class VWAPContinuationTradeBuilder {
         config,
       });
       if (!riskCheck.valid) {
-        const rejected = createRejectedVWAPContinuationTradeSetup(detection, [
-          ...warnings,
-          ...riskCheck.errors,
-        ]);
-        this.lastSetup = rejected;
-        return rejected;
+        return finalize(
+          createRejectedVWAPContinuationTradeSetup(detection, [
+            ...warnings,
+            ...riskCheck.errors,
+          ])
+        );
       }
 
       const targetResult = generateVWAPContinuationTargets({
@@ -149,12 +174,12 @@ export class VWAPContinuationTradeBuilder {
       warnings.push(...targetResult.warnings);
 
       if (!targetResult.targets) {
-        const rejected = createRejectedVWAPContinuationTradeSetup(detection, [
-          ...warnings,
-          "Invalid targets.",
-        ]);
-        this.lastSetup = rejected;
-        return rejected;
+        return finalize(
+          createRejectedVWAPContinuationTradeSetup(detection, [
+            ...warnings,
+            "Invalid targets.",
+          ])
+        );
       }
 
       const risk = calculateRiskAmount(entry, stopResult.stopLoss);
@@ -169,21 +194,21 @@ export class VWAPContinuationTradeBuilder {
       );
 
       if (reward <= 0) {
-        const rejected = createRejectedVWAPContinuationTradeSetup(detection, [
-          ...warnings,
-          "Negative reward.",
-        ]);
-        this.lastSetup = rejected;
-        return rejected;
+        return finalize(
+          createRejectedVWAPContinuationTradeSetup(detection, [
+            ...warnings,
+            "Negative reward.",
+          ])
+        );
       }
 
       if (riskReward + config.priceEpsilon < config.minimumRiskReward) {
-        const rejected = createRejectedVWAPContinuationTradeSetup(detection, [
-          ...warnings,
-          "RR below threshold.",
-        ]);
-        this.lastSetup = rejected;
-        return rejected;
+        return finalize(
+          createRejectedVWAPContinuationTradeSetup(detection, [
+            ...warnings,
+            "RR below threshold.",
+          ])
+        );
       }
 
       const quality = calculateVWAPContinuationTradeQuality({
@@ -193,8 +218,12 @@ export class VWAPContinuationTradeBuilder {
         config,
       });
 
-      const setup: VWAPContinuationTradeSetup = {
+      const draft = createRejectedVWAPContinuationTradeSetup(
         detection,
+        dedupe(warnings)
+      );
+      const setup: VWAPContinuationTradeSetup = {
+        ...draft,
         entry,
         stopLoss: stopResult.stopLoss,
         target1: targetResult.targets.target1,
@@ -212,16 +241,15 @@ export class VWAPContinuationTradeBuilder {
 
       const validation = validateVWAPContinuationTradeSetup(setup, config);
       if (!validation.valid) {
-        const rejected = createRejectedVWAPContinuationTradeSetup(detection, [
-          ...setup.warnings,
-          ...validation.errors,
-        ]);
-        this.lastSetup = rejected;
-        return rejected;
+        return finalize(
+          createRejectedVWAPContinuationTradeSetup(detection, [
+            ...setup.warnings,
+            ...validation.errors,
+          ])
+        );
       }
 
-      this.lastSetup = setup;
-      return setup;
+      return finalize(setup);
     } catch (error) {
       const message =
         error instanceof Error

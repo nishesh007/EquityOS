@@ -1,8 +1,10 @@
 /**
- * VWAP Continuation Trade Construction config & contracts — Sprint 11B.3C.2.
+ * VWAP Continuation Trade Construction config & contracts — Sprint 11B.3C.2 / 11B.3C.3.
  * Separate from detection config. Does not alter detection behaviour.
  */
 
+import type { VWAPContinuationExplainability } from "./VWAPContinuationExplainability";
+import type { VWAPContinuationInstitutionalScore } from "./VWAPContinuationScoring";
 import type { VWAPContinuationDetection } from "./VWAPContinuationTypes";
 
 export type VWAPContinuationEntryMode =
@@ -43,6 +45,8 @@ export interface VWAPContinuationTradeSetup {
   holdingPeriod: string;
   positionType: VWAPContinuationPositionType;
   warnings: string[];
+  explainability: VWAPContinuationExplainability;
+  institutionalScore: VWAPContinuationInstitutionalScore;
 }
 
 export const DEFAULT_VWAP_CONTINUATION_TRADE_CONFIG = {

@@ -1,5 +1,5 @@
 /**
- * VWAP Continuation module exports — Sprint 11B.3C.1 / 11B.3C.2.
+ * VWAP Continuation module exports — Sprint 11B.3C.1 / 11B.3C.2 / 11B.3C.3.
  */
 
 export type { VWAPContinuationConfig } from "./VWAPContinuationConstants";
@@ -100,6 +100,65 @@ export {
   getVWAPContinuationTradeBuilder,
   resetVWAPContinuationTradeBuilder,
 } from "./VWAPContinuationTradeBuilder";
+
+export { enrichVWAPContinuationTradeSetup } from "./VWAPContinuationEnrichment";
+
+export type {
+  VWAPContinuationExplainability,
+  VWAPContinuationExplainabilityConfig,
+  VWAPContinuationExplanationFactor,
+  VWAPContinuationExplanationImpact,
+} from "./VWAPContinuationExplainability";
+
+export {
+  buildVWAPContinuationExplainability,
+  buildVWAPContinuationExplanationFactors,
+  buildVWAPContinuationSummary,
+  createEmptyVWAPContinuationExplainability,
+  resolveVWAPContinuationExplainabilityConfig,
+  DEFAULT_VWAP_CONTINUATION_EXPLAINABILITY_CONFIG,
+} from "./VWAPContinuationExplainability";
+
+export type {
+  VWAPContinuationConvictionGrade,
+  VWAPContinuationConvictionWeights,
+  VWAPContinuationFactorScores,
+  VWAPContinuationInstitutionalScore,
+  VWAPContinuationScoringConfig,
+  VWAPContinuationSignalGrade,
+} from "./VWAPContinuationScoring";
+
+export {
+  DEFAULT_VWAP_CONTINUATION_CONVICTION_WEIGHTS,
+  DEFAULT_VWAP_CONTINUATION_SCORING_CONFIG,
+  buildVWAPContinuationInstitutionalScore,
+  calculateVWAPContinuationConviction,
+  calculateVWAPContinuationSignalGrade,
+  classifyVWAPContinuationConvictionGrade,
+  classifyVWAPContinuationSignalGrade,
+  resolveVWAPContinuationScoringConfig,
+  scoreVWAPContinuationConvictionFactors,
+} from "./VWAPContinuationScoring";
+
+export type { VWAPContinuationMetricsSnapshot } from "./VWAPContinuationMetrics";
+
+export {
+  VWAPContinuationMetrics,
+  VWAP_CONTINUATION_HOLD_TIME_MINUTES,
+  createEmptyVWAPContinuationMetrics,
+  getVWAPContinuationMetrics,
+  resetVWAPContinuationMetrics,
+} from "./VWAPContinuationMetrics";
+
+export {
+  buildVWAPContinuationContextFromPipeline,
+  ensureVWAPContinuationRegistered,
+  executeVWAPContinuationThroughEngine,
+  executeVWAPContinuationWithPipeline,
+  getVWAPContinuationFromFactory,
+  getVWAPContinuationIntegrationStatus,
+  isVWAPContinuationExecutableInput,
+} from "./VWAPContinuationIntegration";
 
 export {
   VWAPContinuationStrategy,
