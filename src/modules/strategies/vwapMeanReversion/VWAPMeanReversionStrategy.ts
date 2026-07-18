@@ -1,6 +1,6 @@
 /**
- * VWAP Mean Reversion Strategy — Sprint 11B.3D.1.
- * Detection only. No entry / stop / target construction. No portfolio execution.
+ * VWAP Mean Reversion Strategy — Sprint 11B.3D.1 / 11B.3D.2.
+ * Detection + trade construction. No portfolio execution or order placement.
  */
 
 import { BaseStrategy } from "../BaseStrategy";
@@ -17,11 +17,17 @@ import {
   type VWAPMeanReversionConfig,
 } from "./VWAPMeanReversionConstants";
 import { VWAPMeanReversionDetector } from "./VWAPMeanReversionDetector";
+import { VWAPMeanReversionTradeBuilder } from "./VWAPMeanReversionTradeBuilder";
 import type { VWAPMeanReversionDetection } from "./VWAPMeanReversionTypes";
 import {
   isVWAPMeanReversionStrategyInput,
   toVWAPMeanReversionDetectionContext,
 } from "./VWAPMeanReversionTypes";
+import {
+  resolveVWAPMeanReversionTradeConfig,
+  type VWAPMeanReversionTradeConfig,
+  type VWAPMeanReversionTradeSetup,
+} from "./VWAPMeanReversionTradeTypes";
 import {
   createEmptyVWAPMeanReversionDetection,
   resolveVWAPMeanReversionConfig,
@@ -36,14 +42,22 @@ export class VWAPMeanReversionStrategy extends BaseStrategy {
 
   private readonly detector: VWAPMeanReversionDetector;
   private readonly mrValidator: VWAPMeanReversionValidator;
+  private readonly tradeBuilder: VWAPMeanReversionTradeBuilder;
   private readonly mrConfig: VWAPMeanReversionConfig;
+  private readonly tradeConfig: VWAPMeanReversionTradeConfig;
   private lastDetection: VWAPMeanReversionDetection | null = null;
+  private lastTradeSetup: VWAPMeanReversionTradeSetup | null = null;
 
-  constructor(config?: Partial<VWAPMeanReversionConfig>) {
+  constructor(
+    config?: Partial<VWAPMeanReversionConfig>,
+    tradeConfig?: Partial<VWAPMeanReversionTradeConfig>
+  ) {
     super();
     this.mrConfig = resolveVWAPMeanReversionConfig(config);
+    this.tradeConfig = resolveVWAPMeanReversionTradeConfig(tradeConfig);
     this.detector = new VWAPMeanReversionDetector(this.mrConfig);
     this.mrValidator = new VWAPMeanReversionValidator(this.mrConfig);
+    this.tradeBuilder = new VWAPMeanReversionTradeBuilder(this.tradeConfig);
   }
 
   /**
@@ -66,8 +80,48 @@ export class VWAPMeanReversionStrategy extends BaseStrategy {
     return detection;
   }
 
+  /**
+   * Sprint 11B.3D.2 API — construct institutional trade setup from detection.
+   */
+  buildTradeSetup(
+    context: StrategyExecutionContext
+  ): VWAPMeanReversionTradeSetup {
+    const detection = this.lastDetection ?? this.detect(context);
+    if (!isVWAPMeanReversionStrategyInput(context.input)) {
+      const rejected = this.tradeBuilder.build({
+        detection,
+        marketContext: context.marketContext,
+        input: {
+          symbol: context.input.symbol,
+          lastPrice: context.input.lastPrice,
+          vwapMeanReversion: {
+            candles5m: [],
+            vwap: 0,
+            atr: null,
+            relativeVolume: null,
+          },
+        },
+      });
+      this.lastTradeSetup = rejected;
+      return rejected;
+    }
+
+    const setup = this.tradeBuilder.build({
+      detection,
+      marketContext: context.marketContext,
+      input: context.input,
+      config: this.tradeConfig,
+    });
+    this.lastTradeSetup = setup;
+    return setup;
+  }
+
   getLastDetection(): VWAPMeanReversionDetection | null {
     return this.lastDetection;
+  }
+
+  getLastTradeSetup(): VWAPMeanReversionTradeSetup | null {
+    return this.lastTradeSetup;
   }
 
   override validate(
@@ -90,71 +144,86 @@ export class VWAPMeanReversionStrategy extends BaseStrategy {
     context: StrategyExecutionContext
   ): StrategyAnalysisResult {
     const detection = this.detect(context);
+    const setup = this.buildTradeSetup(context);
+    const tradeValid = setup.entry > 0 && setup.riskReward > 0;
+
     const bias =
-      detection.detected && detection.direction === "BUY"
+      tradeValid && setup.detection.direction === "BUY"
         ? "Bullish"
-        : detection.detected && detection.direction === "SELL"
+        : tradeValid && setup.detection.direction === "SELL"
           ? "Bearish"
           : "Neutral";
 
     return {
       bias,
-      score: detection.confidence,
-      notes:
-        detection.detected
-          ? detection.reasons
+      score: tradeValid ? setup.qualityScore : detection.confidence,
+      notes: tradeValid
+        ? [
+            `VWAP Mean Reversion trade constructed (${setup.detection.direction}).`,
+            `Entry ${setup.entry} · Stop ${setup.stopLoss} · RR ${setup.riskReward}.`,
+            `Quality ${setup.qualityGrade} (${setup.qualityScore}).`,
+          ]
+        : setup.warnings.length > 0
+          ? setup.warnings
           : detection.warnings.length > 0
             ? detection.warnings
             : detection.reasons,
       metrics: {
         detected: detection.detected ? 1 : 0,
+        tradeValid: tradeValid ? 1 : 0,
         vwap: detection.vwap,
         deviation: detection.deviation,
-        deviationBand: detection.deviationBand,
-        rsi: detection.rsi,
-        reversalConfirmed: detection.reversalConfirmed ? 1 : 0,
-        volumeStable: detection.volumeStable ? 1 : 0,
-        breadthConfirmed: detection.breadthConfirmed ? 1 : 0,
-        sectorConfirmed: detection.sectorConfirmed ? 1 : 0,
-        marketConfirmed: detection.marketConfirmed ? 1 : 0,
+        entry: setup.entry,
+        stopLoss: setup.stopLoss,
+        target1: setup.target1,
+        target2: setup.target2,
+        finalTarget: setup.finalTarget,
+        risk: setup.risk,
+        reward: setup.reward,
+        riskReward: setup.riskReward,
+        qualityScore: setup.qualityScore,
         confidence: detection.confidence,
       },
     };
   }
 
+  /**
+   * Framework signal derived from a valid VWAPMeanReversionTradeSetup.
+   */
   override generateSignal(
     _context: StrategyExecutionContext,
     analysis: StrategyAnalysisResult
   ): StrategySignal["signal"] {
-    if (analysis.metrics.detected !== 1) return "IGNORE";
+    if (analysis.metrics.tradeValid !== 1) return "IGNORE";
     if (analysis.bias === "Bullish") return "BUY";
     if (analysis.bias === "Bearish") return "SELL";
     return "IGNORE";
   }
 
-  /** Detection sprint — trade levels deferred. */
   override calculateEntry(
     _context?: StrategyExecutionContext,
-    _analysis?: StrategyAnalysisResult
+    analysis?: StrategyAnalysisResult
   ): number {
-    return 0;
+    return analysis?.metrics.entry ?? this.lastTradeSetup?.entry ?? 0;
   }
 
   override calculateStopLoss(
     _context?: StrategyExecutionContext,
-    _analysis?: StrategyAnalysisResult,
-    _entry?: number
+    analysis?: StrategyAnalysisResult
   ): number {
-    return 0;
+    return analysis?.metrics.stopLoss ?? this.lastTradeSetup?.stopLoss ?? 0;
   }
 
   override calculateTargets(
     _context?: StrategyExecutionContext,
-    _analysis?: StrategyAnalysisResult,
-    _entry?: number,
-    _stopLoss?: number
+    analysis?: StrategyAnalysisResult
   ): StrategyTargets {
-    return { target1: 0, target2: 0, finalTarget: 0 };
+    return {
+      target1: analysis?.metrics.target1 ?? this.lastTradeSetup?.target1 ?? 0,
+      target2: analysis?.metrics.target2 ?? this.lastTradeSetup?.target2 ?? 0,
+      finalTarget:
+        analysis?.metrics.finalTarget ?? this.lastTradeSetup?.finalTarget ?? 0,
+    };
   }
 
   override calculateConfidence(
@@ -164,16 +233,27 @@ export class VWAPMeanReversionStrategy extends BaseStrategy {
     return analysis.score;
   }
 
+  override calculateRiskReward(
+    entry: number,
+    stopLoss: number,
+    targets: StrategyTargets
+  ): number {
+    if (this.lastTradeSetup && this.lastTradeSetup.riskReward > 0) {
+      return this.lastTradeSetup.riskReward;
+    }
+    return super.calculateRiskReward(entry, stopLoss, targets);
+  }
+
   override explain(
     _context: StrategyExecutionContext,
     analysis: StrategyAnalysisResult,
     signal: StrategySignal
   ): string[] {
-    const detection = this.lastDetection;
+    const setup = this.lastTradeSetup;
     const lines = [...analysis.notes];
-    if (detection) {
+    if (setup && setup.entry > 0) {
       lines.push(
-        `VWAP Mean Reversion ${detection.detected ? "detected" : "not detected"} · confidence ${detection.confidence}.`
+        `VWAPMeanReversionTradeSetup ready — ${setup.positionType} · RR ${setup.riskReward}.`
       );
     }
     lines.push(`Framework signal ${signal.signal}.`);
@@ -182,7 +262,8 @@ export class VWAPMeanReversionStrategy extends BaseStrategy {
 }
 
 export function createVWAPMeanReversionStrategyRegistration(
-  config?: Partial<VWAPMeanReversionConfig>
+  config?: Partial<VWAPMeanReversionConfig>,
+  tradeConfig?: Partial<VWAPMeanReversionTradeConfig>
 ) {
   return {
     id: VWAP_MEAN_REVERSION_STRATEGY_ID,
@@ -190,10 +271,10 @@ export function createVWAPMeanReversionStrategyRegistration(
     category: "Scalp" as const,
     enabled: true,
     eligibilityId: VWAP_MEAN_REVERSION_STRATEGY_ID,
-    version: "11B.3D.1",
+    version: "11B.3D.2",
     description:
-      "VWAP Mean Reversion — institutional detection only (no trade construction).",
-    create: () => new VWAPMeanReversionStrategy(config),
+      "VWAP Mean Reversion — detection and institutional trade construction.",
+    create: () => new VWAPMeanReversionStrategy(config, tradeConfig),
   };
 }
 
@@ -203,9 +284,10 @@ export function registerVWAPMeanReversionStrategy(
       r: ReturnType<typeof createVWAPMeanReversionStrategyRegistration>
     ) => boolean;
   },
-  config?: Partial<VWAPMeanReversionConfig>
+  config?: Partial<VWAPMeanReversionConfig>,
+  tradeConfig?: Partial<VWAPMeanReversionTradeConfig>
 ): boolean {
   return registry.register(
-    createVWAPMeanReversionStrategyRegistration(config)
+    createVWAPMeanReversionStrategyRegistration(config, tradeConfig)
   );
 }

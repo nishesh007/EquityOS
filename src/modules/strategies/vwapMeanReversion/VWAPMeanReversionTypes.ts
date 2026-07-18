@@ -68,6 +68,9 @@ export interface VWAPMeanReversionMarketData {
   rsi?: number | null;
   /** Optional news/event flag from upstream. */
   newsDriven?: boolean;
+  /** Optional swing anchors for trade construction (Sprint 11B.3D.2). */
+  recentSwingHigh?: number | null;
+  recentSwingLow?: number | null;
 }
 
 export interface VWAPMeanReversionStrategyInput extends StrategyMarketInput {
