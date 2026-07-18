@@ -274,3 +274,218 @@ export interface MarketContextRawData {
   sensexCandles: OhlcBar[];
   fetchedAt: Date;
 }
+
+/* ─── Sprint 11B.1B — Market Breadth & Sector Strength ─── */
+
+export type CapTier = "large" | "mid" | "small";
+
+export type BreadthQualityLabel =
+  | "Very Strong"
+  | "Strong"
+  | "Neutral"
+  | "Weak"
+  | "Very Weak";
+
+export type SectorTrend =
+  | "Strong Bull"
+  | "Bull"
+  | "Neutral"
+  | "Bear"
+  | "Strong Bear";
+
+export type SectorRotationState = "improving" | "weakening" | "stable";
+
+/**
+ * Canonical sector labels evaluated by the Sector Strength Engine.
+ */
+export const SUPPORTED_SECTORS = [
+  "Banking",
+  "IT",
+  "Auto",
+  "Pharma",
+  "Capital Goods",
+  "FMCG",
+  "Energy",
+  "PSU",
+  "Realty",
+  "Metal",
+  "Chemical",
+  "Healthcare",
+  "Financial Services",
+  "Telecom",
+  "Infrastructure",
+] as const;
+
+export type SupportedSector = (typeof SUPPORTED_SECTORS)[number];
+
+export interface BreadthConfig {
+  readonly veryStrongMin: number;
+  readonly strongMin: number;
+  readonly neutralMin: number;
+  readonly weakMin: number;
+  readonly largeCapMinCr: number;
+  readonly midCapMinCr: number;
+  readonly participationHighPct: number;
+  readonly participationLowPct: number;
+  readonly momentumStrongDelta: number;
+  readonly qualityWeightAdvanceRatio: number;
+  readonly qualityWeightParticipation: number;
+  readonly qualityWeightCapBalance: number;
+  readonly qualityWeightMomentum: number;
+  readonly qualityWeightNewHighs: number;
+  readonly leaderCount: number;
+  readonly missingDataConfidencePenalty: number;
+}
+
+export const DEFAULT_BREADTH_CONFIG: BreadthConfig = {
+  veryStrongMin: 80,
+  strongMin: 60,
+  neutralMin: 40,
+  weakMin: 20,
+  largeCapMinCr: 100_000,
+  midCapMinCr: 20_000,
+  participationHighPct: 65,
+  participationLowPct: 40,
+  momentumStrongDelta: 8,
+  qualityWeightAdvanceRatio: 0.3,
+  qualityWeightParticipation: 0.25,
+  qualityWeightCapBalance: 0.2,
+  qualityWeightMomentum: 0.15,
+  qualityWeightNewHighs: 0.1,
+  leaderCount: 5,
+  missingDataConfidencePenalty: 10,
+};
+
+export interface SectorStrengthConfig {
+  readonly strongBullMin: number;
+  readonly bullMin: number;
+  readonly bearMax: number;
+  readonly strongBearMax: number;
+  readonly weightPrice: number;
+  readonly weightRelative: number;
+  readonly weightBreadth: number;
+  readonly weightVolume: number;
+  readonly weightMomentum: number;
+  readonly weightTrend: number;
+  readonly weightParticipation: number;
+  readonly weightRelativeStrength: number;
+  readonly weightInstitutional: number;
+  readonly rotationImproveDelta: number;
+  readonly rotationWeakenDelta: number;
+  readonly leaderCount: number;
+  readonly missingDataConfidencePenalty: number;
+}
+
+export const DEFAULT_SECTOR_STRENGTH_CONFIG: SectorStrengthConfig = {
+  strongBullMin: 75,
+  bullMin: 58,
+  bearMax: 42,
+  strongBearMax: 25,
+  weightPrice: 0.15,
+  weightRelative: 0.12,
+  weightBreadth: 0.15,
+  weightVolume: 0.1,
+  weightMomentum: 0.12,
+  weightTrend: 0.12,
+  weightParticipation: 0.1,
+  weightRelativeStrength: 0.08,
+  weightInstitutional: 0.06,
+  rotationImproveDelta: 6,
+  rotationWeakenDelta: -6,
+  leaderCount: 5,
+  missingDataConfidencePenalty: 8,
+};
+
+/** Constituent / mover snapshot used for cap-tier and equal-weight breadth. */
+export interface ConstituentSnapshot {
+  symbol: string;
+  name: string;
+  changePercent: number;
+  volume: number;
+  /** Volume ÷ average volume when available. */
+  relativeVolume: number | null;
+  marketCapCr: number | null;
+  capTier: CapTier | null;
+  sector: string | null;
+  available: boolean;
+}
+
+export interface BreadthEngineInput {
+  advances: number;
+  declines: number;
+  unchanged: number;
+  newHighs: number;
+  newLows: number;
+  sectors: SectorPerformance[];
+  constituents: ConstituentSnapshot[];
+  volumeChangePercent: number | null;
+  /** Prior breadth % for momentum; null on first run. */
+  previousBreadthPercent: number | null;
+  asOf: Date;
+  config?: Partial<BreadthConfig>;
+}
+
+export interface BreadthAnalysis {
+  advanceCount: number;
+  declineCount: number;
+  unchangedCount: number;
+  advanceDeclineRatio: number;
+  netAdvances: number;
+  breadthPercent: number;
+  participationPercent: number;
+  equalWeightBreadth: number;
+  largeCapBreadth: number;
+  midCapBreadth: number;
+  smallCapBreadth: number;
+  breadthMomentum: number;
+  breadthQuality: BreadthQualityLabel;
+  /** Composite breadth score 0–100. */
+  score: number;
+  confidence: number;
+  reasons: string[];
+  lastUpdated: Date;
+}
+
+export interface SectorEngineInput {
+  sectors: SectorPerformance[];
+  constituents: ConstituentSnapshot[];
+  /** Benchmark index change % (typically Nifty) for relative performance. */
+  benchmarkChangePercent: number | null;
+  marketVolumeChangePercent: number | null;
+  /** Prior sector scores keyed by canonical sector name (rotation). */
+  previousScores: Record<string, number>;
+  asOf: Date;
+  config?: Partial<SectorStrengthConfig>;
+}
+
+export interface SectorAnalysis {
+  sector: string;
+  score: number;
+  trend: SectorTrend;
+  relativeStrength: number;
+  breadth: number;
+  volume: number;
+  momentum: number;
+  participation: number;
+  confidence: number;
+  reasons: string[];
+}
+
+export interface SectorRotationSummary {
+  improving: string[];
+  weakening: string[];
+  stable: string[];
+  leaders: string[];
+  laggards: string[];
+  reasons: string[];
+}
+
+export interface SectorStrengthAnalysis {
+  sectors: SectorAnalysis[];
+  leaders: SectorAnalysis[];
+  weakest: SectorAnalysis[];
+  rotation: SectorRotationSummary;
+  confidence: number;
+  reasons: string[];
+  lastUpdated: Date;
+}

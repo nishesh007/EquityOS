@@ -1,7 +1,8 @@
 /**
- * Market Context Service — Sprint 11B.1A.
+ * Market Context Service — Sprint 11B.1A / 11B.1B.
  * Consumes existing EquityOS market APIs once, maps to engine input, and
- * exposes getMarketContext / refresh / subscribe. No duplicate fetching.
+ * exposes getMarketContext / refresh / subscribe plus breadth & sector APIs.
+ * No duplicate fetching.
  */
 
 import { marketDataService } from "@/lib/market-data";
@@ -13,7 +14,12 @@ import {
 } from "@/services/researchDashboardData";
 import type { MarketBreadth, MarketIndex, MarketPulse } from "@/types";
 import { getMarketContextEngine } from "./MarketContextEngine";
+import {
+  buildBreadthEngineInputFromRaw,
+  buildSectorEngineInputFromRaw,
+} from "./MarketContextMappers";
 import type {
+  BreadthAnalysis,
   BreadthContextSnapshot,
   IndexContextSnapshot,
   MarketContext,
@@ -21,8 +27,11 @@ import type {
   MarketContextListener,
   MarketContextRawData,
   MarketContextServiceOptions,
+  SectorStrengthAnalysis,
   VixContextSnapshot,
 } from "./MarketContextTypes";
+import { createFallbackBreadthAnalysis } from "./BreadthUtils";
+import { createFallbackSectorStrengthAnalysis } from "./SectorStrengthUtils";
 import { createFallbackMarketContext } from "./MarketContextUtils";
 
 const OHLC_TIMEFRAME = "3M" as const;
@@ -199,6 +208,9 @@ export async function fetchMarketContextRawData(): Promise<MarketContextRawData>
 export class MarketContextService {
   private readonly listeners = new Set<MarketContextListener>();
   private cache: MarketContext | null = null;
+  private breadthCache: BreadthAnalysis | null = null;
+  private sectorCache: SectorStrengthAnalysis | null = null;
+  private rawCache: MarketContextRawData | null = null;
   private inflight: Promise<MarketContext> | null = null;
 
   /**
@@ -213,8 +225,29 @@ export class MarketContextService {
     return this.refresh();
   }
 
+  /** Sprint 11B.1B — institutional breadth analysis (cached). */
+  async getBreadth(
+    options: MarketContextServiceOptions = {}
+  ): Promise<BreadthAnalysis> {
+    if (!options.forceRefresh && this.breadthCache) {
+      return this.breadthCache;
+    }
+    return this.refreshBreadth();
+  }
+
+  /** Sprint 11B.1B — institutional sector strength analysis (cached). */
+  async getSectorStrength(
+    options: MarketContextServiceOptions = {}
+  ): Promise<SectorStrengthAnalysis> {
+    if (!options.forceRefresh && this.sectorCache) {
+      return this.sectorCache;
+    }
+    return this.refreshSectorStrength();
+  }
+
   /**
    * Force-recomputes market context from live EquityOS market services.
+   * Also refreshes breadth and sector strength from the same raw payload.
    */
   async refresh(): Promise<MarketContext> {
     if (this.inflight) {
@@ -226,6 +259,27 @@ export class MarketContextService {
     });
 
     return this.inflight;
+  }
+
+  /** Force-refresh breadth using the shared market data pass. */
+  async refreshBreadth(): Promise<BreadthAnalysis> {
+    await this.refresh();
+    return (
+      this.breadthCache ??
+      createFallbackBreadthAnalysis(new Date(), "Breadth refresh unavailable")
+    );
+  }
+
+  /** Force-refresh sector strength using the shared market data pass. */
+  async refreshSectorStrength(): Promise<SectorStrengthAnalysis> {
+    await this.refresh();
+    return (
+      this.sectorCache ??
+      createFallbackSectorStrengthAnalysis(
+        new Date(),
+        "Sector strength refresh unavailable"
+      )
+    );
   }
 
   /**
@@ -246,24 +300,54 @@ export class MarketContextService {
     return this.cache;
   }
 
+  getCachedBreadth(): BreadthAnalysis | null {
+    return this.breadthCache;
+  }
+
+  getCachedSectorStrength(): SectorStrengthAnalysis | null {
+    return this.sectorCache;
+  }
+
   clearCache(): void {
     this.cache = null;
+    this.breadthCache = null;
+    this.sectorCache = null;
+    this.rawCache = null;
   }
 
   private async computeFreshContext(): Promise<MarketContext> {
     try {
       const raw = await fetchMarketContextRawData();
+      this.rawCache = raw;
+      const engine = getMarketContextEngine();
       const input = mapRawDataToMarketContextInput(raw);
-      const context = getMarketContextEngine().analyze(input);
+      const context = engine.analyze(input);
+
+      const breadthInput = buildBreadthEngineInputFromRaw(raw);
+      const sectorInput = buildSectorEngineInputFromRaw(raw);
+
+      this.breadthCache = engine.analyzeBreadth(breadthInput);
+      this.sectorCache = engine.analyzeSectorStrength(sectorInput);
+
       this.cache = context;
       this.notify(context);
       return context;
     } catch {
+      const asOf = new Date();
       const fallback = createFallbackMarketContext(
-        new Date(),
+        asOf,
         "Market context refresh failed — neutral fallback applied"
       );
       this.cache = fallback;
+      this.breadthCache = createFallbackBreadthAnalysis(
+        asOf,
+        "Breadth refresh failed — neutral fallback applied"
+      );
+      this.sectorCache = createFallbackSectorStrengthAnalysis(
+        asOf,
+        "Sector strength refresh failed — neutral fallback applied"
+      );
+
       getMarketContextEngine().analyze({
         nifty: {
           symbol: "NIFTY",
@@ -309,8 +393,9 @@ export class MarketContextService {
           available: false,
         },
         volumeChangePercent: null,
-        asOf: fallback.lastUpdated,
+        asOf,
       });
+
       this.notify(fallback);
       return fallback;
     }
@@ -360,4 +445,28 @@ export function subscribeMarketContext(
   listener: MarketContextListener
 ): () => void {
   return getMarketContextService().subscribe(listener);
+}
+
+/** Convenience: getBreadth() via the shared service singleton. */
+export async function getBreadth(
+  options?: MarketContextServiceOptions
+): Promise<BreadthAnalysis> {
+  return getMarketContextService().getBreadth(options);
+}
+
+/** Convenience: getSectorStrength() via the shared service singleton. */
+export async function getSectorStrength(
+  options?: MarketContextServiceOptions
+): Promise<SectorStrengthAnalysis> {
+  return getMarketContextService().getSectorStrength(options);
+}
+
+/** Convenience: refreshBreadth() via the shared service singleton. */
+export async function refreshBreadth(): Promise<BreadthAnalysis> {
+  return getMarketContextService().refreshBreadth();
+}
+
+/** Convenience: refreshSectorStrength() via the shared service singleton. */
+export async function refreshSectorStrength(): Promise<SectorStrengthAnalysis> {
+  return getMarketContextService().refreshSectorStrength();
 }
