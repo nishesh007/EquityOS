@@ -49,8 +49,11 @@ export interface MarketNews {
   title: string;
   source: string;
   timestamp: string;
-  category: string;
+  publishedAt: string;
+  category: "Market" | "Economy" | "Corporate" | "Policy" | "Global";
+  sentiment: "Positive" | "Neutral" | "Negative";
   summary: string;
+  url: string;
 }
 
 export interface UpcomingResult {

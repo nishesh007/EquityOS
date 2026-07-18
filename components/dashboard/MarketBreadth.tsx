@@ -20,19 +20,46 @@ interface MoverListProps {
   subtitle: string;
   items: MarketMover[];
   valueLabel?: string;
+  direction?: "gainers" | "losers";
 }
 
-function MoverList({ title, subtitle, items, valueLabel = "LTP" }: MoverListProps) {
+const MAX_MOVER_ROWS = 5;
+
+function MoverList({
+  title,
+  subtitle,
+  items,
+  valueLabel = "LTP",
+  direction,
+}: MoverListProps) {
   const symbols = items.map((item) => item.symbol);
   const { quotes } = useMarketQuotes(symbols, {
     initialQuotes: buildInitialQuotesMap(items),
   });
+  const displayItems = direction
+    ? items
+        .filter((item) => {
+          const change =
+            quotes.get(item.symbol)?.changePercent ?? item.changePercent;
+          return direction === "gainers" ? change > 0 : change < 0;
+        })
+        .sort((a, b) => {
+          const aChange =
+            quotes.get(a.symbol)?.changePercent ?? a.changePercent;
+          const bChange =
+            quotes.get(b.symbol)?.changePercent ?? b.changePercent;
+          return direction === "gainers"
+            ? bChange - aChange
+            : aChange - bChange;
+        })
+        .slice(0, MAX_MOVER_ROWS)
+    : items;
 
   return (
     <Card padding="lg" className="h-full">
       <CardHeader title={title} subtitle={subtitle} />
       <div className="space-y-0.5">
-        {items.map((item, index) => {
+        {displayItems.map((item, index) => {
           const quote =
             quotes.get(item.symbol) ?? item.quote ?? createUnavailableQuote(item.symbol);
 
@@ -73,6 +100,12 @@ function MoverList({ title, subtitle, items, valueLabel = "LTP" }: MoverListProp
           );
         })}
       </div>
+      {direction && displayItems.length < MAX_MOVER_ROWS ? (
+        <p className="mt-3 border-t border-surface-border-subtle pt-3 text-[11px] text-text-muted">
+          Only {displayItems.length} qualifying{" "}
+          {direction === "gainers" ? "gainers" : "losers"} today
+        </p>
+      ) : null}
     </Card>
   );
 }
@@ -244,8 +277,18 @@ export function MarketBreadth({ breadth }: MarketBreadthProps) {
         </div>
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MoverList title="Top Gainers" subtitle="NSE large & mid caps" items={breadth.gainers} />
-        <MoverList title="Top Losers" subtitle="NSE large & mid caps" items={breadth.losers} />
+        <MoverList
+          title="Top Gainers"
+          subtitle="NSE large & mid caps"
+          items={breadth.gainers}
+          direction="gainers"
+        />
+        <MoverList
+          title="Top Losers"
+          subtitle="NSE large & mid caps"
+          items={breadth.losers}
+          direction="losers"
+        />
         <WeekHighLow breadth={breadth} />
         <MoverList
           title="Most Active"

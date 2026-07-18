@@ -1,7 +1,6 @@
 "use client";
 
 import type {
-  DataFreshnessLevel,
   SchedulerHealth,
   SchedulerMarketState,
   SchedulerStatus,
@@ -23,16 +22,17 @@ function formatClock(iso: string | null): string | null {
 }
 
 function formatCountdown(iso: string | null, nowMs: number): string {
-  if (!iso) return "";
+  if (!iso) return "—";
   const delta = new Date(iso).getTime() - nowMs;
-  if (delta <= 0) return "(due)";
+  if (delta <= 0) return "00:00";
   const totalSec = Math.floor(delta / 1000);
   const hours = Math.floor(totalSec / 3600);
   const minutes = Math.floor((totalSec % 3600) / 60);
   const seconds = totalSec % 60;
-  if (hours > 0) return `(${hours}h ${minutes}m)`;
-  if (minutes > 0) return `(${minutes}m ${seconds.toString().padStart(2, "0")}s)`;
-  return `(${seconds}s)`;
+  const clock = `${minutes.toString().padStart(2, "0")}:${seconds
+    .toString()
+    .padStart(2, "0")}`;
+  return hours > 0 ? `${hours.toString().padStart(2, "0")}:${clock}` : clock;
 }
 
 function formatNextSession(iso: string | null): string | null {
@@ -79,21 +79,6 @@ function statusDot(status: SchedulerStatus): string {
       return "bg-amber-400";
     case "ERROR":
       return "bg-loss";
-  }
-}
-
-function freshnessTone(level: DataFreshnessLevel | null): string {
-  switch (level) {
-    case "Excellent":
-      return "text-gain";
-    case "Good":
-      return "text-accent";
-    case "Delayed":
-      return "text-orange-400";
-    case "Stale":
-      return "text-loss";
-    default:
-      return "text-text-muted";
   }
 }
 
@@ -204,10 +189,6 @@ export function SchedulerHealthCard() {
       ? formatOptionalText(formatNextSession(health.nextScheduledScan), "N/A")
       : formatOptionalText(formatClock(health.nextScheduledScan), "N/A");
 
-  const marketRefresh =
-    formatClock(health.lastMarketDataSync) ??
-    formatClock(health.lastSuccessfulScan);
-
   return (
     <div className="mb-4 rounded-lg border border-surface-border-subtle/80 bg-surface-hover/20 px-4 py-3">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -232,7 +213,7 @@ export function SchedulerHealthCard() {
         </div>
         <div className="flex items-center gap-1.5 text-[10px] text-text-faint">
           <Radar className="h-3 w-3" />
-          Health {health.healthScore}/100
+          Automatic Scan Scheduler · 15 min
         </div>
       </div>
 
@@ -244,7 +225,7 @@ export function SchedulerHealthCard() {
         />
 
         <Metric
-          label="Last Successful Scan"
+          label="Last Scan"
           value={lastScanValue}
           sub={
             noScansToday
@@ -254,47 +235,14 @@ export function SchedulerHealthCard() {
         />
 
         <Metric
-          label="Next Scheduled Scan"
+          label="Next Scan"
           value={nextScanValue}
-          sub={
-            health.nextScheduledScan
-              ? formatCountdown(health.nextScheduledScan, nowMs)
-              : undefined
-          }
         />
 
         <Metric
-          label="Last Market Refresh"
-          value={formatOptionalText(marketRefresh, "N/A")}
-        />
-
-        <Metric
-          label="Today's Scan Count"
-          value={
-            health.scansToday > 0
-              ? String(health.scansToday)
-              : "No scans completed yet today"
-          }
-        />
-
-        <Metric
-          label="Symbols Processed"
-          value={
-            health.symbolsScanned > 0
-              ? health.symbolsScanned.toLocaleString("en-IN")
-              : "N/A"
-          }
-        />
-
-        <Metric
-          label="Data Freshness"
-          value={formatOptionalText(health.dataFreshness, "N/A")}
-          valueClassName={freshnessTone(health.dataFreshness)}
-          sub={
-            health.dataFreshnessSeconds != null
-              ? `Updated ${formatRelativeSeconds(health.dataFreshnessSeconds)}`
-              : undefined
-          }
+          label="Refreshing In"
+          value={formatCountdown(health.nextScheduledScan, nowMs)}
+          valueClassName="font-mono text-accent"
         />
       </div>
 

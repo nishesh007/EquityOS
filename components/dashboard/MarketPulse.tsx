@@ -25,6 +25,11 @@ interface PulseMetricProps {
   icon: React.ReactNode;
 }
 
+function formatFlow(value: number): string {
+  const sign = value > 0 ? "+" : value < 0 ? "−" : "";
+  return `${sign}₹${Math.abs(value).toLocaleString("en-IN")}Cr`;
+}
+
 function PulseMetric({ label, children, detail, icon }: PulseMetricProps) {
   return (
     <div className="group rounded-lg border border-surface-border-subtle bg-surface-overlay/50 p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-accent/20 hover:bg-surface-hover/60">
@@ -126,8 +131,12 @@ export function MarketPulse({ pulse }: MarketPulseProps) {
           detail={`Net cash flow · ${flow.asOf}`}
         >
           <div className="flex items-center gap-3 font-mono text-xs tabular-nums">
-            <span className="text-gain">FII +₹{flow.fii.toLocaleString("en-IN")}Cr</span>
-            <span className="text-accent">DII +₹{flow.dii.toLocaleString("en-IN")}Cr</span>
+            <span className={flow.fii >= 0 ? "text-gain" : "text-loss"}>
+              FII {formatFlow(flow.fii)}
+            </span>
+            <span className={flow.dii >= 0 ? "text-gain" : "text-loss"}>
+              DII {formatFlow(flow.dii)}
+            </span>
           </div>
         </PulseMetric>
 

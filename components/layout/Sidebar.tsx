@@ -28,7 +28,7 @@ const navItems = [
   { label: "Portfolio", href: "/portfolio", icon: Briefcase },
   { label: "Watchlist", href: "/watchlist", icon: Star },
   { label: "News", href: "/news", icon: Newspaper },
-  { label: "Results", href: "/results", icon: Calendar },
+  { label: "Earnings", href: "/results", icon: Calendar },
   { label: "AI Insights", href: "/ai", icon: Bot, badge: "New" },
 ];
 

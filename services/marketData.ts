@@ -1,7 +1,6 @@
 import type {
   AIMarketSummary,
   MarketIndex,
-  MarketNews,
   PortfolioSummary,
   UpcomingResult,
   WatchlistItem,
@@ -9,6 +8,7 @@ import type {
 import { marketDataService, type EnrichedQuote } from "@/lib/market-data";
 import { formatVolume } from "@/lib/utils";
 import { CACHE_TTL, cacheKey, getCached } from "@/lib/cache";
+import { fetchVerifiedMarketNews } from "@/services/verifiedMarketNews";
 
 const INDEX_META: Record<
   string,
@@ -73,54 +73,6 @@ export const aiMarketSummary: AIMarketSummary = {
     { name: "FMCG", outlook: "neutral", change: 0.12 },
   ],
 };
-
-export const marketNews: MarketNews[] = [
-  {
-    id: "1",
-    title: "Nifty 50 Hits Fresh Record High as FIIs Pump ₹3,240 Cr",
-    source: "Economic Times",
-    timestamp: "2 hours ago",
-    category: "Markets",
-    summary:
-      "Indian benchmark indices surged to new peaks driven by sustained foreign institutional buying and positive global cues.",
-  },
-  {
-    id: "2",
-    title: "RBI Expected to Hold Rates Steady in Upcoming Policy Meet",
-    source: "Mint",
-    timestamp: "3 hours ago",
-    category: "Economy",
-    summary:
-      "Economists widely expect the central bank to maintain the repo rate at 6.5% amid moderating inflation.",
-  },
-  {
-    id: "3",
-    title: "TCS Wins $2.1B Deal from European Financial Services Giant",
-    source: "Business Standard",
-    timestamp: "5 hours ago",
-    category: "Corporate",
-    summary:
-      "The multi-year digital transformation deal is expected to boost TCS revenue growth in FY26.",
-  },
-  {
-    id: "4",
-    title: "Crude Oil Slips Below $78 on Demand Concerns",
-    source: "Reuters",
-    timestamp: "6 hours ago",
-    category: "Commodities",
-    summary:
-      "Brent crude declined as OPEC+ production increase signals and weak China data weigh on sentiment.",
-  },
-  {
-    id: "5",
-    title: "SEBI Proposes New Framework for ESG Disclosures",
-    source: "Moneycontrol",
-    timestamp: "8 hours ago",
-    category: "Regulation",
-    summary:
-      "The regulator's draft norms aim to standardize sustainability reporting for listed companies.",
-  },
-];
 
 export const upcomingResults: UpcomingResult[] = [
   {
@@ -371,8 +323,8 @@ export async function fetchAIMarketSummary(): Promise<AIMarketSummary> {
   }
 }
 
-export async function fetchMarketNews(): Promise<MarketNews[]> {
-  return marketNews;
+export async function fetchMarketNews() {
+  return fetchVerifiedMarketNews();
 }
 
 export async function fetchUpcomingResults(): Promise<UpcomingResult[]> {
