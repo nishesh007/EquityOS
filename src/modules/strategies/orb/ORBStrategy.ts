@@ -1,6 +1,6 @@
 /**
- * ORB Strategy — Sprint 11B.3B.1 / 11B.3B.2.
- * Detection (3B.1) + trade construction (3B.2).
+ * ORB Strategy — Sprint 11B.3B.1 / 11B.3B.2 / 11B.3B.3.
+ * Detection + trade construction + institutional explainability / scoring.
  * No portfolio execution or order placement.
  */
 
@@ -270,9 +270,9 @@ export function createORBStrategyRegistration(
     category: "Scalp" as const,
     enabled: true,
     eligibilityId: ORB_STRATEGY_ID,
-    version: "11B.3B.2",
+    version: "11B.3B.3",
     description:
-      "Opening Range Breakout detection + institutional trade construction.",
+      "Opening Range Breakout — detection, trade construction, and institutional scoring.",
     create: () => new ORBStrategy(config, tradeConfig),
   };
 }

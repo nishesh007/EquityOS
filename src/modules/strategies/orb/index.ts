@@ -1,6 +1,5 @@
 /**
- * ORB Detection + Trade Construction module exports
- * (Sprint 11B.3B.1 / 11B.3B.2).
+ * ORB module exports — Sprint 11B.3B.1 / 11B.3B.2 / 11B.3B.3.
  */
 
 export type { ORBConfig } from "./ORBConstants";
@@ -93,6 +92,63 @@ export {
   resetORBTradeBuilder,
   type ORBTradeBuildInput,
 } from "./ORBTradeBuilder";
+
+export { enrichORBTradeSetup } from "./ORBEnrichment";
+
+export type {
+  ORBConvictionGrade,
+  ORBConvictionWeights,
+  ORBFactorScores,
+  ORBInstitutionalScore,
+  ORBScoringConfig,
+  ORBSignalGrade,
+} from "./ORBScoring";
+
+export {
+  DEFAULT_ORB_CONVICTION_WEIGHTS,
+  DEFAULT_ORB_SCORING_CONFIG,
+  buildORBInstitutionalScore,
+  calculateORBConviction,
+  calculateORBSignalGrade,
+  classifyORBConvictionGrade,
+  classifyORBSignalGrade,
+  resolveORBScoringConfig,
+  scoreORBConvictionFactors,
+} from "./ORBScoring";
+
+export type {
+  ORBExplainability,
+  ORBExplainabilityConfig,
+  ORBExplanationFactor,
+  ORBExplanationImpact,
+} from "./ORBExplainability";
+
+export {
+  DEFAULT_ORB_EXPLAINABILITY_CONFIG,
+  buildORBExplainability,
+  buildORBExplanationFactors,
+  buildORBSummary,
+  createEmptyORBExplainability,
+  resolveORBExplainabilityConfig,
+} from "./ORBExplainability";
+
+export type { ORBMetricsSnapshot } from "./ORBMetrics";
+export {
+  ORBMetrics,
+  createEmptyORBMetrics,
+  getORBMetrics,
+  resetORBMetrics,
+} from "./ORBMetrics";
+
+export {
+  buildORBContextFromPipeline,
+  ensureORBRegistered,
+  executeORBThroughEngine,
+  executeORBWithPipeline,
+  getORBFromFactory,
+  getORBIntegrationStatus,
+  isORBExecutableInput,
+} from "./ORBIntegration";
 
 export { ORBValidator, createORBValidator } from "./ORBValidator";
 export {

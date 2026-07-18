@@ -25,6 +25,8 @@ import {
   generateORBTargets,
   validateORBTradeSetup,
 } from "./ORBTradeUtils";
+import { enrichORBTradeSetup } from "./ORBEnrichment";
+import { getORBMetrics } from "./ORBMetrics";
 
 export interface ORBTradeBuildInput {
   detection: ORBDetection;
@@ -54,6 +56,8 @@ export class ORBTradeBuilder {
    * Never throws — returns rejected setup with warnings on failure.
    */
   build(input: ORBTradeBuildInput): ORBTradeSetup {
+    const started =
+      typeof performance !== "undefined" ? performance.now() : Date.now();
     try {
       const config = resolveORBTradeConfig({
         ...this.config,
@@ -61,13 +65,33 @@ export class ORBTradeBuilder {
       });
       const { detection } = input;
 
+      const finalize = (setup: ORBTradeSetup): ORBTradeSetup => {
+        const enriched = enrichORBTradeSetup({
+          setup,
+          marketContext: input.marketContext,
+          orbInput: input.input,
+        });
+        this.lastSetup = enriched;
+        try {
+          const ended =
+            typeof performance !== "undefined" ? performance.now() : Date.now();
+          getORBMetrics().record({
+            setup: enriched,
+            executionTimeMs: ended - started,
+          });
+        } catch {
+          // Metrics optional.
+        }
+        return enriched;
+      };
+
       if (!detection.detected || detection.direction === "NONE") {
-        const rejected = createRejectedTradeSetup(detection, [
-          "ORB detection not validated — trade construction skipped.",
-          ...detection.warnings,
-        ]);
-        this.lastSetup = rejected;
-        return rejected;
+        return finalize(
+          createRejectedTradeSetup(detection, [
+            "ORB detection not validated — trade construction skipped.",
+            ...detection.warnings,
+          ])
+        );
       }
 
       const warnings: string[] = [...detection.warnings];
@@ -81,12 +105,9 @@ export class ORBTradeBuilder {
         config,
       });
       if (entry === null) {
-        const rejected = createRejectedTradeSetup(detection, [
-          ...warnings,
-          "Invalid entry.",
-        ]);
-        this.lastSetup = rejected;
-        return rejected;
+        return finalize(
+          createRejectedTradeSetup(detection, [...warnings, "Invalid entry."])
+        );
       }
 
       const breakoutCandle = findBreakoutCandle(detection, candles);
@@ -101,12 +122,9 @@ export class ORBTradeBuilder {
       warnings.push(...stopResult.warnings);
 
       if (stopResult.stopLoss === null) {
-        const rejected = createRejectedTradeSetup(detection, [
-          ...warnings,
-          "Invalid stop.",
-        ]);
-        this.lastSetup = rejected;
-        return rejected;
+        return finalize(
+          createRejectedTradeSetup(detection, [...warnings, "Invalid stop."])
+        );
       }
 
       const riskCheck = validateTradeRisk({
@@ -116,12 +134,12 @@ export class ORBTradeBuilder {
         config,
       });
       if (!riskCheck.valid) {
-        const rejected = createRejectedTradeSetup(detection, [
-          ...warnings,
-          ...riskCheck.errors,
-        ]);
-        this.lastSetup = rejected;
-        return rejected;
+        return finalize(
+          createRejectedTradeSetup(detection, [
+            ...warnings,
+            ...riskCheck.errors,
+          ])
+        );
       }
 
       const targetResult = generateORBTargets({
@@ -136,12 +154,12 @@ export class ORBTradeBuilder {
       warnings.push(...targetResult.warnings);
 
       if (!targetResult.targets) {
-        const rejected = createRejectedTradeSetup(detection, [
-          ...warnings,
-          "Invalid targets.",
-        ]);
-        this.lastSetup = rejected;
-        return rejected;
+        return finalize(
+          createRejectedTradeSetup(detection, [
+            ...warnings,
+            "Invalid targets.",
+          ])
+        );
       }
 
       const risk = calculateRiskAmount(entry, stopResult.stopLoss);
@@ -156,21 +174,21 @@ export class ORBTradeBuilder {
       );
 
       if (reward <= 0) {
-        const rejected = createRejectedTradeSetup(detection, [
-          ...warnings,
-          "Negative reward.",
-        ]);
-        this.lastSetup = rejected;
-        return rejected;
+        return finalize(
+          createRejectedTradeSetup(detection, [
+            ...warnings,
+            "Negative reward.",
+          ])
+        );
       }
 
       if (riskReward + config.priceEpsilon < config.minimumRiskReward) {
-        const rejected = createRejectedTradeSetup(detection, [
-          ...warnings,
-          "RR below threshold.",
-        ]);
-        this.lastSetup = rejected;
-        return rejected;
+        return finalize(
+          createRejectedTradeSetup(detection, [
+            ...warnings,
+            "RR below threshold.",
+          ])
+        );
       }
 
       const quality = calculateORBTradeQuality({
@@ -180,8 +198,9 @@ export class ORBTradeBuilder {
         config,
       });
 
-      const draft: ORBTradeSetup = {
-        detection,
+      const draft = createRejectedTradeSetup(detection, dedupe(warnings));
+      const setup: ORBTradeSetup = {
+        ...draft,
         entry,
         stopLoss: stopResult.stopLoss,
         target1: targetResult.targets.target1,
@@ -197,18 +216,17 @@ export class ORBTradeBuilder {
         warnings: dedupe(warnings),
       };
 
-      const validation = validateORBTradeSetup(draft, config);
+      const validation = validateORBTradeSetup(setup, config);
       if (!validation.valid) {
-        const rejected = createRejectedTradeSetup(detection, [
-          ...draft.warnings,
-          ...validation.errors,
-        ]);
-        this.lastSetup = rejected;
-        return rejected;
+        return finalize(
+          createRejectedTradeSetup(detection, [
+            ...setup.warnings,
+            ...validation.errors,
+          ])
+        );
       }
 
-      this.lastSetup = draft;
-      return draft;
+      return finalize(setup);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "ORB trade construction failed.";

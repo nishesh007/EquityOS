@@ -425,5 +425,19 @@ export function createRejectedTradeSetup(
     holdingPeriod: DEFAULT_ORB_TRADE_CONFIG.defaultHoldingPeriod,
     positionType: DEFAULT_ORB_TRADE_CONFIG.defaultPositionType,
     warnings,
+    explainability: {
+      positiveReasons: [],
+      negativeReasons: warnings.slice(0, 3),
+      neutralFactors: [],
+      warnings,
+      summary: ["ORB trade setup rejected."],
+      factors: [],
+    },
+    institutionalScore: {
+      conviction: 20,
+      grade: "Weak",
+      signalGrade: "F",
+      confidence: detection.confidence || 0,
+    },
   };
 }

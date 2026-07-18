@@ -4,6 +4,8 @@
  */
 
 import type { ORBDetection } from "./ORBTypes";
+import type { ORBExplainability } from "./ORBExplainability";
+import type { ORBInstitutionalScore } from "./ORBScoring";
 
 export type ORBEntryMode = "breakout_close" | "retest";
 
@@ -40,6 +42,8 @@ export interface ORBTradeSetup {
   holdingPeriod: string;
   positionType: ORBPositionType;
   warnings: string[];
+  explainability: ORBExplainability;
+  institutionalScore: ORBInstitutionalScore;
 }
 
 export const DEFAULT_ORB_TRADE_CONFIG = {
