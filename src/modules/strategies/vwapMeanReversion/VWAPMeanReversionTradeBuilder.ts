@@ -1,10 +1,13 @@
 /**
- * VWAP Mean Reversion Trade Builder — Sprint 11B.3D.2.
- * Converts validated detection into trade setup (no execution).
+ * VWAP Mean Reversion Trade Builder — Sprint 11B.3D.2 / 11B.3D.3.
+ * Converts validated detection into trade setup with institutional enrichment.
+ * No portfolio execution.
  */
 
 import { round } from "@/lib/engine/utils";
 import type { InstitutionalMarketContext } from "@/src/modules/marketContext";
+import { enrichVWAPMeanReversionTradeSetup } from "./VWAPMeanReversionEnrichment";
+import { getVWAPMeanReversionMetrics } from "./VWAPMeanReversionMetrics";
 import {
   calculateRiskAmount,
   resolveStopLoss,
@@ -51,11 +54,9 @@ export class VWAPMeanReversionTradeBuilder {
     return this.lastSetup;
   }
 
-  /**
-   * Build a complete trade setup from detection + market payload.
-   * Never throws — returns rejected setup with warnings on failure.
-   */
   build(input: VWAPMeanReversionTradeBuildInput): VWAPMeanReversionTradeSetup {
+    const started =
+      typeof performance !== "undefined" ? performance.now() : Date.now();
     try {
       const config = resolveVWAPMeanReversionTradeConfig({
         ...this.config,
@@ -63,13 +64,35 @@ export class VWAPMeanReversionTradeBuilder {
       });
       const { detection } = input;
 
+      const finalize = (
+        setup: VWAPMeanReversionTradeSetup
+      ): VWAPMeanReversionTradeSetup => {
+        const enriched = enrichVWAPMeanReversionTradeSetup({
+          setup,
+          marketContext: input.marketContext,
+          mrInput: input.input,
+        });
+        this.lastSetup = enriched;
+        try {
+          const ended =
+            typeof performance !== "undefined" ? performance.now() : Date.now();
+          getVWAPMeanReversionMetrics().record({
+            setup: enriched,
+            executionTimeMs: ended - started,
+          });
+        } catch {
+          // Metrics optional.
+        }
+        return enriched;
+      };
+
       if (!detection.detected || detection.direction === "NONE") {
-        const rejected = createRejectedVWAPMeanReversionTradeSetup(detection, [
-          "VWAP Mean Reversion detection not validated — trade construction skipped.",
-          ...detection.warnings,
-        ]);
-        this.lastSetup = rejected;
-        return rejected;
+        return finalize(
+          createRejectedVWAPMeanReversionTradeSetup(detection, [
+            "VWAP Mean Reversion detection not validated — trade construction skipped.",
+            ...detection.warnings,
+          ])
+        );
       }
 
       const warnings: string[] = [...detection.warnings];
@@ -91,12 +114,12 @@ export class VWAPMeanReversionTradeBuilder {
         config,
       });
       if (entry === null) {
-        const rejected = createRejectedVWAPMeanReversionTradeSetup(detection, [
-          ...warnings,
-          "Invalid entry.",
-        ]);
-        this.lastSetup = rejected;
-        return rejected;
+        return finalize(
+          createRejectedVWAPMeanReversionTradeSetup(detection, [
+            ...warnings,
+            "Invalid entry.",
+          ])
+        );
       }
 
       const stopResult = resolveStopLoss({
@@ -112,12 +135,12 @@ export class VWAPMeanReversionTradeBuilder {
       warnings.push(...stopResult.warnings);
 
       if (stopResult.stopLoss === null) {
-        const rejected = createRejectedVWAPMeanReversionTradeSetup(detection, [
-          ...warnings,
-          "Invalid stop.",
-        ]);
-        this.lastSetup = rejected;
-        return rejected;
+        return finalize(
+          createRejectedVWAPMeanReversionTradeSetup(detection, [
+            ...warnings,
+            "Invalid stop.",
+          ])
+        );
       }
 
       const riskCheck = validateTradeRisk({
@@ -127,12 +150,12 @@ export class VWAPMeanReversionTradeBuilder {
         config,
       });
       if (!riskCheck.valid) {
-        const rejected = createRejectedVWAPMeanReversionTradeSetup(detection, [
-          ...warnings,
-          ...riskCheck.errors,
-        ]);
-        this.lastSetup = rejected;
-        return rejected;
+        return finalize(
+          createRejectedVWAPMeanReversionTradeSetup(detection, [
+            ...warnings,
+            ...riskCheck.errors,
+          ])
+        );
       }
 
       const targetResult = generateVWAPMeanReversionTargets({
@@ -149,12 +172,12 @@ export class VWAPMeanReversionTradeBuilder {
       warnings.push(...targetResult.warnings);
 
       if (!targetResult.targets) {
-        const rejected = createRejectedVWAPMeanReversionTradeSetup(detection, [
-          ...warnings,
-          "Invalid targets.",
-        ]);
-        this.lastSetup = rejected;
-        return rejected;
+        return finalize(
+          createRejectedVWAPMeanReversionTradeSetup(detection, [
+            ...warnings,
+            "Invalid targets.",
+          ])
+        );
       }
 
       const risk = calculateRiskAmount(entry, stopResult.stopLoss);
@@ -169,21 +192,21 @@ export class VWAPMeanReversionTradeBuilder {
       );
 
       if (reward <= 0) {
-        const rejected = createRejectedVWAPMeanReversionTradeSetup(detection, [
-          ...warnings,
-          "Negative reward.",
-        ]);
-        this.lastSetup = rejected;
-        return rejected;
+        return finalize(
+          createRejectedVWAPMeanReversionTradeSetup(detection, [
+            ...warnings,
+            "Negative reward.",
+          ])
+        );
       }
 
       if (riskReward + config.priceEpsilon < config.minimumRiskReward) {
-        const rejected = createRejectedVWAPMeanReversionTradeSetup(detection, [
-          ...warnings,
-          "RR below threshold.",
-        ]);
-        this.lastSetup = rejected;
-        return rejected;
+        return finalize(
+          createRejectedVWAPMeanReversionTradeSetup(detection, [
+            ...warnings,
+            "RR below threshold.",
+          ])
+        );
       }
 
       const quality = calculateVWAPMeanReversionTradeQuality({
@@ -193,8 +216,12 @@ export class VWAPMeanReversionTradeBuilder {
         config,
       });
 
-      const setup: VWAPMeanReversionTradeSetup = {
+      const draft = createRejectedVWAPMeanReversionTradeSetup(
         detection,
+        dedupe(warnings)
+      );
+      const setup: VWAPMeanReversionTradeSetup = {
+        ...draft,
         entry,
         stopLoss: stopResult.stopLoss,
         target1: targetResult.targets.target1,
@@ -212,16 +239,15 @@ export class VWAPMeanReversionTradeBuilder {
 
       const validation = validateVWAPMeanReversionTradeSetup(setup, config);
       if (!validation.valid) {
-        const rejected = createRejectedVWAPMeanReversionTradeSetup(detection, [
-          ...setup.warnings,
-          ...validation.errors,
-        ]);
-        this.lastSetup = rejected;
-        return rejected;
+        return finalize(
+          createRejectedVWAPMeanReversionTradeSetup(detection, [
+            ...setup.warnings,
+            ...validation.errors,
+          ])
+        );
       }
 
-      this.lastSetup = setup;
-      return setup;
+      return finalize(setup);
     } catch (error) {
       const message =
         error instanceof Error

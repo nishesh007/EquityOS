@@ -1,5 +1,5 @@
 /**
- * VWAP Mean Reversion module exports — Sprint 11B.3D.1 / 11B.3D.2.
+ * VWAP Mean Reversion module exports — Sprint 11B.3D.1 / 11B.3D.2 / 11B.3D.3.
  */
 
 export type { VWAPMeanReversionConfig } from "./VWAPMeanReversionConstants";
@@ -103,6 +103,65 @@ export {
   getVWAPMeanReversionTradeBuilder,
   resetVWAPMeanReversionTradeBuilder,
 } from "./VWAPMeanReversionTradeBuilder";
+
+export { enrichVWAPMeanReversionTradeSetup } from "./VWAPMeanReversionEnrichment";
+
+export type {
+  VWAPMeanReversionExplainability,
+  VWAPMeanReversionExplainabilityConfig,
+  VWAPMeanReversionExplanationFactor,
+  VWAPMeanReversionExplanationImpact,
+} from "./VWAPMeanReversionExplainability";
+
+export {
+  buildVWAPMeanReversionExplainability,
+  buildVWAPMeanReversionExplanationFactors,
+  buildVWAPMeanReversionSummary,
+  createEmptyVWAPMeanReversionExplainability,
+  resolveVWAPMeanReversionExplainabilityConfig,
+  DEFAULT_VWAP_MEAN_REVERSION_EXPLAINABILITY_CONFIG,
+} from "./VWAPMeanReversionExplainability";
+
+export type {
+  VWAPMeanReversionConvictionGrade,
+  VWAPMeanReversionConvictionWeights,
+  VWAPMeanReversionFactorScores,
+  VWAPMeanReversionInstitutionalScore,
+  VWAPMeanReversionScoringConfig,
+  VWAPMeanReversionSignalGrade,
+} from "./VWAPMeanReversionScoring";
+
+export {
+  DEFAULT_VWAP_MEAN_REVERSION_CONVICTION_WEIGHTS,
+  DEFAULT_VWAP_MEAN_REVERSION_SCORING_CONFIG,
+  buildVWAPMeanReversionInstitutionalScore,
+  calculateVWAPMeanReversionConviction,
+  calculateVWAPMeanReversionSignalGrade,
+  classifyVWAPMeanReversionConvictionGrade,
+  classifyVWAPMeanReversionSignalGrade,
+  resolveVWAPMeanReversionScoringConfig,
+  scoreVWAPMeanReversionConvictionFactors,
+} from "./VWAPMeanReversionScoring";
+
+export type { VWAPMeanReversionMetricsSnapshot } from "./VWAPMeanReversionMetrics";
+
+export {
+  VWAPMeanReversionMetrics,
+  VWAP_MEAN_REVERSION_HOLD_TIME_MINUTES,
+  createEmptyVWAPMeanReversionMetrics,
+  getVWAPMeanReversionMetrics,
+  resetVWAPMeanReversionMetrics,
+} from "./VWAPMeanReversionMetrics";
+
+export {
+  buildVWAPMeanReversionContextFromPipeline,
+  ensureVWAPMeanReversionRegistered,
+  executeVWAPMeanReversionThroughEngine,
+  executeVWAPMeanReversionWithPipeline,
+  getVWAPMeanReversionFromFactory,
+  getVWAPMeanReversionIntegrationStatus,
+  isVWAPMeanReversionExecutableInput,
+} from "./VWAPMeanReversionIntegration";
 
 export {
   VWAPMeanReversionStrategy,

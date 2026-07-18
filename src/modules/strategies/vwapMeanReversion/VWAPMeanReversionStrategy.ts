@@ -1,6 +1,7 @@
 /**
- * VWAP Mean Reversion Strategy — Sprint 11B.3D.1 / 11B.3D.2.
- * Detection + trade construction. No portfolio execution or order placement.
+ * VWAP Mean Reversion Strategy — Sprint 11B.3D.1 / 11B.3D.2 / 11B.3D.3.
+ * Detection + trade construction + institutional explainability / scoring.
+ * No portfolio execution or order placement.
  */
 
 import { BaseStrategy } from "../BaseStrategy";
@@ -255,6 +256,14 @@ export class VWAPMeanReversionStrategy extends BaseStrategy {
       lines.push(
         `VWAPMeanReversionTradeSetup ready — ${setup.positionType} · RR ${setup.riskReward}.`
       );
+      if (setup.institutionalScore) {
+        lines.push(
+          `Conviction ${setup.institutionalScore.grade} (${setup.institutionalScore.conviction}) · Signal ${setup.institutionalScore.signalGrade}.`
+        );
+      }
+      if (setup.explainability?.summary?.length) {
+        lines.push(...setup.explainability.summary);
+      }
     }
     lines.push(`Framework signal ${signal.signal}.`);
     return lines;
@@ -271,9 +280,9 @@ export function createVWAPMeanReversionStrategyRegistration(
     category: "Scalp" as const,
     enabled: true,
     eligibilityId: VWAP_MEAN_REVERSION_STRATEGY_ID,
-    version: "11B.3D.2",
+    version: "11B.3D.3",
     description:
-      "VWAP Mean Reversion — detection and institutional trade construction.",
+      "VWAP Mean Reversion — detection, trade construction, and institutional scoring.",
     create: () => new VWAPMeanReversionStrategy(config, tradeConfig),
   };
 }

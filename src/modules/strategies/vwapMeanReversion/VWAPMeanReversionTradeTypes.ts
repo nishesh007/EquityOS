@@ -1,8 +1,10 @@
 /**
- * VWAP Mean Reversion Trade Construction config & contracts — Sprint 11B.3D.2.
+ * VWAP Mean Reversion Trade Construction config & contracts — Sprint 11B.3D.2 / 11B.3D.3.
  * Separate from detection config. Does not alter detection behaviour.
  */
 
+import type { VWAPMeanReversionExplainability } from "./VWAPMeanReversionExplainability";
+import type { VWAPMeanReversionInstitutionalScore } from "./VWAPMeanReversionScoring";
 import type { VWAPMeanReversionDetection } from "./VWAPMeanReversionTypes";
 
 export type VWAPMeanReversionEntryMode =
@@ -44,6 +46,8 @@ export interface VWAPMeanReversionTradeSetup {
   holdingPeriod: string;
   positionType: VWAPMeanReversionPositionType;
   warnings: string[];
+  explainability: VWAPMeanReversionExplainability;
+  institutionalScore: VWAPMeanReversionInstitutionalScore;
 }
 
 export const DEFAULT_VWAP_MEAN_REVERSION_TRADE_CONFIG = {

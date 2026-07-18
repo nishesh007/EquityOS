@@ -520,5 +520,19 @@ export function createRejectedVWAPMeanReversionTradeSetup(
     holdingPeriod: DEFAULT_VWAP_MEAN_REVERSION_TRADE_CONFIG.defaultHoldingPeriod,
     positionType: DEFAULT_VWAP_MEAN_REVERSION_TRADE_CONFIG.defaultPositionType,
     warnings,
+    explainability: {
+      positiveReasons: [],
+      negativeReasons: warnings.slice(0, 3),
+      neutralFactors: [],
+      warnings,
+      summary: ["VWAP Mean Reversion trade setup rejected."],
+      factors: [],
+    },
+    institutionalScore: {
+      conviction: 20,
+      grade: "Weak",
+      signalGrade: "F",
+      confidence: detection.confidence || 0,
+    },
   };
 }
