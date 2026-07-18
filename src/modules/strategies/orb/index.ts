@@ -1,5 +1,6 @@
 /**
- * ORB Detection module exports — Sprint 11B.3B.1.
+ * ORB Detection + Trade Construction module exports
+ * (Sprint 11B.3B.1 / 11B.3B.2).
  */
 
 export type { ORBConfig } from "./ORBConstants";
@@ -28,6 +29,20 @@ export {
   toORBDetectionContext,
 } from "./ORBTypes";
 
+export type {
+  ORBEntryMode,
+  ORBPositionType,
+  ORBQualityGrade,
+  ORBStopMethod,
+  ORBTradeConfig,
+  ORBTradeSetup,
+} from "./ORBTradeTypes";
+
+export {
+  DEFAULT_ORB_TRADE_CONFIG,
+  resolveORBTradeConfig,
+} from "./ORBTradeTypes";
+
 export {
   averageSectorScore,
   calculateOpeningRange,
@@ -46,6 +61,38 @@ export {
   validateSector,
   validateVolume,
 } from "./ORBUtils";
+
+export {
+  calculateAtrStop,
+  calculateCandleStop,
+  calculateOpeningRangeStop,
+  calculateRiskAmount,
+  findBreakoutCandle,
+  isRiskWithinLimit,
+  isValidStop,
+  resolveStopLoss,
+  validateTradeRisk,
+  type ORBStopCandidate,
+} from "./ORBRisk";
+
+export {
+  areValidTargets,
+  calculateORBEntry,
+  calculateORBTradeQuality,
+  calculateRiskReward,
+  classifyORBQualityGrade,
+  createRejectedTradeSetup,
+  generateORBTargets,
+  validateORBTradeSetup,
+  type ORBTargetLadder,
+} from "./ORBTradeUtils";
+
+export {
+  ORBTradeBuilder,
+  getORBTradeBuilder,
+  resetORBTradeBuilder,
+  type ORBTradeBuildInput,
+} from "./ORBTradeBuilder";
 
 export { ORBValidator, createORBValidator } from "./ORBValidator";
 export {
