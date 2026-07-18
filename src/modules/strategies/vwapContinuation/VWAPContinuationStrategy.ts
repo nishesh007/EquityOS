@@ -1,6 +1,6 @@
 /**
- * VWAP Continuation Strategy — Sprint 11B.3C.1.
- * Detection only. No entry / stop / target construction. No portfolio execution.
+ * VWAP Continuation Strategy — Sprint 11B.3C.1 / 11B.3C.2.
+ * Detection + trade construction. No portfolio execution or order placement.
  */
 
 import { BaseStrategy } from "../BaseStrategy";
@@ -17,11 +17,17 @@ import {
   type VWAPContinuationConfig,
 } from "./VWAPContinuationConstants";
 import { VWAPContinuationDetector } from "./VWAPContinuationDetector";
+import { VWAPContinuationTradeBuilder } from "./VWAPContinuationTradeBuilder";
 import type { VWAPContinuationDetection } from "./VWAPContinuationTypes";
 import {
   isVWAPContinuationStrategyInput,
   toVWAPContinuationDetectionContext,
 } from "./VWAPContinuationTypes";
+import {
+  resolveVWAPContinuationTradeConfig,
+  type VWAPContinuationTradeConfig,
+  type VWAPContinuationTradeSetup,
+} from "./VWAPContinuationTradeTypes";
 import {
   createEmptyVWAPContinuationDetection,
   resolveVWAPContinuationConfig,
@@ -36,14 +42,22 @@ export class VWAPContinuationStrategy extends BaseStrategy {
 
   private readonly detector: VWAPContinuationDetector;
   private readonly vwapValidator: VWAPContinuationValidator;
+  private readonly tradeBuilder: VWAPContinuationTradeBuilder;
   private readonly vwapConfig: VWAPContinuationConfig;
+  private readonly tradeConfig: VWAPContinuationTradeConfig;
   private lastDetection: VWAPContinuationDetection | null = null;
+  private lastTradeSetup: VWAPContinuationTradeSetup | null = null;
 
-  constructor(config?: Partial<VWAPContinuationConfig>) {
+  constructor(
+    config?: Partial<VWAPContinuationConfig>,
+    tradeConfig?: Partial<VWAPContinuationTradeConfig>
+  ) {
     super();
     this.vwapConfig = resolveVWAPContinuationConfig(config);
+    this.tradeConfig = resolveVWAPContinuationTradeConfig(tradeConfig);
     this.detector = new VWAPContinuationDetector(this.vwapConfig);
     this.vwapValidator = new VWAPContinuationValidator(this.vwapConfig);
+    this.tradeBuilder = new VWAPContinuationTradeBuilder(this.tradeConfig);
   }
 
   /**
@@ -66,8 +80,48 @@ export class VWAPContinuationStrategy extends BaseStrategy {
     return detection;
   }
 
+  /**
+   * Sprint 11B.3C.2 API — construct institutional trade setup from detection.
+   */
+  buildTradeSetup(
+    context: StrategyExecutionContext
+  ): VWAPContinuationTradeSetup {
+    const detection = this.lastDetection ?? this.detect(context);
+    if (!isVWAPContinuationStrategyInput(context.input)) {
+      const rejected = this.tradeBuilder.build({
+        detection,
+        marketContext: context.marketContext,
+        input: {
+          symbol: context.input.symbol,
+          lastPrice: context.input.lastPrice,
+          vwapContinuation: {
+            candles5m: [],
+            vwap: 0,
+            atr: null,
+            relativeVolume: null,
+          },
+        },
+      });
+      this.lastTradeSetup = rejected;
+      return rejected;
+    }
+
+    const setup = this.tradeBuilder.build({
+      detection,
+      marketContext: context.marketContext,
+      input: context.input,
+      config: this.tradeConfig,
+    });
+    this.lastTradeSetup = setup;
+    return setup;
+  }
+
   getLastDetection(): VWAPContinuationDetection | null {
     return this.lastDetection;
+  }
+
+  getLastTradeSetup(): VWAPContinuationTradeSetup | null {
+    return this.lastTradeSetup;
   }
 
   override validate(
@@ -90,70 +144,87 @@ export class VWAPContinuationStrategy extends BaseStrategy {
     context: StrategyExecutionContext
   ): StrategyAnalysisResult {
     const detection = this.detect(context);
+    const setup = this.buildTradeSetup(context);
+    const tradeValid = setup.entry > 0 && setup.riskReward > 0;
+
     const bias =
-      detection.detected && detection.direction === "BUY"
+      tradeValid && setup.detection.direction === "BUY"
         ? "Bullish"
-        : detection.detected && detection.direction === "SELL"
+        : tradeValid && setup.detection.direction === "SELL"
           ? "Bearish"
           : "Neutral";
 
     return {
       bias,
-      score: detection.confidence,
-      notes:
-        detection.detected
-          ? detection.reasons
+      score: tradeValid ? setup.qualityScore : detection.confidence,
+      notes: tradeValid
+        ? [
+            `VWAP Continuation trade constructed (${setup.detection.direction}).`,
+            `Entry ${setup.entry} · Stop ${setup.stopLoss} · RR ${setup.riskReward}.`,
+            `Quality ${setup.qualityGrade} (${setup.qualityScore}).`,
+          ]
+        : setup.warnings.length > 0
+          ? setup.warnings
           : detection.warnings.length > 0
             ? detection.warnings
             : detection.reasons,
       metrics: {
         detected: detection.detected ? 1 : 0,
+        tradeValid: tradeValid ? 1 : 0,
         vwap: detection.vwap,
         distanceFromVWAP: detection.distanceFromVWAP,
-        pullbackDetected: detection.pullbackDetected ? 1 : 0,
-        bounceConfirmed: detection.bounceConfirmed ? 1 : 0,
-        volumeConfirmed: detection.volumeConfirmed ? 1 : 0,
-        breadthConfirmed: detection.breadthConfirmed ? 1 : 0,
-        sectorConfirmed: detection.sectorConfirmed ? 1 : 0,
-        marketConfirmed: detection.marketConfirmed ? 1 : 0,
+        entry: setup.entry,
+        stopLoss: setup.stopLoss,
+        target1: setup.target1,
+        target2: setup.target2,
+        finalTarget: setup.finalTarget,
+        risk: setup.risk,
+        reward: setup.reward,
+        riskReward: setup.riskReward,
+        qualityScore: setup.qualityScore,
         confidence: detection.confidence,
       },
     };
   }
 
+  /**
+   * Framework signal derived from a valid VWAPContinuationTradeSetup.
+   * Call {@link buildTradeSetup} / {@link getLastTradeSetup} for the full setup.
+   */
   override generateSignal(
     _context: StrategyExecutionContext,
     analysis: StrategyAnalysisResult
   ): StrategySignal["signal"] {
-    if (analysis.metrics.detected !== 1) return "IGNORE";
+    if (analysis.metrics.tradeValid !== 1) return "IGNORE";
     if (analysis.bias === "Bullish") return "BUY";
     if (analysis.bias === "Bearish") return "SELL";
     return "IGNORE";
   }
 
-  /** Detection sprint — trade levels deferred. */
   override calculateEntry(
     _context?: StrategyExecutionContext,
-    _analysis?: StrategyAnalysisResult
+    analysis?: StrategyAnalysisResult
   ): number {
-    return 0;
+    return analysis?.metrics.entry ?? this.lastTradeSetup?.entry ?? 0;
   }
 
   override calculateStopLoss(
     _context?: StrategyExecutionContext,
-    _analysis?: StrategyAnalysisResult,
-    _entry?: number
+    analysis?: StrategyAnalysisResult
   ): number {
-    return 0;
+    return analysis?.metrics.stopLoss ?? this.lastTradeSetup?.stopLoss ?? 0;
   }
 
   override calculateTargets(
     _context?: StrategyExecutionContext,
-    _analysis?: StrategyAnalysisResult,
-    _entry?: number,
-    _stopLoss?: number
+    analysis?: StrategyAnalysisResult
   ): StrategyTargets {
-    return { target1: 0, target2: 0, finalTarget: 0 };
+    return {
+      target1: analysis?.metrics.target1 ?? this.lastTradeSetup?.target1 ?? 0,
+      target2: analysis?.metrics.target2 ?? this.lastTradeSetup?.target2 ?? 0,
+      finalTarget:
+        analysis?.metrics.finalTarget ?? this.lastTradeSetup?.finalTarget ?? 0,
+    };
   }
 
   override calculateConfidence(
@@ -163,16 +234,27 @@ export class VWAPContinuationStrategy extends BaseStrategy {
     return analysis.score;
   }
 
+  override calculateRiskReward(
+    entry: number,
+    stopLoss: number,
+    targets: StrategyTargets
+  ): number {
+    if (this.lastTradeSetup && this.lastTradeSetup.riskReward > 0) {
+      return this.lastTradeSetup.riskReward;
+    }
+    return super.calculateRiskReward(entry, stopLoss, targets);
+  }
+
   override explain(
     _context: StrategyExecutionContext,
     analysis: StrategyAnalysisResult,
     signal: StrategySignal
   ): string[] {
-    const detection = this.lastDetection;
+    const setup = this.lastTradeSetup;
     const lines = [...analysis.notes];
-    if (detection) {
+    if (setup && setup.entry > 0) {
       lines.push(
-        `VWAP Continuation ${detection.detected ? "detected" : "not detected"} · confidence ${detection.confidence}.`
+        `VWAPContinuationTradeSetup ready — ${setup.positionType} · RR ${setup.riskReward}.`
       );
     }
     lines.push(`Framework signal ${signal.signal}.`);
@@ -184,7 +266,8 @@ export class VWAPContinuationStrategy extends BaseStrategy {
  * Registry descriptor — StrategyFactory instantiates via create().
  */
 export function createVWAPContinuationStrategyRegistration(
-  config?: Partial<VWAPContinuationConfig>
+  config?: Partial<VWAPContinuationConfig>,
+  tradeConfig?: Partial<VWAPContinuationTradeConfig>
 ) {
   return {
     id: VWAP_CONTINUATION_STRATEGY_ID,
@@ -192,10 +275,10 @@ export function createVWAPContinuationStrategyRegistration(
     category: "Scalp" as const,
     enabled: true,
     eligibilityId: VWAP_CONTINUATION_STRATEGY_ID,
-    version: "11B.3C.1",
+    version: "11B.3C.2",
     description:
-      "VWAP Continuation — institutional detection only (no trade construction).",
-    create: () => new VWAPContinuationStrategy(config),
+      "VWAP Continuation — detection and institutional trade construction.",
+    create: () => new VWAPContinuationStrategy(config, tradeConfig),
   };
 }
 
@@ -205,9 +288,10 @@ export function registerVWAPContinuationStrategy(
       r: ReturnType<typeof createVWAPContinuationStrategyRegistration>
     ) => boolean;
   },
-  config?: Partial<VWAPContinuationConfig>
+  config?: Partial<VWAPContinuationConfig>,
+  tradeConfig?: Partial<VWAPContinuationTradeConfig>
 ): boolean {
   return registry.register(
-    createVWAPContinuationStrategyRegistration(config)
+    createVWAPContinuationStrategyRegistration(config, tradeConfig)
   );
 }

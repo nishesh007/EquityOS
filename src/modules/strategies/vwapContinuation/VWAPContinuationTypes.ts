@@ -57,6 +57,9 @@ export interface VWAPContinuationMarketData {
   atr: number | null;
   relativeVolume: number | null;
   averageVolume?: number | null;
+  /** Optional swing anchors for trade construction (Sprint 11B.3C.2). */
+  recentSwingHigh?: number | null;
+  recentSwingLow?: number | null;
 }
 
 export interface VWAPContinuationStrategyInput extends StrategyMarketInput {
