@@ -1,7 +1,7 @@
 /**
- * Market Context Engine — Sprint 11B.1A / 11B.1B / 11B.1C.
+ * Market Context Engine — Sprint 11B.1A / 11B.1B / 11B.1C / 11B.1D.
  * First stage of the institutional trading pipeline.
- * Extends with breadth, sector, and volatility analysis without breaking prior APIs.
+ * 11B.1D exposes getInstitutionalContext() as the canonical SSOT.
  */
 
 import { BreadthEngine, getBreadthEngine, resetBreadthEngine } from "./BreadthEngine";
@@ -15,9 +15,15 @@ import {
   getVolatilityEngine,
   resetVolatilityEngine,
 } from "./VolatilityEngine";
+import {
+  MarketContextAggregator,
+  getMarketContextAggregator,
+  resetMarketContextAggregator,
+} from "./MarketContextAggregator";
 import type {
   BreadthAnalysis,
   BreadthEngineInput,
+  InstitutionalMarketContext,
   MarketContext,
   MarketContextAnalysisBreakdown,
   MarketContextConfig,
@@ -49,12 +55,14 @@ export class MarketContextEngine {
   private readonly breadthEngine: BreadthEngine;
   private readonly sectorEngine: SectorStrengthEngine;
   private readonly volatilityEngine: VolatilityEngine;
+  private readonly aggregator: MarketContextAggregator;
 
   constructor(config?: Partial<MarketContextConfig>) {
     this.config = resolveMarketContextConfig(config);
     this.breadthEngine = getBreadthEngine();
     this.sectorEngine = getSectorStrengthEngine();
     this.volatilityEngine = getVolatilityEngine();
+    this.aggregator = getMarketContextAggregator();
   }
 
   /**
@@ -113,6 +121,20 @@ export class MarketContextEngine {
     return analysis;
   }
 
+  /**
+   * Sprint 11B.1D — canonical institutional context.
+   * Aggregates existing subsystem outputs only (no recalculation).
+   */
+  getInstitutionalContext(): InstitutionalMarketContext {
+    return this.aggregator.aggregate({
+      context: this.getCurrentContext(),
+      breadth: this.getBreadthAnalysis(),
+      sector: this.getSectorAnalysis(),
+      volatility: this.getVolatilityAnalysis(),
+      timestamp: new Date(),
+    });
+  }
+
   getCurrentContext(): MarketContext | null {
     return this.currentContext;
   }
@@ -125,7 +147,6 @@ export class MarketContextEngine {
     return this.sectorAnalysis ?? this.sectorEngine.getCurrentAnalysis();
   }
 
-  /** Sprint 11B.1C — latest institutional volatility analysis. */
   getVolatilityAnalysis(): VolatilityAnalysis | null {
     return this.volatilityAnalysis ?? this.volatilityEngine.getCurrentAnalysis();
   }
@@ -147,6 +168,7 @@ export class MarketContextEngine {
     this.breadthEngine.clear();
     this.sectorEngine.clear();
     this.volatilityEngine.clear();
+    this.aggregator.clearCache();
   }
 
   private buildBreakdown(
@@ -227,4 +249,5 @@ export function resetMarketContextEngine(): void {
   resetBreadthEngine();
   resetSectorStrengthEngine();
   resetVolatilityEngine();
+  resetMarketContextAggregator();
 }

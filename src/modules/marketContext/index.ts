@@ -1,8 +1,12 @@
 /**
- * Market Context module public exports (Sprint 11B.1A / 11B.1B / 11B.1C).
+ * Market Context module public exports (Sprint 11B.1A / 11B.1B / 11B.1C / 11B.1D).
  */
 
 export type {
+  AggregatorConfig,
+  AggregatorHealthWeights,
+  AggregatorInput,
+  AggregatorSectionAvailability,
   AtrExpansionResult,
   BreadthAnalysis,
   BreadthAnalysisResult,
@@ -16,6 +20,7 @@ export type {
   GapDirection,
   GapRiskResult,
   IndexContextSnapshot,
+  InstitutionalMarketContext,
   InstitutionalVolatilityRegime,
   MarketContext,
   MarketContextAnalysisBreakdown,
@@ -28,6 +33,7 @@ export type {
   MarketStrengthAnalysisResult,
   MarketStrengthWeights,
   MarketTrend,
+  QualityGrade,
   RiskMode,
   RiskModeAnalysisResult,
   SectorAnalysis,
@@ -49,6 +55,8 @@ export type {
 } from "./MarketContextTypes";
 
 export {
+  DEFAULT_AGGREGATOR_CONFIG,
+  DEFAULT_AGGREGATOR_HEALTH_WEIGHTS,
   DEFAULT_BREADTH_CONFIG,
   DEFAULT_MARKET_CONTEXT_CONFIG,
   DEFAULT_MARKET_CONTEXT_THRESHOLDS,
@@ -83,15 +91,23 @@ export {
 } from "./VolatilityEngine";
 
 export {
+  MarketContextAggregator,
+  getMarketContextAggregator,
+  resetMarketContextAggregator,
+} from "./MarketContextAggregator";
+
+export {
   MarketContextService,
   fetchMarketContextRawData,
   getBreadth,
+  getInstitutionalMarketContext,
   getMarketContext,
   getMarketContextService,
   getSectorStrength,
   getVolatility,
   mapRawDataToMarketContextInput,
   refreshBreadth,
+  refreshInstitutionalContext,
   refreshMarketContext,
   refreshSectorStrength,
   refreshVolatility,
@@ -164,3 +180,14 @@ export {
   calculateRiskMode as calculateVolatilityRiskMode,
   calculateConfidence as calculateVolatilityConfidence,
 } from "./VolatilityUtils";
+
+export {
+  aggregateInstitutionalMarketContext,
+  aggregateRiskMode,
+  buildAggregatorFingerprint,
+  buildInstitutionalSummary,
+  calculateAggregatorConfidence,
+  calculateHealthScore,
+  classifyQualityGrade,
+  resolveAggregatorConfig,
+} from "./AggregatorUtils";

@@ -645,3 +645,97 @@ export interface VolatilityAnalysis {
   gapDirection: GapDirection;
   lastUpdated: Date;
 }
+
+/* ─── Sprint 11B.1D — Market Context Aggregator ─── */
+
+export type QualityGrade = "A+" | "A" | "B" | "C";
+
+/**
+ * Configurable health-score weights for institutional aggregation.
+ * Weights should sum to 1.0.
+ */
+export interface AggregatorHealthWeights {
+  readonly marketTrend: number;
+  readonly breadth: number;
+  readonly sector: number;
+  readonly volatility: number;
+  readonly momentum: number;
+  readonly participation: number;
+}
+
+export interface AggregatorConfig {
+  readonly weights: AggregatorHealthWeights;
+  readonly gradeAPlusMin: number;
+  readonly gradeAMin: number;
+  readonly gradeBMin: number;
+  readonly summaryMaxPoints: number;
+  readonly summaryMinPoints: number;
+  readonly conflictConfidencePenalty: number;
+  readonly missingSubsystemPenalty: number;
+  readonly lowSubsystemConfidenceThreshold: number;
+  readonly lowSubsystemConfidencePenalty: number;
+}
+
+export const DEFAULT_AGGREGATOR_HEALTH_WEIGHTS: AggregatorHealthWeights = {
+  marketTrend: 0.25,
+  breadth: 0.2,
+  sector: 0.2,
+  volatility: 0.15,
+  momentum: 0.1,
+  participation: 0.1,
+};
+
+export const DEFAULT_AGGREGATOR_CONFIG: AggregatorConfig = {
+  weights: DEFAULT_AGGREGATOR_HEALTH_WEIGHTS,
+  gradeAPlusMin: 95,
+  gradeAMin: 85,
+  gradeBMin: 70,
+  summaryMaxPoints: 8,
+  summaryMinPoints: 5,
+  conflictConfidencePenalty: 10,
+  missingSubsystemPenalty: 12,
+  lowSubsystemConfidenceThreshold: 40,
+  lowSubsystemConfidencePenalty: 8,
+};
+
+/**
+ * Canonical single source of truth for the institutional trading pipeline.
+ * Downstream engines must consume this object only.
+ */
+export interface InstitutionalMarketContext {
+  timestamp: Date;
+  marketTrend: MarketTrend;
+  marketStrength: number;
+  marketBreadth: BreadthAnalysis;
+  sectorStrength: SectorAnalysis[];
+  sectorRotation: SectorRotationSummary;
+  volatility: VolatilityAnalysis;
+  riskMode: RiskMode;
+  confidence: number;
+  healthScore: number;
+  qualityGrade: QualityGrade;
+  summary: string[];
+  /** Non-fatal subsystem warnings (missing/conflicting/degraded data). */
+  warnings: string[];
+}
+
+/**
+ * Already-computed subsystem outputs. Aggregator never recalculates these.
+ */
+export interface AggregatorInput {
+  context: MarketContext | null;
+  breadth: BreadthAnalysis | null;
+  sector: SectorStrengthAnalysis | null;
+  volatility: VolatilityAnalysis | null;
+  timestamp?: Date;
+  config?: Partial<AggregatorConfig> & {
+    weights?: Partial<AggregatorHealthWeights>;
+  };
+}
+
+export interface AggregatorSectionAvailability {
+  context: boolean;
+  breadth: boolean;
+  sector: boolean;
+  volatility: boolean;
+}

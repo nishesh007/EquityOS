@@ -1,8 +1,8 @@
 /**
- * Market Context Service — Sprint 11B.1A / 11B.1B.
+ * Market Context Service — Sprint 11B.1A / 11B.1B / 11B.1C / 11B.1D.
  * Consumes existing EquityOS market APIs once, maps to engine input, and
- * exposes getMarketContext / refresh / subscribe plus breadth & sector APIs.
- * No duplicate fetching.
+ * exposes getMarketContext / refresh / subscribe plus breadth, sector,
+ * volatility, and institutional aggregate APIs. No duplicate fetching.
  */
 
 import { marketDataService } from "@/lib/market-data";
@@ -23,6 +23,7 @@ import type {
   BreadthAnalysis,
   BreadthContextSnapshot,
   IndexContextSnapshot,
+  InstitutionalMarketContext,
   MarketContext,
   MarketContextInput,
   MarketContextListener,
@@ -36,6 +37,7 @@ import { createFallbackBreadthAnalysis } from "./BreadthUtils";
 import { createFallbackSectorStrengthAnalysis } from "./SectorStrengthUtils";
 import { createFallbackVolatilityAnalysis } from "./VolatilityUtils";
 import { createFallbackMarketContext } from "./MarketContextUtils";
+import { getMarketContextAggregator } from "./MarketContextAggregator";
 
 const OHLC_TIMEFRAME = "3M" as const;
 
@@ -214,6 +216,7 @@ export class MarketContextService {
   private breadthCache: BreadthAnalysis | null = null;
   private sectorCache: SectorStrengthAnalysis | null = null;
   private volatilityCache: VolatilityAnalysis | null = null;
+  private institutionalCache: InstitutionalMarketContext | null = null;
   private rawCache: MarketContextRawData | null = null;
   private inflight: Promise<MarketContext> | null = null;
 
@@ -260,8 +263,21 @@ export class MarketContextService {
   }
 
   /**
+   * Sprint 11B.1D — canonical institutional market context (cached).
+   * Aggregates already-computed subsystem outputs only.
+   */
+  async getInstitutionalMarketContext(
+    options: MarketContextServiceOptions = {}
+  ): Promise<InstitutionalMarketContext> {
+    if (!options.forceRefresh && this.institutionalCache) {
+      return this.institutionalCache;
+    }
+    return this.refreshInstitutionalContext();
+  }
+
+  /**
    * Force-recomputes market context from live EquityOS market services.
-   * Also refreshes breadth, sector strength, and volatility from the same raw payload.
+   * Also refreshes breadth, sector strength, volatility, and institutional aggregate.
    */
   async refresh(): Promise<MarketContext> {
     if (this.inflight) {
@@ -309,6 +325,24 @@ export class MarketContextService {
   }
 
   /**
+   * Force-refresh institutional aggregate.
+   * Reuses cached subsystem analyses when already warm; only re-fetches via refresh().
+   */
+  async refreshInstitutionalContext(): Promise<InstitutionalMarketContext> {
+    await this.refresh();
+    return (
+      this.institutionalCache ??
+      getMarketContextAggregator().aggregate({
+        context: this.cache,
+        breadth: this.breadthCache,
+        sector: this.sectorCache,
+        volatility: this.volatilityCache,
+        timestamp: new Date(),
+      })
+    );
+  }
+
+  /**
    * Subscribe to context updates. Returns an unsubscribe function.
    */
   subscribe(listener: MarketContextListener): () => void {
@@ -338,12 +372,18 @@ export class MarketContextService {
     return this.volatilityCache;
   }
 
+  getCachedInstitutionalContext(): InstitutionalMarketContext | null {
+    return this.institutionalCache;
+  }
+
   clearCache(): void {
     this.cache = null;
     this.breadthCache = null;
     this.sectorCache = null;
     this.volatilityCache = null;
+    this.institutionalCache = null;
     this.rawCache = null;
+    getMarketContextAggregator().clearCache();
   }
 
   private async computeFreshContext(): Promise<MarketContext> {
@@ -364,6 +404,14 @@ export class MarketContextService {
       this.breadthCache = engine.analyzeBreadth(breadthInput);
       this.sectorCache = engine.analyzeSectorStrength(sectorInput);
       this.volatilityCache = engine.analyzeVolatility(volatilityInput);
+
+      this.institutionalCache = getMarketContextAggregator().aggregate({
+        context,
+        breadth: this.breadthCache,
+        sector: this.sectorCache,
+        volatility: this.volatilityCache,
+        timestamp: raw.fetchedAt,
+      });
 
       this.cache = context;
       this.notify(context);
@@ -387,6 +435,13 @@ export class MarketContextService {
         asOf,
         "Volatility refresh failed — neutral fallback applied"
       );
+      this.institutionalCache = getMarketContextAggregator().aggregate({
+        context: fallback,
+        breadth: this.breadthCache,
+        sector: this.sectorCache,
+        volatility: this.volatilityCache,
+        timestamp: asOf,
+      });
 
       getMarketContextEngine().analyze({
         nifty: {
@@ -521,4 +576,16 @@ export async function getVolatility(
 /** Convenience: refreshVolatility() via the shared service singleton. */
 export async function refreshVolatility(): Promise<VolatilityAnalysis> {
   return getMarketContextService().refreshVolatility();
+}
+
+/** Convenience: getInstitutionalMarketContext() via the shared service singleton. */
+export async function getInstitutionalMarketContext(
+  options?: MarketContextServiceOptions
+): Promise<InstitutionalMarketContext> {
+  return getMarketContextService().getInstitutionalMarketContext(options);
+}
+
+/** Convenience: refreshInstitutionalContext() via the shared service singleton. */
+export async function refreshInstitutionalContext(): Promise<InstitutionalMarketContext> {
+  return getMarketContextService().refreshInstitutionalContext();
 }
