@@ -11,8 +11,10 @@ import {
   type BreadthEngineInput,
   type CapTier,
   type ConstituentSnapshot,
+  type MarketContextInput,
   type MarketContextRawData,
   type SectorEngineInput,
+  type VolatilityEngineInput,
 } from "./MarketContextTypes";
 import {
   classifyCapTier,
@@ -176,6 +178,45 @@ export function buildSectorEngineInputFromRaw(
     marketVolumeChangePercent: estimateVolumeChange(raw),
     previousScores,
     asOf: raw.fetchedAt,
+  };
+}
+
+/**
+ * Builds volatility engine input from an already-mapped MarketContextInput
+ * plus optional breadth / strength scores (no extra fetching).
+ */
+export function buildVolatilityEngineInput(
+  contextInput: MarketContextInput,
+  options: {
+    breadthScore?: number | null;
+    marketStrength?: number | null;
+    previousIndiaVix?: number | null;
+  } = {}
+): VolatilityEngineInput {
+  const pulseBreadthFallback = (() => {
+    const total =
+      contextInput.breadth.advances +
+      contextInput.breadth.declines +
+      contextInput.breadth.unchanged;
+    if (total <= 0) return null;
+    return (contextInput.breadth.advances / total) * 100;
+  })();
+
+  return {
+    indiaVix: contextInput.indiaVix.available
+      ? contextInput.indiaVix.level
+      : null,
+    indiaVixChangePercent: contextInput.indiaVix.available
+      ? contextInput.indiaVix.changePercent
+      : null,
+    previousIndiaVix: options.previousIndiaVix ?? null,
+    nifty: contextInput.nifty,
+    sensex: contextInput.sensex,
+    bankNifty: contextInput.bankNifty,
+    breadthScore: options.breadthScore ?? pulseBreadthFallback,
+    marketStrength: options.marketStrength ?? null,
+    volumeChangePercent: contextInput.volumeChangePercent,
+    asOf: contextInput.asOf,
   };
 }
 

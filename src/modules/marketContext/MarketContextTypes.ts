@@ -489,3 +489,159 @@ export interface SectorStrengthAnalysis {
   reasons: string[];
   lastUpdated: Date;
 }
+
+/* ─── Sprint 11B.1C — India VIX & Volatility Engine ─── */
+
+/**
+ * Institutional volatility regime labels (11B.1C).
+ * Distinct from the lighter 11B.1A VolatilityRegime union.
+ */
+export type InstitutionalVolatilityRegime =
+  | "Very Low"
+  | "Low"
+  | "Normal"
+  | "Elevated"
+  | "High"
+  | "Extreme";
+
+export type VolatilityTrendState =
+  | "Increasing"
+  | "Decreasing"
+  | "Stable"
+  | "Expanding"
+  | "Contracting";
+
+export type GapDirection = "up" | "down" | "flat";
+
+export interface VolatilityConfig {
+  readonly atrPeriod: number;
+  readonly historicalVolPeriod: number;
+  readonly realizedVolPeriod: number;
+  readonly vixVeryLow: number;
+  readonly vixLow: number;
+  readonly vixNormal: number;
+  readonly vixElevated: number;
+  readonly vixHigh: number;
+  readonly scoreVeryQuietMax: number;
+  readonly scoreLowMax: number;
+  readonly scoreNormalMax: number;
+  readonly scoreHighMax: number;
+  readonly atrExpandRatio: number;
+  readonly atrCompressRatio: number;
+  readonly rangeElevatedPct: number;
+  readonly rangeQuietPct: number;
+  readonly gapMaterialPct: number;
+  readonly vixMomentumStrongPct: number;
+  readonly trendStableBand: number;
+  readonly weightVix: number;
+  readonly weightAtr: number;
+  readonly weightHistorical: number;
+  readonly weightRealized: number;
+  readonly weightRange: number;
+  readonly weightGap: number;
+  readonly riskOnMaxScore: number;
+  readonly riskOffMinScore: number;
+  readonly riskOnMinBreadth: number;
+  readonly riskOffMaxBreadth: number;
+  readonly riskOnMinStrength: number;
+  readonly riskOffMaxStrength: number;
+  readonly missingDataConfidencePenalty: number;
+}
+
+export const DEFAULT_VOLATILITY_CONFIG: VolatilityConfig = {
+  atrPeriod: 14,
+  historicalVolPeriod: 20,
+  realizedVolPeriod: 10,
+  vixVeryLow: 11,
+  vixLow: 13,
+  vixNormal: 16,
+  vixElevated: 18,
+  vixHigh: 22,
+  scoreVeryQuietMax: 20,
+  scoreLowMax: 40,
+  scoreNormalMax: 60,
+  scoreHighMax: 80,
+  atrExpandRatio: 1.25,
+  atrCompressRatio: 0.85,
+  rangeElevatedPct: 1.5,
+  rangeQuietPct: 0.6,
+  gapMaterialPct: 0.5,
+  vixMomentumStrongPct: 5,
+  trendStableBand: 3,
+  weightVix: 0.4,
+  weightAtr: 0.15,
+  weightHistorical: 0.12,
+  weightRealized: 0.12,
+  weightRange: 0.12,
+  weightGap: 0.09,
+  riskOnMaxScore: 42,
+  riskOffMinScore: 62,
+  riskOnMinBreadth: 55,
+  riskOffMaxBreadth: 45,
+  riskOnMinStrength: 55,
+  riskOffMaxStrength: 45,
+  missingDataConfidencePenalty: 14,
+};
+
+export interface VolatilityEngineInput {
+  indiaVix: number | null;
+  indiaVixChangePercent: number | null;
+  /** Prior VIX level for trend/momentum when available. */
+  previousIndiaVix: number | null;
+  nifty: IndexContextSnapshot;
+  sensex: IndexContextSnapshot;
+  bankNifty: IndexContextSnapshot;
+  /** Market breadth score 0–100 when available. */
+  breadthScore: number | null;
+  /** Composite market strength 0–100 when available. */
+  marketStrength: number | null;
+  volumeChangePercent: number | null;
+  asOf: Date;
+  config?: Partial<VolatilityConfig>;
+}
+
+export interface GapRiskResult {
+  gapPercent: number;
+  direction: GapDirection;
+  magnitudeScore: number;
+  reasons: string[];
+}
+
+export interface AtrExpansionResult {
+  atr: number | null;
+  atrPercent: number | null;
+  expansionRatio: number | null;
+  expanding: boolean;
+  compressing: boolean;
+  expansionScore: number;
+  reasons: string[];
+}
+
+/**
+ * Fully populated institutional volatility analysis (Sprint 11B.1C).
+ */
+export interface VolatilityAnalysis {
+  score: number;
+  regime: InstitutionalVolatilityRegime;
+  trend: VolatilityTrendState;
+  indiaVix: number;
+  atr: number;
+  historicalVolatility: number;
+  realizedVolatility: number;
+  gapPercent: number;
+  dailyRange: number;
+  intradayRange: number;
+  riskMode: RiskMode;
+  confidence: number;
+  reasons: string[];
+  /** Extended diagnostics retained for institutional consumers. */
+  vixTrend: VolatilityTrendState;
+  vixMomentum: number;
+  atrExpansion: boolean;
+  atrCompression: boolean;
+  relativeVolatility: number;
+  volatilityExpansion: boolean;
+  volatilityCompression: boolean;
+  gapDirection: GapDirection;
+  lastUpdated: Date;
+}

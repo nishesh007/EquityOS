@@ -1,7 +1,7 @@
 /**
- * Market Context Engine — Sprint 11B.1A / 11B.1B.
+ * Market Context Engine — Sprint 11B.1A / 11B.1B / 11B.1C.
  * First stage of the institutional trading pipeline.
- * 11B.1B extends with breadthAnalysis + sectorAnalysis without breaking 11B.1A APIs.
+ * Extends with breadth, sector, and volatility analysis without breaking prior APIs.
  */
 
 import { BreadthEngine, getBreadthEngine, resetBreadthEngine } from "./BreadthEngine";
@@ -10,6 +10,11 @@ import {
   getSectorStrengthEngine,
   resetSectorStrengthEngine,
 } from "./SectorStrengthEngine";
+import {
+  VolatilityEngine,
+  getVolatilityEngine,
+  resetVolatilityEngine,
+} from "./VolatilityEngine";
 import type {
   BreadthAnalysis,
   BreadthEngineInput,
@@ -19,6 +24,8 @@ import type {
   MarketContextInput,
   SectorEngineInput,
   SectorStrengthAnalysis,
+  VolatilityAnalysis,
+  VolatilityEngineInput,
 } from "./MarketContextTypes";
 import {
   buildMarketContextFromInput,
@@ -37,19 +44,21 @@ export class MarketContextEngine {
   private lastBreakdown: MarketContextAnalysisBreakdown | null = null;
   private breadthAnalysis: BreadthAnalysis | null = null;
   private sectorAnalysis: SectorStrengthAnalysis | null = null;
+  private volatilityAnalysis: VolatilityAnalysis | null = null;
   private readonly config: MarketContextConfig;
   private readonly breadthEngine: BreadthEngine;
   private readonly sectorEngine: SectorStrengthEngine;
+  private readonly volatilityEngine: VolatilityEngine;
 
   constructor(config?: Partial<MarketContextConfig>) {
     this.config = resolveMarketContextConfig(config);
     this.breadthEngine = getBreadthEngine();
     this.sectorEngine = getSectorStrengthEngine();
+    this.volatilityEngine = getVolatilityEngine();
   }
 
   /**
    * Analyze normalized market inputs and return a fully populated MarketContext.
-   * Also refreshes institutional breadthAnalysis / sectorAnalysis when possible.
    * Gracefully falls back to a neutral context when inputs are unusable.
    */
   analyze(input: MarketContextInput): MarketContext {
@@ -83,42 +92,44 @@ export class MarketContextEngine {
     }
   }
 
-  /**
-   * Run institutional breadth analysis (Sprint 11B.1B).
-   * Stored on the engine and exposed via getBreadthAnalysis().
-   */
+  /** Sprint 11B.1B — institutional breadth analysis. */
   analyzeBreadth(input: BreadthEngineInput): BreadthAnalysis {
     const analysis = this.breadthEngine.analyze(input);
     this.breadthAnalysis = analysis;
     return analysis;
   }
 
-  /**
-   * Run institutional sector strength analysis (Sprint 11B.1B).
-   * Stored on the engine and exposed via getSectorAnalysis().
-   */
+  /** Sprint 11B.1B — institutional sector strength analysis. */
   analyzeSectorStrength(input: SectorEngineInput): SectorStrengthAnalysis {
     const analysis = this.sectorEngine.analyze(input);
     this.sectorAnalysis = analysis;
     return analysis;
   }
 
-  /** Returns the most recent analyzed context, or null before the first analyze(). */
+  /** Sprint 11B.1C — institutional volatility analysis. */
+  analyzeVolatility(input: VolatilityEngineInput): VolatilityAnalysis {
+    const analysis = this.volatilityEngine.analyze(input);
+    this.volatilityAnalysis = analysis;
+    return analysis;
+  }
+
   getCurrentContext(): MarketContext | null {
     return this.currentContext;
   }
 
-  /** Sprint 11B.1B — latest institutional breadth analysis. */
   getBreadthAnalysis(): BreadthAnalysis | null {
     return this.breadthAnalysis ?? this.breadthEngine.getCurrentAnalysis();
   }
 
-  /** Sprint 11B.1B — latest institutional sector strength analysis. */
   getSectorAnalysis(): SectorStrengthAnalysis | null {
     return this.sectorAnalysis ?? this.sectorEngine.getCurrentAnalysis();
   }
 
-  /** Optional diagnostic breakdown from the last successful analyze(). */
+  /** Sprint 11B.1C — latest institutional volatility analysis. */
+  getVolatilityAnalysis(): VolatilityAnalysis | null {
+    return this.volatilityAnalysis ?? this.volatilityEngine.getCurrentAnalysis();
+  }
+
   getLastBreakdown(): MarketContextAnalysisBreakdown | null {
     return this.lastBreakdown;
   }
@@ -132,8 +143,10 @@ export class MarketContextEngine {
     this.lastBreakdown = null;
     this.breadthAnalysis = null;
     this.sectorAnalysis = null;
+    this.volatilityAnalysis = null;
     this.breadthEngine.clear();
     this.sectorEngine.clear();
+    this.volatilityEngine.clear();
   }
 
   private buildBreakdown(
@@ -213,4 +226,5 @@ export function resetMarketContextEngine(): void {
   engineSingleton = null;
   resetBreadthEngine();
   resetSectorStrengthEngine();
+  resetVolatilityEngine();
 }

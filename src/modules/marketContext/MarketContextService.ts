@@ -17,6 +17,7 @@ import { getMarketContextEngine } from "./MarketContextEngine";
 import {
   buildBreadthEngineInputFromRaw,
   buildSectorEngineInputFromRaw,
+  buildVolatilityEngineInput,
 } from "./MarketContextMappers";
 import type {
   BreadthAnalysis,
@@ -29,9 +30,11 @@ import type {
   MarketContextServiceOptions,
   SectorStrengthAnalysis,
   VixContextSnapshot,
+  VolatilityAnalysis,
 } from "./MarketContextTypes";
 import { createFallbackBreadthAnalysis } from "./BreadthUtils";
 import { createFallbackSectorStrengthAnalysis } from "./SectorStrengthUtils";
+import { createFallbackVolatilityAnalysis } from "./VolatilityUtils";
 import { createFallbackMarketContext } from "./MarketContextUtils";
 
 const OHLC_TIMEFRAME = "3M" as const;
@@ -210,6 +213,7 @@ export class MarketContextService {
   private cache: MarketContext | null = null;
   private breadthCache: BreadthAnalysis | null = null;
   private sectorCache: SectorStrengthAnalysis | null = null;
+  private volatilityCache: VolatilityAnalysis | null = null;
   private rawCache: MarketContextRawData | null = null;
   private inflight: Promise<MarketContext> | null = null;
 
@@ -245,9 +249,19 @@ export class MarketContextService {
     return this.refreshSectorStrength();
   }
 
+  /** Sprint 11B.1C — institutional volatility analysis (cached). */
+  async getVolatility(
+    options: MarketContextServiceOptions = {}
+  ): Promise<VolatilityAnalysis> {
+    if (!options.forceRefresh && this.volatilityCache) {
+      return this.volatilityCache;
+    }
+    return this.refreshVolatility();
+  }
+
   /**
    * Force-recomputes market context from live EquityOS market services.
-   * Also refreshes breadth and sector strength from the same raw payload.
+   * Also refreshes breadth, sector strength, and volatility from the same raw payload.
    */
   async refresh(): Promise<MarketContext> {
     if (this.inflight) {
@@ -282,6 +296,18 @@ export class MarketContextService {
     );
   }
 
+  /** Force-refresh volatility using the shared market data pass. */
+  async refreshVolatility(): Promise<VolatilityAnalysis> {
+    await this.refresh();
+    return (
+      this.volatilityCache ??
+      createFallbackVolatilityAnalysis(
+        new Date(),
+        "Volatility refresh unavailable"
+      )
+    );
+  }
+
   /**
    * Subscribe to context updates. Returns an unsubscribe function.
    */
@@ -308,10 +334,15 @@ export class MarketContextService {
     return this.sectorCache;
   }
 
+  getCachedVolatility(): VolatilityAnalysis | null {
+    return this.volatilityCache;
+  }
+
   clearCache(): void {
     this.cache = null;
     this.breadthCache = null;
     this.sectorCache = null;
+    this.volatilityCache = null;
     this.rawCache = null;
   }
 
@@ -325,9 +356,14 @@ export class MarketContextService {
 
       const breadthInput = buildBreadthEngineInputFromRaw(raw);
       const sectorInput = buildSectorEngineInputFromRaw(raw);
+      const volatilityInput = buildVolatilityEngineInput(input, {
+        breadthScore: context.marketBreadth,
+        marketStrength: context.marketStrength,
+      });
 
       this.breadthCache = engine.analyzeBreadth(breadthInput);
       this.sectorCache = engine.analyzeSectorStrength(sectorInput);
+      this.volatilityCache = engine.analyzeVolatility(volatilityInput);
 
       this.cache = context;
       this.notify(context);
@@ -346,6 +382,10 @@ export class MarketContextService {
       this.sectorCache = createFallbackSectorStrengthAnalysis(
         asOf,
         "Sector strength refresh failed — neutral fallback applied"
+      );
+      this.volatilityCache = createFallbackVolatilityAnalysis(
+        asOf,
+        "Volatility refresh failed — neutral fallback applied"
       );
 
       getMarketContextEngine().analyze({
@@ -469,4 +509,16 @@ export async function refreshBreadth(): Promise<BreadthAnalysis> {
 /** Convenience: refreshSectorStrength() via the shared service singleton. */
 export async function refreshSectorStrength(): Promise<SectorStrengthAnalysis> {
   return getMarketContextService().refreshSectorStrength();
+}
+
+/** Convenience: getVolatility() via the shared service singleton. */
+export async function getVolatility(
+  options?: MarketContextServiceOptions
+): Promise<VolatilityAnalysis> {
+  return getMarketContextService().getVolatility(options);
+}
+
+/** Convenience: refreshVolatility() via the shared service singleton. */
+export async function refreshVolatility(): Promise<VolatilityAnalysis> {
+  return getMarketContextService().refreshVolatility();
 }

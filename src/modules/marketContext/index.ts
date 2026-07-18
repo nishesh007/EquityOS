@@ -1,8 +1,9 @@
 /**
- * Market Context module public exports (Sprint 11B.1A / 11B.1B).
+ * Market Context module public exports (Sprint 11B.1A / 11B.1B / 11B.1C).
  */
 
 export type {
+  AtrExpansionResult,
   BreadthAnalysis,
   BreadthAnalysisResult,
   BreadthConfig,
@@ -12,7 +13,10 @@ export type {
   CapTier,
   ConfidenceAnalysisResult,
   ConstituentSnapshot,
+  GapDirection,
+  GapRiskResult,
   IndexContextSnapshot,
+  InstitutionalVolatilityRegime,
   MarketContext,
   MarketContextAnalysisBreakdown,
   MarketContextConfig,
@@ -36,8 +40,12 @@ export type {
   TrendAnalysisResult,
   TrendBias,
   VixContextSnapshot,
+  VolatilityAnalysis,
   VolatilityAnalysisResult,
+  VolatilityConfig,
+  VolatilityEngineInput,
   VolatilityRegime,
+  VolatilityTrendState,
 } from "./MarketContextTypes";
 
 export {
@@ -46,6 +54,7 @@ export {
   DEFAULT_MARKET_CONTEXT_THRESHOLDS,
   DEFAULT_MARKET_STRENGTH_WEIGHTS,
   DEFAULT_SECTOR_STRENGTH_CONFIG,
+  DEFAULT_VOLATILITY_CONFIG,
   SUPPORTED_SECTORS,
 } from "./MarketContextTypes";
 
@@ -68,16 +77,24 @@ export {
 } from "./SectorStrengthEngine";
 
 export {
+  VolatilityEngine,
+  getVolatilityEngine,
+  resetVolatilityEngine,
+} from "./VolatilityEngine";
+
+export {
   MarketContextService,
   fetchMarketContextRawData,
   getBreadth,
   getMarketContext,
   getMarketContextService,
   getSectorStrength,
+  getVolatility,
   mapRawDataToMarketContextInput,
   refreshBreadth,
   refreshMarketContext,
   refreshSectorStrength,
+  refreshVolatility,
   resetMarketContextService,
   subscribeMarketContext,
 } from "./MarketContextService";
@@ -86,6 +103,7 @@ export {
   buildConstituentsFromBreadth,
   buildBreadthEngineInputFromRaw,
   buildSectorEngineInputFromRaw,
+  buildVolatilityEngineInput,
 } from "./MarketContextMappers";
 
 export {
@@ -129,3 +147,20 @@ export {
   resolveSectorStrengthConfig,
   resolveSupportedSectorName,
 } from "./SectorStrengthUtils";
+
+export {
+  buildVolatilityAnalysis,
+  calculateATRExpansion,
+  calculateDailyRangePercent,
+  calculateGapRisk,
+  calculateHistoricalVolatility,
+  calculateIntradayRangePercent,
+  calculateRealizedVolatility,
+  calculateVolatilityRegime,
+  calculateVolatilityScore,
+  calculateVolatilityTrend,
+  createFallbackVolatilityAnalysis,
+  resolveVolatilityConfig,
+  calculateRiskMode as calculateVolatilityRiskMode,
+  calculateConfidence as calculateVolatilityConfidence,
+} from "./VolatilityUtils";
