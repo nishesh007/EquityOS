@@ -29,13 +29,119 @@ export type MarketRegimeLabel =
 /**
  * Canonical market regime classification output.
  */
-export interface MarketRegime {
+export interface MarketRegimeClassification {
   regime: MarketRegimeLabel;
   confidence: number;
   priority: number;
   reasons: string[];
   triggeredRules: string[];
   timestamp: Date;
+}
+
+/**
+ * Market regime with Sprint 11B.2B confidence & explainability attached.
+ */
+export interface MarketRegime extends MarketRegimeClassification {
+  confidenceAnalysis: RegimeConfidenceAnalysis;
+}
+
+/* ─── Sprint 11B.2B — Regime Confidence & Explainability ─── */
+
+export type ConfidenceGrade =
+  | "Exceptional"
+  | "High"
+  | "Good"
+  | "Moderate"
+  | "Low";
+
+export type ConfidenceDirection = "Positive" | "Negative" | "Neutral";
+
+/**
+ * Configurable evidence weights for regime confidence scoring.
+ * Weights should sum to 1.0.
+ */
+export interface RegimeConfidenceWeights {
+  readonly trendAgreement: number;
+  readonly breadthAgreement: number;
+  readonly sectorAgreement: number;
+  readonly volatilityAgreement: number;
+  readonly marketStrength: number;
+  readonly riskMode: number;
+  readonly dataQuality: number;
+}
+
+export interface RegimeConfidenceConfig {
+  readonly weights: RegimeConfidenceWeights;
+  readonly exceptionalMin: number;
+  readonly highMin: number;
+  readonly goodMin: number;
+  readonly moderateMin: number;
+  readonly neutralBand: number;
+  readonly missingFactorPenalty: number;
+  readonly conflictPenalty: number;
+  readonly incompletePenalty: number;
+  readonly summaryMaxPoints: number;
+  readonly confidenceFloor: number;
+}
+
+export const DEFAULT_REGIME_CONFIDENCE_WEIGHTS: RegimeConfidenceWeights = {
+  trendAgreement: 0.25,
+  breadthAgreement: 0.2,
+  sectorAgreement: 0.15,
+  volatilityAgreement: 0.15,
+  marketStrength: 0.1,
+  riskMode: 0.1,
+  dataQuality: 0.05,
+};
+
+export const DEFAULT_REGIME_CONFIDENCE_CONFIG: RegimeConfidenceConfig = {
+  weights: DEFAULT_REGIME_CONFIDENCE_WEIGHTS,
+  exceptionalMin: 95,
+  highMin: 85,
+  goodMin: 70,
+  moderateMin: 55,
+  neutralBand: 6,
+  missingFactorPenalty: 10,
+  conflictPenalty: 12,
+  incompletePenalty: 14,
+  summaryMaxPoints: 5,
+  confidenceFloor: 20,
+};
+
+/**
+ * Single factor contribution toward regime confidence.
+ */
+export interface ConfidenceContribution {
+  factor: string;
+  title: string;
+  description: string;
+  score: number;
+  weight: number;
+  /** Signed contribution to the composite (positive supports regime). */
+  contribution: number;
+  direction: ConfidenceDirection;
+  reason: string;
+}
+
+/**
+ * Full institutional confidence & explainability package.
+ */
+export interface RegimeConfidenceAnalysis {
+  score: number;
+  grade: ConfidenceGrade;
+  positiveReasons: string[];
+  negativeReasons: string[];
+  neutralReasons: string[];
+  contributions: ConfidenceContribution[];
+  summary: string[];
+}
+
+export interface RegimeConfidenceInput {
+  context: InstitutionalMarketContext | null;
+  regime: MarketRegimeClassification | null;
+  config?: Partial<RegimeConfidenceConfig> & {
+    weights?: Partial<RegimeConfidenceWeights>;
+  };
 }
 
 /**

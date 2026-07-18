@@ -1,5 +1,5 @@
 /**
- * Market Regime Service — Sprint 11B.2A.
+ * Market Regime Service — Sprint 11B.2A / 11B.2B.
  * Consumes InstitutionalMarketContext from Sprint 11B.1D only.
  * No duplicate market-data fetching or recalculation.
  */
@@ -13,12 +13,16 @@ import type {
   MarketRegime,
   MarketRegimeListener,
   MarketRegimeServiceOptions,
+  RegimeConfidenceAnalysis,
 } from "./MarketRegimeTypes";
 import { createFallbackMarketRegime } from "./MarketRegimeUtils";
+import { createFallbackConfidenceAnalysis } from "./RegimeConfidenceUtils";
 
 export class MarketRegimeService {
   private readonly listeners = new Set<MarketRegimeListener>();
   private cache: MarketRegime | null = null;
+  private confidenceCache: RegimeConfidenceAnalysis | null = null;
+  private lastContext: InstitutionalMarketContext | null = null;
   private inflight: Promise<MarketRegime> | null = null;
 
   /**
@@ -33,8 +37,18 @@ export class MarketRegimeService {
     return this.refresh();
   }
 
+  /** Sprint 11B.2B — confidence / explainability package (cached). */
+  async getConfidenceAnalysis(
+    options: MarketRegimeServiceOptions = {}
+  ): Promise<RegimeConfidenceAnalysis> {
+    if (!options.forceRefresh && this.confidenceCache) {
+      return this.confidenceCache;
+    }
+    return this.refreshConfidence();
+  }
+
   /**
-   * Force-refresh: load InstitutionalMarketContext then classify.
+   * Force-refresh: load InstitutionalMarketContext then classify + enrich.
    */
   async refresh(): Promise<MarketRegime> {
     if (this.inflight) {
@@ -46,6 +60,12 @@ export class MarketRegimeService {
     });
 
     return this.inflight;
+  }
+
+  /** Force-refresh confidence using the latest regime/context. */
+  async refreshConfidence(): Promise<RegimeConfidenceAnalysis> {
+    const regime = await this.refresh();
+    return regime.confidenceAnalysis ?? this.confidenceCache ?? createFallbackConfidenceAnalysis();
   }
 
   /**
@@ -65,16 +85,24 @@ export class MarketRegimeService {
     return this.cache;
   }
 
+  getCachedConfidenceAnalysis(): RegimeConfidenceAnalysis | null {
+    return this.confidenceCache;
+  }
+
   clearCache(): void {
     this.cache = null;
+    this.confidenceCache = null;
+    this.lastContext = null;
   }
 
   private async computeFreshRegime(): Promise<MarketRegime> {
     try {
       const context: InstitutionalMarketContext =
         await getInstitutionalMarketContext({ forceRefresh: true });
+      this.lastContext = context;
       const regime = getMarketRegimeEngine().classify(context);
       this.cache = regime;
+      this.confidenceCache = regime.confidenceAnalysis;
       this.notify(regime);
       return regime;
     } catch {
@@ -83,6 +111,8 @@ export class MarketRegimeService {
         "Market regime refresh failed — Sideways fallback applied."
       );
       this.cache = fallback;
+      this.confidenceCache = fallback.confidenceAnalysis;
+      this.lastContext = null;
       getMarketRegimeEngine().classify(null);
       this.notify(fallback);
       return fallback;
@@ -128,4 +158,14 @@ export function subscribeMarketRegime(
   listener: MarketRegimeListener
 ): () => void {
   return getMarketRegimeService().subscribe(listener);
+}
+
+export async function getConfidenceAnalysis(
+  options?: MarketRegimeServiceOptions
+): Promise<RegimeConfidenceAnalysis> {
+  return getMarketRegimeService().getConfidenceAnalysis(options);
+}
+
+export async function refreshConfidence(): Promise<RegimeConfidenceAnalysis> {
+  return getMarketRegimeService().refreshConfidence();
 }

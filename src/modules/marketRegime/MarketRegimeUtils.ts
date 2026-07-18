@@ -23,9 +23,11 @@ import { clamp, round } from "@/lib/engine/utils";
 import {
   DEFAULT_MARKET_REGIME_CONFIG,
   type MarketRegime,
+  type MarketRegimeClassification,
   type MarketRegimeConfig,
   type MarketRegimeRule,
   type MarketRegimeRuleMatch,
+  type RegimeConfidenceAnalysis,
   type RegimeContextFeatures,
 } from "./MarketRegimeTypes";
 
@@ -431,13 +433,14 @@ function calculateRegimeConfidence(
 }
 
 /**
- * Classify InstitutionalMarketContext into a single MarketRegime.
+ * Classify InstitutionalMarketContext into a regime classification
+ * (confidenceAnalysis attached by RegimeConfidenceEngine / enricher).
  */
 export function classifyMarketRegime(
   context: InstitutionalMarketContext,
   config: MarketRegimeConfig = DEFAULT_MARKET_REGIME_CONFIG,
   rules: readonly MarketRegimeRule[] = buildDefaultMarketRegimeRules()
-): MarketRegime {
+): MarketRegimeClassification {
   const features = extractRegimeFeatures(context, config);
   const matches = evaluateMarketRegimeRules(context, rules, config);
   const winner =
@@ -474,13 +477,38 @@ export function createFallbackMarketRegime(
   timestamp: Date = new Date(),
   reason = "Incomplete market context — Sideways regime with reduced confidence."
 ): MarketRegime {
+  const confidenceAnalysis: RegimeConfidenceAnalysis = {
+    score: DEFAULT_MARKET_REGIME_CONFIG.incompleteContextConfidence,
+    grade: "Low",
+    positiveReasons: [],
+    negativeReasons: [reason],
+    neutralReasons: ["Momentum remains stable."],
+    contributions: [
+      {
+        factor: "Data Quality",
+        title: "Missing Context",
+        description: reason,
+        score: 20,
+        weight: 1,
+        contribution: -30,
+        direction: "Negative",
+        reason,
+      },
+    ],
+    summary: [
+      "Insufficient evidence for high-confidence regime call.",
+      "Overall institutional confidence remains low.",
+    ],
+  };
+
   return {
     regime: "Sideways",
-    confidence: DEFAULT_MARKET_REGIME_CONFIG.incompleteContextConfidence,
+    confidence: confidenceAnalysis.score,
     priority: 10,
     reasons: [reason],
     triggeredRules: ["sideways_incomplete_fallback"],
     timestamp,
+    confidenceAnalysis,
   };
 }
 

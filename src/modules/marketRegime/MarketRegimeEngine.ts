@@ -1,6 +1,6 @@
 /**
- * Market Regime Engine — Sprint 11B.2A.
- * Classifies InstitutionalMarketContext into one canonical market regime.
+ * Market Regime Engine — Sprint 11B.2A / 11B.2B.
+ * Classifies InstitutionalMarketContext and attaches confidence explainability.
  */
 
 import type { InstitutionalMarketContext } from "@/src/modules/marketContext";
@@ -8,6 +8,7 @@ import type {
   MarketRegime,
   MarketRegimeConfig,
   MarketRegimeRule,
+  RegimeConfidenceAnalysis,
 } from "./MarketRegimeTypes";
 import {
   buildDefaultMarketRegimeRules,
@@ -16,11 +17,17 @@ import {
   isInstitutionalContextIncomplete,
   resolveMarketRegimeConfig,
 } from "./MarketRegimeUtils";
+import {
+  RegimeConfidenceEngine,
+  getRegimeConfidenceEngine,
+  resetRegimeConfidenceEngine,
+} from "./RegimeConfidenceEngine";
 
 export class MarketRegimeEngine {
   private current: MarketRegime | null = null;
   private readonly config: MarketRegimeConfig;
   private readonly rules: readonly MarketRegimeRule[];
+  private readonly confidenceEngine: RegimeConfidenceEngine;
 
   constructor(
     config?: Partial<MarketRegimeConfig>,
@@ -28,11 +35,12 @@ export class MarketRegimeEngine {
   ) {
     this.config = resolveMarketRegimeConfig(config);
     this.rules = rules ?? buildDefaultMarketRegimeRules();
+    this.confidenceEngine = getRegimeConfidenceEngine();
   }
 
   /**
-   * Classify the provided institutional market context.
-   * Never crashes — incomplete context yields Sideways with reduced confidence.
+   * Classify the provided institutional market context and enrich with
+   * Sprint 11B.2B confidence analysis. Never crashes.
    */
   classify(context: InstitutionalMarketContext | null | undefined): MarketRegime {
     try {
@@ -42,16 +50,21 @@ export class MarketRegimeEngine {
           "Incomplete market context — Sideways regime with reduced confidence."
         );
         this.current = fallback;
+        this.confidenceEngine.analyze(null, fallback);
         return fallback;
       }
 
-      const regime = classifyMarketRegime(
+      const classification = classifyMarketRegime(
         context as InstitutionalMarketContext,
         this.config,
         this.rules
       );
-      this.current = regime;
-      return regime;
+      const enriched = this.confidenceEngine.enrich(
+        context as InstitutionalMarketContext,
+        classification
+      );
+      this.current = enriched;
+      return enriched;
     } catch {
       const fallback = createFallbackMarketRegime(
         new Date(),
@@ -66,6 +79,14 @@ export class MarketRegimeEngine {
     return this.current;
   }
 
+  /** Sprint 11B.2B — latest confidence / explainability package. */
+  getConfidenceAnalysis(): RegimeConfidenceAnalysis | null {
+    return (
+      this.current?.confidenceAnalysis ??
+      this.confidenceEngine.getCurrentAnalysis()
+    );
+  }
+
   getConfiguration(): MarketRegimeConfig {
     return resolveMarketRegimeConfig(this.config);
   }
@@ -76,6 +97,7 @@ export class MarketRegimeEngine {
 
   clear(): void {
     this.current = null;
+    this.confidenceEngine.clear();
   }
 }
 
@@ -93,4 +115,5 @@ export function getMarketRegimeEngine(
 export function resetMarketRegimeEngine(): void {
   if (engineSingleton) engineSingleton.clear();
   engineSingleton = null;
+  resetRegimeConfidenceEngine();
 }

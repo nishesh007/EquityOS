@@ -461,12 +461,14 @@ describe("MarketRegimeEngine", () => {
     resetMarketRegimeEngine();
   });
 
-  it("exposes classify and getCurrentRegime", () => {
+  it("exposes classify, getCurrentRegime, and getConfidenceAnalysis", () => {
     const engine = new MarketRegimeEngine();
     expect(engine.getCurrentRegime()).toBeNull();
     const regime = engine.classify(strongBullContext());
     expect(engine.getCurrentRegime()).toEqual(regime);
     expect(regime.regime).toBe("Strong Bull");
+    expect(regime.confidenceAnalysis.contributions.length).toBe(7);
+    expect(engine.getConfidenceAnalysis()).toEqual(regime.confidenceAnalysis);
   });
 
   it("returns Sideways fallback for missing context", () => {
