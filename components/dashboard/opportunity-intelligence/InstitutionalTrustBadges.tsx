@@ -19,7 +19,6 @@ const BADGE_STYLES: Record<string, string> = {
   CERTIFIED: "border-gain/40 bg-gain/15 text-gain",
   HEALTHY: "border-gain/30 bg-gain/10 text-gain",
   MONITORED: "border-accent/30 bg-accent/10 text-accent",
-  VALIDATED: "border-gain/30 bg-gain/10 text-gain",
 };
 
 export function InstitutionalTrustBadges({

@@ -1,7 +1,8 @@
 /**
- * Sprint 10C.R7 — breadcrumb model.
+ * Sprint 10C.R7 — breadcrumb model (canonical module).
  *
  * Pure pathname → breadcrumb-trail mapping shared by every page.
+ * The rendering component lives in BreadcrumbTrail.tsx.
  */
 
 export interface Breadcrumb {

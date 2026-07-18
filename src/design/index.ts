@@ -532,3 +532,20 @@ export {
   type OnboardingStep,
   type RichTooltipProps,
 } from "./help";
+
+// Final UI platform integration status and Sprint 10C freeze (R8)
+export {
+  SPRINT_10C_FROZEN,
+  UI_PLATFORM_STATUS,
+  isSprint10CFrozen,
+  getDesignSystemStatus,
+  getThemeStatus,
+  getUILayoutStatus,
+  getAccessibilityStatus,
+  getPerformanceStatus,
+  type DesignSystemStatus,
+  type ThemeStatus,
+  type UILayoutStatus,
+  type AccessibilityStatus,
+  type PerformanceStatus,
+} from "./status";

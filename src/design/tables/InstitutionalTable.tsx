@@ -111,7 +111,6 @@ export function InstitutionalTable<Row>({
       setState((current) => applyTablePreferences(current, prefs));
     }
     hydrated.current = true;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [table.id, persistPreferences]);
 
   useEffect(() => {
