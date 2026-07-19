@@ -12,6 +12,7 @@ import {
   wireReplayHistory,
   wireWorkspaceHistory,
 } from "@/src/core/recommendations";
+import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
 
 const STATUSES = new Set<RecommendationRecordStatus>([
   "ACTIVE",
@@ -32,12 +33,16 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const recommendations = listRecommendationHistory(
-    getOpportunityState(),
-    requestedStatus
-  );
+  const [recommendations, marketIntelligence] = await Promise.all([
+    Promise.resolve(
+      listRecommendationHistory(getOpportunityState(), requestedStatus)
+    ),
+    getMarketIntelligenceSnapshot(),
+  ]);
+
   return NextResponse.json({
     recommendations,
+    marketIntelligence,
     lifecycle: wireRecommendationHistory(),
     health: wireHealthDashboard(),
     replay: wireReplayHistory(),

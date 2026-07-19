@@ -37,9 +37,11 @@ import {
   fetchWatchlistPlatformHealth,
   formatWatchlistPlatformSubtitle,
 } from "@/services/watchlistPlatform";
+import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
+import { MarketIntelligenceStrip } from "@/components/market";
 import { PageContainer } from "@/src/design";
 
-export default function ResearchPage() {
+export default async function ResearchPage() {
   const workspace = ensureDefaultResearchWorkspace({
     name: "Institutional Research Workspace",
   });
@@ -86,6 +88,7 @@ export default function ResearchPage() {
     workspaceId: workspace.id,
     ticker: company.overview.ticker || undefined,
   });
+  const marketIntelligence = await getMarketIntelligenceSnapshot();
 
   return (
     <PageContainer>
@@ -94,7 +97,7 @@ export default function ResearchPage() {
           Institutional Research Workspace
         </h1>
         <p className="mt-0.5 text-sm text-text-muted">
-          Multi-tab research terminal ·{" "}
+          Multi-tab research terminal · regime {marketIntelligence.regime.regime} ·{" "}
           {health.workspaceCount > 0
             ? `${health.workspaceCount} workspace${health.workspaceCount === 1 ? "" : "s"}`
             : health.emptyMessage}{" "}
@@ -129,6 +132,10 @@ export default function ResearchPage() {
             : executive.homeStrip.executiveSummary}{" "}
           · watchlists {formatWatchlistPlatformSubtitle(watchlistPlatform)}
         </p>
+      </div>
+
+      <div className="mb-6">
+        <MarketIntelligenceStrip snapshot={marketIntelligence} />
       </div>
 
       {view.empty && multi.empty ? (

@@ -7,13 +7,38 @@ import {
   type ScanResult,
 } from "@/lib/opportunity-engine";
 import { buildIntradayOpportunities } from "@/lib/opportunity-engine/ranking";
+import type { MarketIntelligenceSnapshot } from "@/lib/market-intelligence";
+import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
+
+export interface OpportunityEngineBundle {
+  state: OpportunityEngineState;
+  marketIntelligence: MarketIntelligenceSnapshot;
+}
 
 export async function fetchOpportunityEngineState(): Promise<OpportunityEngineState> {
   return getOpportunityState();
 }
 
-export async function triggerOpportunityScan(): Promise<ScanResult> {
-  return runOpportunityScan(true);
+/**
+ * Opportunity Engine + shared Market Context / Regime snapshot.
+ * Context is computed once via marketIntelligence — never duplicated here.
+ */
+export async function fetchOpportunityEngineBundle(): Promise<OpportunityEngineBundle> {
+  const [state, marketIntelligence] = await Promise.all([
+    getOpportunityState(),
+    getMarketIntelligenceSnapshot(),
+  ]);
+  return { state, marketIntelligence };
+}
+
+export async function triggerOpportunityScan(): Promise<
+  ScanResult & { marketIntelligence: MarketIntelligenceSnapshot }
+> {
+  const [result, marketIntelligence] = await Promise.all([
+    runOpportunityScan(true),
+    getMarketIntelligenceSnapshot({ forceRefresh: true }),
+  ]);
+  return { ...result, marketIntelligence };
 }
 
 export { getSchedulerHealth } from "@/lib/opportunity-engine/scheduler-health";

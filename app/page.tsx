@@ -6,6 +6,7 @@ import { MarketOverviewCards } from "@/components/dashboard/MarketOverviewCards"
 import { MarketPulse } from "@/components/dashboard/MarketPulse";
 import { PortfolioSummary } from "@/components/dashboard/PortfolioSummary";
 import { Watchlist } from "@/components/dashboard/Watchlist";
+import { MarketIntelligenceStrip } from "@/components/market";
 import {
   fetchMarketIndices,
   fetchMarketNews,
@@ -13,6 +14,7 @@ import {
   fetchUpcomingResults,
   fetchWatchlist,
 } from "@/services/marketData";
+import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
 import { fetchOpportunityEngineState } from "@/services/opportunityEngine";
 import {
   fetchMarketBreadth,
@@ -32,6 +34,7 @@ export default async function DashboardPage() {
     pulse,
     breadth,
     opportunityState,
+    marketIntelligence,
   ] = await Promise.all([
     fetchMarketIndices(),
     fetchPortfolioSummary(),
@@ -41,6 +44,7 @@ export default async function DashboardPage() {
     fetchMarketPulse(),
     fetchMarketBreadth(),
     fetchOpportunityEngineState(),
+    getMarketIntelligenceSnapshot(),
   ]);
 
   return (
@@ -61,6 +65,7 @@ export default async function DashboardPage() {
             subtitle="Indices, breadth, sector strength and institutional flow"
           />
           <div id="market-pulse-heading" className="space-y-5">
+            <MarketIntelligenceStrip snapshot={marketIntelligence} />
             <MarketPulse pulse={pulse} />
             <MarketOverviewCards indices={indices} />
             <MarketBreadth breadth={breadth} />

@@ -7,8 +7,15 @@ import type {
   InstitutionalPlatformOperations,
   InstitutionalPlatformSnapshot,
 } from "@/lib/opportunity-engine/institutional-presentation";
+import type { MarketIntelligenceSnapshot } from "@/lib/market-intelligence";
+import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
 
-export async function fetchInstitutionalPlatformSnapshot(): Promise<InstitutionalPlatformSnapshot> {
+export type InstitutionalPlatformSnapshotWithMarket =
+  InstitutionalPlatformSnapshot & {
+    marketIntelligence: MarketIntelligenceSnapshot | null;
+  };
+
+export async function fetchInstitutionalPlatformSnapshot(): Promise<InstitutionalPlatformSnapshotWithMarket> {
   try {
     const [
       { getPlatformHealth, getPlatformStatus, getPlatformMetrics, getPlatformSummary, getValidationPlatform, registerValidationPlatform },
@@ -21,6 +28,7 @@ export async function fetchInstitutionalPlatformSnapshot(): Promise<Institutiona
       { getSecurityMetrics, registerSecurity },
       { getReleaseMetrics, registerRelease },
       { getValidationReportingEngine, registerValidationReportingEngine },
+      marketIntelligence,
     ] = await Promise.all([
       import("@/src/core/dataIntegrity/platform"),
       import("@/src/core/dataIntegrity/dashboard"),
@@ -32,6 +40,7 @@ export async function fetchInstitutionalPlatformSnapshot(): Promise<Institutiona
       import("@/src/core/dataIntegrity/security"),
       import("@/src/core/dataIntegrity/release"),
       import("@/src/core/dataIntegrity/reporting"),
+      getMarketIntelligenceSnapshot(),
     ]);
 
     registerValidationPlatform();
@@ -74,6 +83,7 @@ export async function fetchInstitutionalPlatformSnapshot(): Promise<Institutiona
       trust: getTrustMetrics(),
       explainability: getExplainabilityMetrics(),
       operations,
+      marketIntelligence,
     };
   } catch {
     return {
@@ -82,6 +92,7 @@ export async function fetchInstitutionalPlatformSnapshot(): Promise<Institutiona
       trust: null,
       explainability: null,
       operations: null,
+      marketIntelligence: null,
     };
   }
 }

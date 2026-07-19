@@ -1,8 +1,10 @@
-import { NextResponse } from "next/server";
-import { fetchOpportunityEngineState } from "@/services/opportunityEngine";
-
-export async function GET() {
-  const state = await fetchOpportunityEngineState();
-  return NextResponse.json(state);
-}
-
+import { NextResponse } from "next/server";
+import { fetchOpportunityEngineBundle } from "@/services/opportunityEngine";
+
+export async function GET() {
+  const bundle = await fetchOpportunityEngineBundle();
+  return NextResponse.json({
+    ...bundle.state,
+    marketIntelligence: bundle.marketIntelligence,
+  });
+}

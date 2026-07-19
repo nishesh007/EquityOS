@@ -1,5 +1,7 @@
 import { ResearchWorkspace } from "@/components/ai/ResearchWorkspace";
+import { MarketIntelligenceStrip } from "@/components/market";
 import Link from "next/link";
+import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
 import { fetchInstitutionalScreenerHealth } from "@/services/screenerData";
 import {
   ensureDefaultResearchWorkspace,
@@ -22,10 +24,11 @@ const quickLinks = [
   { href: "/watchlist", label: "Watchlist" },
 ] as const;
 
-export default function AIResearchPage() {
+export default async function AIResearchPage() {
   const screenerHealth = fetchInstitutionalScreenerHealth();
   ensureDefaultResearchWorkspace({ name: "AI Research Analyst Desk" });
   const researchWorkspace = fetchResearchWorkspaceHealth();
+  const marketIntelligence = await getMarketIntelligenceSnapshot();
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
@@ -36,7 +39,9 @@ export default function AIResearchPage() {
               AI Research Analyst
             </h1>
             <p className="mt-1 text-sm text-text-muted md:mt-2">
-              Institutional-grade equity research powered by AI ·{" "}
+              Institutional-grade equity research powered by AI · regime{" "}
+              {marketIntelligence.regime.regime} · context{" "}
+              {marketIntelligence.context.marketTrend} ·{" "}
               {screenerHealth.screenCount} AI screens ·{" "}
               {screenerHealth.portfolioScreens} portfolio screens ·{" "}
               {screenerHealth.strategyTemplateCount} strategy templates ·
@@ -77,6 +82,10 @@ export default function AIResearchPage() {
               </Link>
             ))}
           </div>
+        </div>
+
+        <div className="mx-auto mt-4 max-w-4xl">
+          <MarketIntelligenceStrip snapshot={marketIntelligence} />
         </div>
       </div>
 

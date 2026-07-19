@@ -244,3 +244,22 @@ export function formatWatchlistPlatformSubtitle(
       : "";
   return `${health.watchlistCount} watchlists · ${health.pinnedCount} pinned · ${health.favoriteCount} favorites · ${health.companyCount} companies${smart}${intel}${workspace}${analytics}${copilot}${productivity}${executive}${frozen ? ` · ${frozen}` : ""}`;
 }
+
+/**
+ * Watchlist platform + shared Market Context / Regime (single computation).
+ */
+export async function fetchWatchlistPlatformBundle(
+  context?: WatchlistEngineContext | null
+): Promise<{
+  health: WatchlistPlatformHealth;
+  marketIntelligence: import("@/lib/market-intelligence").MarketIntelligenceSnapshot;
+}> {
+  const { getMarketIntelligenceSnapshot } = await import(
+    "@/services/marketIntelligence"
+  );
+  const [health, marketIntelligence] = await Promise.all([
+    Promise.resolve(fetchWatchlistPlatformHealth(context)),
+    getMarketIntelligenceSnapshot(),
+  ]);
+  return { health, marketIntelligence };
+}

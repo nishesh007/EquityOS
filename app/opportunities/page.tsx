@@ -1,6 +1,8 @@
 import { PageHeader } from "@/components/layout/PageHeader";
+import { MarketIntelligenceStrip } from "@/components/market";
 import { PageContainer } from "@/src/design";
 import Link from "next/link";
+import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
 import {
   fetchInstitutionalScreenerHealth,
   fetchScreenerInitialData,
@@ -10,11 +12,13 @@ import {
 import { fetchResearchWorkspaceHealth } from "@/services/researchWorkspace";
 
 export default async function OpportunitiesPage() {
-  const [{ universe }, health, researchWorkspace] = await Promise.all([
-    fetchScreenerInitialData(),
-    Promise.resolve(fetchInstitutionalScreenerHealth()),
-    Promise.resolve(fetchResearchWorkspaceHealth()),
-  ]);
+  const [{ universe }, health, researchWorkspace, marketIntelligence] =
+    await Promise.all([
+      fetchScreenerInitialData(),
+      Promise.resolve(fetchInstitutionalScreenerHealth()),
+      Promise.resolve(fetchResearchWorkspaceHealth()),
+      getMarketIntelligenceSnapshot(),
+    ]);
 
   const candidates = toScreenUniverseCandidates(universe.rows.slice(0, 40)).map(
     (c) => ({
@@ -74,6 +78,10 @@ export default async function OpportunitiesPage() {
             : researchWorkspace.integrationEmptyMessage
         }`}
       />
+
+      <section className="mb-6">
+        <MarketIntelligenceStrip snapshot={marketIntelligence} />
+      </section>
 
       <div className="mb-4 flex flex-wrap gap-3 text-sm">
         <Link

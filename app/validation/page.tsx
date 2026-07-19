@@ -2,8 +2,10 @@ import { ExecutiveInstitutionalDashboard } from "@/components/dashboard/institut
 import { InstitutionalReportViewer } from "@/components/dashboard/institutional/InstitutionalReportViewer";
 import { InstitutionalPlatformHealthPanel } from "@/components/dashboard/opportunity-intelligence/InstitutionalPlatformHealthPanel";
 import { InstitutionalValidationPanel } from "@/components/dashboard/opportunity-intelligence/InstitutionalValidationPanel";
+import { MarketIntelligenceStrip } from "@/components/market";
 import { ValidationModulesTable } from "@/components/validation/ValidationModulesTable";
 import { fetchInstitutionalPlatformSnapshot } from "@/services/institutionalValidationData";
+import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
 import { KpiTile, PageContainer } from "@/src/design";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +16,10 @@ export const dynamic = "force-dynamic";
  * Read-only presentation of existing Sprint 9E/9F engine metrics.
  */
 export default async function ValidationPage() {
-  const snapshot = await fetchInstitutionalPlatformSnapshot();
+  const [snapshot, marketIntelligence] = await Promise.all([
+    fetchInstitutionalPlatformSnapshot(),
+    getMarketIntelligenceSnapshot(),
+  ]);
   const summary = snapshot.dashboard?.summary ?? null;
 
   return (
@@ -25,9 +30,13 @@ export default async function ValidationPage() {
         </h1>
         <p className="mt-0.5 text-sm text-text-muted">
           Data integrity, trust and validation platform health — institutional
-          read-only view
+          read-only view · market regime {marketIntelligence.regime.regime}
         </p>
       </div>
+
+      <section className="mb-6 animate-fade-in-up [animation-delay:40ms]">
+        <MarketIntelligenceStrip snapshot={marketIntelligence} />
+      </section>
 
       {summary && (
         <section className="mb-6 grid grid-cols-2 gap-4 animate-fade-in-up [animation-delay:60ms] md:grid-cols-3 xl:grid-cols-6">
