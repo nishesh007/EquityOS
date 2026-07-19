@@ -13,7 +13,7 @@ import {
 } from "@/src/core/recommendations";
 import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
 import { getStrategyPlatformStatus } from "@/src/modules/strategies";
-import { selectSharedRecommendations } from "@/lib/recommendations";
+import { selectRecommendationsWithFallback } from "@/lib/recommendations";
 import { ensureOpportunityEngineState } from "@/services/opportunityEngine";
 
 const STATUSES = new Set<RecommendationRecordStatus>([
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
 
   const sharedRecommendations =
     !requestedStatus || requestedStatus === "ACTIVE"
-      ? selectSharedRecommendations(state)
+      ? selectRecommendationsWithFallback(state)
       : [];
 
   return NextResponse.json({

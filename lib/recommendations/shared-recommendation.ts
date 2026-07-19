@@ -67,7 +67,7 @@ export interface SharedRecommendation {
   validation: SharedRecommendationValidation;
   longTermRanking: OpportunityLongTermRanking | null;
   timestamp: string;
-  source: "StrategyEngine";
+  source: "StrategyEngine" | "OpportunityEngine";
 }
 
 function validTradeLevels(signal: OpportunityStrategySignal): boolean {
@@ -220,4 +220,166 @@ export function selectSharedRecommendations(
       right.confidence - left.confidence
   );
   return cachedRecommendations;
+}
+
+/**
+ * Legacy Opportunity Engine projection — recovery fallback used only when the
+ * Strategy Engine has no validated signal for a symbol. Builds the shared
+ * recommendation from the candidate's own ranked levels (entry zone, stop,
+ * targets, conviction) exactly as the pre-11B surfaces displayed them.
+ */
+export function buildFallbackRecommendation(
+  candidate: OpportunityCandidate,
+  lastScanTime: string
+): SharedRecommendation | null {
+  const entryLow = candidate.entryZone?.low ?? 0;
+  const entryHigh = candidate.entryZone?.high ?? 0;
+  const entry =
+    entryLow > 0 && entryHigh > 0
+      ? (entryLow + entryHigh) / 2
+      : Math.max(entryLow, entryHigh);
+  const stopLoss = candidate.stopLoss;
+  const target1 = candidate.target1;
+  const target2 = candidate.target2 || target1;
+  if (entry <= 0 || stopLoss <= 0 || target1 <= 0) return null;
+
+  const isShort = candidate.side === "Short";
+  const levelsValid = isShort
+    ? stopLoss > entry && target1 < entry
+    : stopLoss < entry && target1 > entry;
+  if (!levelsValid) return null;
+
+  const confidence = Math.round(
+    Math.min(100, Math.max(0, candidate.confidencePercent ?? 0))
+  );
+  const conviction = Math.round(
+    Math.min(100, Math.max(0, candidate.aiConvictionScore ?? confidence))
+  );
+  if (confidence <= 0 && conviction <= 0) return null;
+
+  const risk = Math.abs(entry - stopLoss);
+  const reward = Math.abs(target2 - entry);
+  const opportunityScore = Math.round(
+    candidate.opportunityScore ?? Math.max(confidence, conviction)
+  );
+
+  const checks = {
+    tradeLevels: true,
+    confidence: true,
+    opportunityScore: opportunityScore >= 0 && opportunityScore <= 100,
+    agreement: true,
+    marketContext: Boolean(candidate.marketTrend),
+    marketRegime: Boolean(candidate.marketRegime),
+    eligibility: candidate.pipelineEligible === true,
+  };
+  const passed = Object.values(checks).filter(Boolean).length;
+
+  return {
+    id: `fallback:${candidate.id}`,
+    symbol: candidate.symbol,
+    company: candidate.company,
+    category: candidate.category,
+    action: isShort ? "SELL" : "BUY",
+    primaryStrategy:
+      candidate.strategyName ?? "Opportunity Engine ranking",
+    primaryStrategyId: candidate.strategyId ?? "opportunity-engine",
+    matchedStrategies: candidate.strategyName ? [candidate.strategyName] : [],
+    supportingStrategies: [],
+    opposingStrategies: [],
+    strategyCount: candidate.strategyName ? 1 : 0,
+    agreementPercent: 100,
+    conflictPercent: 0,
+    opportunityScore,
+    frameworkScore: Math.round(
+      candidate.frameworkScore ?? opportunityScore
+    ),
+    confidence,
+    conviction,
+    entry,
+    stopLoss,
+    targets: [target1, target2].filter(
+      (target, index, list) => target > 0 && list.indexOf(target) === index
+    ),
+    risk,
+    reward,
+    riskReward:
+      candidate.riskReward > 0
+        ? candidate.riskReward
+        : risk > 0
+          ? Number((reward / risk).toFixed(2))
+          : 0,
+    holdingPeriod: candidate.timeHorizon ?? "—",
+    marketContext: candidate.marketTrend ?? "Unknown",
+    marketRegime: candidate.marketRegime ?? "Unknown",
+    riskMode: candidate.riskMode ?? "Neutral",
+    eligibility: {
+      eligible: candidate.pipelineEligible === true,
+      score: candidate.eligibilityScore ?? 0,
+      reasons: [
+        "Legacy Opportunity Engine fallback — Strategy Engine returned no validated signal.",
+      ],
+    },
+    reasons: [candidate.reason, ...(candidate.confidenceReasons ?? [])].filter(
+      (reason): reason is string => Boolean(reason)
+    ),
+    evidence: candidate.bestCallReasons ?? [],
+    matchedFrameworks: {
+      technical: [],
+      fundamental: [],
+      valuation: [],
+      growth: [],
+    },
+    validation: {
+      valid: true,
+      score: Math.round((passed / Object.keys(checks).length) * 100),
+      checks,
+      reasons: [
+        "Fallback recommendation from legacy Opportunity Engine ranking.",
+      ],
+    },
+    longTermRanking: candidate.longTermRanking ?? null,
+    timestamp: lastScanTime,
+    source: "OpportunityEngine",
+  };
+}
+
+let cachedFallbackKey = "";
+let cachedFallbackRecommendations: SharedRecommendation[] = [];
+
+/**
+ * Strategy Engine first, legacy Opportunity Engine second. A symbol only uses
+ * the fallback when the Strategy Engine produced nothing validated for it, so
+ * surfaces never go empty solely because of the 11B migration.
+ */
+export function selectRecommendationsWithFallback(
+  state: OpportunityEngineState
+): SharedRecommendation[] {
+  const key = `${state.tradingDate}:${state.scanCount}:${state.lastScannedAt}`;
+  if (key === cachedFallbackKey) return cachedFallbackRecommendations;
+
+  const lastScanTime = state.lastScannedAt ?? new Date(0).toISOString();
+  const strict = selectSharedRecommendations(state);
+  const strictSymbols = new Set(
+    strict.map((recommendation) => recommendation.symbol.toUpperCase())
+  );
+
+  const fallbackBySymbol = new Map<string, SharedRecommendation>();
+  for (const candidate of Object.values(state.categories).flat()) {
+    const symbol = candidate.symbol.toUpperCase();
+    if (strictSymbols.has(symbol)) continue;
+    const fallback = buildFallbackRecommendation(candidate, lastScanTime);
+    if (!fallback) continue;
+    const existing = fallbackBySymbol.get(symbol);
+    if (!existing || fallback.opportunityScore > existing.opportunityScore) {
+      fallbackBySymbol.set(symbol, fallback);
+    }
+  }
+
+  cachedFallbackKey = key;
+  cachedFallbackRecommendations = [...strict, ...fallbackBySymbol.values()].sort(
+    (left, right) =>
+      right.opportunityScore - left.opportunityScore ||
+      right.confidence - left.confidence
+  );
+  return cachedFallbackRecommendations;
 }

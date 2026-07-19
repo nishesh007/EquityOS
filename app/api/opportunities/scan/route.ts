@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { triggerOpportunityScan } from "@/services/opportunityEngine";
 import { getStrategyPlatformStatus } from "@/src/modules/strategies";
-import { selectSharedRecommendations } from "@/lib/recommendations";
+import { selectRecommendationsWithFallback } from "@/lib/recommendations";
 
 /**
  * POST /api/opportunities/scan
@@ -14,7 +14,7 @@ export async function POST() {
   return NextResponse.json({
     success: true,
     state,
-    recommendations: selectSharedRecommendations(state),
+    recommendations: selectRecommendationsWithFallback(state),
     durationMs: result.durationMs,
     symbolsScanned: result.symbolsScanned,
     added: result.added,

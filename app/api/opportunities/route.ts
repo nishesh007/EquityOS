@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { fetchOpportunityEngineBundle } from "@/services/opportunityEngine";
 import { getStrategyPlatformStatus } from "@/src/modules/strategies";
-import { selectSharedRecommendations } from "@/lib/recommendations";
+import { selectRecommendationsWithFallback } from "@/lib/recommendations";
 
 /**
  * GET /api/opportunities
@@ -13,7 +13,7 @@ export async function GET() {
 
   return NextResponse.json({
     ...state,
-    recommendations: selectSharedRecommendations(state),
+    recommendations: selectRecommendationsWithFallback(state),
     marketIntelligence: bundle.marketIntelligence,
     strategyPlatform: getStrategyPlatformStatus(),
     pipeline: state.pipeline ?? null,

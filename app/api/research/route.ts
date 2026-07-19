@@ -5,7 +5,7 @@ import {
   POSITION_STRATEGY_IDS,
   SWING_STRATEGY_IDS,
 } from "@/lib/opportunity-engine/swing-position-catalog";
-import { selectSharedRecommendations } from "@/lib/recommendations";
+import { selectRecommendationsWithFallback } from "@/lib/recommendations";
 import { ensureOpportunityEngineState } from "@/services/opportunityEngine";
 
 /**
@@ -25,7 +25,7 @@ export async function GET() {
       swing: [...SWING_STRATEGY_IDS],
       position: [...POSITION_STRATEGY_IDS],
     },
-    recommendations: selectSharedRecommendations(state),
+    recommendations: selectRecommendationsWithFallback(state),
     context: marketIntelligence.context,
     regime: marketIntelligence.regime,
     confidence: marketIntelligence.confidence,

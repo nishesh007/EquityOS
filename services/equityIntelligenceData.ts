@@ -316,11 +316,10 @@ export async function fetchEquityIntelligence(
         fetchFundamentalsBundle(symbol),
         fetchCompanyResearch(symbol),
       ]);
-      if (
-        !fundamentals ||
-        fundamentals.source === "mock" ||
-        fundamentals.source === "unavailable"
-      ) {
+      // Mock-sourced bundles remain usable as graceful fallback; the
+      // DataTransparency bar discloses the provider. Only genuinely
+      // unavailable data fails closed.
+      if (!fundamentals || fundamentals.source === "unavailable") {
         return null;
       }
       return buildEquityIntelligence(

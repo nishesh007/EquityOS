@@ -4,7 +4,7 @@ import type {
   OpportunityCandidate,
   OpportunityEngineState,
 } from "@/lib/opportunity-engine/types";
-import { selectSharedRecommendations } from "./shared-recommendation";
+import { selectSharedRecommendations, selectRecommendationsWithFallback } from "./shared-recommendation";
 
 function candidate(): OpportunityCandidate {
   return {
@@ -110,5 +110,24 @@ describe("shared recommendation projection", () => {
     const invalidState = state(invalid);
     invalidState.scanCount = 2;
     expect(selectSharedRecommendations(invalidState)).toEqual([]);
+  });
+
+  it("falls back to Opportunity Engine ranking when Strategy Engine is empty", () => {
+    const legacy = candidate();
+    legacy.strategySignal = undefined;
+    legacy.pipelineEligible = false;
+    const fallbackState = state(legacy);
+    fallbackState.scanCount = 3;
+
+    expect(selectSharedRecommendations(fallbackState)).toEqual([]);
+    const recommendations = selectRecommendationsWithFallback(fallbackState);
+    expect(recommendations).toHaveLength(1);
+    expect(recommendations[0]).toMatchObject({
+      symbol: "INFY",
+      action: "BUY",
+      source: "OpportunityEngine",
+      opportunityScore: 88,
+      confidence: 84,
+    });
   });
 });

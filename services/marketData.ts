@@ -31,6 +31,34 @@ function ensureDefaultWatchlists(now?: Date | null): WatchlistRecord[] {
 function getWatchlists(query?: WatchlistQuery | null): WatchlistRecord[] {
   return searchWatchlists(query ?? undefined);
 }
+
+/**
+ * Local portfolio implementation — broker integration is unavailable, so the
+ * previous working local holdings remain the portfolio source. Live quotes
+ * are overlaid at fetch time.
+ */
+const LOCAL_PORTFOLIO = {
+  holdings: [
+    { id: "1", symbol: "RELIANCE", name: "Reliance Industries", quantity: 50, avgPrice: 2450 },
+    { id: "2", symbol: "TCS", name: "Tata Consultancy", quantity: 30, avgPrice: 3200 },
+    { id: "3", symbol: "HDFCBANK", name: "HDFC Bank", quantity: 80, avgPrice: 1580 },
+    { id: "4", symbol: "INFY", name: "Infosys", quantity: 100, avgPrice: 1420 },
+    { id: "5", symbol: "ICICIBANK", name: "ICICI Bank", quantity: 60, avgPrice: 980 },
+  ],
+};
+
+function holdingFromQuote(
+  holding: (typeof LOCAL_PORTFOLIO.holdings)[number],
+  quote: EnrichedQuote
+) {
+  return {
+    ...holding,
+    currentPrice: quote.price ?? 0,
+    changePercent: quote.changePercent ?? 0,
+    quote,
+  };
+}
+
 const INDEX_META: Record<
   string,
   { id: string; name: string; sparkline: number[] }
@@ -104,15 +132,52 @@ export async function fetchMarketIndices(): Promise<MarketIndex[]> {
 export async function fetchPortfolioSummary(): Promise<PortfolioSummary> {
   return getCached(
     { key: cacheKey("portfolio-summary"), ttlMs: CACHE_TTL.QUOTE },
-    async () => ({
-      totalValue: 0,
-      dayChange: 0,
-      dayChangePercent: 0,
-      totalInvested: 0,
-      totalGain: 0,
-      totalGainPercent: 0,
-      holdings: [],
-    })
+    async () => {
+      const quoteMap = await marketDataService.getEnrichedQuotes(
+        LOCAL_PORTFOLIO.holdings.map((holding) => holding.symbol)
+      );
+      const holdings = LOCAL_PORTFOLIO.holdings.map((holding) =>
+        holdingFromQuote(
+          holding,
+          quoteMap.get(holding.symbol) ??
+            quoteMap.get(holding.symbol.toUpperCase()) ??
+            createUnavailableQuote(holding.symbol)
+        )
+      );
+
+      const pricedHoldings = holdings.filter(
+        (holding) => holding.quote.availability !== "unavailable"
+      );
+      const totalValue = pricedHoldings.reduce(
+        (sum, holding) => sum + holding.currentPrice * holding.quantity,
+        0
+      );
+      const totalInvested = holdings.reduce(
+        (sum, holding) => sum + holding.avgPrice * holding.quantity,
+        0
+      );
+      const dayChange = pricedHoldings.reduce(
+        (sum, holding) =>
+          sum +
+          holding.currentPrice *
+            holding.quantity *
+            (holding.changePercent / 100),
+        0
+      );
+
+      return {
+        totalValue,
+        dayChange,
+        dayChangePercent: totalValue > 0 ? (dayChange / totalValue) * 100 : 0,
+        totalInvested,
+        totalGain: totalValue - totalInvested,
+        totalGainPercent:
+          totalInvested > 0
+            ? ((totalValue - totalInvested) / totalInvested) * 100
+            : 0,
+        holdings,
+      };
+    }
   );
 }
 
@@ -232,7 +297,9 @@ export async function fetchUpcomingResults(): Promise<UpcomingResult[]> {
     (watchlist) => watchlist.symbols
   );
   service.setMembership({
-    portfolioSymbols: [],
+    portfolioSymbols: LOCAL_PORTFOLIO.holdings.map(
+      (holding) => holding.symbol
+    ),
     watchlistSymbols,
   });
   const fromCalendar = service.toUpcomingResults();

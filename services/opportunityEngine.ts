@@ -7,7 +7,7 @@ import {
 } from "@/lib/opportunity-engine";
 import type { MarketIntelligenceSnapshot } from "@/lib/market-intelligence";
 import {
-  selectSharedRecommendations,
+  selectRecommendationsWithFallback,
   type SharedRecommendation,
 } from "@/lib/recommendations";
 import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
@@ -21,7 +21,7 @@ export async function fetchSharedRecommendationsFresh(
   limit?: number
 ): Promise<SharedRecommendation[]> {
   const state = await ensureOpportunityEngineState();
-  const recommendations = selectSharedRecommendations(state);
+  const recommendations = selectRecommendationsWithFallback(state);
   return typeof limit === "number"
     ? recommendations.slice(0, limit)
     : recommendations;
@@ -32,7 +32,7 @@ export function fetchRecommendationForSymbol(
 ): SharedRecommendation | null {
   const normalized = symbol.trim().toUpperCase();
   return (
-    selectSharedRecommendations(getOpportunityState()).find(
+    selectRecommendationsWithFallback(getOpportunityState()).find(
       (recommendation) => recommendation.symbol.toUpperCase() === normalized
     ) ?? null
   );
@@ -43,7 +43,7 @@ export function fetchRecommendationsForSymbols(
 ): Map<string, SharedRecommendation> {
   const wanted = new Set(symbols.map((symbol) => symbol.toUpperCase()));
   return new Map(
-    selectSharedRecommendations(getOpportunityState())
+    selectRecommendationsWithFallback(getOpportunityState())
       .filter((recommendation) => wanted.has(recommendation.symbol.toUpperCase()))
       .map((recommendation) => [
         recommendation.symbol.toUpperCase(),
@@ -85,18 +85,24 @@ let freshnessScan: Promise<OpportunityEngineState> | null = null;
 /**
  * Ensures consumers share one fresh scan instead of launching per-surface
  * Strategy Engine executions.
+ *
+ * Recovery: when the last scan is stale but the Opportunity Engine already
+ * holds candidates, return them immediately and refresh in the background so
+ * Dashboard / Watchlist / Portfolio never go empty while Strategy Engine
+ * re-executes.
  */
 export async function ensureOpportunityEngineState(): Promise<OpportunityEngineState> {
   const current = getOpportunityState();
   const lastScan = current.lastScannedAt
     ? Date.parse(current.lastScannedAt)
     : Number.NaN;
-  if (
+  const isFresh =
     Number.isFinite(lastScan) &&
-    Date.now() - lastScan < SCAN_INTERVAL_MS
-  ) {
+    Date.now() - lastScan < SCAN_INTERVAL_MS;
+  if (isFresh) {
     return current;
   }
+
   if (!freshnessScan) {
     freshnessScan = triggerOpportunityScan()
       .then((result) => result.state)
@@ -104,6 +110,14 @@ export async function ensureOpportunityEngineState(): Promise<OpportunityEngineS
         freshnessScan = null;
       });
   }
+
+  const hasCandidates = Object.values(current.categories).some(
+    (candidates) => candidates.length > 0
+  );
+  if (hasCandidates) {
+    return current;
+  }
+
   return freshnessScan;
 }
 
