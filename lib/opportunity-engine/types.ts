@@ -104,6 +104,30 @@ export interface OpportunityCandidate {
   /** Presentation status for recommendation-backed candidate views. */
   status?: RecommendationRecordStatus;
   quote?: EnrichedQuote;
+  /* ── Sprint 11B Prompt 3 — Trading Pipeline enrichment ── */
+  /** Whether the candidate passed Strategy Eligibility + pipeline gates. */
+  pipelineEligible?: boolean;
+  /** Strategy eligibility score 0–100 from the eligibility matrix. */
+  eligibilityScore?: number;
+  /** Unified Final Opportunity Score 0–100. */
+  opportunityScore?: number;
+  /** Institutional / pipeline health contribution 0–100. */
+  institutionalScore?: number;
+  /** Validation contribution 0–100. */
+  validationScore?: number;
+  /** Live market regime label from Trading Pipeline. */
+  marketRegime?: string;
+  /** Live market trend from Institutional Market Context. */
+  marketTrend?: string;
+  /** Risk mode from Institutional Market Context. */
+  riskMode?: string;
+  /** Pipeline confidence 0–100. */
+  pipelineConfidence?: number;
+  /** Matched strategy id from eligibility matrix. */
+  strategyId?: string;
+  strategyName?: string;
+  eligibleReasons?: string[];
+  rejectedReasons?: string[];
 }
 
 export type RecommendationRecordStatus =
@@ -195,6 +219,29 @@ export interface OpportunityEngineState {
   postMarket: PostMarketReport | null;
   scanHistory: ScanHistoryEntry[];
   lastScanMetrics: ScanMetrics | null;
+  /**
+   * Last Trading Pipeline summary used for ranking (Sprint 11B Prompt 3).
+   * Shared Context → Regime → Eligibility snapshot.
+   */
+  pipeline?: {
+    regime: string;
+    marketTrend: string;
+    riskMode: string;
+    confidence: number;
+    confidenceGrade: string;
+    pipelineHealth: number;
+    healthGrade: string;
+    eligibleStrategyCount: number;
+    rejectedStrategyCount: number;
+    timestamp: string;
+    eligibleStrategies: Array<{
+      strategyId: string;
+      name: string;
+      category: string;
+      score: number;
+      reasons: string[];
+    }>;
+  } | null;
 }
 
 export interface OpportunityDaySnapshot {

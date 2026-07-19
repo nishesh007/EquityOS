@@ -34,3 +34,26 @@ export type {
   SchedulerMarketState,
   DataFreshnessLevel,
 } from "@/lib/opportunity-engine/scheduler-health";
+export {
+  computeOpportunityScore,
+  resolveOpportunityScoreWeights,
+  DEFAULT_OPPORTUNITY_SCORE_WEIGHTS,
+} from "@/lib/opportunity-engine/opportunity-score";
+export type {
+  OpportunityScoreFactors,
+  OpportunityScoreResult,
+  OpportunityScoreWeights,
+} from "@/lib/opportunity-engine/opportunity-score";
+export {
+  enrichCandidateWithPipeline,
+  enrichCandidatesWithPipeline,
+  buildPipelineScanSummary,
+  resolveCategoryStrategy,
+  CATEGORY_STRATEGY_IDS,
+  DEFAULT_PIPELINE_GATE_THRESHOLDS,
+} from "@/lib/opportunity-engine/pipeline-enrichment";
+export type {
+  PipelineGateThresholds,
+  PipelineScanSummary,
+  PipelineEnrichmentOptions,
+} from "@/lib/opportunity-engine/pipeline-enrichment";

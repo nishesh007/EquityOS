@@ -1,7 +1,12 @@
 import { PageHeader } from "@/components/layout/PageHeader";
-import { MarketIntelligenceStrip } from "@/components/market";
+import {
+  EligibilityBadge,
+  MarketIntelligenceStrip,
+} from "@/components/market";
 import { PageContainer } from "@/src/design";
 import Link from "next/link";
+import { computeOpportunityScore } from "@/lib/opportunity-engine/opportunity-score";
+import { getOpportunityState } from "@/lib/opportunity-engine";
 import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
 import {
   fetchInstitutionalScreenerHealth,
@@ -10,6 +15,24 @@ import {
   toScreenUniverseCandidates,
 } from "@/services/screenerData";
 import { fetchResearchWorkspaceHealth } from "@/services/researchWorkspace";
+
+function metricNumber(
+  metrics: Record<string, number | string | null | undefined> | undefined,
+  ...keys: string[]
+): number | null {
+  if (!metrics) return null;
+  for (const key of keys) {
+    const value = metrics[key];
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+  }
+  return null;
+}
+
+function riskQualityFromMode(riskMode: string): number {
+  if (riskMode === "Risk On") return 72;
+  if (riskMode === "Risk Off") return 42;
+  return 58;
+}
 
 export default async function OpportunitiesPage() {
   const [{ universe }, health, researchWorkspace, marketIntelligence] =
@@ -20,33 +43,77 @@ export default async function OpportunitiesPage() {
       getMarketIntelligenceSnapshot(),
     ]);
 
+  const opportunityState = getOpportunityState();
+  const pipelineRanked = Object.values(opportunityState.categories)
+    .flat()
+    .filter((c) => c.pipelineEligible !== false)
+    .slice()
+    .sort(
+      (a, b) =>
+        (b.opportunityScore ?? b.aiConvictionScore) -
+        (a.opportunityScore ?? a.aiConvictionScore)
+    )
+    .slice(0, 12);
+
+  const ctx = marketIntelligence.context;
+  const riskQuality = riskQualityFromMode(ctx.riskMode);
+
+  // Seed discovery from live metrics + Trading Pipeline context — no placeholders.
   const candidates = toScreenUniverseCandidates(universe.rows.slice(0, 40)).map(
-    (c) => ({
-      ticker: c.ticker,
-      company: c.company,
-      sector: c.sector,
-      industry: c.industry,
-      price: c.price,
-      metrics: c.metrics,
-      domain: "opportunity" as const,
-      tags: ["swing", "opportunity"],
-      themeTags: c.sector ? [String(c.sector).toLowerCase()] : [],
-      aiConviction: 68,
-      opportunityScore: 66,
-      trustScore: 62,
-      validationScore: 60,
-      confidence: 64,
-      momentum: 64,
-      technical: 62,
-      growth: 58,
-      quality: 60,
-      risk: 58,
-      fundamentalStrength: 60,
-      liquidity: 58,
-      sectorStrength: 60,
-      themeStrength: 55,
-      marketBreadth: 55,
-    })
+    (c) => {
+      const metrics = (c.metrics ?? {}) as Record<
+        string,
+        number | string | null | undefined
+      >;
+      const technical =
+        metricNumber(metrics, "technical", "trend_score") ?? ctx.marketStrength;
+      const momentum =
+        metricNumber(metrics, "momentum") ?? Math.round(ctx.momentum);
+      const aiConviction =
+        metricNumber(metrics, "ai_conviction") ?? technical;
+      const validation =
+        metricNumber(metrics, "validation_score", "validation") ??
+        marketIntelligence.pipelineHealth ??
+        ctx.contextConfidence;
+      const scored = computeOpportunityScore({
+        strategy: Math.min(
+          100,
+          40 + marketIntelligence.eligibleStrategyCount * 8
+        ),
+        context: ctx.marketStrength,
+        regime: marketIntelligence.regime.confidence,
+        validation,
+        risk: riskQuality,
+        institutional: ctx.contextScore,
+        aiConviction,
+      });
+
+      return {
+        ...c,
+        domain: "opportunity" as const,
+        tags: ["swing", "opportunity"],
+        themeTags: c.sector ? [String(c.sector).toLowerCase()] : [],
+        aiConviction,
+        opportunityScore: scored.score,
+        trustScore:
+          metricNumber(metrics, "trust_score", "trust") ??
+          marketIntelligence.confidence,
+        validationScore: validation,
+        confidence: ctx.contextConfidence,
+        momentum,
+        technical,
+        growth: metricNumber(metrics, "growth", "revenue_yoy", "eps_growth") ?? undefined,
+        quality: metricNumber(metrics, "quality", "quality_score", "roce") ?? undefined,
+        risk: metricNumber(metrics, "risk") ?? riskQuality,
+        fundamentalStrength:
+          metricNumber(metrics, "fundamental_strength", "fundamental_score") ??
+          undefined,
+        liquidity: metricNumber(metrics, "liquidity") ?? undefined,
+        sectorStrength: ctx.sectorBreadth,
+        themeStrength: undefined,
+        marketBreadth: ctx.breadthScore,
+      };
+    }
   );
 
   const discovery = runDiscoveryScan(candidates, {
@@ -58,7 +125,7 @@ export default async function OpportunitiesPage() {
     <PageContainer>
       <PageHeader
         title="AI Opportunities"
-        subtitle={`Sprint 9D FROZEN · Discovery · ${health.ideaKindsCount} idea kinds · ${health.themeCount} themes · executive ${
+        subtitle={`Pipeline-ranked · Discovery · regime ${marketIntelligence.regime.regime} · ${health.ideaKindsCount} idea kinds · ${health.themeCount} themes · executive ${
           health.executiveReady ? health.executiveSummary : health.emptyMessage
         } · automation ${
           researchWorkspace.automationReady
@@ -98,12 +165,59 @@ export default async function OpportunitiesPage() {
         </Link>
       </div>
 
+      {pipelineRanked.length > 0 && (
+        <section className="mb-8 space-y-3">
+          <h2 className="text-sm font-semibold text-text-primary">
+            Trading Pipeline Rankings
+          </h2>
+          <p className="text-xs text-text-muted">
+            {opportunityState.pipeline
+              ? `${opportunityState.pipeline.regime} · ${opportunityState.pipeline.eligibleStrategyCount} eligible strategies · conf ${opportunityState.pipeline.confidence}`
+              : "Awaiting next scan"}
+          </p>
+          <ul className="grid gap-3 md:grid-cols-2">
+            {pipelineRanked.map((candidate) => (
+              <li
+                key={candidate.id}
+                className="rounded-xl border border-surface-border-subtle bg-surface-card p-4"
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <h3 className="text-sm font-semibold text-text-primary">
+                    {candidate.symbol}{" "}
+                    <span className="font-normal text-text-muted">
+                      {candidate.company}
+                    </span>
+                  </h3>
+                  <span className="text-xs text-text-muted">
+                    #{candidate.rank} ·{" "}
+                    {Math.round(
+                      candidate.opportunityScore ?? candidate.aiConvictionScore
+                    )}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-text-muted">
+                  {candidate.category} · {candidate.side}
+                  {candidate.strategyName ? ` · ${candidate.strategyName}` : ""}
+                </p>
+                <EligibilityBadge candidate={candidate} />
+                <p className="mt-2 text-sm text-text-secondary">
+                  {candidate.reason.split("\n")[0]}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {discovery.empty ? (
         <p className="rounded-xl border border-surface-border-subtle bg-surface-card p-4 text-sm text-text-muted">
           {discovery.emptyMessage}
         </p>
       ) : (
         <div className="space-y-3">
+          <h2 className="text-sm font-semibold text-text-primary">
+            Discovery Ideas
+          </h2>
           <p className="text-sm text-text-muted">
             {discovery.totalIdeas} ideas · {discovery.themes.length} themes ·{" "}
             {discovery.sectorRotation.length} sector rotation cards

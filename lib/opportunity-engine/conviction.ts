@@ -47,12 +47,15 @@ const CONVICTION_WEIGHTS: Record<keyof ConvictionComponents, number> = {
 
 /**
  * Derives explainable conviction components from live metrics.
+ * Optional `marketRegimeScore` replaces the volatility heuristic when
+ * Trading Pipeline regime confidence is available.
  */
 export function computeConvictionComponents(
   metrics: Record<string, number | string | null>,
   category: OpportunityCategory,
   side: "Long" | "Short",
-  riskReward = 2
+  riskReward = 2,
+  marketRegimeScore?: number | null
 ): ConvictionComponents {
   const changePercent = num(metrics, "change_percent") ?? 0;
   const volumeRatio = num(metrics, "volume_ratio") ?? 0;
@@ -98,10 +101,18 @@ export function computeConvictionComponents(
     100
   );
 
-  let marketRegime = 52;
-  if (volatility > 45) marketRegime -= 8;
-  else if (volatility < 25) marketRegime += 4;
-  marketRegime = clamp(marketRegime, 0, 100);
+  let marketRegime: number;
+  if (
+    typeof marketRegimeScore === "number" &&
+    Number.isFinite(marketRegimeScore)
+  ) {
+    marketRegime = clamp(marketRegimeScore, 0, 100);
+  } else {
+    marketRegime = 52;
+    if (volatility > 45) marketRegime -= 8;
+    else if (volatility < 25) marketRegime += 4;
+    marketRegime = clamp(marketRegime, 0, 100);
+  }
 
   const rsComponent = clamp(50 + direction * (relativeStrength - 50) * 0.9, 0, 100);
   const rewardRisk = clamp(riskReward * 28, 0, 100);
@@ -153,9 +164,16 @@ export function computeLiveAiConvictionResult(
   metrics: Record<string, number | string | null>,
   category: OpportunityCategory,
   side: "Long" | "Short",
-  riskReward = 2
+  riskReward = 2,
+  marketRegimeScore?: number | null
 ): ConvictionResult {
-  const components = computeConvictionComponents(metrics, category, side, riskReward);
+  const components = computeConvictionComponents(
+    metrics,
+    category,
+    side,
+    riskReward,
+    marketRegimeScore
+  );
   const raw = weightedConviction(components);
   return {
     finalScore: Math.round(clamp(raw, 40, 97)),
@@ -170,9 +188,16 @@ export function computeLiveAiConviction(
   metrics: Record<string, number | string | null>,
   category: OpportunityCategory,
   side: "Long" | "Short",
-  riskReward = 2
+  riskReward = 2,
+  marketRegimeScore?: number | null
 ): number {
-  return computeLiveAiConvictionResult(metrics, category, side, riskReward).finalScore;
+  return computeLiveAiConvictionResult(
+    metrics,
+    category,
+    side,
+    riskReward,
+    marketRegimeScore
+  ).finalScore;
 }
 
 export function computeLiveConfidence(

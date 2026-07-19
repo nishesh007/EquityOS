@@ -155,11 +155,19 @@ function expectedCatalyst(candidate: OpportunityCandidate): string {
 
 /**
  * Composite rank score used to derive Intraday and post-market pools.
+ * Prefer unified Opportunity Score (pipeline) when present.
  */
 export function computeCompositeScore(
   candidate: OpportunityCandidate,
   scannedAt: Date = new Date()
 ): number {
+  if (
+    typeof candidate.opportunityScore === "number" &&
+    Number.isFinite(candidate.opportunityScore)
+  ) {
+    return Math.round(clamp(candidate.opportunityScore, 0, 100) * 100) / 100;
+  }
+
   const rrScore = clamp(candidate.riskReward * 20, 0, 100);
   const composite =
     candidate.aiConvictionScore * 0.28 +

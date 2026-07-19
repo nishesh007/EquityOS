@@ -15,6 +15,10 @@ import {
 import { computeLiveAiConvictionResult } from "@/lib/opportunity-engine/conviction";
 import { generatePostMarketReport } from "@/lib/opportunity-engine/post-market";
 import {
+  buildPipelineScanSummary,
+  enrichCandidatesWithPipeline,
+} from "@/lib/opportunity-engine/pipeline-enrichment";
+import {
   collectShortlistSymbols,
   rescoreCategory,
   scanLiveMetrics,
@@ -51,6 +55,8 @@ import {
   type LiveSymbolContext,
 } from "@/lib/opportunity-engine/live-metrics";
 import { getOhlcCandles } from "@/lib/market/ohlc-engine";
+import { getTradingPipelineResult } from "@/services/marketIntelligence";
+import type { TradingPipelineResult } from "@/src/modules/tradingPipeline";
 
 const QUOTE_BATCH_SIZE = 50;
 const METRICS_CONCURRENCY = 8;
@@ -142,7 +148,8 @@ function toOpportunityCandidate(
   price: number,
   quote?: Awaited<ReturnType<typeof marketDataService.getEnrichedQuote>>,
   atr?: number | null,
-  fullMetrics?: LiveMetricsRecord
+  fullMetrics?: LiveMetricsRecord,
+  marketRegimeScore?: number | null
 ): OpportunityCandidate {
   const levels = buildTradeLevels(price, candidate.side, candidate.category, atr ?? null);
   const now = new Date().toISOString();
@@ -151,7 +158,8 @@ function toOpportunityCandidate(
     metrics,
     candidate.category,
     candidate.side,
-    levels.riskReward
+    levels.riskReward,
+    marketRegimeScore
   );
   const aiConvictionScore = conviction.finalScore;
   const confidenceReasons = buildConfidenceReasons(
@@ -203,7 +211,8 @@ function buildCategoryCandidates(
   category: OpportunityCategory,
   shortlist: CategoryScanCandidate[],
   metricsBySymbol: Map<string, LiveMetricsRecord>,
-  quoteMap: Map<string, Awaited<ReturnType<typeof marketDataService.getEnrichedQuote>>>
+  quoteMap: Map<string, Awaited<ReturnType<typeof marketDataService.getEnrichedQuote>>>,
+  marketRegimeScore?: number | null
 ): OpportunityCandidate[] {
   const rescored: CategoryScanCandidate[] = [];
 
@@ -245,7 +254,15 @@ function buildCategoryCandidates(
       quote?.price ??
       (typeof metrics?.cmp === "number" ? metrics.cmp : 0);
     const atr = typeof metrics?.atr === "number" ? metrics.atr : null;
-    return toOpportunityCandidate(candidate, index + 1, price, quote, atr, metrics);
+    return toOpportunityCandidate(
+      candidate,
+      index + 1,
+      price,
+      quote,
+      atr,
+      metrics,
+      marketRegimeScore
+    );
   });
 }
 
@@ -285,6 +302,16 @@ async function executeScan(force = false): Promise<ScanResult> {
   setScanning(true);
 
   try {
+    // Trading Pipeline first — shared Context → Regime → Eligibility SSOT.
+    let pipeline: TradingPipelineResult;
+    try {
+      pipeline = await getTradingPipelineResult({ forceRefresh: force });
+    } catch {
+      pipeline = await getTradingPipelineResult({ forceRefresh: true });
+    }
+    const regimeScore = pipeline.confidence.score;
+    const pipelineSummary = buildPipelineScanSummary(pipeline);
+
     const contexts = buildSymbolContexts();
     setUniverseSize(contexts.length);
 
@@ -331,12 +358,15 @@ async function executeScan(force = false): Promise<ScanResult> {
     let totalUpdated = 0;
 
     for (const category of OPPORTUNITY_CATEGORIES) {
-      const candidates = buildCategoryCandidates(
+      const rawCandidates = buildCategoryCandidates(
         category,
         fullRescan[category],
         metricsBySymbol,
-        quoteMap
+        quoteMap,
+        regimeScore
       );
+      // Rank + gate through Trading Pipeline eligibility (no bypass).
+      const candidates = enrichCandidatesWithPipeline(rawCandidates, pipeline);
       const { added, removed, updated } = mergeCategoryResults(category, candidates);
       totalAdded += added;
       totalRemoved += removed;
@@ -348,13 +378,17 @@ async function executeScan(force = false): Promise<ScanResult> {
       ? new Date(Date.now() + SCAN_INTERVAL_MS).toISOString()
       : null;
 
-    finalizeScan(nextScanAt, {
-      durationMs,
-      symbolsScanned,
-      added: totalAdded,
-      removed: totalRemoved,
-      updated: totalUpdated,
-    });
+    finalizeScan(
+      nextScanAt,
+      {
+        durationMs,
+        symbolsScanned,
+        added: totalAdded,
+        removed: totalRemoved,
+        updated: totalUpdated,
+      },
+      pipelineSummary
+    );
 
     if (!isMarketOpen() && getMarketStatus() === "post_close") {
       const sessionDate = getTradingDateKey();

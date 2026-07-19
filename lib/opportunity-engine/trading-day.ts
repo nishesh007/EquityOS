@@ -63,6 +63,7 @@ export function buildFreshTradingDayState(
     postMarket: null,
     scanHistory: [],
     lastScanMetrics: null,
+    pipeline: null,
   };
 }
 

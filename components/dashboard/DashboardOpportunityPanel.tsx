@@ -1,6 +1,7 @@
 "use client";
 
 import { SchedulerHealthCard } from "@/components/dashboard/SchedulerHealthCard";
+import { EligibilityBadge, OpportunityPipelineMeta } from "@/components/market";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { StockLink } from "@/components/ui/StockLink";
@@ -288,6 +289,8 @@ function ExpandedDetails({
         <div className="mt-2">
           <TargetTimeline candidate={candidate} />
         </div>
+        <EligibilityBadge candidate={candidate} />
+        <OpportunityPipelineMeta candidate={candidate} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -433,6 +436,7 @@ function MobileCandidateCard({
 
       <div className="mt-3">
         <ConvictionCell score={candidate.aiConvictionScore} />
+        <EligibilityBadge candidate={candidate} />
       </div>
 
       <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
@@ -552,8 +556,9 @@ function WatchlistCandidates({
               <div className="flex shrink-0 flex-col items-end gap-1">
                 <TierBadge tier={resolveConvictionTier(candidate.aiConvictionScore)} />
                 <span className="font-mono text-xs font-semibold text-text-muted tabular-nums">
-                  {candidate.aiConvictionScore}
+                  {candidate.opportunityScore ?? candidate.aiConvictionScore}
                 </span>
+                <EligibilityBadge candidate={candidate} compact />
                 <HoldingBadge holding={meta.expectedHoldingPeriod} />
               </div>
             </div>
@@ -637,7 +642,11 @@ export function DashboardOpportunityPanel({
       <SchedulerHealthCard />
       <CardHeader
         title="AI Opportunities"
-        subtitle={`Institutional conviction gate ≥75 · automatic 15-minute market-hours scan · ${state.universeSize.toLocaleString("en-IN")} NSE/BSE symbols`}
+        subtitle={`Pipeline-ranked · institutional conviction gate ≥75 · automatic 15-minute market-hours scan · ${state.universeSize.toLocaleString("en-IN")} NSE/BSE symbols${
+          state.pipeline
+            ? ` · regime ${state.pipeline.regime} · ${state.pipeline.eligibleStrategyCount} eligible strategies`
+            : ""
+        }`}
         action={
           state.isScanning ? (
             <span className="inline-flex items-center gap-2 text-xs font-semibold text-accent">
@@ -772,7 +781,12 @@ export function DashboardOpportunityPanel({
                           1 : {candidate.riskReward.toFixed(1)}
                         </td>
                         <td className="px-3 py-3">
-                          <ConvictionCell score={candidate.aiConvictionScore} />
+                          <ConvictionCell
+                            score={
+                              candidate.opportunityScore ?? candidate.aiConvictionScore
+                            }
+                          />
+                          <EligibilityBadge candidate={candidate} compact />
                         </td>
                         <td className="px-3 py-3">
                           <ConfidenceBadge score={candidate.confidencePercent} />

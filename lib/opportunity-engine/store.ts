@@ -44,6 +44,7 @@ function createInitialState(tradingDate: string | null = null): OpportunityEngin
     postMarket: null,
     scanHistory: [],
     lastScanMetrics: null,
+    pipeline: null,
   };
 }
 
@@ -84,6 +85,7 @@ function hydrateFromDisk(): void {
     recommendations: persisted.state.recommendations ?? [],
     scanHistory: persisted.state.scanHistory ?? [],
     lastScanMetrics: persisted.state.lastScanMetrics ?? null,
+    pipeline: persisted.state.pipeline ?? null,
   };
   firstDetectedMap = new Map(Object.entries(persisted.firstDetectedMap));
 
@@ -276,7 +278,8 @@ export function mergeCategoryResults(
 
 export function finalizeScan(
   nextScanAt: string | null,
-  scanMetrics: Omit<ScanMetrics, "scannedAt"> & { scannedAt?: string }
+  scanMetrics: Omit<ScanMetrics, "scannedAt"> & { scannedAt?: string },
+  pipelineSummary?: OpportunityEngineState["pipeline"]
 ): void {
   hydrateFromDisk();
   ensureTradingDayLifecycle();
@@ -309,6 +312,7 @@ export function finalizeScan(
       scannedAt,
     },
     scanHistory: [historyEntry, ...state.scanHistory].slice(0, MAX_SCAN_HISTORY),
+    pipeline: pipelineSummary ?? state.pipeline ?? null,
   };
   state = {
     ...state,

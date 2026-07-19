@@ -31,13 +31,19 @@ export async function fetchOpportunityEngineBundle(): Promise<OpportunityEngineB
   return { state, marketIntelligence };
 }
 
+/**
+ * Force scan through Trading Pipeline → Eligibility → Opportunity Score.
+ * marketIntelligence is refreshed with the same shared pipeline cache.
+ */
 export async function triggerOpportunityScan(): Promise<
   ScanResult & { marketIntelligence: MarketIntelligenceSnapshot }
 > {
-  const [result, marketIntelligence] = await Promise.all([
-    runOpportunityScan(true),
-    getMarketIntelligenceSnapshot({ forceRefresh: true }),
-  ]);
+  const result = await runOpportunityScan(true);
+  // Prefer engine-persisted pipeline; refresh shared snapshot without double force
+  // when the scan already warmed the trading pipeline cache.
+  const marketIntelligence = await getMarketIntelligenceSnapshot({
+    forceRefresh: false,
+  });
   return { ...result, marketIntelligence };
 }
 
