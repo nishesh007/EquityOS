@@ -71,6 +71,8 @@ export function TerminalExperience() {
     const handlers = [
       ["create-workspace", () => router.push("/")],
       ["export-report", () => router.push("/validation")],
+      ["create-research-note", () => router.push("/research")],
+      ["refresh-market-data", () => router.refresh()],
     ] as const;
     const offs = handlers.map(([name, handler]) => {
       const listener = () => handler();

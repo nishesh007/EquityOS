@@ -13,11 +13,13 @@ export {
   getCommand,
   resetCommandRegistryForTests,
   COMMAND_CATEGORY_LABELS,
+  SEARCH_EXAMPLES,
   type CommandCategory,
   type CommandItem,
   type SearchResult,
   type SearchProvider,
 } from "./commandRegistry";
+export { NSE_SECTOR_CATALOG, type SectorCatalogItem } from "./sectorCatalog";
 export {
   GLOBAL_SHORTCUTS,
   matchGlobalShortcut,

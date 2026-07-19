@@ -95,8 +95,7 @@ describe("Sprint 10C.R7 — fuzzy search", () => {
 
 describe("Sprint 10C.R7 — command registry & global search", () => {
   it("ships built-in commands for every sidebar page", () => {
-    const pages = listCommands().filter((c) => c.category === "page");
-    const hrefs = pages.map((p) => p.href);
+    const hrefs = listCommands().map((c) => c.href);
     for (const href of ["/", "/research", "/portfolio", "/watchlist", "/validation", "/settings", "/opportunities", "/screener"]) {
       expect(hrefs).toContain(href);
     }
@@ -106,18 +105,38 @@ describe("Sprint 10C.R7 — command registry & global search", () => {
     const titles = listCommands().map((c) => c.title);
     for (const title of [
       "Open Company…",
+      "Open Portfolio",
+      "Open Watchlist",
+      "Open Screener",
+      "Open Research Workspace",
+      "Open Dashboard",
       "Add to Watchlist",
+      "Create Watchlist",
+      "Create Research Note",
       "Archive Recommendation",
       "Export Report",
       "Compare Companies",
       "Pin Widget",
       "Create Workspace",
       "Change Theme",
+      "Toggle Theme",
       "Toggle Sidebar",
       "Refresh Dashboard",
+      "Refresh Market Data",
+      "Open Settings",
+      "Open Economic Calendar",
+      "Go to Company",
     ]) {
       expect(titles).toContain(title);
     }
+  });
+
+  it("includes sector catalog entries for smart search", () => {
+    const sectors = listCommands().filter((c) => c.category === "sector");
+    expect(sectors.length).toBeGreaterThan(5);
+    expect(searchEverything("banking").some((r) => r.category === "sector")).toBe(
+      true
+    );
   });
 
   it("registerCommand adds commands and rejects duplicates", () => {

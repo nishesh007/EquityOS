@@ -6,7 +6,7 @@
  * (injectable for tests, SSR-safe).
  */
 
-export type RecentKind = "company" | "research" | "page" | "search";
+export type RecentKind = "company" | "research" | "page" | "search" | "command";
 
 export interface RecentItem {
   id: string;

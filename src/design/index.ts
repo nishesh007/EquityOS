@@ -457,6 +457,7 @@ export {
   listCommands,
   getCommand,
   COMMAND_CATEGORY_LABELS,
+  SEARCH_EXAMPLES,
   GLOBAL_SHORTCUTS,
   matchGlobalShortcut,
   emitUiEvent,

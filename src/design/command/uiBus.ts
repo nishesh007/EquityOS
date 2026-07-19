@@ -12,8 +12,10 @@ export type UiEventName =
   | "show-help-center"
   | "toggle-sidebar"
   | "refresh-dashboard"
+  | "refresh-market-data"
   | "change-theme"
   | "create-workspace"
+  | "create-research-note"
   | "open-company"
   | "export-report";
 
