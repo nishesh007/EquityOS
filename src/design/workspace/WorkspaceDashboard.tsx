@@ -20,10 +20,14 @@ import {
 import {
   ChevronDown,
   ChevronUp,
+  Copy,
   EyeOff,
   GripVertical,
+  Maximize2,
+  Move,
   Pin,
   PinOff,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ContextMenu } from "../productivity/ContextMenu";
@@ -67,6 +71,7 @@ import {
 } from "./workspaceEngine";
 import { matchShortcut } from "./workspaceShortcuts";
 import { WorkspaceToolbar } from "./WorkspaceToolbar";
+import { useRouter } from "next/navigation";
 
 /** 12-col span → responsive Tailwind classes (mobile stacks everything). */
 const SPAN_CLASSES: Readonly<Record<number, string>> = Object.freeze({
@@ -96,12 +101,15 @@ interface DragState {
 }
 
 export function WorkspaceDashboard({ widgets }: WorkspaceDashboardProps) {
+  const router = useRouter();
   const [workspace, setWorkspace] = useState<Workspace>(getDefaultWorkspace);
   const [profiles, setProfiles] = useState<Workspace[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [editMode, setEditMode] = useState(false);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const [flash, setFlash] = useState<string | null>(null);
   const dragRef = useRef<DragState | null>(null);
   const workspaceRef = useRef(workspace);
 
@@ -114,6 +122,11 @@ export function WorkspaceDashboard({ widgets }: WorkspaceDashboardProps) {
     setWorkspace(getActiveWorkspace());
     setProfiles(listWorkspaces());
     setHydrated(true);
+  }, []);
+
+  const showFlash = useCallback((message: string) => {
+    setFlash(message);
+    window.setTimeout(() => setFlash(null), 2200);
   }, []);
 
   /** Apply a mutation and auto-save. */
@@ -160,12 +173,17 @@ export function WorkspaceDashboard({ widgets }: WorkspaceDashboardProps) {
   // -------------------------------------------------------------------------
 
   const onDragStart = (event: React.DragEvent, widgetId: string) => {
+    if (!editMode) {
+      event.preventDefault();
+      return;
+    }
     dragRef.current = { widgetId };
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("text/plain", widgetId);
   };
 
   const onDropOnWidget = (event: React.DragEvent, target: WidgetPlacement) => {
+    if (!editMode) return;
     event.preventDefault();
     event.stopPropagation();
     setDropTarget(null);
@@ -182,6 +200,7 @@ export function WorkspaceDashboard({ widgets }: WorkspaceDashboardProps) {
   };
 
   const onDropOnRegion = (event: React.DragEvent, region: WorkspaceRegion) => {
+    if (!editMode) return;
     event.preventDefault();
     setDropTarget(null);
     const source = dragRef.current?.widgetId;
@@ -203,6 +222,7 @@ export function WorkspaceDashboard({ widgets }: WorkspaceDashboardProps) {
     event: React.PointerEvent,
     placement: WidgetPlacement
   ) => {
+    if (!editMode) return;
     event.preventDefault();
     const startX = event.clientX;
     const startSpan = WORKSPACE_SIZE_SPANS[placement.size];
@@ -289,90 +309,140 @@ export function WorkspaceDashboard({ widgets }: WorkspaceDashboardProps) {
     const definition = getWidgetDefinition(placement.widgetId);
     const label = definition?.label ?? placement.widgetId;
     const span = WORKSPACE_SIZE_SPANS[placement.size];
-    const isDropTarget = dropTarget === placement.widgetId;
+    const isDropTarget = editMode && dropTarget === placement.widgetId;
 
     return (
       <div
         key={placement.widgetId}
+        id={`widget-${placement.widgetId}`}
         role="group"
         aria-label={`${label} widget`}
         className={cn(
           "group/widget relative min-w-0 transition-all duration-300",
           SPAN_CLASSES[span],
-          isDropTarget && "rounded-lg ring-2 ring-accent/60 ring-offset-2 ring-offset-surface"
+          editMode &&
+            "rounded-xl border border-dashed border-accent/35 bg-accent/[0.03] p-2 shadow-[inset_0_0_0_1px_rgba(99,102,241,0.08)]",
+          isDropTarget &&
+            "rounded-lg ring-2 ring-accent/60 ring-offset-2 ring-offset-surface"
         )}
         onDragOver={(event) => {
-          if (!dragRef.current) return;
+          if (!editMode || !dragRef.current) return;
           event.preventDefault();
           event.dataTransfer.dropEffect = "move";
           setDropTarget(placement.widgetId);
         }}
-        onDragLeave={() => setDropTarget((current) => (current === placement.widgetId ? null : current))}
+        onDragLeave={() =>
+          setDropTarget((current) =>
+            current === placement.widgetId ? null : current
+          )
+        }
         onDrop={(event) => onDropOnWidget(event, placement)}
       >
-        {/* Widget frame controls — visible on hover / keyboard focus. */}
+        {/* Widget frame controls — always in edit mode; hover otherwise for pin/hide. */}
         <div
           className={cn(
             "absolute -top-2.5 right-3 z-20 flex items-center gap-0.5 rounded-md border border-surface-border bg-card px-1 py-0.5 shadow-dropdown",
-            "opacity-0 transition-opacity duration-200 group-hover/widget:opacity-100 focus-within:opacity-100"
+            editMode
+              ? "opacity-100"
+              : "opacity-0 transition-opacity duration-200 group-hover/widget:opacity-100 focus-within:opacity-100"
           )}
         >
+          {editMode ? (
+            <button
+              type="button"
+              draggable
+              onDragStart={(event) => onDragStart(event, placement.widgetId)}
+              onDragEnd={() => {
+                dragRef.current = null;
+                setDropTarget(null);
+              }}
+              onKeyDown={(event) => onHandleKeyDown(event, placement)}
+              title="Drag to move · arrows to reorder"
+              aria-label={`Move ${label}. Use arrow keys to reorder.`}
+              className="cursor-grab rounded p-1 text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary active:cursor-grabbing"
+            >
+              <GripVertical className="h-3.5 w-3.5" />
+            </button>
+          ) : null}
+          {editMode ? (
+            <select
+              value={placement.size}
+              onChange={(event) =>
+                commit(
+                  resizeWidget(
+                    workspace,
+                    placement.widgetId,
+                    event.target.value as WorkspaceSize
+                  )
+                )
+              }
+              aria-label={`Resize ${label}`}
+              title="Widget size"
+              className="rounded border-0 bg-transparent py-0.5 pl-1 pr-4 text-[10px] text-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+            >
+              {WORKSPACE_SIZES.map((size) => (
+                <option key={size} value={size}>
+                  {WORKSPACE_SIZE_LABELS[size]}
+                </option>
+              ))}
+            </select>
+          ) : null}
           <button
             type="button"
-            draggable
-            onDragStart={(event) => onDragStart(event, placement.widgetId)}
-            onDragEnd={() => {
-              dragRef.current = null;
-              setDropTarget(null);
-            }}
-            onKeyDown={(event) => onHandleKeyDown(event, placement)}
-            title="Drag to move · arrows to reorder"
-            aria-label={`Move ${label}. Use arrow keys to reorder.`}
-            className="cursor-grab rounded p-1 text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary active:cursor-grabbing"
-          >
-            <GripVertical className="h-3.5 w-3.5" />
-          </button>
-          <select
-            value={placement.size}
-            onChange={(event) =>
-              commit(resizeWidget(workspace, placement.widgetId, event.target.value as WorkspaceSize))
+            onClick={() =>
+              commit(
+                setWidgetPinned(
+                  workspace,
+                  placement.widgetId,
+                  !placement.pinned
+                )
+              )
             }
-            aria-label={`Resize ${label}`}
-            title="Widget size"
-            className="rounded border-0 bg-transparent py-0.5 pl-1 pr-4 text-[10px] text-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
-          >
-            {WORKSPACE_SIZES.map((size) => (
-              <option key={size} value={size}>
-                {WORKSPACE_SIZE_LABELS[size]}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={() => commit(setWidgetPinned(workspace, placement.widgetId, !placement.pinned))}
             title={placement.pinned ? "Unpin" : "Pin to top"}
             aria-label={placement.pinned ? `Unpin ${label}` : `Pin ${label}`}
             aria-pressed={placement.pinned}
             className={cn(
               "rounded p-1 transition-colors hover:bg-surface-hover",
-              placement.pinned ? "text-accent" : "text-text-muted hover:text-text-primary"
+              placement.pinned
+                ? "text-accent"
+                : "text-text-muted hover:text-text-primary"
             )}
           >
-            {placement.pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+            {placement.pinned ? (
+              <PinOff className="h-3.5 w-3.5" />
+            ) : (
+              <Pin className="h-3.5 w-3.5" />
+            )}
           </button>
           <button
             type="button"
-            onClick={() => commit(setWidgetCollapsed(workspace, placement.widgetId, !placement.collapsed))}
+            onClick={() =>
+              commit(
+                setWidgetCollapsed(
+                  workspace,
+                  placement.widgetId,
+                  !placement.collapsed
+                )
+              )
+            }
             title={placement.collapsed ? "Expand" : "Collapse"}
-            aria-label={placement.collapsed ? `Expand ${label}` : `Collapse ${label}`}
+            aria-label={
+              placement.collapsed ? `Expand ${label}` : `Collapse ${label}`
+            }
             aria-expanded={!placement.collapsed}
             className="rounded p-1 text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary"
           >
-            {placement.collapsed ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
+            {placement.collapsed ? (
+              <ChevronDown className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronUp className="h-3.5 w-3.5" />
+            )}
           </button>
           <button
             type="button"
-            onClick={() => commit(setWidgetVisible(workspace, placement.widgetId, false))}
+            onClick={() =>
+              commit(setWidgetVisible(workspace, placement.widgetId, false))
+            }
             title="Hide widget"
             aria-label={`Hide ${label}`}
             className="rounded p-1 text-text-muted transition-colors hover:bg-surface-hover hover:text-loss"
@@ -381,56 +451,115 @@ export function WorkspaceDashboard({ widgets }: WorkspaceDashboardProps) {
           </button>
         </div>
 
-        {/* Sprint 10C.R7 — right-click context menu on every widget. */}
         <ContextMenu
           items={[
             {
-              id: "pin",
-              label: placement.pinned ? "Unpin widget" : "Pin widget",
-              icon: placement.pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />,
-              onSelect: () => commit(setWidgetPinned(workspace, placement.widgetId, !placement.pinned)),
+              id: "refresh",
+              label: "Refresh",
+              icon: <RefreshCw className="h-3.5 w-3.5" />,
+              onSelect: () => {
+                router.refresh();
+                showFlash(`Refreshing ${label}…`);
+              },
             },
             {
-              id: "collapse",
-              label: placement.collapsed ? "Expand widget" : "Collapse widget",
-              icon: placement.collapsed ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />,
-              onSelect: () => commit(setWidgetCollapsed(workspace, placement.widgetId, !placement.collapsed)),
+              id: "expand",
+              label: placement.collapsed ? "Expand" : "Collapse",
+              icon: placement.collapsed ? (
+                <Maximize2 className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronUp className="h-3.5 w-3.5" />
+              ),
+              onSelect: () =>
+                commit(
+                  setWidgetCollapsed(
+                    workspace,
+                    placement.widgetId,
+                    !placement.collapsed
+                  )
+                ),
             },
-            ...WORKSPACE_SIZES.filter((size) => size !== placement.size).map((size) => ({
-              id: `size-${size}`,
-              label: `Resize · ${WORKSPACE_SIZE_LABELS[size]}`,
-              onSelect: () => commit(resizeWidget(workspace, placement.widgetId, size)),
-            })),
+            {
+              id: "duplicate",
+              label: "Duplicate (UI only)",
+              icon: <Copy className="h-3.5 w-3.5" />,
+              onSelect: () =>
+                showFlash(
+                  "Widget duplicate is presentation-only — use Profiles → Duplicate for a workspace copy."
+                ),
+            },
+            {
+              id: "move",
+              label: editMode ? "Drag handle to move" : "Enter Edit Mode to move",
+              icon: <Move className="h-3.5 w-3.5" />,
+              onSelect: () => {
+                if (!editMode) setEditMode(true);
+                showFlash(
+                  editMode
+                    ? "Use the grip handle to drag this widget."
+                    : "Edit Mode on — drag widgets with the grip handle."
+                );
+              },
+            },
+            {
+              id: "pin",
+              label: placement.pinned ? "Unpin widget" : "Pin widget",
+              icon: placement.pinned ? (
+                <PinOff className="h-3.5 w-3.5" />
+              ) : (
+                <Pin className="h-3.5 w-3.5" />
+              ),
+              onSelect: () =>
+                commit(
+                  setWidgetPinned(
+                    workspace,
+                    placement.widgetId,
+                    !placement.pinned
+                  )
+                ),
+            },
+            ...WORKSPACE_SIZES.filter((size) => size !== placement.size).map(
+              (size) => ({
+                id: `size-${size}`,
+                label: `Resize · ${WORKSPACE_SIZE_LABELS[size]}`,
+                onSelect: () =>
+                  commit(resizeWidget(workspace, placement.widgetId, size)),
+              })
+            ),
             {
               id: "hide",
               label: "Hide widget",
               icon: <EyeOff className="h-3.5 w-3.5" />,
               danger: true,
-              onSelect: () => commit(setWidgetVisible(workspace, placement.widgetId, false)),
+              onSelect: () =>
+                commit(setWidgetVisible(workspace, placement.widgetId, false)),
             },
           ]}
         >
           {placement.collapsed ? (
             <div className="flex items-center justify-between rounded-lg border border-surface-border bg-card px-4 py-2.5">
-              <span className="text-xs font-medium text-text-secondary">{label}</span>
-              <span className="text-[10px] uppercase tracking-wider text-text-muted">Collapsed</span>
+              <span className="text-xs font-medium text-text-secondary">
+                {label}
+              </span>
+              <span className="text-[10px] uppercase tracking-wider text-text-muted">
+                Collapsed
+              </span>
             </div>
           ) : (
             <div className="min-w-0">{content}</div>
           )}
         </ContextMenu>
 
-        {/* Resize drag handle — right edge. */}
-        {!placement.collapsed && (
+        {editMode && !placement.collapsed ? (
           <div
             role="separator"
             aria-orientation="vertical"
             aria-label={`Resize ${label} by dragging`}
             title="Drag to resize"
             onPointerDown={(event) => onResizeStart(event, placement)}
-            className="absolute inset-y-3 -right-1.5 z-10 hidden w-2 cursor-col-resize rounded-full opacity-0 transition-opacity hover:bg-accent/40 group-hover/widget:opacity-100 lg:block"
+            className="absolute inset-y-3 -right-1.5 z-10 hidden w-2 cursor-col-resize rounded-full bg-accent/30 opacity-70 transition-opacity hover:bg-accent/50 lg:block"
           />
-        )}
+        ) : null}
       </div>
     );
   };
@@ -441,6 +570,8 @@ export function WorkspaceDashboard({ widgets }: WorkspaceDashboardProps) {
         workspace={workspace}
         workspaces={profiles.length > 0 ? profiles : [workspace]}
         hidden={hidden}
+        editMode={editMode}
+        onEditModeChange={setEditMode}
         pickerOpen={pickerOpen}
         onPickerOpenChange={setPickerOpen}
         searchOpen={searchOpen}
@@ -468,12 +599,18 @@ export function WorkspaceDashboard({ widgets }: WorkspaceDashboardProps) {
         }}
         onReset={() => {
           resetWorkspace(workspace.id);
-          recordActivity("workspace", `Reset workspace "${workspace.name}" to its template`);
+          recordActivity(
+            "workspace",
+            `Reset workspace "${workspace.name}" to its template`
+          );
           sync();
         }}
         onApplyTemplate={(templateId) => {
           applyTemplate(workspace.id, templateId);
-          recordActivity("workspace", `Applied the "${templateId}" dashboard template`);
+          recordActivity(
+            "workspace",
+            `Applied the "${templateId}" dashboard template`
+          );
           sync();
         }}
         onExport={handleExport}
@@ -485,26 +622,58 @@ export function WorkspaceDashboard({ widgets }: WorkspaceDashboardProps) {
         onAddWidget={handleAddWidget}
         onRestoreHidden={(widgetId) => {
           if (widgetId) commit(setWidgetVisible(workspace, widgetId, true));
-          else commit({ ...workspace, placements: workspace.placements.map((p) => ({ ...p, visible: true })) });
+          else
+            commit({
+              ...workspace,
+              placements: workspace.placements.map((p) => ({
+                ...p,
+                visible: true,
+              })),
+            });
         }}
         onFullscreen={toggleFullscreen}
       />
+
+      {flash ? (
+        <p
+          role="status"
+          className="rounded-lg border border-accent/30 bg-accent/10 px-3 py-2 text-[11px] text-text-secondary"
+        >
+          {flash}
+        </p>
+      ) : null}
+
+      {editMode ? (
+        <p className="text-[11px] text-accent">
+          Edit Mode · drag grips to reorder · drop on outlined widgets or region
+          bands · resize from the right edge or size menu
+        </p>
+      ) : null}
 
       {WORKSPACE_REGIONS.map((region) => {
         const placements = placementsForRegion(workspace, region).filter(
           (placement) => placement.visible && widgets[placement.widgetId]
         );
-        if (placements.length === 0) return null;
+        if (placements.length === 0 && !editMode) return null;
         return (
           <section
             key={region}
             aria-label={REGION_LABELS[region]}
-            className="grid grid-cols-12 gap-5"
+            className={cn(
+              "grid grid-cols-12 gap-5 transition-all duration-300",
+              editMode &&
+                "min-h-[4.5rem] rounded-xl border border-dashed border-surface-border bg-surface-overlay/40 p-3"
+            )}
             onDragOver={(event) => {
-              if (dragRef.current) event.preventDefault();
+              if (editMode && dragRef.current) event.preventDefault();
             }}
             onDrop={(event) => onDropOnRegion(event, region)}
           >
+            {editMode && placements.length === 0 ? (
+              <div className="col-span-12 flex items-center justify-center rounded-lg border border-dashed border-accent/25 py-6 text-[11px] text-text-muted">
+                Drop zone · {REGION_LABELS[region]}
+              </div>
+            ) : null}
             {placements.map(renderPlacement)}
           </section>
         );

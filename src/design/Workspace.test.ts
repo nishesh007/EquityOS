@@ -164,10 +164,22 @@ describe("Sprint 10C.R6 — drag & drop model", () => {
   it("reorders a widget within its region", () => {
     const before = placementsForRegion(workspace, "snapshot").map((p) => p.widgetId);
     // Pinned market-snapshot stays on top; breadth moves ahead of pulse.
-    expect(before).toEqual(["market-snapshot", "market-pulse", "market-breadth"]);
+    expect(before).toEqual([
+      "market-snapshot",
+      "market-pulse",
+      "market-heatmap",
+      "market-breadth",
+      "market-movers",
+    ]);
     const moved = moveWidget(workspace, "market-breadth", { index: 0 });
     const after = placementsForRegion(moved, "snapshot").map((p) => p.widgetId);
-    expect(after).toEqual(["market-snapshot", "market-breadth", "market-pulse"]);
+    expect(after).toEqual([
+      "market-snapshot",
+      "market-breadth",
+      "market-pulse",
+      "market-heatmap",
+      "market-movers",
+    ]);
   });
 
   it("docks a widget into another region (drop across regions)", () => {
@@ -232,12 +244,15 @@ describe("Sprint 10C.R6 — resize & snap to grid", () => {
 describe("Sprint 10C.R6 — visibility, pin, collapse", () => {
   it("hides, lists and restores hidden widgets", () => {
     let workspace = getDefaultWorkspace();
+    const baselineHidden = new Set(
+      hiddenWidgets(workspace).map((p) => p.widgetId)
+    );
     workspace = setWidgetVisible(workspace, "watchlist", false);
     workspace = setWidgetVisible(workspace, "market-news", false);
-    expect(hiddenWidgets(workspace).map((p) => p.widgetId)).toEqual([
-      "watchlist",
-      "market-news",
-    ]);
+    const hidden = hiddenWidgets(workspace).map((p) => p.widgetId);
+    expect(hidden).toContain("watchlist");
+    expect(hidden).toContain("market-news");
+    expect(hidden.length).toBe(baselineHidden.size + 2);
     const restored = restoreHiddenWidgets(workspace);
     expect(hiddenWidgets(restored)).toHaveLength(0);
   });
@@ -276,14 +291,18 @@ describe("Sprint 10C.R6 — dashboard templates", () => {
     const ids = DASHBOARD_TEMPLATES.map((t) => t.id);
     expect(ids).toEqual([
       "institutional",
-      "research",
-      "portfolio",
       "swing-trader",
       "investor",
+      "research",
+      "portfolio",
       "minimal",
       "executive",
       "custom",
     ]);
+    expect(getTemplate("institutional")?.name).toBe("Default");
+    expect(getTemplate("swing-trader")?.name).toBe("Swing Trading");
+    expect(getTemplate("investor")?.name).toBe("Long Term Investing");
+    expect(getTemplate("portfolio")?.name).toBe("Portfolio Monitoring");
   });
 
   it("references only registered widgets with valid sizes", () => {

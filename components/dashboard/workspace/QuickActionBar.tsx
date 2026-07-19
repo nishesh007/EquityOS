@@ -29,13 +29,13 @@ const ACTIONS = [
     id: "pulse",
     label: "Market Pulse",
     icon: Activity,
-    href: "#section-market-pulse",
+    href: "#widget-market-pulse",
   },
   {
     id: "opportunities",
     label: "AI Opportunities",
     icon: Sparkles,
-    href: "#section-opportunities",
+    href: "#widget-ai-opportunities",
   },
   {
     id: "scan",

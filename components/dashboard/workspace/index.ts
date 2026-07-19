@@ -8,7 +8,8 @@ export {
 export { QuickActionBar } from "./QuickActionBar";
 export { DashboardSectionNav } from "./DashboardSectionNav";
 export { ScrollToTopButton } from "./ScrollToTopButton";
+export { ComingSoonWidget } from "./ComingSoonWidget";
 export {
   PersonalizedDashboard,
-  type DashboardSectionDef,
+  type PersonalizedDashboardProps,
 } from "./PersonalizedDashboard";

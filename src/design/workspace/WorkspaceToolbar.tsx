@@ -41,6 +41,7 @@ import {
 } from "../layouts/dashboardTemplates";
 import {
   searchWidgets,
+  getWidgetDefinition,
   type WidgetDefinition,
 } from "../widgets/widgetRegistry";
 import { WORKSPACE_SHORTCUTS } from "./workspaceShortcuts";
@@ -56,6 +57,8 @@ export interface WorkspaceToolbarProps {
   workspace: Workspace;
   workspaces: Workspace[];
   hidden: WidgetPlacement[];
+  editMode: boolean;
+  onEditModeChange: (editMode: boolean) => void;
   pickerOpen: boolean;
   onPickerOpenChange: (open: boolean) => void;
   searchOpen: boolean;
@@ -80,6 +83,8 @@ export function WorkspaceToolbar({
   workspace,
   workspaces,
   hidden,
+  editMode,
+  onEditModeChange,
   pickerOpen,
   onPickerOpenChange,
   searchOpen,
@@ -106,6 +111,7 @@ export function WorkspaceToolbar({
   const [pickerQuery, setPickerQuery] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [importError, setImportError] = useState<string | null>(null);
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -315,6 +321,19 @@ export function WorkspaceToolbar({
             <Plus className="h-3.5 w-3.5" /> Widgets
           </button>
 
+          <button
+            type="button"
+            onClick={() => onEditModeChange(!editMode)}
+            aria-pressed={editMode}
+            className={cn(
+              TOOLBAR_BUTTON_CLASS,
+              editMode && "border-accent/40 bg-accent/10 text-accent"
+            )}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            {editMode ? "Done editing" : "Edit Dashboard"}
+          </button>
+
           {/* Hidden widgets */}
           <div className="relative">
             <button
@@ -337,7 +356,9 @@ export function WorkspaceToolbar({
                   onClick={() => onRestoreHidden(placement.widgetId)}
                   className={MENU_ITEM_CLASS}
                 >
-                  <Eye className="h-3.5 w-3.5" /> {placement.widgetId}
+                  <Eye className="h-3.5 w-3.5" />{" "}
+                  {getWidgetDefinition(placement.widgetId)?.label ??
+                    placement.widgetId}
                 </button>
               ))}
               <div className="my-1.5 border-t border-surface-border" />
@@ -362,7 +383,12 @@ export function WorkspaceToolbar({
         </div>
 
         <div className="flex flex-wrap items-center gap-1">
-          <button type="button" onClick={onReset} title="Reset layout to template" className={TOOLBAR_BUTTON_CLASS}>
+          <button
+            type="button"
+            onClick={() => setResetConfirmOpen(true)}
+            title="Reset layout to template"
+            className={TOOLBAR_BUTTON_CLASS}
+          >
             <RotateCcw className="h-3.5 w-3.5" /> Reset
           </button>
           <button type="button" onClick={onExport} title="Export workspace (JSON)" className={TOOLBAR_BUTTON_CLASS}>
@@ -414,6 +440,39 @@ export function WorkspaceToolbar({
           {importError}
         </p>
       )}
+
+      {/* Reset confirmation */}
+      <GlassModal
+        open={resetConfirmOpen}
+        onClose={() => setResetConfirmOpen(false)}
+        title="Reset to Default?"
+      >
+        <p className="text-sm text-text-secondary">
+          This restores the active workspace layout to its template (
+          {workspace.templateId}). Pin, hide, size and order changes will be
+          discarded. Profiles themselves are kept.
+        </p>
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setResetConfirmOpen(false)}
+            className={cn(TOOLBAR_BUTTON_CLASS, "border-surface-border")}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              onReset();
+              setResetConfirmOpen(false);
+            }}
+            className="inline-flex items-center gap-1.5 rounded-md bg-loss/15 px-3 py-1.5 text-xs font-semibold text-loss transition-colors hover:bg-loss/25"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            Reset layout
+          </button>
+        </div>
+      </GlassModal>
 
       {/* Widget library picker */}
       <GlassModal

@@ -277,7 +277,7 @@ describe("Sprint 10C.R7 — breadcrumbs & status bar", () => {
   });
 
   it("labels known routes professionally", () => {
-    expect(getBreadcrumbs("/validation")[1].label).toBe("Validation Center");
+    expect(getBreadcrumbs("/validation")[1].label).toBe("Research Confidence");
     expect(getBreadcrumbs("/opportunities")[1].label).toBe("AI Insights");
   });
 

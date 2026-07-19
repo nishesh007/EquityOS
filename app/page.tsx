@@ -7,8 +7,14 @@ import { MarketOverviewCards } from "@/components/dashboard/MarketOverviewCards"
 import { MarketPulse } from "@/components/dashboard/MarketPulse";
 import { PortfolioSummary } from "@/components/dashboard/PortfolioSummary";
 import { Watchlist } from "@/components/dashboard/Watchlist";
-import { PersonalizedDashboard } from "@/components/dashboard/workspace";
+import {
+  ComingSoonWidget,
+  PersonalizedDashboard,
+} from "@/components/dashboard/workspace";
 import { MarketIntelligenceStrip } from "@/components/market";
+import { Card, CardHeader } from "@/components/ui/Card";
+import { ChangeIndicator } from "@/components/ui/ChangeIndicator";
+import { StockLink } from "@/components/ui/StockLink";
 import {
   fetchMarketIndices,
   fetchMarketNews,
@@ -24,7 +30,6 @@ import {
 } from "@/services/researchDashboardData";
 import {
   AccentContainer,
-  MainGrid,
   PageContainer,
   SectionHeader,
   StatusBadge,
@@ -39,6 +44,7 @@ import {
   Newspaper,
   Sparkles,
   Star,
+  TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -113,7 +119,7 @@ export default async function DashboardPage() {
             Dashboard
           </h1>
           <p className="mt-0.5 text-sm text-text-muted">
-            AI-powered Equity Research &amp; Market Intelligence
+            Customizable institutional workspace · Edit Mode to rearrange
           </p>
         </div>
       </div>
@@ -124,161 +130,242 @@ export default async function DashboardPage() {
     </header>
   );
 
+  const movers = (
+    <Card padding="lg" accent="emerald">
+      <CardHeader
+        title="Market Movers"
+        subtitle={breadth.universeLabel ?? "Selected universe"}
+        icon={<TrendingUp className="h-4 w-4 text-emerald-400" />}
+      />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-gain">
+            Top Gainers
+          </p>
+          <ul className="space-y-1.5">
+            {breadth.gainers.slice(0, 5).map((item) => (
+              <li
+                key={item.symbol}
+                className="flex items-center justify-between text-[11px]"
+              >
+                <StockLink
+                  symbol={item.symbol}
+                  className="font-semibold text-text-primary"
+                >
+                  {item.symbol}
+                </StockLink>
+                <ChangeIndicator
+                  value={item.changePercent}
+                  size="sm"
+                  showIcon={false}
+                />
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-loss">
+            Top Losers
+          </p>
+          <ul className="space-y-1.5">
+            {breadth.losers.slice(0, 5).map((item) => (
+              <li
+                key={item.symbol}
+                className="flex items-center justify-between text-[11px]"
+              >
+                <StockLink
+                  symbol={item.symbol}
+                  className="font-semibold text-text-primary"
+                >
+                  {item.symbol}
+                </StockLink>
+                <ChangeIndicator
+                  value={item.changePercent}
+                  size="sm"
+                  showIcon={false}
+                />
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </Card>
+  );
+
   return (
     <PageContainer>
       <PersonalizedDashboard
         header={header}
-        sections={[
-          {
-            id: "market-pulse",
-            label: "Market Pulse",
-            accent: "emerald",
-            children: (
-              <>
-                <SectionHeader
-                  title="01 · Market Pulse"
-                  subtitle="Indices, market internals, sector strength and institutional flow"
-                  summary={marketPulseSummary}
-                  accent="emerald"
-                  icon={<Activity className="h-5 w-5" />}
-                />
-                <MarketIntelligenceStrip snapshot={marketIntelligence} />
-                <MarketPulse
-                  pulse={pulse}
-                  marketIntelligence={marketIntelligence}
-                />
-                <MarketOverviewCards indices={indices} />
-                <MarketHeatmap defaultUniverse="nse" />
-                <MarketBreadth breadth={breadth} />
-              </>
-            ),
-          },
-          {
-            id: "opportunities",
-            label: "AI Opportunities",
-            accent: "blue",
-            children: (
-              <>
-                <SectionHeader
-                  title="02 · AI Opportunities"
-                  subtitle="Conviction-ranked ideas from the Strategy Engine"
-                  summary={opportunitiesSummary}
-                  accent="blue"
-                  icon={<Sparkles className="h-5 w-5" />}
-                  actions={
-                    <StatusBadge tone="success" size="sm">
-                      AI Verified
-                    </StatusBadge>
-                  }
-                />
-                <SharedRecommendationPanel
-                  recommendations={recommendations}
-                  title="Best Opportunities · Strategy Engine"
-                />
-              </>
-            ),
-          },
-          {
-            id: "portfolio",
-            label: "Portfolio & Watchlist",
-            accent: "amber",
-            children: (
-              <>
-                <SectionHeader
-                  title="03 · Portfolio"
-                  subtitle="Holdings, allocation and P&amp;L snapshot"
-                  summary={portfolioSummary}
-                  accent="amber"
-                  icon={<Briefcase className="h-5 w-5" />}
-                />
-                <MainGrid
-                  gap="standard"
-                  primary={<PortfolioSummary portfolio={portfolio} />}
-                  secondary={
-                    <div className="h-full space-y-3">
-                      <div className="flex items-center gap-2 text-cyan-400">
-                        <Star className="h-4 w-4" />
-                        <span className="text-xs font-semibold">Watchlist</span>
-                      </div>
-                      <Watchlist
-                        initialItems={watchlist}
-                        recommendations={watchlistRecommendations}
-                      />
-                    </div>
-                  }
-                />
-              </>
-            ),
-          },
-          {
-            id: "intelligence",
-            label: "Investment Intelligence",
-            accent: "purple",
-            children: (
-              <AccentContainer accent="purple" tint strip padding="md">
-                <Link
-                  href="/ai"
-                  className="flex items-center justify-between transition-opacity hover:opacity-90"
-                >
-                  <span className="flex items-center gap-3">
-                    <BellRing className="h-4 w-4 text-purple-400" />
-                    <span>
-                      <span className="block text-sm font-semibold text-text-primary">
-                        Investment Intelligence
-                      </span>
-                      <span className="block text-xs text-text-muted">
-                        Review material AI insights and market changes
-                      </span>
+        widgets={{
+          "market-snapshot": (
+            <div className="space-y-5">
+              <SectionHeader
+                title="Market Snapshot"
+                subtitle="Indices, session range and intelligence strip"
+                summary={marketPulseSummary}
+                accent="emerald"
+                icon={<Activity className="h-5 w-5" />}
+              />
+              <MarketIntelligenceStrip snapshot={marketIntelligence} />
+              <MarketOverviewCards indices={indices} />
+            </div>
+          ),
+          "market-pulse": (
+            <MarketPulse
+              pulse={pulse}
+              marketIntelligence={marketIntelligence}
+            />
+          ),
+          "market-heatmap": <MarketHeatmap defaultUniverse="nse" />,
+          "market-breadth": <MarketBreadth breadth={breadth} />,
+          "market-movers": movers,
+          "ai-opportunities": (
+            <div className="space-y-5">
+              <SectionHeader
+                title="AI Opportunities"
+                subtitle="Conviction-ranked ideas from the Strategy Engine"
+                summary={opportunitiesSummary}
+                accent="blue"
+                icon={<Sparkles className="h-5 w-5" />}
+                actions={
+                  <StatusBadge tone="success" size="sm">
+                    AI Verified
+                  </StatusBadge>
+                }
+              />
+              <SharedRecommendationPanel
+                recommendations={recommendations}
+                title="Best Opportunities · Strategy Engine"
+              />
+            </div>
+          ),
+          "ai-alerts": (
+            <AccentContainer accent="purple" tint strip padding="md">
+              <Link
+                href="/ai"
+                className="flex items-center justify-between transition-opacity hover:opacity-90"
+              >
+                <span className="flex items-center gap-3">
+                  <BellRing className="h-4 w-4 text-purple-400" />
+                  <span>
+                    <span className="block text-sm font-semibold text-text-primary">
+                      AI Alerts
+                    </span>
+                    <span className="block text-xs text-text-muted">
+                      Review material AI insights and market changes
                     </span>
                   </span>
-                  <ChevronRight className="h-4 w-4 text-text-muted" />
-                </Link>
-              </AccentContainer>
-            ),
-          },
-          {
-            id: "earnings",
-            label: "Economic Calendar",
-            accent: "orange",
-            children: (
-              <>
-                <SectionHeader
-                  title="04 · Economic Calendar"
-                  subtitle="Compact earnings windows · full analysis in Earnings workspace"
-                  summary={`${results.length} upcoming result windows on the dashboard snapshot.`}
-                  accent="orange"
-                  icon={<CalendarDays className="h-5 w-5" />}
-                  actions={
-                    <Link
-                      href="/results"
-                      className="text-xs font-semibold text-accent transition-colors hover:text-accent/80"
-                    >
-                      Open Earnings →
-                    </Link>
-                  }
-                />
-                <DashboardResultsSnapshot results={results} />
-              </>
-            ),
-          },
-          {
-            id: "news",
-            label: "Market Intelligence",
-            accent: "indigo",
-            children: (
-              <>
-                <SectionHeader
-                  title="05 · Market Intelligence"
-                  subtitle="Verified coverage from approved financial publishers"
-                  summary={`${news.length} verified headlines in the latest feed.`}
-                  accent="indigo"
-                  icon={<Newspaper className="h-5 w-5" />}
-                />
-                <LatestMarketNews news={news} />
-              </>
-            ),
-          },
-        ]}
+                </span>
+                <ChevronRight className="h-4 w-4 text-text-muted" />
+              </Link>
+            </AccentContainer>
+          ),
+          "portfolio-summary": (
+            <div className="space-y-5">
+              <SectionHeader
+                title="Portfolio"
+                subtitle="Holdings, allocation and P&amp;L snapshot"
+                summary={portfolioSummary}
+                accent="amber"
+                icon={<Briefcase className="h-5 w-5" />}
+              />
+              <PortfolioSummary portfolio={portfolio} />
+            </div>
+          ),
+          watchlist: (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-cyan-400">
+                <Star className="h-4 w-4" />
+                <span className="text-xs font-semibold">Watchlist</span>
+              </div>
+              <Watchlist
+                initialItems={watchlist}
+                recommendations={watchlistRecommendations}
+              />
+            </div>
+          ),
+          "portfolio-health": (
+            <ComingSoonWidget
+              title="Portfolio Health"
+              subtitle="Open Portfolio Doctor for live health metrics"
+            />
+          ),
+          "research-summary": (
+            <AccentContainer accent="violet" tint strip padding="md">
+              <Link
+                href="/validation"
+                className="flex items-center justify-between transition-opacity hover:opacity-90"
+              >
+                <span>
+                  <span className="block text-sm font-semibold text-text-primary">
+                    Research Summary
+                  </span>
+                  <span className="block text-xs text-text-muted">
+                    Research Confidence · workspace shortcuts
+                  </span>
+                </span>
+                <ChevronRight className="h-4 w-4 text-text-muted" />
+              </Link>
+            </AccentContainer>
+          ),
+          "ai-brief": (
+            <ComingSoonWidget
+              title="AI Market Brief"
+              subtitle="Briefing surface reserved for layout"
+            />
+          ),
+          "economic-calendar": (
+            <ComingSoonWidget title="Economic Calendar" />
+          ),
+          "results-calendar": (
+            <div className="space-y-5">
+              <SectionHeader
+                title="Results Calendar"
+                subtitle="Compact earnings windows"
+                summary={`${results.length} upcoming result windows.`}
+                accent="orange"
+                icon={<CalendarDays className="h-5 w-5" />}
+                actions={
+                  <Link
+                    href="/results"
+                    className="text-xs font-semibold text-accent transition-colors hover:text-accent/80"
+                  >
+                    Open Earnings →
+                  </Link>
+                }
+              />
+              <DashboardResultsSnapshot results={results} />
+            </div>
+          ),
+          "market-news": (
+            <div className="space-y-5">
+              <SectionHeader
+                title="News"
+                subtitle="Verified coverage from approved publishers"
+                summary={`${news.length} verified headlines in the latest feed.`}
+                accent="indigo"
+                icon={<Newspaper className="h-5 w-5" />}
+              />
+              <LatestMarketNews news={news} />
+            </div>
+          ),
+          "earnings-intelligence": (
+            <DashboardResultsSnapshot results={results} />
+          ),
+          "validation-center": (
+            <AccentContainer accent="cyan" tint strip padding="md">
+              <Link
+                href="/validation"
+                className="flex items-center justify-between transition-opacity hover:opacity-90"
+              >
+                <span className="block text-sm font-semibold text-text-primary">
+                  Research Confidence
+                </span>
+                <ChevronRight className="h-4 w-4 text-text-muted" />
+              </Link>
+            </AccentContainer>
+          ),
+        }}
       />
     </PageContainer>
   );
