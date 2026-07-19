@@ -33,12 +33,8 @@ export function Watchlist({
     <Card padding="lg" accent="cyan" className="h-full">
       <CardHeader
         title="Watchlist"
-        subtitle={`${items.length} stocks tracked`}
-        action={
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gain/10">
-            <Star className="h-4 w-4 text-gain" />
-          </div>
-        }
+        subtitle={`${items.length} stocks tracked · live signals`}
+        icon={<Star className="h-4 w-4 text-cyan-400" />}
       />
 
       <div className="overflow-x-auto">

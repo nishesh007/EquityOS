@@ -1,7 +1,8 @@
 import { Card, CardHeader } from "@/components/ui/Card";
 import { EmptyStatePanel } from "@/components/ui/EmptyStatePanel";
 import type { MarketContextView } from "@/lib/market-intelligence";
-import { Activity, Gauge, TrendingUp, Waves } from "lucide-react";
+import { StatusBadge, statusToneFromLabel } from "@/src/design";
+import { Activity, Gauge, Waves } from "lucide-react";
 
 function formatUpdated(iso: string): string {
   try {
@@ -16,12 +17,6 @@ function formatUpdated(iso: string): string {
   } catch {
     return iso;
   }
-}
-
-function trendTone(trend: string): string {
-  if (trend.includes("Bull")) return "text-gain";
-  if (trend.includes("Bear")) return "text-loss";
-  return "text-text-primary";
 }
 
 function riskTone(risk: string): string {
@@ -81,29 +76,26 @@ export function MarketContextCard({
       <CardHeader
         title="Market Context"
         subtitle="Trend · volatility · breadth · risk"
+        icon={<Activity className="h-4 w-4" />}
+        timestamp={`Updated ${formatUpdated(context.timestamp)} IST`}
         badge={
-          <span className="rounded-full border border-surface-border-subtle px-2 py-0.5 text-[10px] font-medium text-text-muted">
+          <StatusBadge tone="info" size="sm">
             Conf {Math.round(context.contextConfidence)}
-          </span>
-        }
-        action={
-          <span className="text-[10px] text-text-faint">
-            {formatUpdated(context.timestamp)}
-          </span>
+          </StatusBadge>
         }
       />
 
-      <div className="mb-3 flex items-center gap-2">
-        <TrendingUp className={`h-4 w-4 ${trendTone(context.marketTrend)}`} />
-        <div>
-          <p className={`text-sm font-semibold ${trendTone(context.marketTrend)}`}>
-            {context.marketTrend}
-          </p>
-          <p className="text-[10px] text-text-muted">
-            Score {Math.round(context.contextScore)} · Strength{" "}
-            {Math.round(context.marketStrength)}
-          </p>
-        </div>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <StatusBadge tone={statusToneFromLabel(context.marketTrend)}>
+          {context.marketTrend}
+        </StatusBadge>
+        <StatusBadge tone={statusToneFromLabel(context.riskMode)} size="sm">
+          {context.riskMode}
+        </StatusBadge>
+        <p className="text-[10px] text-text-muted">
+          Score {Math.round(context.contextScore)} · Strength{" "}
+          {Math.round(context.marketStrength)}
+        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">

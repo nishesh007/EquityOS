@@ -139,6 +139,12 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
       <CardHeader
         title="Market Pulse"
         subtitle="Live risk, positioning and participation snapshot"
+        icon={<Activity className="h-4 w-4 text-emerald-400" />}
+        badge={
+          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+            {sessionLabel}
+          </span>
+        }
         action={
           <MarketSessionIndicator
             marketStatus={marketStatus}

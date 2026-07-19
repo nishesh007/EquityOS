@@ -86,12 +86,8 @@ export function PortfolioSummary({
     <Card padding="lg" accent="amber" className="h-full">
       <CardHeader
         title="Portfolio Summary"
-        subtitle="Your investment overview"
-        action={
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/10">
-            <Wallet className="h-4 w-4 text-accent" />
-          </div>
-        }
+        subtitle="Holdings · allocation · P&L"
+        icon={<Wallet className="h-4 w-4 text-amber-400" />}
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

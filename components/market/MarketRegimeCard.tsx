@@ -1,6 +1,7 @@
 import { Card, CardHeader } from "@/components/ui/Card";
 import { EmptyStatePanel } from "@/components/ui/EmptyStatePanel";
 import type { MarketRegimeView } from "@/lib/market-intelligence";
+import { StatusBadge, statusToneFromLabel } from "@/src/design";
 import { Compass, Shield } from "lucide-react";
 
 function formatUpdated(iso: string): string {
@@ -16,15 +17,6 @@ function formatUpdated(iso: string): string {
   } catch {
     return iso;
   }
-}
-
-function regimeTone(regime: string): string {
-  if (regime.includes("Bull")) return "text-gain";
-  if (regime.includes("Bear")) return "text-loss";
-  if (regime.includes("Volatility") || regime === "Event Driven") {
-    return "text-amber-400";
-  }
-  return "text-text-primary";
 }
 
 function Metric({
@@ -80,28 +72,25 @@ export function MarketRegimeCard({
       <CardHeader
         title="Market Regime"
         subtitle="Institutional classification · confidence"
+        icon={<Compass className="h-4 w-4" />}
+        timestamp={`Updated ${formatUpdated(regime.timestamp)} IST`}
         badge={
-          <span className="rounded-full border border-surface-border-subtle px-2 py-0.5 text-[10px] font-medium text-text-muted">
+          <StatusBadge
+            tone={statusToneFromLabel(regime.confidenceGrade)}
+            size="sm"
+          >
             {regime.confidenceGrade}
-          </span>
-        }
-        action={
-          <span className="text-[10px] text-text-faint">
-            {formatUpdated(regime.timestamp)}
-          </span>
+          </StatusBadge>
         }
       />
 
       <div className="mb-3 flex items-center gap-2">
-        <Compass className={`h-4 w-4 ${regimeTone(regime.regime)}`} />
-        <div>
-          <p className={`text-sm font-semibold ${regimeTone(regime.regime)}`}>
-            {regime.regime}
-          </p>
-          <p className="text-[10px] text-text-muted">
-            Confidence {Math.round(regime.confidence)} · Priority {regime.priority}
-          </p>
-        </div>
+        <StatusBadge tone={statusToneFromLabel(regime.regime)}>
+          {regime.regime}
+        </StatusBadge>
+        <p className="text-[10px] text-text-muted">
+          Confidence {Math.round(regime.confidence)} · Priority {regime.priority}
+        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">

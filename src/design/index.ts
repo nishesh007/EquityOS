@@ -99,11 +99,14 @@ export { ThemeContext, useTheme, type ThemeContextValue } from "./theme/ThemeCon
 export {
   PageContainer,
   SectionHeader,
+  SectionDivider,
+  AccentContainer,
   InstitutionalCard,
   GlassCard,
   MetricCard,
   DataCard,
   StatusBadge,
+  statusToneFromLabel,
   MetricBadge,
   type StatusTone,
 } from "./components";

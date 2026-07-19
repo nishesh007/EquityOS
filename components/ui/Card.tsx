@@ -71,27 +71,43 @@ interface CardHeaderProps {
   action?: React.ReactNode;
   /** Optional status badge rendered next to the title. */
   badge?: React.ReactNode;
+  /** Lucide (or other) icon shown before the title. */
+  icon?: React.ReactNode;
+  /** Optional timestamp / as-of label. */
+  timestamp?: string;
 }
 
-/** Standard widget header format: title, subtitle, badge, actions. */
+/** Standard widget header format: icon, title, subtitle, badge, timestamp, actions. */
 export function CardHeader({
   title,
   subtitle,
   action,
   badge,
+  icon,
+  timestamp,
 }: CardHeaderProps) {
   return (
     <div className="mb-4 flex items-start justify-between gap-3">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-sm font-semibold text-text-primary tracking-tight">
+          {icon ? (
+            <span className="text-text-muted" aria-hidden>
+              {icon}
+            </span>
+          ) : null}
+          <h2 className="text-base font-semibold tracking-tight text-text-primary">
             {title}
           </h2>
           {badge}
         </div>
         {subtitle && (
-          <p className="text-xs text-text-muted mt-0.5">{subtitle}</p>
+          <p className="mt-0.5 text-xs text-text-muted">{subtitle}</p>
         )}
+        {timestamp ? (
+          <p className="mt-1 text-[10px] uppercase tracking-wider text-text-faint">
+            {timestamp}
+          </p>
+        ) : null}
       </div>
       {action && <div className="flex shrink-0 items-center gap-2">{action}</div>}
     </div>
