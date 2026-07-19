@@ -85,6 +85,7 @@ const BUILT_IN_WIDGETS: readonly WidgetDefinition[] = Object.freeze([
   { id: "market-snapshot", label: "Market Snapshot", description: "Indices with sparklines and session range", category: "charts", defaultRegion: "snapshot", defaultSize: "full" },
   { id: "market-pulse", label: "Market Pulse", description: "Sector strength and market internals", category: "market", defaultRegion: "snapshot", defaultSize: "full" },
   { id: "market-breadth", label: "Market Breadth", description: "Advance/decline and market mood", category: "market", defaultRegion: "snapshot", defaultSize: "full" },
+  { id: "market-heatmap", label: "Sector Heatmap", description: "Interactive NSE sector & stock heatmap with drilldowns", category: "market", defaultRegion: "snapshot", defaultSize: "full" },
   { id: "ai-opportunities", label: "AI Opportunities", description: "Recommendation center — conviction-ranked ideas", category: "recommendations", defaultRegion: "main", defaultSize: "full" },
   { id: "portfolio-summary", label: "Portfolio Summary", description: "Value, P&L and capital allocation", category: "portfolio", defaultRegion: "main", defaultSize: "large" },
   { id: "watchlist", label: "Watchlist", description: "Tracked symbols with live quotes", category: "watchlists", defaultRegion: "main", defaultSize: "small" },

@@ -2,6 +2,7 @@ import { SharedRecommendationPanel } from "@/components/recommendations";
 import { DashboardResultsSnapshot } from "@/components/dashboard/DashboardResultsSnapshot";
 import { LatestMarketNews } from "@/components/dashboard/LatestMarketNews";
 import { MarketBreadth } from "@/components/dashboard/MarketBreadth";
+import { MarketHeatmap } from "@/components/dashboard/market-heatmap";
 import { MarketOverviewCards } from "@/components/dashboard/MarketOverviewCards";
 import { MarketPulse } from "@/components/dashboard/MarketPulse";
 import { PortfolioSummary } from "@/components/dashboard/PortfolioSummary";
@@ -147,6 +148,7 @@ export default async function DashboardPage() {
                   marketIntelligence={marketIntelligence}
                 />
                 <MarketOverviewCards indices={indices} />
+                <MarketHeatmap defaultUniverse="nse" />
                 <MarketBreadth breadth={breadth} />
               </>
             ),

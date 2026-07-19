@@ -7,6 +7,11 @@ import {
   type BreadthUniverseId,
   type MarketBreadthSnapshot,
 } from "@/lib/market-breadth";
+import {
+  runMarketHeatmapEngine,
+  type HeatmapUniverseId,
+  type MarketHeatmapSnapshot,
+} from "@/lib/market-heatmap";
 import { marketDataService } from "@/lib/market-data";
 import { getCached, cacheKey, CACHE_TTL } from "@/lib/cache";
 import {
@@ -160,6 +165,19 @@ export async function fetchMarketPulse(): Promise<MarketPulse> {
   return getCached(
     { key: cacheKey("market-pulse"), ttlMs: CACHE_TTL.QUOTE },
     buildLiveMarketPulse
+  );
+}
+
+export async function fetchMarketHeatmap(
+  universe: HeatmapUniverseId = "nse"
+): Promise<MarketHeatmapSnapshot> {
+  const ttl =
+    universe === "nse" || universe === "nifty500"
+      ? CACHE_TTL.FIFTEEN_MINUTES
+      : CACHE_TTL.DASHBOARD;
+  return getCached(
+    { key: cacheKey("market-heatmap", universe), ttlMs: ttl },
+    () => runMarketHeatmapEngine({ universe })
   );
 }
 
