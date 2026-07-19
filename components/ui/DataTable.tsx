@@ -1,10 +1,15 @@
 import { cn } from "@/lib/utils";
+import { EmptyStatePanel } from "@/components/ui/EmptyStatePanel";
+import { TABLE_CLASSES } from "@/src/design/layout/tableStyles";
+import { Inbox } from "lucide-react";
 
 export interface DataTableColumn<T> {
   key: string;
   header: string;
   align?: "left" | "right" | "center";
   className?: string;
+  /** When true, applies tabular numeric styling. */
+  numeric?: boolean;
   render: (row: T) => React.ReactNode;
 }
 
@@ -14,6 +19,10 @@ interface DataTableProps<T> {
   keyExtractor: (row: T) => string;
   className?: string;
   emptyMessage?: string;
+  emptyTitle?: string;
+  caption?: string;
+  /** Sticky header inside scroll container (default true). */
+  stickyHeader?: boolean;
 }
 
 const alignStyles = {
@@ -22,30 +31,49 @@ const alignStyles = {
   center: "text-center",
 };
 
+/**
+ * Shared data table — sticky header, hover rows, numeric alignment,
+ * accessible empty state. Presentation only.
+ */
 export function DataTable<T>({
   columns,
   data,
   keyExtractor,
   className,
   emptyMessage = "No data available",
+  emptyTitle = "Nothing to show",
+  caption,
+  stickyHeader = true,
 }: DataTableProps<T>) {
   if (data.length === 0) {
     return (
-      <p className="py-8 text-center text-sm text-text-muted">{emptyMessage}</p>
+      <EmptyStatePanel
+        title={emptyTitle}
+        message={emptyMessage}
+        icon={Inbox}
+        className={className}
+      />
     );
   }
 
   return (
-    <div className={cn("overflow-x-auto", className)}>
-      <table className="w-full">
+    <div
+      className={cn(
+        stickyHeader ? TABLE_CLASSES.container : "overflow-x-auto rounded-lg",
+        className
+      )}
+    >
+      <table className={TABLE_CLASSES.table}>
+        {caption ? <caption className="sr-only">{caption}</caption> : null}
         <thead>
-          <tr className="border-b border-surface-border-subtle text-left">
+          <tr>
             {columns.map((col) => (
               <th
                 key={col.key}
+                scope="col"
                 className={cn(
-                  "pb-2.5 text-[10px] font-medium uppercase tracking-wider text-text-faint",
-                  alignStyles[col.align ?? "left"],
+                  alignStyles[col.align ?? (col.numeric ? "right" : "left")],
+                  col.numeric && TABLE_CLASSES.numericCell,
                   col.className
                 )}
               >
@@ -56,16 +84,14 @@ export function DataTable<T>({
         </thead>
         <tbody>
           {data.map((row) => (
-            <tr
-              key={keyExtractor(row)}
-              className="border-b border-surface-border-subtle/50 transition-colors hover:bg-surface-hover/30"
-            >
+            <tr key={keyExtractor(row)}>
               {columns.map((col) => (
                 <td
                   key={col.key}
                   className={cn(
-                    "py-3 text-sm text-text-secondary",
-                    alignStyles[col.align ?? "left"],
+                    "py-3 text-sm",
+                    alignStyles[col.align ?? (col.numeric ? "right" : "left")],
+                    col.numeric && TABLE_CLASSES.numericCell,
                     col.className
                   )}
                 >

@@ -319,6 +319,7 @@ export {
   MOTION_PREFERENCES,
   MOTION_CLASSES,
   MOTION_PRESET_NAMES,
+  FOCUS_RING_CLASS,
   getMotionPreference,
   setMotionPreference,
   hydrateMotionFromStorage,

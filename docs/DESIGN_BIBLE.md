@@ -213,6 +213,28 @@ When lists are empty (e.g. watchlist):
 | ErrorBoundary | `components/ui/ErrorBoundary.tsx` | Section error isolation |
 | Badge | `components/ui/Badge.tsx` | Status labels |
 | MetricCard | `components/ui/MetricCard.tsx` | KPI display |
+| IconButton | `components/ui/IconButton.tsx` | Accessible icon controls |
+| DataTable | `components/ui/DataTable.tsx` | Sticky institutional tables |
+| ConfidenceBar | `components/ui/ConfidenceBar.tsx` | Confidence visualization |
+| EmptyStatePanel | `components/ui/EmptyStatePanel.tsx` | Empty regions |
+
+---
+
+## Sprint 10C.1 Addenda
+
+### Section accents
+Market Pulse → Emerald · AI Opportunities → Blue · Portfolio → Amber · Watchlist → Cyan · Research → Violet · Market Intelligence → Indigo · Economic Calendar → Orange · Investment Intelligence → Purple. Tokens: `lib/ui/section-accents.ts`.
+
+### Motion (10C.1)
+Additional presets: `press`, `expandCollapse`, `shimmer`. Use `MOTION_CLASSES` / `FOCUS_RING_CLASS` from `@/src/design` motion barrel. Reduced motion remains mandatory.
+
+### Accessibility
+Icon buttons must use `IconButton` or provide `aria-label`. Tooltips support Escape + `role="tooltip"`. Tables use sticky headers and numeric alignment via `TABLE_CLASSES`.
+
+### Personalization
+Dashboard layout preferences (order, collapse, pin) persist in `localStorage` via `components/dashboard/workspace` — no backend.
+
+See also: `docs/DESIGN_SYSTEM_10C1.md`.
 
 ---
 

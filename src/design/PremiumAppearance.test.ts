@@ -277,6 +277,9 @@ describe("motion system", () => {
       "slide",
       "reveal",
       "cardHover",
+      "press",
+      "expandCollapse",
+      "shimmer",
       "tooltip",
       "dropdown",
       "modal",
@@ -287,6 +290,7 @@ describe("motion system", () => {
     }
     expect(MOTION_CLASSES.fade).toContain("animate-fade-in");
     expect(MOTION_CLASSES.modal).toContain("animate-scale-in");
+    expect(MOTION_CLASSES.shimmer).toContain("skeleton-shimmer");
   });
 });
 

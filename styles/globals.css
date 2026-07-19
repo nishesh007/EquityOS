@@ -101,6 +101,15 @@
     @apply font-mono text-text-primary tabular-nums;
   }
 
+  /* Sprint 10C.1 — interactive press + focus helpers */
+  .interactive-press {
+    @apply transition-transform duration-150 active:scale-[0.98];
+  }
+
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface;
+  }
+
   /* Sprint 10C.1 — skeleton shimmer for loading surfaces */
   .skeleton-shimmer {
     background: linear-gradient(
@@ -128,7 +137,7 @@
   }
 
   .institutional-table tbody td {
-    @apply border-b border-surface-border-subtle px-3 py-2 text-text-secondary;
+    @apply border-b border-surface-border-subtle px-3 py-3 text-text-secondary;
   }
 
   .institutional-table tbody tr {
@@ -137,6 +146,10 @@
 
   .institutional-table tbody tr:hover {
     @apply bg-surface-hover;
+  }
+
+  .institutional-table tbody tr:focus-within {
+    @apply bg-surface-hover/80;
   }
 
   .institutional-table tbody tr:last-child td {

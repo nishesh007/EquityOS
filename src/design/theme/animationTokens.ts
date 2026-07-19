@@ -38,7 +38,9 @@ export type AnimationPresetName =
   | "scale"
   | "slide"
   | "loading"
-  | "skeleton";
+  | "skeleton"
+  | "press"
+  | "expandCollapse";
 
 export const ANIMATION_PRESETS: Readonly<
   Record<AnimationPresetName, AnimationPreset>
@@ -77,6 +79,16 @@ export const ANIMATION_PRESETS: Readonly<
     duration: "skeleton",
     easing: "standard",
     properties: ["opacity"],
+  },
+  press: {
+    duration: "fast",
+    easing: "standard",
+    properties: ["transform"],
+  },
+  expandCollapse: {
+    duration: "slow",
+    easing: "decelerate",
+    properties: ["grid-template-rows", "opacity"],
   },
 });
 

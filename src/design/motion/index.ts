@@ -13,6 +13,7 @@ export {
 export {
   MOTION_CLASSES,
   MOTION_PRESET_NAMES,
+  FOCUS_RING_CLASS,
   type MotionPresetName,
 } from "./motionPresets";
 
