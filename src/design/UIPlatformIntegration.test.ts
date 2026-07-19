@@ -1,5 +1,6 @@
 /**
- * Sprint 10C.R8 — final institutional UI integration and freeze tests.
+ * Sprint 10C.1 — final institutional UI integration and freeze tests.
+ * EquityOS UI v1.0 Release Candidate.
  */
 
 import { beforeEach, describe, expect, it } from "vitest";
@@ -19,10 +20,12 @@ import {
   RADIUS_SCALE,
   SPACING_VALUES,
   SPRINT_10C_FROZEN,
+  SPRINT_10C1_FROZEN,
   SectionHeader,
   TYPE_VARIANTS,
   TYPOGRAPHY_ROLES,
   UI_PLATFORM_STATUS,
+  UI_RELEASE_CANDIDATE,
   WIDGET_SIZES,
   WORKSPACE_SIZE_SPANS,
   WORKSPACE_SIZES,
@@ -33,9 +36,11 @@ import {
   getDesignSystem,
   getDesignSystemStatus,
   getPerformanceStatus,
+  getReleaseCandidateStatus,
   getThemeEngine,
   getThemeStatus,
   getUILayoutStatus,
+  isSprint10C1Frozen,
   isSprint10CFrozen,
   meetsContrastAA,
   processTable,
@@ -50,25 +55,45 @@ beforeEach(() => {
   getThemeEngine().setTheme(DEFAULT_THEME_ID);
 });
 
-describe("Sprint 10C.R8 — platform freeze", () => {
-  it("freezes Sprint 10C through the public constant and API", () => {
+describe("Sprint 10C.1 — platform freeze & release candidate", () => {
+  it("freezes Sprint 10C and 10C.1 through public constants", () => {
     expect(SPRINT_10C_FROZEN).toBe(true);
+    expect(SPRINT_10C1_FROZEN).toBe(true);
     expect(isSprint10CFrozen()).toBe(true);
+    expect(isSprint10C1Frozen()).toBe(true);
   });
 
-  it("marks the UI platform complete and frozen", () => {
+  it("marks EquityOS UI v1.0 as production-ready release candidate", () => {
+    expect(UI_RELEASE_CANDIDATE).toMatchObject({
+      name: "EquityOS UI v1.0",
+      sprint: "10C.1",
+      status: "PRODUCTION_READY",
+      complete: true,
+      frozen: true,
+    });
+    expect(getReleaseCandidateStatus().name).toBe("EquityOS UI v1.0");
+  });
+
+  it("marks the UI platform complete and frozen at 10C.1", () => {
     expect(UI_PLATFORM_STATUS).toMatchObject({
       complete: true,
       frozen: true,
       sprint: "10C",
-      release: "10C.R8",
+      release: "10C.1",
+      releaseCandidate: "EquityOS UI v1.0",
+      status: "PRODUCTION_READY",
     });
   });
 
   it("publishes an immutable aggregate status", () => {
     const status = getDesignSystemStatus();
     expect(Object.isFrozen(status)).toBe(true);
-    expect(status).toMatchObject({ complete: true, frozen: true, release: "10C.R8" });
+    expect(status).toMatchObject({
+      complete: true,
+      frozen: true,
+      release: "10C.1",
+      releaseCandidate: "EquityOS UI v1.0",
+    });
   });
 });
 
@@ -251,15 +276,16 @@ describe("Sprint 10C.R8 — consistency and performance", () => {
   });
 
   it("reports shared calculations and rendering paths as validated", () => {
-    expect(getPerformanceStatus()).toEqual({
+    expect(getPerformanceStatus()).toMatchObject({
       validated: true,
       cssVariableThemeSwitching: true,
       pureLayoutCalculations: true,
       memoizedRendering: true,
       sharedChartGeometry: true,
       tablePagination: true,
-      virtualization: "not-required",
+      virtualization: "available",
     });
+    expect(getPerformanceStatus().lazySurfaces).toContain("command-palette");
   });
 
   it("keeps repeated layout and chart calculations within an integration budget", () => {

@@ -1,8 +1,8 @@
 /**
- * Sprint 10C.R8 — institutional UI platform status and freeze marker.
+ * Sprint 10C.1 — institutional UI platform status and freeze marker.
  *
- * This module reports the presentation platform assembled in R1–R8.
- * It does not inspect or modify application business engines.
+ * Reports the presentation platform assembled through Sprint 10C.1.
+ * Does not inspect or modify application business engines.
  */
 
 import { getDesignSystem } from "../DesignSystem";
@@ -13,17 +13,40 @@ import { DENSITY_MODES } from "../tables/tableEngine";
 import { DASHBOARD_TEMPLATES } from "../layouts/dashboardTemplates";
 import { WORKSPACE_SIZES } from "../widgets/widgetRegistry";
 
+/** Legacy freeze flag (Sprint 10C platform). */
 export const SPRINT_10C_FROZEN = true;
+
+/** Sprint 10C.1 final freeze — EquityOS UI v1.0 Release Candidate. */
+export const SPRINT_10C1_FROZEN = true;
+
+export const UI_RELEASE_CANDIDATE = {
+  name: "EquityOS UI v1.0",
+  sprint: "10C.1",
+  status: "PRODUCTION_READY",
+  complete: true,
+  frozen: true,
+  priorMilestone: "10C.R8",
+} as const;
 
 export const UI_PLATFORM_STATUS = {
   complete: true,
   frozen: true,
   sprint: "10C",
-  release: "10C.R8",
+  release: "10C.1",
+  releaseCandidate: UI_RELEASE_CANDIDATE.name,
+  status: UI_RELEASE_CANDIDATE.status,
 } as const;
 
 export function isSprint10CFrozen(): boolean {
   return SPRINT_10C_FROZEN;
+}
+
+export function isSprint10C1Frozen(): boolean {
+  return SPRINT_10C1_FROZEN;
+}
+
+export function getReleaseCandidateStatus() {
+  return Object.freeze({ ...UI_RELEASE_CANDIDATE });
 }
 
 export interface ThemeStatus {
@@ -39,7 +62,8 @@ export function getThemeStatus(): ThemeStatus {
   const engine = getThemeEngine();
   const themes = engine.listThemes();
   return Object.freeze({
-    operational: themes.length > 0 && themes.every((theme) => engine.hasTheme(theme.id)),
+    operational:
+      themes.length > 0 && themes.every((theme) => engine.hasTheme(theme.id)),
     activeThemeId: engine.getTheme().id,
     themeCount: themes.length,
     themeIds: Object.freeze(themes.map((theme) => theme.id)),
@@ -84,8 +108,8 @@ export function getAccessibilityStatus(): AccessibilityStatus {
   const themes = getThemeEngine().listThemes();
   const textContrast = themes.every((theme) =>
     (["background", "surface", "card"] as const).every((surface) =>
-      meetsContrastAA(theme.colors.textPrimary, theme.colors[surface]),
-    ),
+      meetsContrastAA(theme.colors.textPrimary, theme.colors[surface])
+    )
   );
   return Object.freeze({
     verified: textContrast,
@@ -105,7 +129,9 @@ export interface PerformanceStatus {
   memoizedRendering: boolean;
   sharedChartGeometry: boolean;
   tablePagination: boolean;
-  virtualization: "not-required";
+  /** Tables, notification history and command results use windowed rendering. */
+  virtualization: "available";
+  lazySurfaces: readonly string[];
 }
 
 export function getPerformanceStatus(): PerformanceStatus {
@@ -116,7 +142,14 @@ export function getPerformanceStatus(): PerformanceStatus {
     memoizedRendering: true,
     sharedChartGeometry: true,
     tablePagination: true,
-    virtualization: "not-required",
+    virtualization: "available",
+    lazySurfaces: Object.freeze([
+      "charts",
+      "heatmap",
+      "notification-history",
+      "command-palette",
+      "research-data-grid",
+    ]),
   });
 }
 
@@ -124,6 +157,7 @@ export interface DesignSystemStatus {
   complete: boolean;
   frozen: boolean;
   release: string;
+  releaseCandidate: string;
   tokenDomains: readonly string[];
   theme: ThemeStatus;
   layout: UILayoutStatus;
@@ -135,8 +169,9 @@ export function getDesignSystemStatus(): DesignSystemStatus {
   const designSystem = getDesignSystem();
   return Object.freeze({
     complete: UI_PLATFORM_STATUS.complete && designSystem.themes.length > 0,
-    frozen: UI_PLATFORM_STATUS.frozen,
+    frozen: UI_PLATFORM_STATUS.frozen && SPRINT_10C1_FROZEN,
     release: UI_PLATFORM_STATUS.release,
+    releaseCandidate: UI_PLATFORM_STATUS.releaseCandidate,
     tokenDomains: Object.freeze([
       "color",
       "spacing",
@@ -144,6 +179,9 @@ export function getDesignSystemStatus(): DesignSystemStatus {
       "typography",
       "elevation",
       "motion",
+      "opacity",
+      "border",
+      "focus",
       "z-index",
       "breakpoints",
     ]),

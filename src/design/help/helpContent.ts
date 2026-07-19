@@ -115,6 +115,15 @@ export interface ReleaseNote {
 }
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = Object.freeze([
+  {
+    version: "UI v1.0",
+    title: "Sprint 10C.1 Release Candidate",
+    highlights: [
+      "Research data grid, command palette, productivity hub",
+      "Market internals, heatmap, chart workspace",
+      "Design system frozen — EquityOS UI v1.0",
+    ],
+  },
   { version: "10C.R7", title: "Command palette & productivity", highlights: ["Global command palette (Ctrl+K)", "Notification center and activity feed", "Breadcrumbs, status bar and help center", "Onboarding tour and context menus"] },
   { version: "10C.R6", title: "Workspace personalization", highlights: ["Drag & drop dashboard with docking", "Saved workspace profiles and 8 templates", "Widget library and JSON import/export"] },
   { version: "10C.R5", title: "Premium appearance", highlights: ["8 institutional themes and 6 accents", "Typography, motion and glass systems"] },

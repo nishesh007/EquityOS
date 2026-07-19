@@ -561,11 +561,15 @@ export {
   type RichTooltipProps,
 } from "./help";
 
-// Final UI platform integration status and Sprint 10C freeze (R8)
+// Final UI platform integration status and Sprint 10C.1 freeze (UI v1.0 RC)
 export {
   SPRINT_10C_FROZEN,
+  SPRINT_10C1_FROZEN,
   UI_PLATFORM_STATUS,
+  UI_RELEASE_CANDIDATE,
   isSprint10CFrozen,
+  isSprint10C1Frozen,
+  getReleaseCandidateStatus,
   getDesignSystemStatus,
   getThemeStatus,
   getUILayoutStatus,

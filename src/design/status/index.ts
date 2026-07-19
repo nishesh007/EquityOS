@@ -1,7 +1,11 @@
 export {
   SPRINT_10C_FROZEN,
+  SPRINT_10C1_FROZEN,
   UI_PLATFORM_STATUS,
+  UI_RELEASE_CANDIDATE,
   isSprint10CFrozen,
+  isSprint10C1Frozen,
+  getReleaseCandidateStatus,
   getDesignSystemStatus,
   getThemeStatus,
   getUILayoutStatus,

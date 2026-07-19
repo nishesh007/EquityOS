@@ -356,7 +356,8 @@ describe("Sprint 10C.R7 — help center & onboarding", () => {
     expect(GLOSSARY.length).toBeGreaterThanOrEqual(8);
     expect(GUIDES.length).toBeGreaterThanOrEqual(3);
     expect(FAQ.length).toBeGreaterThanOrEqual(5);
-    expect(RELEASE_NOTES[0].version).toBe("10C.R7");
+    expect(RELEASE_NOTES[0].version).toBe("UI v1.0");
+    expect(RELEASE_NOTES.some((note) => note.version === "10C.R7")).toBe(true);
     for (const entry of GLOSSARY) {
       expect(entry.definition.length).toBeGreaterThan(20);
     }
