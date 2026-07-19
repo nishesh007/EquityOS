@@ -5,6 +5,7 @@
  */
 
 import { CACHE_TTL, cacheKey, getCached } from "@/lib/cache";
+import { fetchRecommendationsForSymbols } from "@/services/opportunityEngine";
 import { marketDataService } from "@/lib/market-data";
 import {
   getFilterCount,
@@ -98,10 +99,12 @@ import {
 async function enrichScreenerRows(rows: ScreenerRow[]): Promise<ScreenerRow[]> {
   const symbols = rows.map((row) => String(row.metrics.symbol ?? ""));
   const quotes = await marketDataService.getEnrichedQuotes(symbols);
+  const recommendations = fetchRecommendationsForSymbols(symbols);
 
   return rows.map((row) => {
     const symbol = String(row.metrics.symbol ?? "").toUpperCase();
     const quote = quotes.get(symbol);
+    const recommendation = recommendations.get(symbol);
     if (!quote || quote.availability === "unavailable") {
       return {
         ...row,
@@ -110,6 +113,7 @@ async function enrichScreenerRows(rows: ScreenerRow[]): Promise<ScreenerRow[]> {
           cmp: null,
           change_percent: null,
         },
+        recommendation,
       };
     }
     return {
@@ -120,6 +124,7 @@ async function enrichScreenerRows(rows: ScreenerRow[]): Promise<ScreenerRow[]> {
         change_percent: quote.changePercent,
       },
       quote,
+      recommendation,
     };
   });
 }

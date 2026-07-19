@@ -5,6 +5,8 @@ import {
   fetchScreenerInitialData,
 } from "@/services/screenerData";
 
+export const dynamic = "force-dynamic";
+
 export default async function ScreenerPage() {
   const [{ universe, catalog }, institutional] = await Promise.all([
     fetchScreenerInitialData(),

@@ -25,7 +25,6 @@ import {
   fetchWorkspaceTasksView,
   fetchWorkspaceTemplatesView,
   fetchWorkspaceAnalyticsView,
-  fetchResearchRecommendationsView,
   fetchResearchSummaryView,
   fetchResearchTimelineView,
   fetchResearchWorkspaceHealth,
@@ -38,10 +37,13 @@ import {
   formatWatchlistPlatformSubtitle,
 } from "@/services/watchlistPlatform";
 import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
-import { MarketIntelligenceStrip, StrategyConsensusPanel, StrategySignalPanel } from "@/components/market";
-import { fetchSwingPositionStrategyCandidates, fetchStandardizedStrategySignals } from "@/services/opportunityEngine";
+import { MarketIntelligenceStrip } from "@/components/market";
+import { SharedRecommendationPanel } from "@/components/recommendations";
+import { fetchSharedRecommendationsFresh } from "@/services/opportunityEngine";
 
 import { PageContainer } from "@/src/design";
+
+export const dynamic = "force-dynamic";
 
 export default async function ResearchPage() {
   const workspace = ensureDefaultResearchWorkspace({
@@ -77,10 +79,6 @@ export default async function ResearchPage() {
     workspaceId: workspace.id,
     ticker: company.overview.ticker || undefined,
   });
-  const recommendations = fetchResearchRecommendationsView({
-    workspaceId: workspace.id,
-    ticker: company.overview.ticker || undefined,
-  });
   const templates = fetchWorkspaceTemplatesView({ workspaceId: workspace.id });
   const tasks = fetchWorkspaceTasksView({ workspaceId: workspace.id });
   const favorites = fetchWorkspaceFavoritesView({ workspaceId: workspace.id });
@@ -91,8 +89,12 @@ export default async function ResearchPage() {
     ticker: company.overview.ticker || undefined,
   });
   const marketIntelligence = await getMarketIntelligenceSnapshot();
-  const strategySignals = fetchStandardizedStrategySignals(4);
-  const swingPositionIdeas = fetchSwingPositionStrategyCandidates(4);
+  const strategyRecommendations = await fetchSharedRecommendationsFresh(8);
+  const researchRecommendation =
+    strategyRecommendations.find(
+      (recommendation) =>
+        recommendation.symbol === company.overview.ticker
+    ) ?? null;
 
   return (
     <PageContainer>
@@ -125,7 +127,9 @@ export default async function ResearchPage() {
           · copilot{" "}
           {summary.empty
             ? COPILOT_EMPTY.noAiSummary
-            : summary.finalConclusion}{" "}
+            : researchRecommendation
+              ? `${researchRecommendation.action} · ${researchRecommendation.opportunityScore}/100`
+              : "No validated Strategy Engine recommendation"}{" "}
           · automation{" "}
           {analytics.empty
             ? AUTOMATION_EMPTY.awaitingWorkspace
@@ -142,10 +146,10 @@ export default async function ResearchPage() {
         <MarketIntelligenceStrip snapshot={marketIntelligence} />
       </div>
       <div className="mb-6">
-        <StrategySignalPanel candidates={strategySignals} />
-      </div>
-      <div className="mb-6">
-        <StrategyConsensusPanel candidates={swingPositionIdeas} />
+        <SharedRecommendationPanel
+          recommendations={strategyRecommendations}
+          title="Research · Matched Strategies & Consensus"
+        />
       </div>
 
       {view.empty && multi.empty ? (
@@ -320,7 +324,9 @@ export default async function ResearchPage() {
                   {summary.catalysts.length} catalysts
                 </p>
                 <p className="text-xs font-medium text-text-secondary">
-                  {summary.finalConclusion}
+                  {researchRecommendation
+                    ? `${researchRecommendation.action} · ${researchRecommendation.primaryStrategy} · confidence ${researchRecommendation.confidence}%`
+                    : "No validated Strategy Engine recommendation."}
                 </p>
               </div>
             )}
@@ -338,21 +344,6 @@ export default async function ResearchPage() {
                   <li key={item.id}>
                     {item.label}: {item.recommendation}
                   </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          <section>
-            <h2 className="mb-2 text-sm font-medium text-text-secondary">
-              Recommendations
-            </h2>
-            {recommendations.empty ? (
-              <p className="text-sm text-text-muted">{COPILOT_EMPTY.awaitingAnalysis}</p>
-            ) : (
-              <ul className="space-y-1 text-xs text-text-muted">
-                {recommendations.immediateActions.slice(0, 4).map((action) => (
-                  <li key={action}>{action}</li>
                 ))}
               </ul>
             )}

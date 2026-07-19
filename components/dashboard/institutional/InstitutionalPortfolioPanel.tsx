@@ -29,6 +29,7 @@ export function InstitutionalPortfolioPanel({
   fetchSnapshot = true,
   title = "Institutional Portfolio",
   showReportViewer = true,
+  showLegacyRecommendations = false,
 }: {
   portfolio?: PortfolioSummary | null;
   doctor?: PortfolioDoctorAnalysis | null;
@@ -38,6 +39,7 @@ export function InstitutionalPortfolioPanel({
   fetchSnapshot?: boolean;
   title?: string;
   showReportViewer?: boolean;
+  showLegacyRecommendations?: boolean;
 }) {
   const [liveSnapshot, setLiveSnapshot] =
     useState<InstitutionalPlatformSnapshot | null>(snapshot);
@@ -115,7 +117,9 @@ export function InstitutionalPortfolioPanel({
           {compact ? (
             <div className="grid gap-3 lg:grid-cols-2">
               <PortfolioRiskPanel risk={view.risk} />
-              <PortfolioRecommendationPanel recommendations={view.recommendations} />
+              {showLegacyRecommendations ? (
+                <PortfolioRecommendationPanel recommendations={view.recommendations} />
+              ) : null}
             </div>
           ) : (
             <>
@@ -132,7 +136,9 @@ export function InstitutionalPortfolioPanel({
                 <PortfolioHeatmap cells={view.heatmap} />
               </div>
               <PortfolioQualityMatrix rows={view.qualityMatrix} />
-              <PortfolioRecommendationPanel recommendations={view.recommendations} />
+              {showLegacyRecommendations ? (
+                <PortfolioRecommendationPanel recommendations={view.recommendations} />
+              ) : null}
               {showReportViewer ? (
                 <InstitutionalReportViewer
                   snapshot={liveSnapshot}

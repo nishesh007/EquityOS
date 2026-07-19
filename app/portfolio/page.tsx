@@ -6,6 +6,7 @@ import { PortfolioDoctor } from "@/components/portfolio/PortfolioDoctor";
 import { InstitutionalPortfolioPanel } from "@/components/dashboard/institutional/InstitutionalPortfolioPanel";
 import { ExecutiveInstitutionalDashboard } from "@/components/dashboard/institutional/ExecutiveInstitutionalDashboard";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { SharedRecommendationPanel } from "@/components/recommendations";
 import {
   fetchPortfolioSummary,
   fetchWatchlist,
@@ -13,7 +14,10 @@ import {
 } from "@/services/marketData";
 import { fetchPortfolioEarningsRows } from "@/services/earningsCalendar";
 import { fetchPortfolioDoctorAnalysis } from "@/services/portfolioAnalysisData";
-import { fetchOpportunityEngineState } from "@/services/opportunityEngine";
+import {
+  fetchRecommendationsForSymbols,
+  ensureOpportunityEngineState,
+} from "@/services/opportunityEngine";
 import { fetchInstitutionalScreenerHealth } from "@/services/screenerData";
 import { fetchResearchWorkspaceHealth } from "@/services/researchWorkspace";
 import { MainGrid, PageContainer } from "@/src/design";
@@ -32,12 +36,21 @@ export default async function PortfolioPage() {
     fetchPortfolioSummary(),
     fetchWatchlist(),
     fetchPortfolioDoctorAnalysis(),
-    fetchOpportunityEngineState(),
+    ensureOpportunityEngineState(),
     fetchUpcomingResults(),
     fetchPortfolioEarningsRows(),
     Promise.resolve(fetchInstitutionalScreenerHealth()),
     Promise.resolve(fetchResearchWorkspaceHealth()),
   ]);
+  const holdingRecommendationMap = fetchRecommendationsForSymbols(
+    portfolio.holdings.map((holding) => holding.symbol)
+  );
+  const holdingRecommendations = [...holdingRecommendationMap.values()];
+  const watchlistRecommendations = Object.fromEntries(
+    fetchRecommendationsForSymbols(
+      watchlist.map((item) => item.symbol)
+    )
+  );
 
   return (
     <PageContainer>
@@ -67,15 +80,28 @@ export default async function PortfolioPage() {
                 showTopHoldings={false}
                 showViewAllLink={false}
               />
+              <SharedRecommendationPanel
+                recommendations={holdingRecommendations}
+                title="Portfolio Strategy · Upgrades, Downgrades & Exit Signals"
+                emptyMessage="No validated strategy change for current holdings."
+              />
               <div id="holdings">
-                <PortfolioHoldingsTable holdings={portfolio.holdings} />
+                <PortfolioHoldingsTable
+                  holdings={portfolio.holdings}
+                  recommendations={Object.fromEntries(
+                    holdingRecommendationMap
+                  )}
+                />
               </div>
               <PortfolioDoctor analysis={doctorAnalysis} />
             </>
           }
           secondary={
             <>
-              <Watchlist initialItems={watchlist} />
+              <Watchlist
+                initialItems={watchlist}
+                recommendations={watchlistRecommendations}
+              />
               <PortfolioEarningsPanel rows={portfolioEarnings} />
             </>
           }

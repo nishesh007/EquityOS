@@ -1,13 +1,17 @@
 import { Watchlist } from "@/components/dashboard/Watchlist";
 import { WatchlistEarningsPanel } from "@/components/dashboard/earnings";
-import { MarketIntelligenceStrip, StrategySignalPanel, WatchlistStrategyMatches } from "@/components/market";
+import { MarketIntelligenceStrip } from "@/components/market";
+import {
+  RecommendationRefreshButton,
+  SharedRecommendationPanel,
+} from "@/components/recommendations";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { fetchWatchlist } from "@/services/marketData";
 import { fetchWatchlistEarningsSurface } from "@/services/earningsCalendar";
 import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
 import {
-  fetchStandardizedStrategySignals,
-  fetchWatchlistStrategyMatches,
+  ensureOpportunityEngineState,
+  fetchRecommendationsForSymbols,
 } from "@/services/opportunityEngine";
 import { fetchInstitutionalScreenerHealth } from "@/services/screenerData";
 import { fetchResearchWorkspaceHealth } from "@/services/researchWorkspace";
@@ -16,6 +20,8 @@ import {
   formatWatchlistPlatformSubtitle,
 } from "@/services/watchlistPlatform";
 import { MainGrid, PageContainer } from "@/src/design";
+
+export const dynamic = "force-dynamic";
 
 export default async function WatchlistPage() {
   const [
@@ -33,10 +39,11 @@ export default async function WatchlistPage() {
     Promise.resolve(fetchWatchlistPlatformHealth()),
     getMarketIntelligenceSnapshot(),
   ]);
-  const strategySignals = fetchStandardizedStrategySignals(4);
-  const strategyMatches = fetchWatchlistStrategyMatches(
+  await ensureOpportunityEngineState();
+  const strategyRecommendationMap = fetchRecommendationsForSymbols(
     watchlist.map((item) => item.symbol)
   );
+  const strategyRecommendations = [...strategyRecommendationMap.values()];
 
   return (
     <PageContainer>
@@ -48,19 +55,25 @@ export default async function WatchlistPage() {
       <section className="mb-6 animate-fade-in-up">
         <MarketIntelligenceStrip snapshot={marketIntelligence} />
       </section>
-      <section className="mb-6 animate-fade-in-up">
-        <StrategySignalPanel candidates={strategySignals} />
-      </section>
-      <section className="mb-6 animate-fade-in-up rounded-xl border border-surface-border-subtle bg-surface-card p-4">
-        <h2 className="mb-3 text-sm font-semibold text-text-primary">
-          Watchlist Strategy Matches
-        </h2>
-        <WatchlistStrategyMatches matches={strategyMatches} />
+      <section className="mb-6 space-y-3 animate-fade-in-up">
+        <div className="flex justify-end">
+          <RecommendationRefreshButton />
+        </div>
+        <SharedRecommendationPanel
+          recommendations={strategyRecommendations}
+          title="Watchlist · Strategy Matches"
+          emptyMessage="No validated strategy recommendation for watched stocks."
+        />
       </section>
 
       <section className="animate-fade-in-up">
         <MainGrid
-          primary={<Watchlist initialItems={watchlist} />}
+          primary={
+            <Watchlist
+              initialItems={watchlist}
+              recommendations={Object.fromEntries(strategyRecommendationMap)}
+            />
+          }
           secondary={<WatchlistEarningsPanel surface={earningsSurface} />}
         />
       </section>

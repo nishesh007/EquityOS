@@ -92,7 +92,10 @@ export function ScreenerResultsTable({
                 Quality
               </th>
               <th className="pb-2 text-right text-[10px] font-medium uppercase tracking-wider text-text-faint">
-                AI Score
+                Recommendation
+              </th>
+              <th className="pb-2 text-right text-[10px] font-medium uppercase tracking-wider text-text-faint">
+                Opportunity
               </th>
             </tr>
           </thead>
@@ -157,8 +160,16 @@ export function ScreenerResultsTable({
                     </p>
                   </td>
                   <td className="py-2.5 text-right">
+                    <p className="text-xs font-semibold text-accent">
+                      {row.recommendation?.action ?? "—"}
+                    </p>
+                    <p className="text-[9px] text-text-muted">
+                      {row.recommendation?.primaryStrategy ?? "No match"}
+                    </p>
+                  </td>
+                  <td className="py-2.5 text-right">
                     <p className="text-xs font-mono text-text-secondary tabular-nums">
-                      {formatMetric(row.metrics.ai_rating as number)}
+                      {row.recommendation?.opportunityScore ?? "—"}
                     </p>
                   </td>
                 </tr>

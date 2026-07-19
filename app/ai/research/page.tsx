@@ -1,13 +1,16 @@
 import { ResearchWorkspace } from "@/components/ai/ResearchWorkspace";
-import { MarketIntelligenceStrip, StrategySignalPanel } from "@/components/market";
+import { MarketIntelligenceStrip } from "@/components/market";
+import { SharedRecommendationPanel } from "@/components/recommendations";
 import Link from "next/link";
 import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
-import { fetchStandardizedStrategySignals } from "@/services/opportunityEngine";
+import { fetchSharedRecommendationsFresh } from "@/services/opportunityEngine";
 import { fetchInstitutionalScreenerHealth } from "@/services/screenerData";
 import {
   ensureDefaultResearchWorkspace,
   fetchResearchWorkspaceHealth,
 } from "@/services/researchWorkspace";
+
+export const dynamic = "force-dynamic";
 
 const suggestions = [
   "Analyse Tata Motors",
@@ -30,7 +33,7 @@ export default async function AIResearchPage() {
   ensureDefaultResearchWorkspace({ name: "AI Research Analyst Desk" });
   const researchWorkspace = fetchResearchWorkspaceHealth();
   const marketIntelligence = await getMarketIntelligenceSnapshot();
-  const strategySignals = fetchStandardizedStrategySignals(4);
+  const recommendations = await fetchSharedRecommendationsFresh(4);
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
@@ -90,7 +93,10 @@ export default async function AIResearchPage() {
           <MarketIntelligenceStrip snapshot={marketIntelligence} />
         </div>
         <div className="mx-auto mt-4 max-w-4xl">
-          <StrategySignalPanel candidates={strategySignals} />
+          <SharedRecommendationPanel
+            recommendations={recommendations}
+            title="AI Research · Validated Strategy Recommendations"
+          />
         </div>
       </div>
 

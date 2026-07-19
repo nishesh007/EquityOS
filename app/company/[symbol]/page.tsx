@@ -24,6 +24,11 @@ import {
   formatWatchlistPlatformSubtitle,
 } from "@/services/watchlistPlatform";
 import { PageContainer } from "@/src/design";
+import { SharedRecommendationPanel } from "@/components/recommendations";
+import {
+  ensureOpportunityEngineState,
+  fetchRecommendationForSymbol,
+} from "@/services/opportunityEngine";
 
 interface CompanyPageProps {
   params: Promise<{ symbol: string }>;
@@ -54,6 +59,7 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
   if (!company || !research || !intelligence) {
     notFound();
   }
+  await ensureOpportunityEngineState();
 
   const indicatorMap = Object.fromEntries(
     research.technicals.indicators.map((i) => [
@@ -97,6 +103,7 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
   });
   const analytics = fetchWorkspaceAnalyticsView();
   const executive = fetchExecutiveResearchView({ ticker: company.symbol });
+  const strategyRecommendation = fetchRecommendationForSymbol(company.symbol);
 
   return (
     <PageContainer>
@@ -106,7 +113,9 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
           Company research workspace ·{" "}
           {companyWorkspace.empty
             ? companyWorkspace.emptyMessage
-            : `${companyWorkspace.panels.length} panels · ${companyWorkspace.overview.aiRecommendation}`}{" "}
+            : `${companyWorkspace.panels.length} panels · Strategy Engine ${
+                strategyRecommendation?.action ?? "no validated recommendation"
+              }`}{" "}
           · knowledge{" "}
           {knowledge.empty
             ? knowledge.emptyMessage
@@ -116,7 +125,9 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
             ? timeline.emptyMessage
             : `${timeline.entries.length} events`}{" "}
           · copilot{" "}
-          {summary.empty ? summary.emptyMessage : summary.finalConclusion}{" "}
+          {strategyRecommendation
+            ? `${strategyRecommendation.action} · ${strategyRecommendation.opportunityScore}/100`
+            : summary.emptyMessage}{" "}
           · automation{" "}
           {analytics.empty
             ? analytics.emptyMessage
@@ -147,6 +158,12 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
       </div>
 
       <div className="space-y-6">
+        <SharedRecommendationPanel
+          recommendations={
+            strategyRecommendation ? [strategyRecommendation] : []
+          }
+          title="Company Strategy Recommendation"
+        />
         <CompanyHeader company={company} />
         <ActionButtons symbol={company.symbol} />
         <ResearchTerminal

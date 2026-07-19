@@ -8,14 +8,19 @@ import { createUnavailableQuote } from "@/lib/market-data/enriched-quote";
 import { getCompanyRoute } from "@/lib/routes";
 import { buildInitialQuotesMap } from "@/services/marketData";
 import type { WatchlistItem } from "@/types";
+import type { SharedRecommendation } from "@/lib/recommendations";
 import { useRouter } from "next/navigation";
 import { Star, X } from "lucide-react";
 
 interface WatchlistProps {
   initialItems: WatchlistItem[];
+  recommendations?: Record<string, SharedRecommendation>;
 }
 
-export function Watchlist({ initialItems }: WatchlistProps) {
+export function Watchlist({
+  initialItems,
+  recommendations = {},
+}: WatchlistProps) {
   const { items, removeItem } = useWatchlist({ initialItems });
   const router = useRouter();
   const symbols = items.map((item) => item.symbol);
@@ -51,6 +56,9 @@ export function Watchlist({ initialItems }: WatchlistProps) {
               <th className="pb-2 text-right text-[10px] font-medium uppercase tracking-wider text-text-faint">
                 Vol
               </th>
+              <th className="pb-2 text-right text-[10px] font-medium uppercase tracking-wider text-text-faint">
+                Strategy
+              </th>
               <th className="pb-2 w-8" />
             </tr>
           </thead>
@@ -66,6 +74,8 @@ export function Watchlist({ initialItems }: WatchlistProps) {
                       ? `${(quote.volume / 1e5).toFixed(2)} L`
                       : `${Math.round(quote.volume)}`
                   : item.volume;
+              const recommendation =
+                recommendations[item.symbol.toUpperCase()];
 
               return (
                 <tr
@@ -83,6 +93,16 @@ export function Watchlist({ initialItems }: WatchlistProps) {
                   </td>
                   <td className="py-2.5 text-right">
                     <QuoteDisplayCompact quote={quote} className="flex flex-col items-end" />
+                  </td>
+                  <td className="py-2.5 text-right">
+                    <p className="text-[10px] font-semibold text-accent">
+                      {recommendation?.action ?? "—"}
+                    </p>
+                    <p className="text-[9px] text-text-muted">
+                      {recommendation
+                        ? `${recommendation.primaryStrategy} · ${recommendation.confidence}%`
+                        : "No validated match"}
+                    </p>
                   </td>
                   <td className="py-2.5 text-right">
                     <p className="text-[9px] text-text-faint">

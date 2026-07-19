@@ -10,9 +10,11 @@ import { buildInitialQuotesMap } from "@/services/marketData";
 import type { PortfolioHolding } from "@/types";
 import { createInstitutionalTable, InstitutionalTable } from "@/src/design";
 import { Briefcase } from "lucide-react";
+import type { SharedRecommendation } from "@/lib/recommendations";
 
 interface PortfolioHoldingsTableProps {
   holdings: PortfolioHolding[];
+  recommendations?: Record<string, SharedRecommendation>;
 }
 
 interface HoldingRow {
@@ -26,6 +28,12 @@ interface HoldingRow {
   value: number;
   pnl: number;
   pnlPercent: number;
+  strategy: string;
+  holdingConfidence: number | null;
+  signal: string;
+  risk: number | null;
+  regime: string;
+  opportunityChange: string;
 }
 
 const HOLDINGS_TABLE = createInstitutionalTable<HoldingRow>({
@@ -41,11 +49,18 @@ const HOLDINGS_TABLE = createInstitutionalTable<HoldingRow>({
     { id: "value", label: "Value", kind: "currency" },
     { id: "pnl", label: "P&L", kind: "currency" },
     { id: "pnlPercent", label: "P&L %", kind: "trend" },
+    { id: "strategy", label: "Current Strategy", kind: "text" },
+    { id: "holdingConfidence", label: "Confidence", kind: "number" },
+    { id: "signal", label: "Signal", kind: "text" },
+    { id: "risk", label: "Risk", kind: "number" },
+    { id: "regime", label: "Regime", kind: "text" },
+    { id: "opportunityChange", label: "Opportunity", kind: "text" },
   ],
 });
 
 export function PortfolioHoldingsTable({
   holdings,
+  recommendations = {},
 }: PortfolioHoldingsTableProps) {
   const router = useRouter();
   const symbols = holdings.map((h) => h.symbol);
@@ -67,6 +82,8 @@ export function PortfolioHoldingsTable({
         const investedValue = holding.avgPrice * holding.quantity;
         const pnl = currentValue - investedValue;
         const pnlPercent = investedValue > 0 ? (pnl / investedValue) * 100 : 0;
+        const recommendation =
+          recommendations[holding.symbol.toUpperCase()];
         return {
           id: holding.id,
           symbol: holding.symbol,
@@ -78,9 +95,20 @@ export function PortfolioHoldingsTable({
           value: currentValue,
           pnl,
           pnlPercent,
+          strategy: recommendation?.primaryStrategy ?? "No active strategy",
+          holdingConfidence: recommendation?.confidence ?? null,
+          signal: recommendation?.action ?? "HOLD",
+          risk: recommendation?.risk ?? null,
+          regime: recommendation?.marketRegime ?? "—",
+          opportunityChange:
+            recommendation?.action === "BUY"
+              ? "Upgrade"
+              : recommendation?.action === "SELL"
+                ? "Downgrade"
+                : "Monitor",
         };
       }),
-    [holdings, quotes]
+    [holdings, quotes, recommendations]
   );
 
   return (

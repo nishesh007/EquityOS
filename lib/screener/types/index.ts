@@ -77,6 +77,8 @@ export interface ScreenerRow {
   /** All metric values keyed by filter key */
   metrics: Record<string, number | string | null>;
   quote?: import("@/lib/market-data/enriched-quote").EnrichedQuote;
+  /** Validated output from the centralized Strategy Engine pipeline. */
+  recommendation?: import("@/lib/recommendations").SharedRecommendation;
 }
 
 export interface ScreenerResult {

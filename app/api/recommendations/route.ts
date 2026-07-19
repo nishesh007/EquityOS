@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  getOpportunityState,
   listRecommendationHistory,
   type RecommendationRecordStatus,
 } from "@/lib/opportunity-engine";
@@ -14,6 +13,8 @@ import {
 } from "@/src/core/recommendations";
 import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
 import { getStrategyPlatformStatus } from "@/src/modules/strategies";
+import { selectSharedRecommendations } from "@/lib/recommendations";
+import { ensureOpportunityEngineState } from "@/services/opportunityEngine";
 
 const STATUSES = new Set<RecommendationRecordStatus>([
   "ACTIVE",
@@ -34,60 +35,20 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const state = getOpportunityState();
+  const state = await ensureOpportunityEngineState();
   const [recommendations, marketIntelligence] = await Promise.all([
     Promise.resolve(listRecommendationHistory(state, requestedStatus)),
     getMarketIntelligenceSnapshot(),
   ]);
 
-  const enriched = recommendations.map((rec, index) => {
-    const candidate = rec.candidate;
-    return {
-      ...rec,
-      eligible: candidate?.pipelineEligible ?? null,
-      eligibilityScore: candidate?.eligibilityScore ?? null,
-      opportunityScore: candidate?.opportunityScore ?? null,
-      opportunityRank: index + 1,
-      marketRegime:
-        candidate?.marketRegime ?? state.pipeline?.regime ?? marketIntelligence.regime.regime,
-      marketTrend:
-        candidate?.marketTrend ??
-        state.pipeline?.marketTrend ??
-        marketIntelligence.context.marketTrend,
-      riskMode:
-        candidate?.riskMode ??
-        state.pipeline?.riskMode ??
-        marketIntelligence.context.riskMode,
-      confidence:
-        candidate?.pipelineConfidence ??
-        candidate?.confidencePercent ??
-        marketIntelligence.confidence,
-      reasons: candidate?.eligibleReasons ?? [],
-      rejectedReasons: candidate?.rejectedReasons ?? [],
-      strategy:
-        candidate?.strategySignal?.strategy ?? candidate?.strategyName ?? null,
-      strategyId:
-        candidate?.strategySignal?.strategyId ?? candidate?.strategyId ?? null,
-      signal: candidate?.strategySignal?.signal ?? null,
-      entry: candidate?.strategySignal?.entry ?? null,
-      sl: candidate?.strategySignal?.stopLoss ?? null,
-      target: candidate?.strategySignal?.target ?? null,
-      evidence: candidate?.strategySignal?.evidence ?? [],
-      strategySignals: candidate?.strategySignals ?? [],
-      agreement: candidate?.strategyConsensus?.agreementPercent ?? null,
-      conflict: candidate?.strategyConsensus?.conflictPercent ?? null,
-      supportingStrategies:
-        candidate?.strategyConsensus?.supportingStrategies ?? [],
-      opposingStrategies:
-        candidate?.strategyConsensus?.opposingStrategies ?? [],
-      frameworkScore: candidate?.frameworkScore ?? null,
-      combinedVerdict: candidate?.strategyConsensus?.combinedVerdict ?? null,
-      longTermRanking: candidate?.longTermRanking ?? null,
-    };
-  });
+  const sharedRecommendations =
+    !requestedStatus || requestedStatus === "ACTIVE"
+      ? selectSharedRecommendations(state)
+      : [];
 
   return NextResponse.json({
-    recommendations: enriched,
+    recommendations: sharedRecommendations,
+    history: recommendations,
     marketIntelligence,
     strategyPlatform: getStrategyPlatformStatus(),
     pipeline: state.pipeline ?? null,

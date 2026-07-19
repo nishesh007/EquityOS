@@ -1,15 +1,11 @@
-import { AIMarketSummary } from "@/components/dashboard/AIMarketSummary";
-import {
-  AIIntradayIdeas,
-  AISwingTradeIdeas,
-} from "@/components/dashboard/AITradeIdeas";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { fetchAIMarketSummary } from "@/services/marketData";
-import {
-  fetchIntradayIdeas,
-  fetchSwingTradeIdeas,
-} from "@/services/researchDashboardData";
+import { MarketIntelligenceStrip } from "@/components/market";
+import { SharedRecommendationPanel } from "@/components/recommendations";
+import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
+import { fetchSharedRecommendationsFresh } from "@/services/opportunityEngine";
 import Link from "next/link";
+
+export const dynamic = "force-dynamic";
 
 const aiTools = [
   {
@@ -40,11 +36,16 @@ const aiTools = [
 ] as const;
 
 export default async function AIInsightsPage() {
-  const [summary, intradayIdeas, swingIdeas] = await Promise.all([
-    fetchAIMarketSummary(),
-    fetchIntradayIdeas(),
-    fetchSwingTradeIdeas(),
+  const [marketIntelligence, recommendations] = await Promise.all([
+    getMarketIntelligenceSnapshot(),
+    fetchSharedRecommendationsFresh(12),
   ]);
+  const intraday = recommendations.filter(
+    (recommendation) => recommendation.category === "intraday"
+  );
+  const swing = recommendations.filter((recommendation) =>
+    ["swing", "breakout", "momentum"].includes(recommendation.category)
+  );
 
   return (
     <div className="space-y-6 p-6">
@@ -69,15 +70,21 @@ export default async function AIInsightsPage() {
       </div>
 
       <section>
-        <AIMarketSummary summary={summary} />
+        <MarketIntelligenceStrip snapshot={marketIntelligence} />
       </section>
 
       <section>
-        <AIIntradayIdeas ideas={intradayIdeas} />
+        <SharedRecommendationPanel
+          recommendations={intraday}
+          title="AI Intraday Ideas · Strategy Engine"
+        />
       </section>
 
       <section>
-        <AISwingTradeIdeas ideas={swingIdeas} />
+        <SharedRecommendationPanel
+          recommendations={swing}
+          title="AI Swing Ideas · Strategy Engine"
+        />
       </section>
     </div>
   );

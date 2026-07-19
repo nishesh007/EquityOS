@@ -27,18 +27,59 @@ import {
   REPORT_SECTIONS,
 } from "@/lib/research/reportTemplates";
 import {
-  buildAIDecision,
   renderDecisionSummaryMarkdown,
   type AIDecisionSummary,
 } from "@/lib/ai/decision/decisionEngine";
 import type { CompanyProfile, EquityIntelligence, Opportunity } from "@/types";
+import {
+  ensureOpportunityEngineState,
+  fetchRecommendationForSymbol,
+} from "@/services/opportunityEngine";
+import type { SharedRecommendation } from "@/lib/recommendations";
 
 export interface InstitutionalResearchReport {
   header: InstitutionalReportHeader;
   sections: ReportSection[];
   rating: ReturnType<typeof buildInstitutionalRating>;
   probability: { bull: number; base: number; bear: number };
-  decision: AIDecisionSummary;
+  decision: AIDecisionSummary | null;
+}
+
+function toReportDecision(
+  recommendation: SharedRecommendation,
+  companyName: string
+): AIDecisionSummary {
+  return {
+    symbol: recommendation.symbol,
+    companyName,
+    recommendation:
+      recommendation.action === "BUY"
+        ? "Buy"
+        : recommendation.action === "SELL"
+          ? "Sell"
+          : "Hold",
+    confidenceScore: recommendation.confidence,
+    aiConvictionScore: recommendation.conviction,
+    reasonsToBuy:
+      recommendation.action === "BUY" ? recommendation.reasons : [],
+    reasonsNotToBuy:
+      recommendation.action !== "BUY" ? recommendation.reasons : [],
+    redFlags: recommendation.opposingStrategies,
+    upcomingCatalysts: recommendation.evidence,
+    timeHorizon:
+      recommendation.category === "intraday" ? "Swing" : "1 Year",
+    timeHorizonRationale: recommendation.holdingPeriod,
+    suitableInvestor: ["Momentum"],
+    positionSizing:
+      recommendation.confidence >= 75
+        ? "High Conviction"
+        : recommendation.confidence >= 55
+          ? "Medium Conviction"
+          : "Watchlist",
+    earningsTrend: recommendation.marketContext,
+    compositeScore: recommendation.opportunityScore,
+    generatedAt: recommendation.lastScanTime,
+  };
 }
 
 export class ReportGeneratorError extends Error {
@@ -302,16 +343,13 @@ export async function generateInstitutionalReport(
     ragFormatted,
   });
 
-  const decision = buildAIDecision({
-    context,
-    profile,
-    valuation,
-    risk,
-    moat,
-    intelligence,
-    ragChunks,
-    opportunities,
-  });
+  await ensureOpportunityEngineState();
+  const strategyRecommendation = fetchRecommendationForSymbol(
+    context.profile.symbol
+  );
+  const decision = strategyRecommendation
+    ? toReportDecision(strategyRecommendation, context.profile.name)
+    : null;
 
   return {
     header,
@@ -341,7 +379,9 @@ export async function generateInstitutionalReportMarkdown(
   });
 
   const probabilityMatrix = renderProbabilityMatrix(report.probability);
-  const decisionSummary = renderDecisionSummaryMarkdown(report.decision);
+  const decisionSummary = report.decision
+    ? renderDecisionSummaryMarkdown(report.decision)
+    : "## Strategy Engine Recommendation\n\nNo validated recommendation is available from the centralized pipeline.";
 
   return renderReportMarkdown(
     report.header,

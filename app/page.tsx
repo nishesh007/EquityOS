@@ -1,4 +1,4 @@
-import { DashboardOpportunityPanel } from "@/components/dashboard/DashboardOpportunityPanel";
+import { SharedRecommendationPanel } from "@/components/recommendations";
 import { DashboardResultsSnapshot } from "@/components/dashboard/DashboardResultsSnapshot";
 import { LatestMarketNews } from "@/components/dashboard/LatestMarketNews";
 import { MarketBreadth } from "@/components/dashboard/MarketBreadth";
@@ -15,7 +15,7 @@ import {
   fetchWatchlist,
 } from "@/services/marketData";
 import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
-import { fetchOpportunityEngineState } from "@/services/opportunityEngine";
+import { fetchSharedRecommendationsFresh } from "@/services/opportunityEngine";
 import {
   fetchMarketBreadth,
   fetchMarketPulse,
@@ -33,7 +33,7 @@ export default async function DashboardPage() {
     results,
     pulse,
     breadth,
-    opportunityState,
+    recommendations,
     marketIntelligence,
   ] = await Promise.all([
     fetchMarketIndices(),
@@ -43,9 +43,19 @@ export default async function DashboardPage() {
     fetchUpcomingResults(),
     fetchMarketPulse(),
     fetchMarketBreadth(),
-    fetchOpportunityEngineState(),
+    fetchSharedRecommendationsFresh(8),
     getMarketIntelligenceSnapshot(),
   ]);
+  const watchlistRecommendations = Object.fromEntries(
+    recommendations
+      .filter((recommendation) =>
+        watchlist.some(
+          (item) =>
+            item.symbol.toUpperCase() === recommendation.symbol.toUpperCase()
+        )
+      )
+      .map((recommendation) => [recommendation.symbol, recommendation])
+  );
 
   return (
     <PageContainer>
@@ -78,13 +88,19 @@ export default async function DashboardPage() {
             subtitle="Conviction-ranked ideas, watchlist, portfolio and alerts"
           />
           <div id="opportunities-heading" className="space-y-5">
-            <DashboardOpportunityPanel initialState={opportunityState} />
+            <SharedRecommendationPanel
+              recommendations={recommendations}
+              title="Best Opportunities · Strategy Engine"
+            />
             <div className="grid gap-5 xl:grid-cols-12">
               <div className="xl:col-span-8">
                 <PortfolioSummary portfolio={portfolio} />
               </div>
               <div className="xl:col-span-4">
-                <Watchlist initialItems={watchlist} />
+                <Watchlist
+                  initialItems={watchlist}
+                  recommendations={watchlistRecommendations}
+                />
               </div>
             </div>
             <Link

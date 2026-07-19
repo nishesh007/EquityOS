@@ -33,6 +33,7 @@ import {
 
 interface PortfolioDoctorProps {
   analysis: PortfolioDoctorAnalysis;
+  showLegacyRecommendations?: boolean;
 }
 
 const severityStyles: Record<
@@ -90,7 +91,10 @@ function RiskMetricCard({ metric }: { metric: PortfolioRiskMetric }) {
   );
 }
 
-export function PortfolioDoctor({ analysis }: PortfolioDoctorProps) {
+export function PortfolioDoctor({
+  analysis,
+  showLegacyRecommendations = false,
+}: PortfolioDoctorProps) {
   const {
     healthScore,
     diversification,
@@ -353,7 +357,7 @@ export function PortfolioDoctor({ analysis }: PortfolioDoctorProps) {
         </div>
       </Card>
 
-      {/* 5. AI Recommendations */}
+      {showLegacyRecommendations ? (
       <Card padding="lg" className="animate-fade-in-up [animation-delay:300ms]">
         <CardHeader
           title="AI Recommendations"
@@ -389,6 +393,7 @@ export function PortfolioDoctor({ analysis }: PortfolioDoctorProps) {
           ))}
         </div>
       </Card>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         {/* 6. Rebalancing Simulator */}

@@ -4,6 +4,7 @@
  */
 
 import type { CompanyProfile, CompanyResearch, EquityIntelligence } from "@/types";
+import { fetchRecommendationForSymbol } from "@/services/opportunityEngine";
 import {
   WORKSPACE_EMPTY,
   LAYOUT_EMPTY,
@@ -135,6 +136,7 @@ export function buildCompanyWorkspaceSnapshot(input: {
   const f = profile.financials;
   const tech = research?.technicals;
   const ai = research?.ai;
+  const strategyRecommendation = fetchRecommendationForSymbol(profile.symbol);
   const thesis = intelligence?.thesis;
   const valuation = intelligence?.valuation;
   const dcfModel = valuation?.models?.find((m) =>
@@ -246,14 +248,12 @@ export function buildCompanyWorkspaceSnapshot(input: {
         ai?.investmentThesis ||
         COMPANY_WORKSPACE_EMPTY.noResearchAvailable,
       aiRecommendation: String(
-        thesis?.recommendation ??
-          intelligence?.decision?.recommendation ??
-          "—"
+        strategyRecommendation?.action ?? "—"
       ),
       confidence:
-        thesis?.confidence ?? intelligence?.researchConfidence?.overall ?? 0,
+        strategyRecommendation?.confidence ?? 0,
       confidenceLabel: `Confidence ${Math.round(
-        thesis?.confidence ?? intelligence?.researchConfidence?.overall ?? 0
+        strategyRecommendation?.confidence ?? 0
       )}`,
       bullCase: thesis?.bullCase ? [thesis.bullCase] : [],
       bearCase: thesis?.bearCase ? [thesis.bearCase] : [],
@@ -263,7 +263,7 @@ export function buildCompanyWorkspaceSnapshot(input: {
     },
     badges: {
       confidence: `Confidence ${Math.round(
-        intelligence?.researchConfidence?.overall ?? thesis?.confidence ?? 0
+        strategyRecommendation?.confidence ?? 0
       )}`,
       trust: "Trust attached",
       validation: "Validation attached",
