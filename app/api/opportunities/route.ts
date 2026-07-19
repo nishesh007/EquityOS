@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { fetchOpportunityEngineBundle } from "@/services/opportunityEngine";
+import { getStrategyPlatformStatus } from "@/src/modules/strategies";
 
 /**
  * GET /api/opportunities
@@ -24,6 +25,7 @@ export async function GET() {
   return NextResponse.json({
     ...state,
     marketIntelligence: bundle.marketIntelligence,
+    strategyPlatform: getStrategyPlatformStatus(),
     pipeline: state.pipeline ?? null,
     eligibility: {
       eligibleStrategyCount: state.pipeline?.eligibleStrategyCount ?? 0,
@@ -49,6 +51,14 @@ export async function GET() {
       riskMode: c.riskMode ?? null,
       reasons: c.eligibleReasons ?? [],
       rejectedReasons: c.rejectedReasons ?? [],
+      strategy: c.strategySignal?.strategy ?? c.strategyName ?? null,
+      strategyId: c.strategySignal?.strategyId ?? c.strategyId ?? null,
+      signal: c.strategySignal?.signal ?? null,
+      entry: c.strategySignal?.entry ?? null,
+      sl: c.strategySignal?.stopLoss ?? null,
+      target: c.strategySignal?.target ?? null,
+      evidence: c.strategySignal?.evidence ?? [],
+      strategySignals: c.strategySignals ?? [],
     })),
     context: bundle.marketIntelligence.context,
     regime: bundle.marketIntelligence.regime,

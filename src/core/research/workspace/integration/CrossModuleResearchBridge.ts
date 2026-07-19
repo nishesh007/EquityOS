@@ -74,8 +74,8 @@ export function ingestCrossModuleEvents(
   if (!workspaceId) return [];
 
   const created: ResearchTimelineEntry[] = [];
-  for (const module of CROSS_MODULE_LINKS) {
-    created.push(...ingestLines(workspaceId, module, bag[module]));
+  for (const moduleId of CROSS_MODULE_LINKS) {
+    created.push(...ingestLines(workspaceId, moduleId, bag[moduleId]));
   }
   return created;
 }

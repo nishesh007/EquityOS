@@ -769,15 +769,15 @@ export function buildBuiltinKnowledgeSources(): KnowledgeSourceDefinition[] {
       name: "Validation Dashboard",
       collect: () =>
         safeCollect("dashboard", () => {
-          const module = node("MODULE", "dashboard", "Dashboard Backend", "dashboard");
+          const moduleNode = node("MODULE", "dashboard", "Dashboard Backend", "dashboard");
           const snap = node("SNAPSHOT", "dash-snap", "Dashboard Snapshot", "dashboard");
           return {
             sourceId: "dashboard",
-            nodes: [module, snap],
+            nodes: [moduleNode, snap],
             edges: [
-              edge(module.nodeId, snap.nodeId, "PRODUCES", 0.85),
+              edge(moduleNode.nodeId, snap.nodeId, "PRODUCES", 0.85),
               edge(
-                module.nodeId,
+                moduleNode.nodeId,
                 createKnowledgeNodeId("ENGINE", "analytics"),
                 "CONSUMES",
                 0.8
@@ -791,12 +791,12 @@ export function buildBuiltinKnowledgeSources(): KnowledgeSourceDefinition[] {
       name: "Validation Event Bus",
       collect: () =>
         safeCollect("eventBus", () => {
-          const module = node("MODULE", "event-bus", "Event Bus", "eventBus");
+          const moduleNode = node("MODULE", "event-bus", "Event Bus", "eventBus");
           const event = node("EVENT", "bus-event", "Validation Event", "eventBus");
           return {
             sourceId: "eventBus",
-            nodes: [module, event],
-            edges: [edge(module.nodeId, event.nodeId, "TRIGGERS", 0.9)],
+            nodes: [moduleNode, event],
+            edges: [edge(moduleNode.nodeId, event.nodeId, "TRIGGERS", 0.9)],
           };
         }),
     },

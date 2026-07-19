@@ -42,9 +42,9 @@ export class AnalyticsFailurePatterns {
         ruleFails.inc(o.ruleId, fails || 1);
         repeated.inc(`rule:${o.ruleId}`, fails || 1);
       }
-      const module = o.module ?? o.sourceId;
-      moduleFails.inc(module, fails || 1);
-      repeated.inc(`module:${module}`, fails || 1);
+      const moduleId = o.module ?? o.sourceId;
+      moduleFails.inc(moduleId, fails || 1);
+      repeated.inc(`module:${moduleId}`, fails || 1);
       if (o.stock) {
         stockFails.inc(o.stock, fails || 1);
         repeated.inc(`stock:${o.stock}`, fails || 1);

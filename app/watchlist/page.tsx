@@ -1,10 +1,11 @@
 import { Watchlist } from "@/components/dashboard/Watchlist";
 import { WatchlistEarningsPanel } from "@/components/dashboard/earnings";
-import { MarketIntelligenceStrip } from "@/components/market";
+import { MarketIntelligenceStrip, StrategySignalPanel } from "@/components/market";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { fetchWatchlist } from "@/services/marketData";
 import { fetchWatchlistEarningsSurface } from "@/services/earningsCalendar";
 import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
+import { fetchStandardizedStrategySignals } from "@/services/opportunityEngine";
 import { fetchInstitutionalScreenerHealth } from "@/services/screenerData";
 import { fetchResearchWorkspaceHealth } from "@/services/researchWorkspace";
 import {
@@ -29,6 +30,7 @@ export default async function WatchlistPage() {
     Promise.resolve(fetchWatchlistPlatformHealth()),
     getMarketIntelligenceSnapshot(),
   ]);
+  const strategySignals = fetchStandardizedStrategySignals(4);
 
   return (
     <PageContainer>
@@ -39,6 +41,9 @@ export default async function WatchlistPage() {
 
       <section className="mb-6 animate-fade-in-up">
         <MarketIntelligenceStrip snapshot={marketIntelligence} />
+      </section>
+      <section className="mb-6 animate-fade-in-up">
+        <StrategySignalPanel candidates={strategySignals} />
       </section>
 
       <section className="animate-fade-in-up">

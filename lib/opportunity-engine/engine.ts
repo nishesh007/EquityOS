@@ -55,6 +55,8 @@ import {
   type LiveSymbolContext,
 } from "@/lib/opportunity-engine/live-metrics";
 import { getOhlcCandles } from "@/lib/market/ohlc-engine";
+import { executeOpportunityStrategies } from "@/lib/opportunity-engine/strategy-execution";
+import type { OhlcBar } from "@/lib/providers/types";
 import { getTradingPipelineResult } from "@/services/marketIntelligence";
 import type { TradingPipelineResult } from "@/src/modules/tradingPipeline";
 
@@ -129,17 +131,23 @@ async function buildQuoteMetricsRows(
 async function enrichMetricsRows(
   rows: LiveMetricsRecord[],
   options?: { fundamentalsSymbols?: Set<string> }
-): Promise<LiveMetricsRecord[]> {
+): Promise<{
+  rows: LiveMetricsRecord[];
+  candlesBySymbol: Map<string, OhlcBar[]>;
+}> {
   const fundamentalsSymbols = options?.fundamentalsSymbols ?? new Set<string>();
-  return mapWithConcurrency(rows, METRICS_CONCURRENCY, async (row) => {
+  const candlesBySymbol = new Map<string, OhlcBar[]>();
+  const enrichedRows = await mapWithConcurrency(rows, METRICS_CONCURRENCY, async (row) => {
     const symbol = String(row.symbol ?? "").toUpperCase();
     const ohlc = await getOhlcCandles(symbol, "3M");
+    candlesBySymbol.set(symbol, ohlc.data);
     let enriched = await enrichMetricsWithTechnicals(row, ohlc.data);
     if (fundamentalsSymbols.has(symbol)) {
       enriched = await enrichMetricsWithFundamentals(enriched, symbol);
     }
     return enriched;
   });
+  return { rows: enrichedRows, candlesBySymbol };
 }
 
 function toOpportunityCandidate(
@@ -341,9 +349,10 @@ async function executeScan(force = false): Promise<ScanResult> {
       ),
     ]);
 
-    const enrichedRows = await enrichMetricsRows(shortlistRows, {
+    const enrichment = await enrichMetricsRows(shortlistRows, {
       fundamentalsSymbols,
     });
+    const enrichedRows = enrichment.rows;
 
     const metricsBySymbol = new Map<string, LiveMetricsRecord>();
     for (const row of enrichedRows) {
@@ -366,7 +375,26 @@ async function executeScan(force = false): Promise<ScanResult> {
         regimeScore
       );
       // Rank + gate through Trading Pipeline eligibility (no bypass).
-      const candidates = enrichCandidatesWithPipeline(rawCandidates, pipeline);
+      const pipelineCandidates = enrichCandidatesWithPipeline(rawCandidates, pipeline);
+      const candidates = pipelineCandidates.flatMap((candidate) => {
+          const execution = executeOpportunityStrategies(
+            candidate,
+            pipeline,
+            enrichment.candlesBySymbol.get(candidate.symbol) ?? []
+          );
+          if (!execution.primary) return [];
+          const executedCandidate: OpportunityCandidate = {
+            ...candidate,
+            strategyId: execution.primary.strategyId,
+            strategyName: execution.primary.strategy,
+            strategySignal: execution.primary,
+            strategySignals: execution.signals,
+            executedStrategyIds: execution.executedStrategyIds,
+            eligibleReasons: execution.primary.reasons,
+            rejectedReasons: execution.rejectedReasons,
+          };
+          return [executedCandidate];
+        });
       const { added, removed, updated } = mergeCategoryResults(category, candidates);
       totalAdded += added;
       totalRemoved += removed;

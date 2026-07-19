@@ -146,6 +146,16 @@ export abstract class BaseStrategy {
   execute(context: StrategyExecutionContext): StrategySignal {
     try {
       this.initialize(context);
+      const eligibility = context.eligibleStrategies.find(
+        (item) => item.strategyId === (this.eligibilityId ?? this.id)
+      );
+      const signalEligibility: StrategySignal["eligibility"] = {
+        eligible: eligibility?.eligible ?? false,
+        score: eligibility?.score ?? 0,
+        reasons: eligibility?.eligible
+          ? eligibility.reasons
+          : (eligibility?.blockedReasons ?? []),
+      };
 
       const localValidation = this.validate(context);
       if (!localValidation.valid) {
@@ -159,6 +169,9 @@ export abstract class BaseStrategy {
           timestamp: context.timestamp ?? new Date(),
           config: this.config,
           metadata: { validation: localValidation },
+          marketRegime: context.regime.regime,
+          eligibility: signalEligibility,
+          evidence: localValidation.issues.map((issue) => issue.message),
         });
         this.getLifecycle().dispose();
         return ignore;
@@ -181,6 +194,9 @@ export abstract class BaseStrategy {
           warnings: [],
           timestamp: context.timestamp ?? new Date(),
           config: this.config,
+          marketRegime: context.regime.regime,
+          eligibility: signalEligibility,
+          evidence: this.analysis.notes,
         });
         this.getLifecycle().transition("SignalGenerated");
         this.getLifecycle().transition("Completed");
@@ -246,6 +262,20 @@ export abstract class BaseStrategy {
           analysisScore: this.analysis.score,
           metrics: this.analysis.metrics,
         },
+        evidence: [
+          ...this.analysis.notes,
+          ...Object.entries(this.analysis.metrics).map(
+            ([key, value]) => `${key}: ${value}`
+          ),
+        ],
+        tags: [
+          this.category,
+          signalType,
+          context.regime.regime,
+          context.riskMode,
+        ],
+        marketRegime: context.regime.regime,
+        eligibility: signalEligibility,
       });
 
       const reasons = this.explain(context, this.analysis, draft);
@@ -266,6 +296,7 @@ export abstract class BaseStrategy {
         warnings: ["Strategy execution caught an internal error."],
         timestamp: new Date(),
         config: this.config,
+        marketRegime: context.regime?.regime ?? "Unknown",
       });
     }
   }

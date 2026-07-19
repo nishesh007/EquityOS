@@ -17,11 +17,14 @@ import type {
   StrategyCategory,
   StrategyId,
 } from "@/src/modules/strategyEligibility";
+import type { TradingPipelineResult } from "@/src/modules/tradingPipeline";
 import type { StrategyFrameworkConfig } from "./StrategyConstants";
 
 export type { StrategyCategory, StrategyId };
 
 export type StrategySignalType = "BUY" | "SELL" | "WATCHLIST" | "IGNORE";
+
+export type StrategyRiskRating = "Low" | "Moderate" | "High" | "Very High";
 
 export type StrategyLifecycleState =
   | "Created"
@@ -48,9 +51,19 @@ export interface StrategySignal {
   finalTarget: number;
   holdingPeriod: string;
   confidence: number;
+  risk: number;
+  reward: number;
   riskReward: number;
   quality: number;
   reasons: string[];
+  evidence: string[];
+  tags: string[];
+  marketRegime: string;
+  eligibility: {
+    eligible: boolean;
+    score: number;
+    reasons: string[];
+  };
   warnings: string[];
   metadata: Record<string, unknown>;
   timestamp: Date;
@@ -81,6 +94,15 @@ export interface StrategyExecutionContext {
   confidence: RegimeConfidenceAnalysis;
   eligibleStrategies: readonly EligibleStrategy[];
   riskMode: RiskMode;
+  /** Full pipeline snapshot that authorized this execution. */
+  pipeline?: TradingPipelineResult;
+  /** Upstream validation result for the evaluated market candidate. */
+  validation?: {
+    score: number;
+    reasons: readonly string[];
+  };
+  /** AI confidence supplied by the opportunity/research layer. */
+  aiConfidence?: number;
   timestamp?: Date;
   config?: Partial<StrategyFrameworkConfig>;
 }
@@ -130,6 +152,9 @@ export interface StrategyRegistration {
   eligibilityId?: StrategyId;
   version?: string;
   description?: string;
+  timeframe?: string;
+  risk?: StrategyRiskRating;
+  confidence?: number;
   create: () => import("./BaseStrategy").BaseStrategy;
 }
 
@@ -145,6 +170,15 @@ export interface StrategyEngineResult {
   validation: StrategyValidationResult;
   lifecycle: StrategyLifecycleSnapshot;
   executionTimeMs: number;
+}
+
+export interface StrategyEngineBatchResult {
+  symbol: string;
+  results: StrategyEngineResult[];
+  signals: StrategySignal[];
+  rejected: StrategySignal[];
+  executionTimeMs: number;
+  timestamp: Date;
 }
 
 export type StrategyEngineOptions = {

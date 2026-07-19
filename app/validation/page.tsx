@@ -2,10 +2,11 @@ import { ExecutiveInstitutionalDashboard } from "@/components/dashboard/institut
 import { InstitutionalReportViewer } from "@/components/dashboard/institutional/InstitutionalReportViewer";
 import { InstitutionalPlatformHealthPanel } from "@/components/dashboard/opportunity-intelligence/InstitutionalPlatformHealthPanel";
 import { InstitutionalValidationPanel } from "@/components/dashboard/opportunity-intelligence/InstitutionalValidationPanel";
-import { MarketIntelligenceStrip } from "@/components/market";
+import { MarketIntelligenceStrip, StrategySignalPanel } from "@/components/market";
 import { ValidationModulesTable } from "@/components/validation/ValidationModulesTable";
 import { fetchInstitutionalPlatformSnapshot } from "@/services/institutionalValidationData";
 import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
+import { fetchStandardizedStrategySignals } from "@/services/opportunityEngine";
 import { KpiTile, PageContainer } from "@/src/design";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +22,7 @@ export default async function ValidationPage() {
     getMarketIntelligenceSnapshot(),
   ]);
   const summary = snapshot.dashboard?.summary ?? null;
+  const strategySignals = fetchStandardizedStrategySignals(4);
 
   return (
     <PageContainer>
@@ -36,6 +38,9 @@ export default async function ValidationPage() {
 
       <section className="mb-6 animate-fade-in-up [animation-delay:40ms]">
         <MarketIntelligenceStrip snapshot={marketIntelligence} />
+      </section>
+      <section className="mb-6 animate-fade-in-up [animation-delay:50ms]">
+        <StrategySignalPanel candidates={strategySignals} />
       </section>
 
       {summary && (

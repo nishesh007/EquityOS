@@ -17,6 +17,7 @@ import {
 import { StrategyValidator } from "./StrategyValidator";
 import type {
   StrategyEngineOptions,
+  StrategyEngineBatchResult,
   StrategyEngineResult,
   StrategyExecutionContext,
   StrategySignal,
@@ -112,7 +113,10 @@ export class StrategyEngine {
       );
     }
 
-    const strategy = this.factory.create(strategyId);
+    const execution = enrichedContext.pipeline
+      ? this.factory.createForExecution(strategyId, enrichedContext)
+      : null;
+    const strategy = execution?.strategy ?? this.factory.create(strategyId);
     if (!strategy) {
       return this.ignoreResult(
         registration.id,
@@ -165,6 +169,13 @@ export class StrategyEngine {
           timestamp: context.timestamp ?? new Date(),
           config: context.config,
           metadata: { validation },
+          marketRegime: context.regime.regime,
+          eligibility: {
+            eligible: false,
+            score: 0,
+            reasons: validation.errors,
+          },
+          evidence: validation.issues.map((issue) => issue.message),
         });
         strategy.getLifecycle().dispose();
         strategy.cleanup();
@@ -232,6 +243,59 @@ export class StrategyEngine {
     return this.execute(strategyId, context, options).signal;
   }
 
+  /**
+   * Execute the pipeline-approved registry set, rank actionable signals, and
+   * remove duplicate strategy/symbol/direction results.
+   */
+  executeEligible(
+    context: StrategyExecutionContext,
+    strategyIds?: readonly string[],
+    options: StrategyEngineOptions = {}
+  ): StrategyEngineBatchResult {
+    const started = nowMs();
+    const requested = strategyIds
+      ? new Set(strategyIds)
+      : new Set(
+          context.eligibleStrategies
+            .filter((strategy) => strategy.eligible)
+            .map((strategy) => strategy.strategyId)
+        );
+    const registrations = this.registry
+      .getEnabled()
+      .filter(
+        (registration) =>
+          requested.has(registration.eligibilityId ?? registration.id) ||
+          requested.has(registration.id)
+      );
+    const results = registrations.map((registration) =>
+      this.execute(registration.id, context, options)
+    );
+    const ranked = results
+      .map((result) => result.signal)
+      .sort(
+        (left, right) =>
+          signalPriority(right) - signalPriority(left) ||
+          right.quality - left.quality ||
+          right.confidence - left.confidence ||
+          right.riskReward - left.riskReward
+      );
+    const seen = new Set<string>();
+    const signals = ranked.filter((signal) => {
+      const key = `${signal.strategyId}:${signal.symbol}:${signal.signal}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return signal.signal !== "IGNORE";
+    });
+    return {
+      symbol: context.input.symbol,
+      results,
+      signals,
+      rejected: ranked.filter((signal) => signal.signal === "IGNORE"),
+      executionTimeMs: roundMs(nowMs() - started),
+      timestamp: context.timestamp ?? new Date(),
+    };
+  }
+
   getRegistry(): StrategyRegistry {
     return this.registry;
   }
@@ -259,6 +323,13 @@ export class StrategyEngine {
         warnings: validation.warnings,
         timestamp: context.timestamp ?? new Date(),
         config: context.config,
+        marketRegime: context.regime?.regime ?? "Unknown",
+        eligibility: {
+          eligible: false,
+          score: 0,
+          reasons: validation.errors,
+        },
+        evidence: validation.issues.map((issue) => issue.message),
       }),
       validation,
       lifecycle: {
@@ -270,6 +341,12 @@ export class StrategyEngine {
       executionTimeMs: roundMs(nowMs() - startedMs),
     };
   }
+}
+
+function signalPriority(signal: StrategySignal): number {
+  if (signal.signal === "BUY" || signal.signal === "SELL") return 3;
+  if (signal.signal === "WATCHLIST") return 2;
+  return 1;
 }
 
 function roundMs(ms: number): number {

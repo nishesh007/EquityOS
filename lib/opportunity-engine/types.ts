@@ -60,6 +60,31 @@ export const CATEGORY_LIMITS: Record<OpportunityCategory, number> = {
   ai_high_conviction: 10,
 };
 
+export interface OpportunityStrategySignal {
+  strategy: string;
+  strategyId: string;
+  signal: "BUY" | "SELL" | "WATCHLIST" | "IGNORE";
+  entry: number;
+  stopLoss: number;
+  target: number;
+  target1: number;
+  target2: number;
+  confidence: number;
+  risk: number;
+  reward: number;
+  riskReward: number;
+  reasons: string[];
+  evidence: string[];
+  tags: string[];
+  marketRegime: string;
+  eligibility: {
+    eligible: boolean;
+    score: number;
+    reasons: string[];
+  };
+  timestamp: string;
+}
+
 export interface OpportunityCandidate {
   id: string;
   symbol: string;
@@ -128,6 +153,12 @@ export interface OpportunityCandidate {
   strategyName?: string;
   eligibleReasons?: string[];
   rejectedReasons?: string[];
+  /** Canonical output selected from StrategyEngine execution. */
+  strategySignal?: OpportunityStrategySignal;
+  /** Ranked, deduplicated StrategyEngine outputs for this symbol. */
+  strategySignals?: OpportunityStrategySignal[];
+  /** Registry ids actually executed for this candidate. */
+  executedStrategyIds?: string[];
 }
 
 export type RecommendationRecordStatus =

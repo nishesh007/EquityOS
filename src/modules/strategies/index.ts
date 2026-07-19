@@ -6,6 +6,7 @@ export type {
   StrategyAnalysisResult,
   StrategyCategory,
   StrategyEngineOptions,
+  StrategyEngineBatchResult,
   StrategyEngineResult,
   StrategyExecutionContext,
   StrategyId,
@@ -13,6 +14,7 @@ export type {
   StrategyLifecycleState,
   StrategyMarketInput,
   StrategyRegistration,
+  StrategyRiskRating,
   StrategySignal,
   StrategySignalType,
   StrategyTargets,
@@ -51,6 +53,13 @@ export {
   getStrategyEngine,
   resetStrategyEngine,
 } from "./StrategyEngine";
+export {
+  createAllStrategyRegistrations,
+  getStrategyCatalogSize,
+  registerAllStrategies,
+  STRATEGY_PLATFORM_VERSION,
+} from "./StrategyAutoRegistration";
+export { getStrategyPlatformStatus } from "./StrategyPlatformStatus";
 
 export {
   buildStrategySignal,

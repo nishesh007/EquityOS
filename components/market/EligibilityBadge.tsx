@@ -17,6 +17,7 @@ export function EligibilityBadge({
     | "pipelineConfidence"
     | "rejectedReasons"
     | "eligibleReasons"
+    | "strategySignal"
   >;
   compact?: boolean;
 }) {
@@ -78,6 +79,11 @@ export function EligibilityBadge({
           Conf {Math.round(candidate.pipelineConfidence)}
         </span>
       )}
+      {candidate.strategySignal && (
+        <span className="rounded border border-purple-400/30 bg-purple-400/10 px-1.5 py-0.5 text-[9px] font-semibold text-purple-300">
+          {candidate.strategySignal.strategy} · {candidate.strategySignal.signal}
+        </span>
+      )}
     </div>
   );
 }
@@ -88,9 +94,10 @@ export function OpportunityPipelineMeta({
   candidate: OpportunityCandidate;
 }) {
   const reasons =
-    candidate.pipelineEligible === false
+    candidate.strategySignal?.reasons ??
+    (candidate.pipelineEligible === false
       ? candidate.rejectedReasons ?? []
-      : candidate.eligibleReasons ?? [];
+      : candidate.eligibleReasons ?? []);
 
   if (!candidate.marketRegime && reasons.length === 0) return null;
 
@@ -101,6 +108,15 @@ export function OpportunityPipelineMeta({
           .filter(Boolean)
           .join(" · ")}
       </p>
+      {candidate.strategySignal && (
+        <p className="text-[10px] text-text-muted">
+          {candidate.strategySignal.signal} · Entry{" "}
+          {candidate.strategySignal.entry.toFixed(2)} · SL{" "}
+          {candidate.strategySignal.stopLoss.toFixed(2)} · Target{" "}
+          {candidate.strategySignal.target.toFixed(2)} · RR{" "}
+          {candidate.strategySignal.riskReward.toFixed(2)}
+        </p>
+      )}
       {reasons.slice(0, 2).map((reason) => (
         <p key={reason} className="text-[10px] text-text-faint">
           {reason}

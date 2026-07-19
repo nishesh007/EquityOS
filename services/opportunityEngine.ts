@@ -19,6 +19,19 @@ export async function fetchOpportunityEngineState(): Promise<OpportunityEngineSt
   return getOpportunityState();
 }
 
+export function fetchStandardizedStrategySignals(
+  limit = 8
+): OpportunityCandidate[] {
+  return Object.values(getOpportunityState().categories)
+    .flat()
+    .filter((candidate) => candidate.strategySignal !== undefined)
+    .sort(
+      (left, right) =>
+        (right.opportunityScore ?? 0) - (left.opportunityScore ?? 0)
+    )
+    .slice(0, limit);
+}
+
 /**
  * Opportunity Engine + shared Market Context / Regime snapshot.
  * Context is computed once via marketIntelligence — never duplicated here.

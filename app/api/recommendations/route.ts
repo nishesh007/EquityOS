@@ -13,6 +13,7 @@ import {
   wireWorkspaceHistory,
 } from "@/src/core/recommendations";
 import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
+import { getStrategyPlatformStatus } from "@/src/modules/strategies";
 
 const STATUSES = new Set<RecommendationRecordStatus>([
   "ACTIVE",
@@ -63,12 +64,23 @@ export async function GET(request: NextRequest) {
         marketIntelligence.confidence,
       reasons: candidate?.eligibleReasons ?? [],
       rejectedReasons: candidate?.rejectedReasons ?? [],
+      strategy:
+        candidate?.strategySignal?.strategy ?? candidate?.strategyName ?? null,
+      strategyId:
+        candidate?.strategySignal?.strategyId ?? candidate?.strategyId ?? null,
+      signal: candidate?.strategySignal?.signal ?? null,
+      entry: candidate?.strategySignal?.entry ?? null,
+      sl: candidate?.strategySignal?.stopLoss ?? null,
+      target: candidate?.strategySignal?.target ?? null,
+      evidence: candidate?.strategySignal?.evidence ?? [],
+      strategySignals: candidate?.strategySignals ?? [],
     };
   });
 
   return NextResponse.json({
     recommendations: enriched,
     marketIntelligence,
+    strategyPlatform: getStrategyPlatformStatus(),
     pipeline: state.pipeline ?? null,
     eligibility: {
       eligibleStrategyCount: state.pipeline?.eligibleStrategyCount ?? 0,

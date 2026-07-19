@@ -203,7 +203,7 @@ export function normalizeTimelineEntry(
   const kind = TIMELINE_EVENT_KINDS.includes(input.kind as TimelineEventKind)
     ? (input.kind as TimelineEventKind)
     : "research_created";
-  const module =
+  const moduleId =
     input.module === "research" ||
     CROSS_MODULE_LINKS.includes(input.module as CrossModuleLink)
       ? (input.module as CrossModuleLink | "research")
@@ -216,7 +216,7 @@ export function normalizeTimelineEntry(
       : null,
     ticker: input.ticker ? safeWorkspaceText(input.ticker, "").toUpperCase() : null,
     kind,
-    module,
+    module: moduleId,
     label: safeWorkspaceText(input.label, INTEGRATION_EMPTY.awaitingResearchActivity),
     detail: safeWorkspaceText(input.detail, INTEGRATION_EMPTY.awaitingResearchActivity),
     route: safeWorkspaceText(input.route, "/research"),

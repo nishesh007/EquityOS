@@ -87,6 +87,10 @@ export function createIgnoreSignal(input: {
   warnings?: string[];
   timestamp?: Date;
   metadata?: Record<string, unknown>;
+  evidence?: string[];
+  tags?: string[];
+  marketRegime?: string;
+  eligibility?: StrategySignal["eligibility"];
   config?: Partial<StrategyFrameworkConfig>;
 }): StrategySignal {
   const config = resolveStrategyFrameworkConfig(input.config);
@@ -103,9 +107,19 @@ export function createIgnoreSignal(input: {
     finalTarget: 0,
     holdingPeriod: defaultHoldingPeriod(input.category, config),
     confidence: config.ignoreConfidence,
+    risk: 0,
+    reward: 0,
     riskReward: config.ignoreRiskReward,
     quality: config.ignoreQuality,
     reasons: input.reasons.length > 0 ? input.reasons : ["Strategy returned IGNORE."],
+    evidence: input.evidence ?? [],
+    tags: input.tags ?? [input.category, "IGNORE"],
+    marketRegime: input.marketRegime ?? "Unknown",
+    eligibility: input.eligibility ?? {
+      eligible: false,
+      score: 0,
+      reasons: input.reasons,
+    },
     warnings: input.warnings ?? [],
     metadata: input.metadata ?? {},
     timestamp: input.timestamp ?? new Date(),
@@ -125,6 +139,10 @@ export function buildStrategySignal(input: {
   riskReward: number;
   quality: number;
   reasons: string[];
+  evidence?: string[];
+  tags?: string[];
+  marketRegime?: string;
+  eligibility?: StrategySignal["eligibility"];
   warnings?: string[];
   metadata?: Record<string, unknown>;
   holdingPeriod?: string;
@@ -146,9 +164,19 @@ export function buildStrategySignal(input: {
     holdingPeriod:
       input.holdingPeriod ?? defaultHoldingPeriod(input.category, config),
     confidence: clampScore(input.confidence, config),
+    risk: round(Math.abs(input.entry - input.stopLoss), 4),
+    reward: round(Math.abs(input.targets.finalTarget - input.entry), 4),
     riskReward: round(input.riskReward, 2),
     quality: clampScore(input.quality, config),
     reasons: input.reasons,
+    evidence: input.evidence ?? [],
+    tags: input.tags ?? [input.category, input.signal],
+    marketRegime: input.marketRegime ?? "Unknown",
+    eligibility: input.eligibility ?? {
+      eligible: false,
+      score: 0,
+      reasons: [],
+    },
     warnings: input.warnings ?? [],
     metadata: input.metadata ?? {},
     timestamp: input.timestamp ?? new Date(),

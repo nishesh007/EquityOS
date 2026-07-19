@@ -4,6 +4,7 @@
  */
 
 import type { StrategyCategory, StrategyRegistration } from "./StrategyTypes";
+import { registerAllStrategies } from "./StrategyAutoRegistration";
 
 export class StrategyRegistry {
   private readonly registrations = new Map<string, StrategyRegistration>();
@@ -21,6 +22,11 @@ export class StrategyRegistry {
     this.registrations.set(registration.id, {
       ...registration,
       enabled: registration.enabled !== false,
+      timeframe:
+        registration.timeframe ?? defaultTimeframe(registration.category),
+      risk: registration.risk ?? defaultRisk(registration.category),
+      confidence:
+        registration.confidence ?? defaultConfidence(registration.category),
     });
     return true;
   }
@@ -75,6 +81,7 @@ let registrySingleton: StrategyRegistry | null = null;
 export function getStrategyRegistry(): StrategyRegistry {
   if (!registrySingleton) {
     registrySingleton = new StrategyRegistry();
+    registerAllStrategies(registrySingleton);
   }
   return registrySingleton;
 }
@@ -82,4 +89,27 @@ export function getStrategyRegistry(): StrategyRegistry {
 export function resetStrategyRegistry(): void {
   if (registrySingleton) registrySingleton.clear();
   registrySingleton = null;
+}
+
+function defaultTimeframe(category: StrategyCategory): string {
+  if (category === "Scalp") return "1m–15m";
+  if (category === "Intraday") return "5m–1D";
+  if (category === "Swing") return "1D–1W";
+  return "1W–1Y";
+}
+
+function defaultRisk(
+  category: StrategyCategory
+): NonNullable<StrategyRegistration["risk"]> {
+  if (category === "Scalp") return "Very High";
+  if (category === "Intraday") return "High";
+  if (category === "Swing") return "Moderate";
+  return "Low";
+}
+
+function defaultConfidence(category: StrategyCategory): number {
+  if (category === "Scalp") return 65;
+  if (category === "Intraday") return 62;
+  if (category === "Swing") return 60;
+  return 58;
 }

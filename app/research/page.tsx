@@ -38,7 +38,8 @@ import {
   formatWatchlistPlatformSubtitle,
 } from "@/services/watchlistPlatform";
 import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
-import { MarketIntelligenceStrip } from "@/components/market";
+import { MarketIntelligenceStrip, StrategySignalPanel } from "@/components/market";
+import { fetchStandardizedStrategySignals } from "@/services/opportunityEngine";
 import { PageContainer } from "@/src/design";
 
 export default async function ResearchPage() {
@@ -89,6 +90,7 @@ export default async function ResearchPage() {
     ticker: company.overview.ticker || undefined,
   });
   const marketIntelligence = await getMarketIntelligenceSnapshot();
+  const strategySignals = fetchStandardizedStrategySignals(4);
 
   return (
     <PageContainer>
@@ -136,6 +138,9 @@ export default async function ResearchPage() {
 
       <div className="mb-6">
         <MarketIntelligenceStrip snapshot={marketIntelligence} />
+      </div>
+      <div className="mb-6">
+        <StrategySignalPanel candidates={strategySignals} />
       </div>
 
       {view.empty && multi.empty ? (

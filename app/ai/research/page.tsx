@@ -1,7 +1,8 @@
 import { ResearchWorkspace } from "@/components/ai/ResearchWorkspace";
-import { MarketIntelligenceStrip } from "@/components/market";
+import { MarketIntelligenceStrip, StrategySignalPanel } from "@/components/market";
 import Link from "next/link";
 import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
+import { fetchStandardizedStrategySignals } from "@/services/opportunityEngine";
 import { fetchInstitutionalScreenerHealth } from "@/services/screenerData";
 import {
   ensureDefaultResearchWorkspace,
@@ -29,6 +30,7 @@ export default async function AIResearchPage() {
   ensureDefaultResearchWorkspace({ name: "AI Research Analyst Desk" });
   const researchWorkspace = fetchResearchWorkspaceHealth();
   const marketIntelligence = await getMarketIntelligenceSnapshot();
+  const strategySignals = fetchStandardizedStrategySignals(4);
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
@@ -86,6 +88,9 @@ export default async function AIResearchPage() {
 
         <div className="mx-auto mt-4 max-w-4xl">
           <MarketIntelligenceStrip snapshot={marketIntelligence} />
+        </div>
+        <div className="mx-auto mt-4 max-w-4xl">
+          <StrategySignalPanel candidates={strategySignals} />
         </div>
       </div>
 

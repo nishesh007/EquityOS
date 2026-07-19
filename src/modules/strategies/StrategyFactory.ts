@@ -4,6 +4,7 @@
  */
 
 import type { BaseStrategy } from "./BaseStrategy";
+import type { StrategyExecutionContext } from "./StrategyTypes";
 import {
   getStrategyRegistry,
   type StrategyRegistry,
@@ -43,6 +44,27 @@ export class StrategyFactory {
       return null;
     }
     return this.create(strategyId);
+  }
+
+  /**
+   * Build the immutable execution binding consumed by StrategyEngine.
+   * Context, regime, eligibility, pipeline, market data, validation, and AI
+   * confidence are injected together so callers cannot partially wire a run.
+   */
+  createForExecution(
+    strategyId: string,
+    context: StrategyExecutionContext
+  ): { strategy: BaseStrategy; context: StrategyExecutionContext } | null {
+    if (
+      !context.marketContext ||
+      !context.regime ||
+      !context.pipeline ||
+      !context.input
+    ) {
+      return null;
+    }
+    const strategy = this.createEnabled(strategyId);
+    return strategy ? { strategy, context } : null;
   }
 
   has(strategyId: string): boolean {

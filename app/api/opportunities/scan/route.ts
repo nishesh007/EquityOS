@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { triggerOpportunityScan } from "@/services/opportunityEngine";
+import { getStrategyPlatformStatus } from "@/src/modules/strategies";
 
 /**
  * POST /api/opportunities/scan
@@ -26,6 +27,7 @@ export async function POST() {
     removed: result.removed,
     updated: result.updated,
     marketIntelligence: result.marketIntelligence,
+    strategyPlatform: getStrategyPlatformStatus(),
     pipeline: state.pipeline ?? null,
     eligibility: {
       eligibleStrategyCount: state.pipeline?.eligibleStrategyCount ?? 0,
@@ -50,6 +52,14 @@ export async function POST() {
       riskMode: c.riskMode ?? null,
       reasons: c.eligibleReasons ?? [],
       rejectedReasons: c.rejectedReasons ?? [],
+      strategy: c.strategySignal?.strategy ?? c.strategyName ?? null,
+      strategyId: c.strategySignal?.strategyId ?? c.strategyId ?? null,
+      signal: c.strategySignal?.signal ?? null,
+      entry: c.strategySignal?.entry ?? null,
+      sl: c.strategySignal?.stopLoss ?? null,
+      target: c.strategySignal?.target ?? null,
+      evidence: c.strategySignal?.evidence ?? [],
+      strategySignals: c.strategySignals ?? [],
     })),
     context: result.marketIntelligence.context,
     regime: result.marketIntelligence.regime,

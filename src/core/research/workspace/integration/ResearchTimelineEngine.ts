@@ -76,7 +76,7 @@ export function recordTimelineEvent(input: {
   const ticker = input.ticker
     ? safeWorkspaceText(input.ticker, "").toUpperCase()
     : null;
-  const module = input.module ?? "research";
+  const moduleId = input.module ?? "research";
   const entry = normalizeTimelineEntry({
     id: `tl-${seq}-${Date.now()}`,
     workspaceId: input.workspaceId
@@ -84,10 +84,10 @@ export function recordTimelineEvent(input: {
       : null,
     ticker,
     kind: input.kind,
-    module,
+    module: moduleId,
     label: input.label,
     detail: input.detail ?? input.label,
-    route: input.route ?? moduleRoute(module, ticker),
+    route: input.route ?? moduleRoute(moduleId, ticker),
     at: stamp(input.now),
     empty: false,
   });
