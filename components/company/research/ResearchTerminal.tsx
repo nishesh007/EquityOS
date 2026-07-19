@@ -4,7 +4,7 @@ import { KeyStatsGrid } from "@/components/company/research/KeyStatsGrid";
 import { ResultsSummaryCard } from "@/components/company/research/ResultsSummaryCard";
 import { SwingTradePanel } from "@/components/company/research/SwingTradePanel";
 import { TechnicalIndicatorsPanel } from "@/components/company/research/TechnicalIndicatorsPanel";
-import { LazyTradingViewChart } from "@/components/company/research/LazyTradingViewChart";
+import { LazyChartWorkspace } from "@/components/charts/workspace";
 import type { CompanyProfile, CompanyResearch } from "@/types";
 
 interface ResearchTerminalProps {
@@ -21,9 +21,7 @@ interface ResearchTerminalProps {
 
 /**
  * Sprint 3 — Equity Research Terminal.
- * Composes the full research layer for a company. Rendered as an additive
- * section on the company page; existing components remain untouched.
- * Sprint 9D.R2/R3 — optional AI Screener + event insight strip for Research Drawer.
+ * Sprint 10C.1 — institutional Chart Workspace (layouts, tools, indicators).
  */
 export function ResearchTerminal({
   company,
@@ -50,15 +48,37 @@ export function ResearchTerminal({
         </div>
       ) : null}
 
-      <KeyStatsGrid company={company} trading={research.trading} />
+      <div id="key-stats">
+        <KeyStatsGrid company={company} trading={research.trading} />
+      </div>
 
       <div className="grid grid-cols-1 gap-6 2xl:grid-cols-[minmax(0,1.55fr)_minmax(420px,0.85fr)]">
-        <LazyTradingViewChart
+        <LazyChartWorkspace
           exchangeSymbol={research.exchangeSymbol}
           companyName={company.name}
           symbol={company.symbol}
           priceHistory={company.priceHistory}
           quote={company.quote}
+          overview={
+            <span>
+              {company.name} · {company.sector ?? "Equities"} · exchange{" "}
+              {research.exchangeSymbol}
+            </span>
+          }
+          aiSummary={
+            research.ai?.investmentThesis ? (
+              <span className="line-clamp-4">
+                {research.ai.investmentThesis}
+              </span>
+            ) : (
+              <span>Open AI Analysis below for the full brief.</span>
+            )
+          }
+          keyMetrics={
+            <span>
+              Check Key Stats above for PE, ROE and liquidity metrics.
+            </span>
+          }
         />
         <TechnicalIndicatorsPanel
           symbol={company.symbol}
@@ -80,11 +100,13 @@ export function ResearchTerminal({
             initialQuote={company.quote}
           />
         ) : null}
-        <AIAnalysisCard
-          analysis={research.ai}
-          symbol={company.symbol}
-          initialQuote={company.quote}
-        />
+        <div id="ai-analysis">
+          <AIAnalysisCard
+            analysis={research.ai}
+            symbol={company.symbol}
+            initialQuote={company.quote}
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
