@@ -27,6 +27,8 @@ export interface EnrichedQuote {
   vwap: number | null;
   volume: number | null;
   deliveryPercent: number | null;
+  weekHigh52: number | null;
+  weekLow52: number | null;
   marketCap: string | null;
   exchange: "NSE" | "BSE" | "INDEX";
   marketStatus: MarketStatus;
@@ -100,6 +102,8 @@ export function toEnrichedQuote(
       vwap: null,
       volume: null,
       deliveryPercent: null,
+      weekHigh52: null,
+      weekLow52: null,
       marketCap: null,
       exchange,
       marketStatus,
@@ -144,6 +148,18 @@ export function toEnrichedQuote(
       data.deliveryPercent !== undefined &&
       Number.isFinite(data.deliveryPercent)
         ? data.deliveryPercent
+        : null,
+    weekHigh52:
+      price !== null &&
+      data.weekHigh52 !== undefined &&
+      Number.isFinite(data.weekHigh52)
+        ? data.weekHigh52
+        : null,
+    weekLow52:
+      price !== null &&
+      data.weekLow52 !== undefined &&
+      Number.isFinite(data.weekLow52)
+        ? data.weekLow52
         : null,
     marketCap: data.marketCap ?? null,
     exchange,

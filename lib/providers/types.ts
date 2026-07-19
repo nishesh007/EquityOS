@@ -21,6 +21,8 @@ export interface LiveQuote {
   volume: number;
   deliveryPercent?: number;
   vwap?: number;
+  weekHigh52?: number;
+  weekLow52?: number;
   marketCap?: string;
   sector?: string;
   industry?: string;

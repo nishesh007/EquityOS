@@ -1,13 +1,56 @@
 import type {
   MarketBreadth,
-  MarketMover,
   MarketPulse,
-  SectorPerformance,
 } from "@/types";
-import { lookupCompanyMaster } from "@/lib/company-master";
+import {
+  runMarketBreadthEngine,
+  type BreadthUniverseId,
+  type MarketBreadthSnapshot,
+} from "@/lib/market-breadth";
 import { marketDataService } from "@/lib/market-data";
-import { formatVolume } from "@/lib/utils";
 import { getCached, cacheKey, CACHE_TTL } from "@/lib/cache";
+import {
+  fetchPortfolioSummary,
+  fetchWatchlist,
+} from "@/services/marketData";
+
+function snapshotToMarketBreadth(
+  snapshot: MarketBreadthSnapshot
+): MarketBreadth {
+  return {
+    advances: snapshot.advances,
+    declines: snapshot.declines,
+    unchanged: snapshot.unchanged,
+    newHighs: snapshot.newHighs52w,
+    newLows: snapshot.newLows52w,
+    sectors: snapshot.sectorBreadth,
+    gainers: snapshot.gainers,
+    losers: snapshot.losers,
+    weekHighs: snapshot.weekHighs,
+    weekLows: snapshot.weekLows,
+    mostActive: snapshot.mostActive,
+    universe: snapshot.universe,
+    universeLabel: snapshot.universeLabel,
+    totalStocks: snapshot.totalStocks,
+    quotedStocks: snapshot.quotedStocks,
+    advanceDeclineRatio: snapshot.advanceDeclineRatio,
+    breadthPercent: snapshot.breadthPercent,
+    netAdvances: snapshot.netAdvances,
+    marketMood: snapshot.marketMood,
+    participationPercent: snapshot.participationPercent,
+    aboveEma20: snapshot.aboveEma20,
+    aboveEma50: snapshot.aboveEma50,
+    aboveEma200: snapshot.aboveEma200,
+    averageRsi: snapshot.averageRsi,
+    averageDailyReturn: snapshot.averageDailyReturn,
+    breadthTrend5d: snapshot.breadthTrend5d,
+    breadthTrend20d: snapshot.breadthTrend20d,
+    technicalCoveragePercent: snapshot.technicalCoveragePercent,
+    quoteCoveragePercent: snapshot.quoteCoveragePercent,
+    lastUpdated: snapshot.lastUpdated,
+    dataSource: snapshot.dataSource,
+  };
+}
 
 export const marketBreadth: MarketBreadth = {
   advances: 0,
@@ -21,180 +64,26 @@ export const marketBreadth: MarketBreadth = {
   weekHighs: [],
   weekLows: [],
   mostActive: [],
+  universe: "nse",
+  universeLabel: "Entire NSE",
+  totalStocks: 0,
+  marketMood: "Insufficient Data",
 };
 
-const BREADTH_UNIVERSE = [
-  { symbol: "RELIANCE", name: "Reliance Industries" },
-  { symbol: "HDFCBANK", name: "HDFC Bank" },
-  { symbol: "ICICIBANK", name: "ICICI Bank" },
-  { symbol: "INFY", name: "Infosys" },
-  { symbol: "TCS", name: "Tata Consultancy Services" },
-  { symbol: "BHARTIARTL", name: "Bharti Airtel" },
-  { symbol: "SBIN", name: "State Bank of India" },
-  { symbol: "LT", name: "Larsen & Toubro" },
-  { symbol: "ITC", name: "ITC" },
-  { symbol: "MARUTI", name: "Maruti Suzuki" },
-  { symbol: "SUNPHARMA", name: "Sun Pharma" },
-  { symbol: "TATASTEEL", name: "Tata Steel" },
-] as const;
-
-async function enrichMovers(movers: MarketMover[], volumeLabel?: "shares" | "turnover") {
-  const quoteMap = await marketDataService.getEnrichedQuotes(
-    movers.map((mover) => mover.symbol)
-  );
-
-  return movers.map((mover) => {
-    const quote =
-      quoteMap.get(mover.symbol) ?? quoteMap.get(mover.symbol.toUpperCase());
-    if (!quote) return mover;
-
-    return {
-      ...mover,
-      price: quote.price ?? 0,
-      changePercent: quote.changePercent ?? 0,
-      volume:
-        volumeLabel === "turnover"
-          ? quote.volume
-            ? `₹${formatVolume(quote.volume)}`
-            : "—"
-          : quote.volume
-            ? formatVolume(quote.volume)
-            : "—",
-      quote,
-    };
+async function buildLiveMarketBreadth(
+  universe: BreadthUniverseId = "nse"
+): Promise<MarketBreadth> {
+  const [portfolio, watchlist] = await Promise.all([
+    fetchPortfolioSummary(),
+    fetchWatchlist(),
+  ]);
+  const snapshot = await runMarketBreadthEngine({
+    universe,
+    portfolioSymbols: portfolio.holdings.map((h) => h.symbol),
+    watchlistSymbols: watchlist.map((item) => item.symbol),
   });
+  return snapshotToMarketBreadth(snapshot);
 }
-
-export function selectDirectionalMovers(
-  movers: MarketMover[],
-  direction: "gainers" | "losers",
-  limit = 5
-): MarketMover[] {
-  return movers
-    .filter((mover) =>
-      direction === "gainers"
-        ? mover.changePercent > 0
-        : mover.changePercent < 0
-    )
-    .sort((a, b) =>
-      direction === "gainers"
-        ? b.changePercent - a.changePercent
-        : a.changePercent - b.changePercent
-    )
-    .slice(0, limit);
-}
-
-function buildSectorPerformance(movers: MarketMover[]): SectorPerformance[] {
-  const bySector = new Map<
-    string,
-    { changes: number[]; advances: number; total: number }
-  >();
-
-  for (const mover of movers) {
-    const sector =
-      lookupCompanyMaster(mover.symbol)?.sector?.trim() || "Diversified";
-    const bucket = bySector.get(sector) ?? {
-      changes: [],
-      advances: 0,
-      total: 0,
-    };
-    bucket.changes.push(mover.changePercent);
-    bucket.total += 1;
-    if (mover.changePercent > 0) bucket.advances += 1;
-    bySector.set(sector, bucket);
-  }
-
-  return [...bySector.entries()]
-    .map(([name, bucket]) => {
-      const avg =
-        bucket.changes.reduce((sum, value) => sum + value, 0) /
-        Math.max(1, bucket.changes.length);
-      return {
-        name,
-        changePercent: Math.round(avg * 100) / 100,
-        breadth: Math.round((bucket.advances / Math.max(1, bucket.total)) * 100),
-      };
-    })
-    .sort((left, right) => right.changePercent - left.changePercent)
-    .slice(0, 8);
-}
-
-/** Session extremes as a stand-in until true 52W high/low data lands in 10D. */
-function selectSessionExtremes(
-  movers: MarketMover[],
-  direction: "high" | "low",
-  limit = 4
-): MarketMover[] {
-  return movers
-    .filter((mover) => {
-      const high = mover.quote?.high;
-      const low = mover.quote?.low;
-      const price = mover.quote?.price ?? mover.price;
-      if (direction === "high") {
-        return (
-          typeof high === "number" &&
-          high > 0 &&
-          typeof price === "number" &&
-          price > 0 &&
-          Math.abs(price - high) / high < 0.005
-        );
-      }
-      return (
-        typeof low === "number" &&
-        low > 0 &&
-        typeof price === "number" &&
-        price > 0 &&
-        Math.abs(price - low) / low < 0.005
-      );
-    })
-    .sort((a, b) =>
-      direction === "high"
-        ? b.changePercent - a.changePercent
-        : a.changePercent - b.changePercent
-    )
-    .slice(0, limit);
-}
-
-async function buildLiveMarketBreadth(): Promise<MarketBreadth> {
-  const movers = await enrichMovers(
-    BREADTH_UNIVERSE.map(({ symbol, name }) => ({
-      symbol,
-      name,
-      price: 0,
-      changePercent: 0,
-      volume: "—",
-    }))
-  );
-  const available = movers.filter(
-    (mover) => mover.quote?.availability !== "unavailable"
-  );
-  const advances = available.filter((mover) => mover.changePercent > 0).length;
-  const declines = available.filter((mover) => mover.changePercent < 0).length;
-  const unchanged = available.length - advances - declines;
-  const weekHighs = selectSessionExtremes(available, "high");
-  const weekLows = selectSessionExtremes(available, "low");
-
-  return {
-    advances,
-    declines,
-    unchanged,
-    newHighs: weekHighs.length,
-    newLows: weekLows.length,
-    sectors: buildSectorPerformance(available),
-    gainers: selectDirectionalMovers(available, "gainers"),
-    losers: selectDirectionalMovers(available, "losers"),
-    weekHighs,
-    weekLows,
-    mostActive: available
-      .slice()
-      .sort(
-        (left, right) =>
-          (right.quote?.volume ?? 0) - (left.quote?.volume ?? 0)
-      )
-      .slice(0, 5),
-  };
-}
-
 
 function buildMarketPulse(): MarketPulse {
   return {
@@ -237,10 +126,16 @@ async function buildLiveMarketPulse(): Promise<MarketPulse> {
 
 export const marketPulse = buildMarketPulse();
 
-export async function fetchMarketBreadth(): Promise<MarketBreadth> {
+export async function fetchMarketBreadth(
+  universe: BreadthUniverseId = "nse"
+): Promise<MarketBreadth> {
+  const ttl =
+    universe === "nse" || universe === "nifty500"
+      ? CACHE_TTL.FIFTEEN_MINUTES
+      : CACHE_TTL.DASHBOARD;
   return getCached(
-    { key: cacheKey("market-breadth"), ttlMs: CACHE_TTL.QUOTE },
-    buildLiveMarketBreadth
+    { key: cacheKey("market-breadth", universe), ttlMs: ttl },
+    () => buildLiveMarketBreadth(universe)
   );
 }
 
@@ -250,3 +145,6 @@ export async function fetchMarketPulse(): Promise<MarketPulse> {
     buildLiveMarketPulse
   );
 }
+
+/** Legacy helpers kept for tests / callers that ranked movers. */
+export { selectDirectionalMovers } from "@/lib/market-breadth/movers";

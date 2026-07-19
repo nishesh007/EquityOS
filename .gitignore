@@ -23,6 +23,7 @@
 .DS_Store
 *.pem
 /.data/
+/data/market-breadth/
 
 # debug
 npm-debug.log*

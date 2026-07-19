@@ -105,6 +105,27 @@ export interface MarketBreadth {
   weekHighs: MarketMover[];
   weekLows: MarketMover[];
   mostActive: MarketMover[];
+  /** Institutional breadth engine fields (Sprint 10C.1). */
+  universe?: import("@/lib/market-breadth").BreadthUniverseId;
+  universeLabel?: string;
+  totalStocks?: number;
+  quotedStocks?: number;
+  advanceDeclineRatio?: number;
+  breadthPercent?: number;
+  netAdvances?: number;
+  marketMood?: string;
+  participationPercent?: number;
+  aboveEma20?: number | null;
+  aboveEma50?: number | null;
+  aboveEma200?: number | null;
+  averageRsi?: number | null;
+  averageDailyReturn?: number | null;
+  breadthTrend5d?: { date: string; breadthPercent: number; netAdvances: number }[];
+  breadthTrend20d?: { date: string; breadthPercent: number; netAdvances: number }[];
+  technicalCoveragePercent?: number;
+  quoteCoveragePercent?: number;
+  lastUpdated?: string;
+  dataSource?: string;
 }
 
 export interface InstitutionalFlow {

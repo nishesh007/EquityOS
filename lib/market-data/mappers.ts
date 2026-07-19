@@ -64,6 +64,8 @@ export function marketDataToLiveQuote(data: MarketData): LiveQuote {
     volume: data.volume,
     deliveryPercent: data.deliveryPercent,
     vwap: data.vwap,
+    weekHigh52: data.weekHigh52,
+    weekLow52: data.weekLow52,
     marketCap:
       typeof data.marketCap === "number"
         ? String(data.marketCap)
