@@ -48,6 +48,7 @@ export function statusToneFromLabel(label: string): StatusTone {
   const n = label.toLowerCase();
   if (
     n.includes("strong bull") ||
+    n.includes("extremely bull") ||
     n.includes("bullish") ||
     n.includes("high confidence") ||
     n.includes("ai verified") ||
@@ -57,6 +58,7 @@ export function statusToneFromLabel(label: string): StatusTone {
     return "success";
   }
   if (
+    n.includes("extremely bear") ||
     n.includes("bear") ||
     n.includes("fail") ||
     n.includes("critical") ||
@@ -68,7 +70,8 @@ export function statusToneFromLabel(label: string): StatusTone {
     n.includes("watch") ||
     n.includes("caution") ||
     n.includes("warning") ||
-    n.includes("market closed")
+    n.includes("market closed") ||
+    n.includes("insufficient")
   ) {
     return "warning";
   }

@@ -5,24 +5,31 @@ import { ChangeIndicator } from "@/components/ui/ChangeIndicator";
 import { QuoteDisplayCompact } from "@/components/market/QuoteDisplay";
 import { StockLink } from "@/components/ui/StockLink";
 import { EmptyStatePanel } from "@/components/ui/EmptyStatePanel";
-import { StatusBadge, statusToneFromLabel } from "@/src/design";
+import { StatusBadge, statusToneFromLabel, HeatMeter } from "@/src/design";
 import { useMarketQuotes } from "@/hooks/useMarketQuotes";
 import { createUnavailableQuote } from "@/lib/market-data/enriched-quote";
 import { buildInitialQuotesMap } from "@/lib/market-data/enriched-quote";
 import {
   BREADTH_UNIVERSE_OPTIONS,
   type BreadthUniverseId,
+  type TrendDirection,
 } from "@/lib/market-breadth/types";
 import type { MarketBreadth as MarketBreadthType, MarketMover } from "@/types";
-import { HeatMeter } from "@/src/design";
+import { MetricExplain } from "@/components/dashboard/market-internals/MetricExplain";
+import {
+  BreadthDonut,
+  KpiCard,
+  ParticipationBar,
+  SectorHeatBar,
+} from "@/components/dashboard/market-internals/visuals";
 import {
   Activity,
   BarChart3,
-  CircleArrowDown,
-  CircleArrowUp,
   Layers3,
   TrendingDown,
   TrendingUp,
+  Gauge,
+  Shield,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -56,32 +63,8 @@ function formatTs(iso?: string): string {
   }
 }
 
-function MetricTile({
-  label,
-  value,
-  hint,
-  tone,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  tone?: string;
-}) {
-  return (
-    <div className="rounded-lg border border-emerald-500/15 bg-emerald-500/5 px-3 py-2.5">
-      <p className="text-[9px] font-medium uppercase tracking-wider text-text-faint">
-        {label}
-      </p>
-      <p
-        className={`mt-1 font-mono text-sm font-semibold tabular-nums ${tone ?? "text-text-primary"}`}
-      >
-        {value}
-      </p>
-      {hint ? (
-        <p className="mt-0.5 text-[10px] text-text-muted">{hint}</p>
-      ) : null}
-    </div>
-  );
+function asTrend(value?: TrendDirection): TrendDirection {
+  return value ?? "unknown";
 }
 
 function MoverList({
@@ -120,7 +103,7 @@ function MoverList({
       {displayItems.length === 0 ? (
         <EmptyStatePanel
           message={`No qualifying ${direction ?? "movers"} in the selected universe right now.`}
-          source="Market Breadth Engine · live quotes"
+          source="Market Internals · live quotes"
           icon={direction === "losers" ? TrendingDown : TrendingUp}
           action={
             <Link href="/markets" className="text-[11px] font-semibold text-accent">
@@ -177,7 +160,7 @@ function MoverList({
   );
 }
 
-function InstitutionalSummary({
+function InternalsSummary({
   breadth,
   onUniverseChange,
   pending,
@@ -187,31 +170,14 @@ function InstitutionalSummary({
   pending: boolean;
 }) {
   const universe = (breadth.universe ?? "nse") as BreadthUniverseId;
-  const total =
-    breadth.totalStocks ??
-    breadth.advances + breadth.declines + breadth.unchanged;
-  const ratio =
-    breadth.advanceDeclineRatio ??
-    (breadth.declines > 0
-      ? breadth.advances / breadth.declines
-      : breadth.advances);
-  const breadthPct =
-    breadth.breadthPercent ??
-    (total > 0
-      ? Math.round(
-          (breadth.advances /
-            Math.max(1, breadth.advances + breadth.declines + breadth.unchanged)) *
-            1000
-        ) / 10
-      : 0);
-  const net = breadth.netAdvances ?? breadth.advances - breadth.declines;
+  const total = breadth.totalStocks ?? 0;
   const mood = breadth.marketMood ?? "Insufficient Data";
 
   return (
     <Card padding="lg" accent="emerald" className="h-full">
       <CardHeader
-        title="Market Breadth"
-        subtitle={breadth.universeLabel ?? "Entire NSE"}
+        title="Market Internals"
+        subtitle="Institutional breadth · Entire NSE analytics"
         icon={<Activity className="h-4 w-4 text-emerald-400" />}
         timestamp={`Updated ${formatTs(breadth.lastUpdated)}`}
         badge={
@@ -238,98 +204,338 @@ function InstitutionalSummary({
         }
       />
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
-        <MetricTile label="Universe" value={breadth.universeLabel ?? "NSE"} />
-        <MetricTile
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+        <KpiCard
+          label="Universe"
+          value={breadth.universeLabel ?? "Entire NSE"}
+          metricKey="universe"
+        />
+        <KpiCard
           label="Total Stocks"
           value={total.toLocaleString("en-IN")}
           hint={
             breadth.quotedStocks != null
-              ? `${breadth.quotedStocks.toLocaleString("en-IN")} quoted`
+              ? `${breadth.quotedStocks.toLocaleString("en-IN")} quoted · ${(breadth.quoteCoveragePercent ?? 0).toFixed(1)}% coverage`
               : undefined
           }
+          metricKey="totalStocks"
         />
-        <MetricTile
-          label="Advances"
-          value={breadth.advances.toLocaleString("en-IN")}
+        <KpiCard
+          label="Last Updated"
+          value={formatTs(breadth.lastUpdated)}
+          metricKey="lastUpdated"
+        />
+        <KpiCard
+          label="Market Status"
+          value={breadth.marketStatusLabel ?? "—"}
+          metricKey="marketStatus"
+        />
+        <KpiCard
+          label="Data Source"
+          value="Live quotes"
+          hint={breadth.dataSource}
+          metricKey="dataSource"
+        />
+      </div>
+    </Card>
+  );
+}
+
+function BreadthPanel({ breadth }: MarketBreadthProps) {
+  const quoted =
+    breadth.quotedStocks ??
+    breadth.advances + breadth.declines + breadth.unchanged;
+  const ratio =
+    breadth.advanceDeclineRatio ??
+    (breadth.declines > 0
+      ? breadth.advances / breadth.declines
+      : breadth.advances);
+  const breadthPct =
+    breadth.breadthPercent ??
+    (quoted > 0
+      ? Math.round((breadth.advances / quoted) * 1000) / 10
+      : 0);
+  const net = breadth.netAdvances ?? breadth.advances - breadth.declines;
+
+  return (
+    <Card padding="lg" accent="emerald" className="h-full">
+      <CardHeader
+        title="Breadth"
+        subtitle="Advance / decline participation"
+        icon={<BarChart3 className="h-4 w-4 text-emerald-400" />}
+      />
+      {quoted <= 0 ? (
+        <EmptyStatePanel
+          message="Breadth appears once live quotes resolve for the selected universe."
+          source="Market Internals Engine"
+          icon={BarChart3}
+        />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <BreadthDonut
+            advances={breadth.advances}
+            declines={breadth.declines}
+            unchanged={breadth.unchanged}
+          />
+          <div className="grid grid-cols-2 gap-2 content-start">
+            <KpiCard
+              label="Advances"
+              value={breadth.advances.toLocaleString("en-IN")}
+              tone="text-gain"
+              metricKey="advances"
+            />
+            <KpiCard
+              label="Declines"
+              value={breadth.declines.toLocaleString("en-IN")}
+              tone="text-loss"
+              metricKey="declines"
+            />
+            <KpiCard
+              label="Unchanged"
+              value={String(breadth.unchanged)}
+              metricKey="unchanged"
+            />
+            <KpiCard
+              label="A/D Ratio"
+              value={ratio.toFixed(2)}
+              metricKey="adRatio"
+            />
+            <KpiCard
+              label="Breadth %"
+              value={`${breadthPct.toFixed(1)}%`}
+              metricKey="breadthPct"
+            />
+            <KpiCard
+              label="Net Advances"
+              value={`${net >= 0 ? "+" : ""}${net}`}
+              tone={net >= 0 ? "text-gain" : "text-loss"}
+              metricKey="netAdvances"
+            />
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function ParticipationPanel({ breadth }: MarketBreadthProps) {
+  const sample = breadth.technicalSampleSize ?? 0;
+  return (
+    <Card padding="lg" accent="emerald" className="h-full">
+      <CardHeader
+        title="Participation"
+        subtitle={
+          sample > 0
+            ? `EMA trend sample · ${sample.toLocaleString("en-IN")} stocks · ${(breadth.technicalCoveragePercent ?? 0).toFixed(1)}% universe coverage`
+            : "EMA trend participation"
+        }
+        icon={<Shield className="h-4 w-4 text-emerald-400" />}
+      />
+      {breadth.aboveEma20 == null ? (
+        <EmptyStatePanel
+          message="EMA participation populates after OHLC technicals resolve for the volume-ranked sample."
+          source="Market Internals · EMA 20 / 50 / 200"
+          icon={Shield}
+        />
+      ) : (
+        <div className="space-y-4">
+          <ParticipationBar
+            label="Above 20 EMA"
+            count={breadth.aboveEma20 ?? null}
+            pct={breadth.aboveEma20Pct ?? null}
+            trend={asTrend(breadth.aboveEma20Trend)}
+            metricKey="aboveEma20"
+          />
+          <ParticipationBar
+            label="Above 50 EMA"
+            count={breadth.aboveEma50 ?? null}
+            pct={breadth.aboveEma50Pct ?? null}
+            trend={asTrend(breadth.aboveEma50Trend)}
+            metricKey="aboveEma50"
+          />
+          <ParticipationBar
+            label="Above 200 EMA"
+            count={breadth.aboveEma200 ?? null}
+            pct={breadth.aboveEma200Pct ?? null}
+            trend={asTrend(breadth.aboveEma200Trend)}
+            metricKey="aboveEma200"
+          />
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function StrengthPanel({ breadth }: MarketBreadthProps) {
+  const hl =
+    breadth.highLowRatio ??
+    (breadth.newLows > 0
+      ? breadth.newHighs / breadth.newLows
+      : breadth.newHighs);
+
+  return (
+    <Card padding="lg" accent="emerald" className="h-full">
+      <CardHeader
+        title="Strength"
+        subtitle="52-week extremes · RSI · daily change"
+        icon={<TrendingUp className="h-4 w-4 text-emerald-400" />}
+      />
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <KpiCard
+          label="52W Highs"
+          value={breadth.newHighs.toLocaleString("en-IN")}
           tone="text-gain"
+          metricKey="newHighs"
         />
-        <MetricTile
-          label="Declines"
-          value={breadth.declines.toLocaleString("en-IN")}
+        <KpiCard
+          label="52W Lows"
+          value={breadth.newLows.toLocaleString("en-IN")}
           tone="text-loss"
+          metricKey="newLows"
         />
-        <MetricTile
-          label="Unchanged"
-          value={String(breadth.unchanged)}
+        <KpiCard
+          label="High/Low Ratio"
+          value={hl.toFixed(2)}
+          metricKey="highLowRatio"
         />
-        <MetricTile label="A/D Ratio" value={ratio.toFixed(2)} />
-        <MetricTile label="Breadth %" value={`${breadthPct.toFixed(1)}%`} />
-        <MetricTile
-          label="Net Advances"
-          value={`${net >= 0 ? "+" : ""}${net}`}
-          tone={net >= 0 ? "text-gain" : "text-loss"}
+        <KpiCard
+          label="Average RSI"
+          value={
+            breadth.averageRsi != null ? breadth.averageRsi.toFixed(1) : "—"
+          }
+          metricKey="averageRsi"
         />
-        <MetricTile
-          label="Participation"
-          value={`${(breadth.participationPercent ?? breadth.quoteCoveragePercent ?? 0).toFixed(1)}%`}
-        />
-        <MetricTile
-          label="Avg Daily Return"
+        <KpiCard
+          label="Avg Daily Change"
           value={
             breadth.averageDailyReturn != null
               ? `${breadth.averageDailyReturn >= 0 ? "+" : ""}${breadth.averageDailyReturn.toFixed(2)}%`
               : "—"
           }
-        />
-        <MetricTile
-          label="Avg RSI"
-          value={
-            breadth.averageRsi != null ? breadth.averageRsi.toFixed(1) : "—"
+          tone={
+            breadth.averageDailyReturn != null &&
+            breadth.averageDailyReturn >= 0
+              ? "text-gain"
+              : breadth.averageDailyReturn != null
+                ? "text-loss"
+                : undefined
           }
-          hint={
-            breadth.technicalCoveragePercent != null
-              ? `Technicals · ${breadth.technicalCoveragePercent}% coverage`
-              : undefined
-          }
-        />
-        <MetricTile
-          label="Above EMAs"
-          value={
-            breadth.aboveEma20 != null
-              ? `${breadth.aboveEma20}/${breadth.aboveEma50 ?? "—"}/${breadth.aboveEma200 ?? "—"}`
-              : "—"
-          }
-          hint="20 / 50 / 200"
+          metricKey="avgDailyChange"
         />
       </div>
+    </Card>
+  );
+}
 
-      <div className="mt-4 flex h-2 overflow-hidden rounded-full bg-surface-border">
-        <div
-          className="h-full bg-gain transition-[width] duration-700"
-          style={{
-            width: `${total > 0 ? (breadth.advances / Math.max(1, breadth.advances + breadth.declines + breadth.unchanged)) * 100 : 0}%`,
-          }}
-        />
-        <div
-          className="h-full bg-loss transition-[width] duration-700"
-          style={{
-            width: `${total > 0 ? (breadth.declines / Math.max(1, breadth.advances + breadth.declines + breadth.unchanged)) * 100 : 0}%`,
-          }}
-        />
-      </div>
+function SectorBreadthPanel({ breadth }: MarketBreadthProps) {
+  const sectors = [...breadth.sectors].sort(
+    (a, b) => (b.breadth ?? 0) - (a.breadth ?? 0)
+  );
+  const strongest =
+    breadth.strongestSector ?? sectors[0]?.name ?? null;
+  const weakest =
+    breadth.weakestSector ??
+    (sectors.length > 0 ? sectors[sectors.length - 1]?.name : null);
 
-      <HeatMeter
-        className="mt-4"
-        label="Market Mood"
-        value={
-          mood === "Insufficient Data"
-            ? 50
-            : Math.min(100, Math.max(0, breadthPct))
+  return (
+    <Card padding="lg" accent="emerald" className="h-full">
+      <CardHeader
+        title="Sector Breadth"
+        subtitle="All NSE sectors · sorted by breadth %"
+        icon={<Layers3 className="h-4 w-4 text-emerald-400" />}
+        action={<MetricExplain metricKey="sectorBreadth" />}
+      />
+      {sectors.length === 0 ? (
+        <EmptyStatePanel
+          message="Sector breadth populates once live quotes resolve for the selected universe."
+          source="Company master sectors · Market Internals"
+          icon={Layers3}
+        />
+      ) : (
+        <>
+          <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <KpiCard
+              label="Strongest Sector"
+              value={strongest ?? "—"}
+              tone="text-gain"
+              metricKey="strongestSector"
+            />
+            <KpiCard
+              label="Weakest Sector"
+              value={weakest ?? "—"}
+              tone="text-loss"
+              metricKey="weakestSector"
+            />
+          </div>
+          <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
+            {sectors.map((sector) => (
+              <SectorHeatBar
+                key={sector.name}
+                name={sector.name}
+                advances={sector.advances ?? 0}
+                declines={sector.declines ?? 0}
+                breadth={sector.breadth}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </Card>
+  );
+}
+
+function MarketMoodPanel({ breadth }: MarketBreadthProps) {
+  const mood = breadth.marketMood ?? "Insufficient Data";
+  const gauge = breadth.moodGauge ?? 50;
+  const factors = breadth.moodFactors ?? [];
+
+  return (
+    <Card padding="lg" accent="emerald" className="h-full">
+      <CardHeader
+        title="Market Mood"
+        subtitle="Multi-factor internals regime"
+        icon={<Gauge className="h-4 w-4 text-emerald-400" />}
+        badge={
+          <StatusBadge tone={statusToneFromLabel(mood)} size="sm">
+            {mood}
+          </StatusBadge>
         }
+        action={<MetricExplain metricKey="marketMood" />}
+      />
+      <HeatMeter
+        label="Composite Mood"
+        value={gauge}
         lowLabel="Bearish"
         highLabel="Bullish"
       />
+      {factors.length > 0 ? (
+        <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {factors.map((factor) => {
+            const tone =
+              factor.score >= 1
+                ? "text-gain"
+                : factor.score <= -1
+                  ? "text-loss"
+                  : "text-text-secondary";
+            return (
+              <div
+                key={factor.id}
+                className="flex items-center justify-between rounded-lg border border-surface-border-subtle px-3 py-2"
+              >
+                <span className="text-[11px] text-text-muted">{factor.label}</span>
+                <span className={`font-mono text-xs font-semibold tabular-nums ${tone}`}>
+                  {factor.score > 0 ? "+" : ""}
+                  {factor.score.toFixed(0)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="mt-3 text-[11px] text-text-muted">
+          Mood requires ≥35% quote coverage and multiple internals factors — never A/D alone.
+        </p>
+      )}
 
       {(breadth.breadthTrend5d?.length || breadth.breadthTrend20d?.length) ? (
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
@@ -357,166 +563,11 @@ function InstitutionalSummary({
       ) : null}
 
       <CardFooter>
-        <span>Source · {breadth.dataSource ?? "Market Breadth Engine"}</span>
+        <span>Source · {breadth.dataSource ?? "Market Internals Engine"}</span>
         <span>
-          52W Highs {breadth.newHighs} · Lows {breadth.newLows}
+          Factors · Breadth · EMA · H/L · Sectors · RSI
         </span>
       </CardFooter>
-    </Card>
-  );
-}
-
-function AdvanceDecline({ breadth }: MarketBreadthProps) {
-  const total = breadth.advances + breadth.declines + breadth.unchanged;
-  if (total <= 0) {
-    return (
-      <Card padding="lg" accent="emerald" className="h-full">
-        <CardHeader
-          title="Advance / Decline"
-          subtitle={breadth.universeLabel ?? "Selected universe"}
-          action={<BarChart3 className="h-4 w-4 text-accent" />}
-        />
-        <EmptyStatePanel
-          message="Advance/decline breadth will appear once live quotes resolve for the selected universe."
-          source="Market Breadth Engine · live quotes"
-          icon={BarChart3}
-        />
-      </Card>
-    );
-  }
-  const advanceWidth = (breadth.advances / total) * 100;
-  const declineWidth = (breadth.declines / total) * 100;
-  const ratio =
-    breadth.advanceDeclineRatio ??
-    (breadth.declines > 0
-      ? breadth.advances / breadth.declines
-      : breadth.advances);
-
-  return (
-    <Card padding="lg" accent="emerald" className="h-full">
-      <CardHeader
-        title="Advance / Decline"
-        subtitle={`${(breadth.quotedStocks ?? total).toLocaleString("en-IN")} quoted · ${(breadth.totalStocks ?? total).toLocaleString("en-IN")} universe`}
-        action={<BarChart3 className="h-4 w-4 text-accent" />}
-      />
-      <div className="flex items-end justify-between">
-        <div>
-          <p className="data-label">A/D Ratio</p>
-          <p className="data-value mt-1 text-3xl font-semibold">
-            {ratio.toFixed(2)}
-          </p>
-        </div>
-        <StatusBadge
-          tone={statusToneFromLabel(breadth.marketMood ?? "Neutral")}
-          size="sm"
-        >
-          {breadth.marketMood ?? "Neutral"}
-        </StatusBadge>
-      </div>
-
-      <div className="mt-5 flex h-2 overflow-hidden rounded-full bg-surface-border">
-        <div
-          className="h-full bg-gain transition-[width] duration-1000 ease-out"
-          style={{ width: `${advanceWidth}%` }}
-        />
-        <div
-          className="h-full bg-text-faint"
-          style={{ width: `${100 - advanceWidth - declineWidth}%` }}
-        />
-        <div
-          className="h-full bg-loss transition-[width] duration-1000 ease-out"
-          style={{ width: `${declineWidth}%` }}
-        />
-      </div>
-
-      <div className="mt-4 grid grid-cols-3 gap-2">
-        <div>
-          <div className="flex items-center gap-1 text-gain">
-            <CircleArrowUp className="h-3 w-3" />
-            <span className="text-[10px] uppercase tracking-wider">
-              Advances
-            </span>
-          </div>
-          <p className="mt-1 font-mono text-sm font-semibold tabular-nums">
-            {breadth.advances.toLocaleString("en-IN")}
-          </p>
-        </div>
-        <div className="text-center">
-          <p className="text-[10px] uppercase tracking-wider text-text-faint">
-            Unchanged
-          </p>
-          <p className="mt-1 font-mono text-sm font-semibold tabular-nums text-text-secondary">
-            {breadth.unchanged}
-          </p>
-        </div>
-        <div className="text-right">
-          <div className="flex items-center justify-end gap-1 text-loss">
-            <span className="text-[10px] uppercase tracking-wider">
-              Declines
-            </span>
-            <CircleArrowDown className="h-3 w-3" />
-          </div>
-          <p className="mt-1 font-mono text-sm font-semibold tabular-nums">
-            {breadth.declines.toLocaleString("en-IN")}
-          </p>
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-function SectorHeatmap({ breadth }: MarketBreadthProps) {
-  return (
-    <Card padding="lg" accent="emerald" className="h-full">
-      <CardHeader
-        title="Sector Breadth"
-        subtitle="Sector performance and internal advance %"
-        action={<Layers3 className="h-4 w-4 text-accent" />}
-      />
-      {breadth.sectors.length === 0 ? (
-        <EmptyStatePanel
-          message="Sector breadth populates once live quotes resolve for the selected universe."
-          source="Company master sectors · Market Breadth Engine"
-          icon={Layers3}
-        />
-      ) : (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {breadth.sectors.map((sector) => {
-            const positive = sector.changePercent >= 0;
-            const intensity = Math.min(Math.abs(sector.changePercent) / 2.5, 1);
-            return (
-              <div
-                key={sector.name}
-                className="group relative overflow-hidden rounded-lg border border-surface-border-subtle bg-surface-overlay/50 p-3 transition-all duration-300 hover:-translate-y-0.5"
-              >
-                <div
-                  className="pointer-events-none absolute inset-0"
-                  style={{
-                    background: `linear-gradient(135deg, ${
-                      positive ? "rgba(34,197,94," : "rgba(239,68,68,"
-                    }${0.05 + intensity * 0.12}), transparent 75%)`,
-                  }}
-                />
-                <div className="relative">
-                  <p className="truncate text-[10px] font-medium uppercase tracking-wider text-text-muted">
-                    {sector.name}
-                  </p>
-                  <p
-                    className={`mt-2 font-mono text-lg font-semibold ${positive ? "text-gain" : "text-loss"}`}
-                  >
-                    {positive ? "+" : ""}
-                    {sector.changePercent.toFixed(2)}%
-                  </p>
-                  <div className="mt-2 flex items-center justify-between text-[10px] text-text-faint">
-                    <span>Breadth</span>
-                    <span className="font-mono">{sector.breadth}%</span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
     </Card>
   );
 }
@@ -534,7 +585,7 @@ function WeekHighLow({ breadth }: MarketBreadthProps) {
       {!hasExtremes ? (
         <EmptyStatePanel
           message="52-week extremes appear when quote feeds include weekHigh52 / weekLow52 for the selected universe."
-          source="Market Breadth Engine · 52W quote fields"
+          source="Market Internals · 52W quote fields"
         />
       ) : (
         <div className="grid grid-cols-2 gap-4">
@@ -610,18 +661,27 @@ export function MarketBreadth({ breadth: initial }: MarketBreadthProps) {
   return (
     <div className={pending ? "opacity-70 transition-opacity" : undefined}>
       <div className="mb-4">
-        <InstitutionalSummary
+        <InternalsSummary
           breadth={breadth}
           onUniverseChange={onUniverseChange}
           pending={pending}
         />
       </div>
-      <div className="mb-4 grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <AdvanceDecline breadth={breadth} />
-        <div className="xl:col-span-2">
-          <SectorHeatmap breadth={breadth} />
-        </div>
+
+      <div className="mb-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <BreadthPanel breadth={breadth} />
+        <ParticipationPanel breadth={breadth} />
       </div>
+
+      <div className="mb-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <StrengthPanel breadth={breadth} />
+        <MarketMoodPanel breadth={breadth} />
+      </div>
+
+      <div className="mb-4">
+        <SectorBreadthPanel breadth={breadth} />
+      </div>
+
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MoverList
           title="Top Gainers"

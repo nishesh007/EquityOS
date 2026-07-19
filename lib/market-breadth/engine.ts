@@ -1,26 +1,32 @@
 /**
- * Institutional Market Breadth Engine.
+ * Institutional Market Breadth / Market Internals Engine.
  * Quote-based A/D over the selected universe; technicals from OHLC when available.
- * Market mood is never inferred from partial / dashboard-only samples.
+ * Market mood uses multiple factors — never A/D alone or partial samples.
  */
 
 import { lookupCompanyMaster } from "@/lib/company-master";
 import type { EnrichedQuote } from "@/lib/market-data/enriched-quote";
 import { marketDataService } from "@/lib/market-data";
+import {
+  getMarketStatus,
+  getMarketStatusLabel,
+} from "@/lib/market/session";
 import { ema, rsi } from "@/lib/technical/math";
 import { formatVolume } from "@/lib/utils";
-import type { MarketMover, SectorPerformance } from "@/types";
-import { recordBreadthTrend } from "./trend-store";
+import type { MarketMover } from "@/types";
+import { classifyMarketMood } from "./mood";
+import {
+  recordBreadthTrend,
+  recordParticipationTrend,
+} from "./trend-store";
 import type {
   BreadthUniverseId,
   MarketBreadthSnapshot,
-  MarketMood,
+  SectorBreadthRow,
 } from "./types";
 import { resolveBreadthUniverse } from "./universe";
 
 const QUOTE_CHUNK = 40;
-/** Minimum quote coverage before mood is classified (not inferred from scraps). */
-const MIN_MOOD_COVERAGE = 0.35;
 /** Cap OHLC technical fetches per scan (honest coverage % reported). */
 const MAX_TECHNICAL_FETCHES = 120;
 const TECHNICAL_CONCURRENCY = 6;
@@ -91,35 +97,32 @@ function toMover(row: QuoteRow): MarketMover {
   };
 }
 
-function classifyMood(
-  breadthPercent: number,
-  coverage: number
-): MarketMood {
-  if (coverage < MIN_MOOD_COVERAGE) return "Insufficient Data";
-  if (breadthPercent >= 65) return "Strong Bullish";
-  if (breadthPercent >= 55) return "Bullish";
-  if (breadthPercent <= 35) return "Strong Bearish";
-  if (breadthPercent <= 45) return "Bearish";
-  return "Neutral";
+function pctOf(count: number | null, sample: number): number | null {
+  if (count == null || sample <= 0) return null;
+  return Math.round((count / sample) * 1000) / 10;
 }
 
-function buildSectors(rows: QuoteRow[]): SectorPerformance[] {
+function buildSectors(rows: QuoteRow[]): SectorBreadthRow[] {
   const bySector = new Map<
     string,
-    { changes: number[]; advances: number; total: number }
+    { advances: number; declines: number; unchanged: number; total: number; changes: number[] }
   >();
 
   for (const row of rows) {
     const sector =
       lookupCompanyMaster(row.symbol)?.sector?.trim() || "Equities";
     const bucket = bySector.get(sector) ?? {
-      changes: [],
       advances: 0,
+      declines: 0,
+      unchanged: 0,
       total: 0,
+      changes: [],
     };
     bucket.changes.push(row.changePercent);
     bucket.total += 1;
     if (row.changePercent > 0) bucket.advances += 1;
+    else if (row.changePercent < 0) bucket.declines += 1;
+    else bucket.unchanged += 1;
     bySector.set(sector, bucket);
   }
 
@@ -132,12 +135,15 @@ function buildSectors(rows: QuoteRow[]): SectorPerformance[] {
         name,
         changePercent: Math.round(avg * 100) / 100,
         breadth: Math.round(
-          (bucket.advances / Math.max(1, bucket.total)) * 100
-        ),
+          (bucket.advances / Math.max(1, bucket.total)) * 1000
+        ) / 10,
+        advances: bucket.advances,
+        declines: bucket.declines,
+        unchanged: bucket.unchanged,
+        total: bucket.total,
       };
     })
-    .sort((a, b) => b.changePercent - a.changePercent)
-    .slice(0, 12);
+    .sort((a, b) => b.breadth - a.breadth);
 }
 
 function selectMovers(
@@ -163,7 +169,7 @@ function select52wExtremes(
   direction: "high" | "low",
   limit = 5
 ): MarketMover[] {
-  const threshold = 0.01; // within 1% of 52W extreme
+  const threshold = 0.01;
   return rows
     .filter((row) => {
       if (direction === "high") {
@@ -195,6 +201,7 @@ async function computeTechnicals(symbols: string[]): Promise<{
   aboveEma50: number | null;
   aboveEma200: number | null;
   averageRsi: number | null;
+  sampleSize: number;
   coveragePercent: number;
 }> {
   if (symbols.length === 0) {
@@ -203,6 +210,7 @@ async function computeTechnicals(symbols: string[]): Promise<{
       aboveEma50: null,
       aboveEma200: null,
       averageRsi: null,
+      sampleSize: 0,
       coveragePercent: 0,
     };
   }
@@ -245,6 +253,7 @@ async function computeTechnicals(symbols: string[]): Promise<{
       aboveEma50: null,
       aboveEma200: null,
       averageRsi: null,
+      sampleSize: 0,
       coveragePercent: 0,
     };
   }
@@ -255,6 +264,7 @@ async function computeTechnicals(symbols: string[]): Promise<{
     aboveEma200: above200,
     averageRsi:
       rsiCount > 0 ? Math.round((rsiSum / rsiCount) * 10) / 10 : null,
+    sampleSize: ok,
     coveragePercent: Math.round((ok / symbols.length) * 1000) / 10,
   };
 }
@@ -271,6 +281,24 @@ function weekFields(quote: EnrichedQuote): {
     weekLow52:
       quote.weekLow52 != null && quote.weekLow52 > 0 ? quote.weekLow52 : null,
   };
+}
+
+function near52w(row: QuoteRow, direction: "high" | "low"): boolean {
+  const threshold = 0.01;
+  if (direction === "high") {
+    return (
+      row.weekHigh52 != null &&
+      row.weekHigh52 > 0 &&
+      row.price > 0 &&
+      Math.abs(row.price - row.weekHigh52) / row.weekHigh52 <= threshold
+    );
+  }
+  return (
+    row.weekLow52 != null &&
+    row.weekLow52 > 0 &&
+    row.price > 0 &&
+    Math.abs(row.price - row.weekLow52) / row.weekLow52 <= threshold
+  );
 }
 
 export async function runMarketBreadthEngine(
@@ -318,11 +346,6 @@ export async function runMarketBreadthEngine(
     totalStocks > 0
       ? Math.round((quotedStocks / totalStocks) * 1000) / 10
       : 0;
-  const participationPercent = quoteCoveragePercent;
-  const marketMood = classifyMood(
-    breadthPercent,
-    quoteCoveragePercent / 100
-  );
 
   const avgReturn =
     quotedStocks > 0
@@ -333,38 +356,75 @@ export async function runMarketBreadthEngine(
         ) / 100
       : null;
 
-  // Prefer higher-volume names for technical sample when universe is large.
   const technicalSymbols = rows
     .slice()
     .sort((a, b) => (b.quote.volume ?? 0) - (a.quote.volume ?? 0))
     .map((row) => row.symbol);
 
   const technicals = await computeTechnicals(technicalSymbols);
+  const aboveEma20Pct = pctOf(technicals.aboveEma20, technicals.sampleSize);
+  const aboveEma50Pct = pctOf(technicals.aboveEma50, technicals.sampleSize);
+  const aboveEma200Pct = pctOf(technicals.aboveEma200, technicals.sampleSize);
+
+  const emaParts = [aboveEma20Pct, aboveEma50Pct, aboveEma200Pct].filter(
+    (v): v is number => v != null
+  );
+  const emaParticipationPercent =
+    emaParts.length > 0
+      ? Math.round(
+          (emaParts.reduce((s, v) => s + v, 0) / emaParts.length) * 10
+        ) / 10
+      : null;
+
   const weekHighs = select52wExtremes(rows, "high");
   const weekLows = select52wExtremes(rows, "low");
-  // Count all near-52W, not just displayed list
-  const newHighs52w = rows.filter((row) => {
-    return (
-      row.weekHigh52 != null &&
-      row.weekHigh52 > 0 &&
-      row.price > 0 &&
-      Math.abs(row.price - row.weekHigh52) / row.weekHigh52 <= 0.01
-    );
-  }).length;
-  const newLows52w = rows.filter((row) => {
-    return (
-      row.weekLow52 != null &&
-      row.weekLow52 > 0 &&
-      row.price > 0 &&
-      Math.abs(row.price - row.weekLow52) / row.weekLow52 <= 0.01
-    );
-  }).length;
+  const newHighs52w = rows.filter((row) => near52w(row, "high")).length;
+  const newLows52w = rows.filter((row) => near52w(row, "low")).length;
+  const highLowRatio =
+    newLows52w > 0
+      ? Math.round((newHighs52w / newLows52w) * 100) / 100
+      : newHighs52w > 0
+        ? newHighs52w
+        : 0;
+
+  const sectorBreadth = buildSectors(rows);
+  const sectorAdvanceSharePercent =
+    sectorBreadth.length > 0
+      ? Math.round(
+          (sectorBreadth.filter((s) => s.breadth >= 50).length /
+            sectorBreadth.length) *
+            1000
+        ) / 10
+      : null;
+
+  const moodResult = classifyMarketMood({
+    breadthPercent,
+    quoteCoverage: quoteCoveragePercent / 100,
+    emaParticipationPercent,
+    newHighs52w,
+    newLows52w,
+    sectorAdvanceSharePercent,
+    averageRsi: technicals.averageRsi,
+  });
 
   const { trend5d, trend20d } = recordBreadthTrend(
     universeId,
     breadthPercent,
     netAdvances
   );
+
+  const participationTrends = recordParticipationTrend(universeId, {
+    aboveEma20Pct,
+    aboveEma50Pct,
+    aboveEma200Pct,
+  });
+
+  const marketStatus = getMarketStatus();
+  const strongestSector = sectorBreadth[0]?.name ?? null;
+  const weakestSector =
+    sectorBreadth.length > 0
+      ? sectorBreadth[sectorBreadth.length - 1]?.name ?? null
+      : null;
 
   return {
     universe: universeId,
@@ -377,20 +437,34 @@ export async function runMarketBreadthEngine(
     advanceDeclineRatio: Math.round(advanceDeclineRatio * 100) / 100,
     breadthPercent,
     netAdvances,
-    marketMood,
-    participationPercent,
+    marketMood: moodResult.mood,
+    moodGauge: moodResult.gaugeValue,
+    moodFactors: moodResult.factors,
+    participationPercent: emaParticipationPercent ?? quoteCoveragePercent,
+    highLowRatio,
     newHighs52w,
     newLows52w,
     aboveEma20: technicals.aboveEma20,
     aboveEma50: technicals.aboveEma50,
     aboveEma200: technicals.aboveEma200,
+    aboveEma20Pct,
+    aboveEma50Pct,
+    aboveEma200Pct,
+    aboveEma20Trend: participationTrends.aboveEma20Trend,
+    aboveEma50Trend: participationTrends.aboveEma50Trend,
+    aboveEma200Trend: participationTrends.aboveEma200Trend,
+    technicalSampleSize: technicals.sampleSize,
     averageRsi: technicals.averageRsi,
     averageDailyReturn: avgReturn,
-    sectorBreadth: buildSectors(rows),
+    sectorBreadth,
+    strongestSector,
+    weakestSector,
     breadthTrend5d: trend5d,
     breadthTrend20d: trend20d,
     technicalCoveragePercent: technicals.coveragePercent,
     quoteCoveragePercent,
+    marketStatus,
+    marketStatusLabel: getMarketStatusLabel(marketStatus),
     lastUpdated: new Date().toISOString(),
     dataSource: `Live quotes · ${resolved.label} · company master equities`,
     gainers: selectMovers(rows, "gainers"),

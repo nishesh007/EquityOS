@@ -1,18 +1,24 @@
 /**
- * Persist daily breadth % for 5d / 20d trends (file-backed, server-only).
+ * Persist daily breadth % and EMA participation for trends (file-backed, server-only).
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import type { BreadthTrendPoint, BreadthUniverseId } from "./types";
+import type {
+  BreadthTrendPoint,
+  BreadthUniverseId,
+  ParticipationTrendPoint,
+  TrendDirection,
+} from "./types";
 
 const DATA_DIR = path.join(process.cwd(), "data", "market-breadth");
 const TREND_FILE = path.join(DATA_DIR, "breadth-trend.json");
 
 interface TrendStore {
-  version: 1;
-  series: Partial<
-    Record<BreadthUniverseId, BreadthTrendPoint[]>
+  version: 2;
+  series: Partial<Record<BreadthUniverseId, BreadthTrendPoint[]>>;
+  participation: Partial<
+    Record<BreadthUniverseId, ParticipationTrendPoint[]>
   >;
 }
 
@@ -22,11 +28,20 @@ function todayKey(): string {
 
 function readStore(): TrendStore {
   try {
-    if (!existsSync(TREND_FILE)) return { version: 1, series: {} };
-    const raw = JSON.parse(readFileSync(TREND_FILE, "utf8")) as TrendStore;
-    return raw?.version === 1 ? raw : { version: 1, series: {} };
+    if (!existsSync(TREND_FILE)) {
+      return { version: 2, series: {}, participation: {} };
+    }
+    const raw = JSON.parse(readFileSync(TREND_FILE, "utf8")) as Partial<TrendStore> & {
+      version?: number;
+      series?: TrendStore["series"];
+    };
+    return {
+      version: 2,
+      series: raw.series ?? {},
+      participation: raw.participation ?? {},
+    };
   } catch {
-    return { version: 1, series: {} };
+    return { version: 2, series: {}, participation: {} };
   }
 }
 
@@ -68,5 +83,48 @@ export function readBreadthTrend(universe: BreadthUniverseId): {
   return {
     trend5d: series.slice(-5),
     trend20d: series.slice(-20),
+  };
+}
+
+function trendFromValues(
+  current: number | null,
+  previous: number | null
+): TrendDirection {
+  if (current == null || previous == null) return "unknown";
+  const delta = current - previous;
+  if (Math.abs(delta) < 1) return "flat";
+  return delta > 0 ? "up" : "down";
+}
+
+export function recordParticipationTrend(
+  universe: BreadthUniverseId,
+  point: Omit<ParticipationTrendPoint, "date">
+): {
+  aboveEma20Trend: TrendDirection;
+  aboveEma50Trend: TrendDirection;
+  aboveEma200Trend: TrendDirection;
+} {
+  const store = readStore();
+  const day = todayKey();
+  const existing = store.participation[universe] ?? [];
+  const previous = [...existing].reverse().find((p) => p.date !== day) ?? null;
+  const withoutToday = existing.filter((p) => p.date !== day);
+  const nextPoint: ParticipationTrendPoint = { date: day, ...point };
+  store.participation[universe] = [...withoutToday, nextPoint].slice(-60);
+  writeStore(store);
+
+  return {
+    aboveEma20Trend: trendFromValues(
+      point.aboveEma20Pct,
+      previous?.aboveEma20Pct ?? null
+    ),
+    aboveEma50Trend: trendFromValues(
+      point.aboveEma50Pct,
+      previous?.aboveEma50Pct ?? null
+    ),
+    aboveEma200Trend: trendFromValues(
+      point.aboveEma200Pct,
+      previous?.aboveEma200Pct ?? null
+    ),
   };
 }

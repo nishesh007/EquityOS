@@ -136,7 +136,7 @@ export default async function DashboardPage() {
               <>
                 <SectionHeader
                   title="01 · Market Pulse"
-                  subtitle="Indices, breadth, sector strength and institutional flow"
+                  subtitle="Indices, market internals, sector strength and institutional flow"
                   summary={marketPulseSummary}
                   accent="emerald"
                   icon={<Activity className="h-5 w-5" />}

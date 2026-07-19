@@ -82,6 +82,11 @@ export interface SectorPerformance {
   name: string;
   changePercent: number;
   breadth: number;
+  /** Sector advance/decline counts when provided by Market Internals. */
+  advances?: number;
+  declines?: number;
+  unchanged?: number;
+  total?: number;
 }
 
 export interface MarketMover {
@@ -105,7 +110,7 @@ export interface MarketBreadth {
   weekHighs: MarketMover[];
   weekLows: MarketMover[];
   mostActive: MarketMover[];
-  /** Institutional breadth engine fields (Sprint 10C.1). */
+  /** Institutional breadth / Market Internals fields (Sprint 10C.1). */
   universe?: import("@/lib/market-breadth").BreadthUniverseId;
   universeLabel?: string;
   totalStocks?: number;
@@ -114,16 +119,30 @@ export interface MarketBreadth {
   breadthPercent?: number;
   netAdvances?: number;
   marketMood?: string;
+  moodGauge?: number;
+  moodFactors?: { id: string; score: number; label: string }[];
   participationPercent?: number;
+  highLowRatio?: number;
   aboveEma20?: number | null;
   aboveEma50?: number | null;
   aboveEma200?: number | null;
+  aboveEma20Pct?: number | null;
+  aboveEma50Pct?: number | null;
+  aboveEma200Pct?: number | null;
+  aboveEma20Trend?: "up" | "down" | "flat" | "unknown";
+  aboveEma50Trend?: "up" | "down" | "flat" | "unknown";
+  aboveEma200Trend?: "up" | "down" | "flat" | "unknown";
+  technicalSampleSize?: number;
   averageRsi?: number | null;
   averageDailyReturn?: number | null;
+  strongestSector?: string | null;
+  weakestSector?: string | null;
   breadthTrend5d?: { date: string; breadthPercent: number; netAdvances: number }[];
   breadthTrend20d?: { date: string; breadthPercent: number; netAdvances: number }[];
   technicalCoveragePercent?: number;
   quoteCoveragePercent?: number;
+  marketStatus?: string;
+  marketStatusLabel?: string;
   lastUpdated?: string;
   dataSource?: string;
 }

@@ -3,6 +3,9 @@ export type {
   BreadthTrendPoint,
   MarketBreadthSnapshot,
   MarketMood,
+  SectorBreadthRow,
+  TrendDirection,
+  ParticipationTrendPoint,
 } from "./types";
 export { BREADTH_UNIVERSE_OPTIONS } from "./types";
 export {
@@ -12,6 +15,7 @@ export {
   universeLabel,
 } from "./universe";
 export { runMarketBreadthEngine } from "./engine";
+export { classifyMarketMood } from "./mood";
 export {
   getNifty50,
   getNifty100,
