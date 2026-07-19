@@ -77,6 +77,8 @@ const config: Config = {
         "scale-in": "scaleIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) both",
         "slide-in": "slideIn 0.32s cubic-bezier(0, 0, 0.2, 1) both",
         "terminal-scan": "terminalScan 4s ease-in-out infinite",
+        "confidence-fill": "confidenceFill 0.8s ease-out both",
+        shimmer: "shimmer 1.8s linear infinite",
       },
       keyframes: {
         fadeInUp: {
@@ -99,6 +101,14 @@ const config: Config = {
           "0%, 100%": { opacity: "0", transform: "translateX(-35%)" },
           "15%, 75%": { opacity: "1" },
           "90%": { opacity: "0", transform: "translateX(35%)" },
+        },
+        confidenceFill: {
+          "0%": { transform: "scaleX(0)", transformOrigin: "left" },
+          "100%": { transform: "scaleX(1)", transformOrigin: "left" },
+        },
+        shimmer: {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
         },
       },
     },

@@ -71,6 +71,30 @@ export default async function DashboardPage() {
       .map((recommendation) => [recommendation.symbol, recommendation])
   );
 
+  const regime = marketIntelligence.regime.regime;
+  const breadthScore =
+    breadth.advances + breadth.declines > 0
+      ? Math.round(
+          (breadth.advances / (breadth.advances + breadth.declines)) * 100
+        )
+      : null;
+  const marketPulseSummary =
+    breadthScore != null
+      ? `Indian markets remain in a ${regime} regime with breadth at ${breadthScore}% advances.`
+      : `Indian markets remain in a ${regime} regime.`;
+
+  const dayPct = portfolio.dayChangePercent;
+  const daySign = dayPct > 0 ? "+" : "";
+  const portfolioSummary = `Portfolio day change ${daySign}${dayPct.toFixed(1)}% · total return ${portfolio.totalGainPercent >= 0 ? "+" : ""}${portfolio.totalGainPercent.toFixed(1)}% across ${portfolio.holdings.length} holdings.`;
+
+  const highConviction = recommendations.filter(
+    (r) => r.conviction >= 70 || r.confidence >= 70
+  ).length;
+  const opportunitiesSummary =
+    recommendations.length === 0
+      ? "No active Strategy Engine recommendations in the latest scan."
+      : `${recommendations.length} active opportunities · ${highConviction} meet high-conviction criteria (conviction or confidence ≥ 70).`;
+
   return (
     <PageContainer>
       <header className="mb-8 animate-fade-in-up">
@@ -101,6 +125,7 @@ export default async function DashboardPage() {
           <SectionHeader
             title="01 · Market Pulse"
             subtitle="Indices, breadth, sector strength and institutional flow"
+            summary={marketPulseSummary}
             accent="emerald"
             icon={<Activity className="h-5 w-5" />}
           />
@@ -116,6 +141,7 @@ export default async function DashboardPage() {
           <SectionHeader
             title="02 · AI Opportunities"
             subtitle="Conviction-ranked ideas from the Strategy Engine"
+            summary={opportunitiesSummary}
             accent="blue"
             icon={<Sparkles className="h-5 w-5" />}
             actions={
@@ -136,6 +162,7 @@ export default async function DashboardPage() {
           <SectionHeader
             title="03 · Portfolio"
             subtitle="Holdings, allocation and P&amp;L snapshot"
+            summary={portfolioSummary}
             accent="amber"
             icon={<Briefcase className="h-5 w-5" />}
           />
@@ -179,10 +206,11 @@ export default async function DashboardPage() {
           <SectionHeader
             title="04 · Economic Calendar"
             subtitle="Compact earnings windows · full analysis in Earnings workspace"
+            summary={`${results.length} upcoming result windows on the dashboard snapshot.`}
             accent="orange"
             icon={<CalendarDays className="h-5 w-5" />}
             actions={
-              <Link href="/results" className="text-xs font-semibold text-accent">
+              <Link href="/results" className="text-xs font-semibold text-accent transition-colors hover:text-accent/80">
                 Open Earnings →
               </Link>
             }
@@ -196,6 +224,7 @@ export default async function DashboardPage() {
           <SectionHeader
             title="05 · Market Intelligence"
             subtitle="Verified coverage from approved financial publishers"
+            summary={`${news.length} verified headlines in the latest feed.`}
             accent="indigo"
             icon={<Newspaper className="h-5 w-5" />}
           />

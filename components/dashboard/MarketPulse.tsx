@@ -47,18 +47,22 @@ function formatFlow(value: number): string {
 function PulseMetric({ label, children, detail, icon, tint }: PulseMetricProps) {
   return (
     <div
-      className={`group rounded-lg border p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-accent/20 hover:bg-surface-hover/60 ${
+      className={`group rounded-lg border p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md ${
         tint ?? "border-surface-border-subtle bg-surface-overlay/50"
       }`}
     >
       <div className="flex items-center justify-between">
         <p className="data-label">{label}</p>
-        <div className="text-text-faint transition-colors group-hover:text-accent">
+        <div className="opacity-70 transition-opacity group-hover:opacity-100">
           {icon}
         </div>
       </div>
-      <div className="mt-2">{children}</div>
-      <div className="mt-1 text-[10px] text-text-muted">{detail}</div>
+      <div className="mt-2.5 text-text-primary [&_.data-value]:text-2xl [&_.data-value]:font-semibold [&_.data-value]:tracking-tight">
+        {children}
+      </div>
+      <div className="mt-1.5 text-[10px] leading-relaxed text-text-muted">
+        {detail}
+      </div>
     </div>
   );
 }

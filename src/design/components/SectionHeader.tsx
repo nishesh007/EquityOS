@@ -8,6 +8,8 @@ import { SectionDivider } from "./SectionDivider";
 interface SectionHeaderProps {
   title: string;
   subtitle?: string;
+  /** Concise section summary built from existing live data. */
+  summary?: string;
   /** Right-aligned slot for actions (buttons, filters, badges). */
   actions?: React.ReactNode;
   /** Section identity — colors icon chip, heading, divider and tint panel. */
@@ -18,12 +20,13 @@ interface SectionHeaderProps {
 }
 
 /**
- * Premium section heading — accent chip, large title, subtitle, divider.
+ * Premium section heading — accent chip, large title, subtitle, summary, divider.
  * Users should instantly distinguish sections while scrolling.
  */
 export function SectionHeader({
   title,
   subtitle,
+  summary,
   actions,
   accent,
   icon,
@@ -66,6 +69,11 @@ export function SectionHeader({
             {subtitle && (
               <p className="mt-0.5 text-sm text-text-secondary">{subtitle}</p>
             )}
+            {summary ? (
+              <p className="mt-1.5 max-w-2xl text-xs leading-relaxed text-text-muted">
+                {summary}
+              </p>
+            ) : null}
           </div>
         </div>
         {actions && (

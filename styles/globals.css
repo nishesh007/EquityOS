@@ -101,6 +101,18 @@
     @apply font-mono text-text-primary tabular-nums;
   }
 
+  /* Sprint 10C.1 — skeleton shimmer for loading surfaces */
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      rgb(var(--eos-color-muted) / 0.35) 0%,
+      rgb(var(--eos-color-surface-hover) / 0.8) 50%,
+      rgb(var(--eos-color-muted) / 0.35) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.8s linear infinite;
+  }
+
   /* Institutional tables — sticky header, hover rows, aligned numerics.
      Canonical class names live in src/design/layout/tableStyles.ts. */
   .institutional-table-container {
@@ -181,4 +193,13 @@ html[data-font-size="small"] {
 
 html[data-font-size="large"] {
   font-size: 17px;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
