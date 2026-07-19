@@ -74,6 +74,15 @@ export async function GET(request: NextRequest) {
       target: candidate?.strategySignal?.target ?? null,
       evidence: candidate?.strategySignal?.evidence ?? [],
       strategySignals: candidate?.strategySignals ?? [],
+      agreement: candidate?.strategyConsensus?.agreementPercent ?? null,
+      conflict: candidate?.strategyConsensus?.conflictPercent ?? null,
+      supportingStrategies:
+        candidate?.strategyConsensus?.supportingStrategies ?? [],
+      opposingStrategies:
+        candidate?.strategyConsensus?.opposingStrategies ?? [],
+      frameworkScore: candidate?.frameworkScore ?? null,
+      combinedVerdict: candidate?.strategyConsensus?.combinedVerdict ?? null,
+      longTermRanking: candidate?.longTermRanking ?? null,
     };
   });
 

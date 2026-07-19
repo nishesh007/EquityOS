@@ -18,6 +18,7 @@ export function EligibilityBadge({
     | "rejectedReasons"
     | "eligibleReasons"
     | "strategySignal"
+    | "strategyConsensus"
   >;
   compact?: boolean;
 }) {
@@ -82,6 +83,11 @@ export function EligibilityBadge({
       {candidate.strategySignal && (
         <span className="rounded border border-purple-400/30 bg-purple-400/10 px-1.5 py-0.5 text-[9px] font-semibold text-purple-300">
           {candidate.strategySignal.strategy} · {candidate.strategySignal.signal}
+        </span>
+      )}
+      {typeof candidate.strategyConsensus?.agreementPercent === "number" && (
+        <span className="rounded border border-surface-border-subtle px-1.5 py-0.5 text-[9px] text-text-muted">
+          Agree {candidate.strategyConsensus.agreementPercent}%
         </span>
       )}
     </div>

@@ -383,6 +383,8 @@ async function executeScan(force = false): Promise<ScanResult> {
             enrichment.candlesBySymbol.get(candidate.symbol) ?? []
           );
           if (!execution.primary) return [];
+          const frameworkBoost = execution.longTermRanking?.frameworkScore;
+          const consensusBoost = execution.consensus?.combinedScore;
           const executedCandidate: OpportunityCandidate = {
             ...candidate,
             strategyId: execution.primary.strategyId,
@@ -390,6 +392,17 @@ async function executeScan(force = false): Promise<ScanResult> {
             strategySignal: execution.primary,
             strategySignals: execution.signals,
             executedStrategyIds: execution.executedStrategyIds,
+            strategyConsensus: execution.consensus ?? undefined,
+            longTermRanking: execution.longTermRanking ?? undefined,
+            frameworkScore: frameworkBoost,
+            opportunityScore:
+              typeof frameworkBoost === "number" &&
+              typeof consensusBoost === "number"
+                ? Math.round(frameworkBoost * 0.65 + consensusBoost * 0.35)
+                : candidate.opportunityScore,
+            confidencePercent:
+              execution.consensus?.finalConfidence ??
+              candidate.confidencePercent,
             eligibleReasons: execution.primary.reasons,
             rejectedReasons: execution.rejectedReasons,
           };

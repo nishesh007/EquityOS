@@ -1,13 +1,31 @@
 /**
- * Opportunity Engine → Strategy Platform adapter.
+ * Opportunity Engine → Strategy Platform adapter (Swing & Position suites).
  *
  * Candidate market data is adapted to existing concrete strategy inputs. No
  * detection or recommendation logic is duplicated here.
  */
 
 import { CATEGORY_STRATEGY_IDS } from "@/lib/opportunity-engine/pipeline-enrichment";
+import { computeLongTermRankingFactors } from "@/lib/opportunity-engine/long-term-ranking";
+import {
+  buildBuffettInput,
+  buildEarningsMomentumInput,
+  buildGrahamInput,
+  buildMagicFormulaInput,
+  buildPeterLynchInput,
+  buildQualityCompounderInput,
+} from "@/lib/opportunity-engine/position-fundamentals-adapter";
+import { buildStrategyConsensus } from "@/lib/opportunity-engine/strategy-consensus";
+import {
+  POSITION_STRATEGY_IDS,
+  SWING_STRATEGY_IDS,
+  isPositionStrategyId,
+  isSwingStrategyId,
+} from "@/lib/opportunity-engine/swing-position-catalog";
 import type {
   OpportunityCandidate,
+  OpportunityLongTermRanking,
+  OpportunityStrategyConsensus,
   OpportunityStrategySignal,
 } from "@/lib/opportunity-engine/types";
 import type { OhlcBar } from "@/lib/providers/types";
@@ -35,6 +53,8 @@ export interface OpportunityStrategyExecution {
   signals: OpportunityStrategySignal[];
   executedStrategyIds: string[];
   rejectedReasons: string[];
+  consensus: OpportunityStrategyConsensus | null;
+  longTermRanking: OpportunityLongTermRanking | null;
 }
 
 function metric(
@@ -103,27 +123,63 @@ function weeklyCandles(candles: ReturnType<typeof datedCandles>) {
   return weeks;
 }
 
+function buildSwingDailyCommon(
+  candidate: OpportunityCandidate,
+  base: StrategyMarketInput,
+  candles: readonly OhlcBar[]
+) {
+  const daily = datedCandles(candles);
+  const closes = daily.map((candle) => candle.close);
+  return {
+    daily,
+    closes,
+    common: {
+      candlesDaily: daily,
+      vwap: metric(candidate, "vwap") ?? base.lastPrice,
+      atr: metric(candidate, "atr"),
+      ema20: metric(candidate, "ema20"),
+      ema50: metric(candidate, "ema50"),
+      ema150: ema(closes, 150),
+      ema200: metric(candidate, "ema200"),
+      relativeVolume: metric(candidate, "volume_ratio"),
+      averageVolume20d: metric(candidate, "avg_volume_20d"),
+      fiftyTwoWeekHigh: metric(candidate, "week_high_52"),
+      newsDriven: false,
+    },
+  };
+}
+
 function buildStrategyInput(
   strategyId: string,
   candidate: OpportunityCandidate,
   candles: readonly OhlcBar[]
 ): StrategyMarketInput {
   const base = baseInput(candidate);
-  const daily = datedCandles(candles);
-  const closes = daily.map((candle) => candle.close);
-  const common = {
-    candlesDaily: daily,
-    vwap: metric(candidate, "vwap") ?? base.lastPrice,
-    atr: metric(candidate, "atr"),
-    ema20: metric(candidate, "ema20"),
-    ema50: metric(candidate, "ema50"),
-    ema150: ema(closes, 150),
-    ema200: metric(candidate, "ema200"),
-    relativeVolume: metric(candidate, "volume_ratio"),
-    averageVolume20d: metric(candidate, "avg_volume_20d"),
-    fiftyTwoWeekHigh: metric(candidate, "week_high_52"),
-    newsDriven: false,
-  };
+
+  if (strategyId === "earnings-momentum") {
+    return strategyInput(buildEarningsMomentumInput(base, candidate, candles));
+  }
+  if (strategyId === "buffett") {
+    return strategyInput(buildBuffettInput(base, candidate));
+  }
+  if (strategyId === "graham") {
+    return strategyInput(buildGrahamInput(base, candidate));
+  }
+  if (strategyId === "lynch") {
+    return strategyInput(buildPeterLynchInput(base, candidate));
+  }
+  if (strategyId === "greenblatt") {
+    return strategyInput(buildMagicFormulaInput(base, candidate));
+  }
+  if (strategyId === "quality-compounder") {
+    return strategyInput(buildQualityCompounderInput(base, candidate));
+  }
+
+  const { daily, closes, common } = buildSwingDailyCommon(
+    candidate,
+    base,
+    candles
+  );
 
   if (strategyId === "vcp") {
     return strategyInput({ ...base, vcp: common } satisfies VCPStrategyInput);
@@ -210,28 +266,39 @@ function buildStrategyInput(
     } satisfies StageAnalysisStrategyInput);
   }
 
-  // The concrete Strategy Engine still executes unsupported payloads and
-  // returns a standardized IGNORE with the strategy's own validation reason.
   return base;
 }
 
-function toSignalDto(signal: StrategySignal): OpportunityStrategySignal {
+function toSignalDto(
+  signal: StrategySignal,
+  marketTrend: string
+): OpportunityStrategySignal {
   return {
     strategy: signal.strategyName,
     strategyId: signal.strategyId,
+    category: signal.category,
+    timeframe:
+      signal.category === "Swing"
+        ? "1D–1W"
+        : signal.category === "Position"
+          ? "1W–1Y"
+          : signal.holdingPeriod,
     signal: signal.signal,
     entry: signal.entry,
     stopLoss: signal.stopLoss,
     target: signal.finalTarget,
     target1: signal.target1,
     target2: signal.target2,
+    holdingPeriod: signal.holdingPeriod,
     confidence: signal.confidence,
+    conviction: Math.round((signal.confidence + signal.quality) / 2),
     risk: signal.risk,
     reward: signal.reward,
     riskReward: signal.riskReward,
     reasons: [...signal.reasons],
     evidence: [...signal.evidence],
     tags: [...signal.tags],
+    marketContext: marketTrend,
     marketRegime: signal.marketRegime,
     eligibility: {
       ...signal.eligibility,
@@ -248,26 +315,64 @@ function rankResult(result: StrategyEngineResult): number {
   return action + watchlist + signal.quality + signal.confidence + signal.riskReward;
 }
 
+function resolveSuiteIds(
+  candidate: OpportunityCandidate,
+  pipeline: TradingPipelineResult
+): string[] {
+  const registry = getStrategyRegistry();
+  const suite =
+    candidate.category === "ai_high_conviction"
+      ? [...POSITION_STRATEGY_IDS]
+      : candidate.category === "swing" ||
+          candidate.category === "breakout" ||
+          candidate.category === "momentum"
+        ? [...SWING_STRATEGY_IDS]
+        : [...(CATEGORY_STRATEGY_IDS[candidate.category] ?? [])];
+
+  if (suite.length === 0) return [];
+
+  const eligible = suite.filter((strategyId) => {
+    if (!registry.has(strategyId)) return false;
+    const eligibility = pipeline.eligibleStrategies.find(
+      (strategy) => strategy.strategyId === strategyId
+    );
+    return Boolean(eligibility?.eligible);
+  });
+
+  if (eligible.length > 0) return eligible;
+  return suite.filter((strategyId) => registry.has(strategyId));
+}
+
+/**
+ * Execute the Swing or Position suite through Strategy Engine for one candidate.
+ */
 export function executeOpportunityStrategies(
   candidate: OpportunityCandidate,
   pipeline: TradingPipelineResult,
   candles: readonly OhlcBar[]
 ): OpportunityStrategyExecution {
-  const registry = getStrategyRegistry();
-  const preferred = CATEGORY_STRATEGY_IDS[candidate.category];
-  const eligibleIds = preferred.filter((strategyId) => {
-    const eligibility = pipeline.eligibleStrategies.find(
-      (strategy) => strategy.strategyId === strategyId
-    );
-    return Boolean(eligibility?.eligible && registry.has(strategyId));
-  });
-  const strategyIds =
-    eligibleIds.length > 0 && candles.length > 0
-      ? eligibleIds
-      : preferred.filter((strategyId) => registry.has(strategyId));
+  const strategyIds = resolveSuiteIds(candidate, pipeline);
+  if (strategyIds.length === 0) {
+    return {
+      primary: null,
+      signals: [],
+      executedStrategyIds: [],
+      rejectedReasons: ["No registered strategies mapped for category"],
+      consensus: null,
+      longTermRanking: null,
+    };
+  }
 
   const results: StrategyEngineResult[] = [];
   for (const strategyId of strategyIds) {
+    // Skip empty candle payloads for technical Swing strategies.
+    if (
+      isSwingStrategyId(strategyId) &&
+      strategyId !== "earnings-momentum" &&
+      candles.length < 30
+    ) {
+      continue;
+    }
     const input = buildStrategyInput(strategyId, candidate, candles);
     const context: StrategyExecutionContext = {
       input,
@@ -287,24 +392,50 @@ export function executeOpportunityStrategies(
     results.push(getStrategyEngine().execute(strategyId, context));
   }
 
-  const ranked = results.slice().sort((left, right) => rankResult(right) - rankResult(left));
+  const ranked = results
+    .slice()
+    .sort((left, right) => rankResult(right) - rankResult(left));
   const actionable = ranked.filter(
     (result) => result.signal.signal !== "IGNORE"
   );
   const deduped = new Map<string, OpportunityStrategySignal>();
   for (const result of actionable) {
-    const signal = toSignalDto(result.signal);
+    const signal = toSignalDto(result.signal, pipeline.context.marketTrend);
     const key = `${signal.strategyId}:${candidate.symbol}:${signal.signal}`;
     if (!deduped.has(key)) deduped.set(key, signal);
   }
 
+  const signals = [...deduped.values()];
+  const primary = signals[0] ?? null;
+  const consensus = buildStrategyConsensus(signals, primary);
+  const longTermRanking = computeLongTermRankingFactors(
+    candidate,
+    primary,
+    consensus
+  );
+
   return {
-    primary: deduped.values().next().value ?? null,
-    signals: [...deduped.values()],
+    primary,
+    signals,
     executedStrategyIds: results.map((result) => result.signal.strategyId),
     rejectedReasons: ranked
       .filter((result) => result.signal.signal === "IGNORE")
       .flatMap((result) => result.signal.reasons)
       .slice(0, 8),
+    consensus,
+    longTermRanking,
   };
 }
+
+export function isSwingOrPositionCategory(
+  category: OpportunityCandidate["category"]
+): boolean {
+  return (
+    category === "swing" ||
+    category === "breakout" ||
+    category === "momentum" ||
+    category === "ai_high_conviction"
+  );
+}
+
+export { isSwingStrategyId, isPositionStrategyId };

@@ -15,9 +15,32 @@ import type { TradingPipelineResult } from "@/src/modules/tradingPipeline";
 /** Map opportunity categories onto registered strategy IDs (best-fit first). */
 export const CATEGORY_STRATEGY_IDS: Record<OpportunityCategory, StrategyId[]> = {
   intraday: ["orb", "gap-and-go", "scalping", "opening-range-fade"],
-  swing: ["ema-pullback", "momentum-continuation", "relative-strength"],
-  breakout: ["breakout-retest", "vcp", "fifty-two-week-high", "cup-and-handle"],
-  momentum: ["momentum-continuation", "relative-strength", "relative-strength-leadership"],
+  swing: [
+    "ema-pullback",
+    "vcp",
+    "stage-analysis",
+    "darvas",
+    "relative-strength-leadership",
+    "cup-and-handle",
+    "flat-base",
+    "fifty-two-week-high",
+    "earnings-momentum",
+  ],
+  breakout: [
+    "vcp",
+    "cup-and-handle",
+    "flat-base",
+    "fifty-two-week-high",
+    "darvas",
+    "breakout-retest",
+  ],
+  momentum: [
+    "relative-strength-leadership",
+    "ema-pullback",
+    "earnings-momentum",
+    "stage-analysis",
+    "momentum-continuation",
+  ],
   relative_volume: ["institutional-accumulation", "vwap-continuation"],
   mean_reversion: ["vwap-mean-reversion", "liquidity-sweep"],
   ai_high_conviction: [

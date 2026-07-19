@@ -38,8 +38,9 @@ import {
   formatWatchlistPlatformSubtitle,
 } from "@/services/watchlistPlatform";
 import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
-import { MarketIntelligenceStrip, StrategySignalPanel } from "@/components/market";
-import { fetchStandardizedStrategySignals } from "@/services/opportunityEngine";
+import { MarketIntelligenceStrip, StrategyConsensusPanel, StrategySignalPanel } from "@/components/market";
+import { fetchSwingPositionStrategyCandidates, fetchStandardizedStrategySignals } from "@/services/opportunityEngine";
+
 import { PageContainer } from "@/src/design";
 
 export default async function ResearchPage() {
@@ -91,6 +92,7 @@ export default async function ResearchPage() {
   });
   const marketIntelligence = await getMarketIntelligenceSnapshot();
   const strategySignals = fetchStandardizedStrategySignals(4);
+  const swingPositionIdeas = fetchSwingPositionStrategyCandidates(4);
 
   return (
     <PageContainer>
@@ -141,6 +143,9 @@ export default async function ResearchPage() {
       </div>
       <div className="mb-6">
         <StrategySignalPanel candidates={strategySignals} />
+      </div>
+      <div className="mb-6">
+        <StrategyConsensusPanel candidates={swingPositionIdeas} />
       </div>
 
       {view.empty && multi.empty ? (

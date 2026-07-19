@@ -57,3 +57,10 @@ export type {
   PipelineScanSummary,
   PipelineEnrichmentOptions,
 } from "@/lib/opportunity-engine/pipeline-enrichment";
+export {
+  SWING_STRATEGY_IDS,
+  POSITION_STRATEGY_IDS,
+  SWING_POSITION_STRATEGY_IDS,
+} from "@/lib/opportunity-engine/swing-position-catalog";
+export { buildStrategyConsensus } from "@/lib/opportunity-engine/strategy-consensus";
+export { computeLongTermRankingFactors } from "@/lib/opportunity-engine/long-term-ranking";

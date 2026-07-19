@@ -1,11 +1,14 @@
 import { Watchlist } from "@/components/dashboard/Watchlist";
 import { WatchlistEarningsPanel } from "@/components/dashboard/earnings";
-import { MarketIntelligenceStrip, StrategySignalPanel } from "@/components/market";
+import { MarketIntelligenceStrip, StrategySignalPanel, WatchlistStrategyMatches } from "@/components/market";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { fetchWatchlist } from "@/services/marketData";
 import { fetchWatchlistEarningsSurface } from "@/services/earningsCalendar";
 import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
-import { fetchStandardizedStrategySignals } from "@/services/opportunityEngine";
+import {
+  fetchStandardizedStrategySignals,
+  fetchWatchlistStrategyMatches,
+} from "@/services/opportunityEngine";
 import { fetchInstitutionalScreenerHealth } from "@/services/screenerData";
 import { fetchResearchWorkspaceHealth } from "@/services/researchWorkspace";
 import {
@@ -31,6 +34,9 @@ export default async function WatchlistPage() {
     getMarketIntelligenceSnapshot(),
   ]);
   const strategySignals = fetchStandardizedStrategySignals(4);
+  const strategyMatches = fetchWatchlistStrategyMatches(
+    watchlist.map((item) => item.symbol)
+  );
 
   return (
     <PageContainer>
@@ -44,6 +50,12 @@ export default async function WatchlistPage() {
       </section>
       <section className="mb-6 animate-fade-in-up">
         <StrategySignalPanel candidates={strategySignals} />
+      </section>
+      <section className="mb-6 animate-fade-in-up rounded-xl border border-surface-border-subtle bg-surface-card p-4">
+        <h2 className="mb-3 text-sm font-semibold text-text-primary">
+          Watchlist Strategy Matches
+        </h2>
+        <WatchlistStrategyMatches matches={strategyMatches} />
       </section>
 
       <section className="animate-fade-in-up">

@@ -32,6 +32,44 @@ export function fetchStandardizedStrategySignals(
     .slice(0, limit);
 }
 
+export function fetchSwingPositionStrategyCandidates(
+  limit = 8
+): OpportunityCandidate[] {
+  const state = getOpportunityState();
+  return [
+    ...state.categories.swing,
+    ...state.categories.breakout,
+    ...state.categories.momentum,
+    ...state.categories.ai_high_conviction,
+  ]
+    .filter((candidate) => candidate.strategyConsensus !== undefined)
+    .sort(
+      (left, right) =>
+        (right.frameworkScore ?? right.opportunityScore ?? 0) -
+        (left.frameworkScore ?? left.opportunityScore ?? 0)
+    )
+    .slice(0, limit);
+}
+
+export function fetchWatchlistStrategyMatches(
+  symbols: readonly string[]
+): Map<string, OpportunityCandidate> {
+  const wanted = new Set(symbols.map((symbol) => symbol.toUpperCase()));
+  const matches = new Map<string, OpportunityCandidate>();
+  for (const candidate of Object.values(getOpportunityState().categories).flat()) {
+    const symbol = candidate.symbol.toUpperCase();
+    if (!wanted.has(symbol) || !candidate.strategySignal) continue;
+    const existing = matches.get(symbol);
+    if (
+      !existing ||
+      (candidate.opportunityScore ?? 0) > (existing.opportunityScore ?? 0)
+    ) {
+      matches.set(symbol, candidate);
+    }
+  }
+  return matches;
+}
+
 /**
  * Opportunity Engine + shared Market Context / Regime snapshot.
  * Context is computed once via marketIntelligence — never duplicated here.

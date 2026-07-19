@@ -63,19 +63,24 @@ export const CATEGORY_LIMITS: Record<OpportunityCategory, number> = {
 export interface OpportunityStrategySignal {
   strategy: string;
   strategyId: string;
+  category: string;
+  timeframe: string;
   signal: "BUY" | "SELL" | "WATCHLIST" | "IGNORE";
   entry: number;
   stopLoss: number;
   target: number;
   target1: number;
   target2: number;
+  holdingPeriod: string;
   confidence: number;
+  conviction: number;
   risk: number;
   reward: number;
   riskReward: number;
   reasons: string[];
   evidence: string[];
   tags: string[];
+  marketContext: string;
   marketRegime: string;
   eligibility: {
     eligible: boolean;
@@ -83,6 +88,41 @@ export interface OpportunityStrategySignal {
     reasons: string[];
   };
   timestamp: string;
+}
+
+export interface OpportunityStrategyConsensus {
+  primaryStrategy: string;
+  primaryStrategyId: string;
+  supportingStrategies: string[];
+  opposingStrategies: string[];
+  agreementPercent: number;
+  conflictPercent: number;
+  agreementScore: number;
+  combinedScore: number;
+  finalConfidence: number;
+  conviction: number;
+  technicalFramework: string[];
+  fundamentalFramework: string[];
+  valuationFramework: string[];
+  growthFramework: string[];
+  combinedVerdict: string;
+}
+
+export interface OpportunityLongTermRanking {
+  technicalQuality: number;
+  fundamentalQuality: number;
+  valuation: number;
+  growth: number;
+  capitalAllocation: number;
+  momentum: number;
+  institutionalOwnership: number;
+  sectorStrength: number;
+  marketContext: number;
+  marketRegime: number;
+  aiConfidence: number;
+  risk: number;
+  reward: number;
+  frameworkScore: number;
 }
 
 export interface OpportunityCandidate {
@@ -159,6 +199,12 @@ export interface OpportunityCandidate {
   strategySignals?: OpportunityStrategySignal[];
   /** Registry ids actually executed for this candidate. */
   executedStrategyIds?: string[];
+  /** Multi-strategy consensus / conflict for Swing & Position suites. */
+  strategyConsensus?: OpportunityStrategyConsensus;
+  /** Long-term ranking factor breakdown. */
+  longTermRanking?: OpportunityLongTermRanking;
+  /** Framework score used for Swing/Position ranking. */
+  frameworkScore?: number;
 }
 
 export type RecommendationRecordStatus =
