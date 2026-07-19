@@ -19,6 +19,10 @@ export {
   cycleDensity,
   isColumnSearchable,
   defaultColumnAlign,
+  applySortClick,
+  resolveSortStack,
+  sortRowsMulti,
+  filterRowsAdvanced,
   DENSITY_MODES,
   DENSITY_LABELS,
   DENSITY_CELL_CLASSES,
@@ -33,6 +37,8 @@ export type {
   InstitutionalTableDef,
   ProcessedTable,
   SortDirection,
+  SortSpec,
+  RangeFilter,
   TableColumn,
   TableState,
 } from "./tableEngine";
@@ -46,5 +52,20 @@ export {
 } from "./tablePreferences";
 export type { TablePreferences } from "./tablePreferences";
 
+export {
+  listSavedViews,
+  saveNamedView,
+  deleteNamedView,
+  applyNamedView,
+  BUILTIN_VIEW_PRESETS,
+} from "./savedViews";
+export type { SavedTableView } from "./savedViews";
+
 export { InstitutionalTable } from "./InstitutionalTable";
 export type { BulkAction } from "./InstitutionalTable";
+
+export { ResearchDataGrid } from "./ResearchDataGrid";
+export type { ResearchDataGridProps } from "./ResearchDataGrid";
+
+export { AdvancedFilterBar } from "./AdvancedFilterBar";
+export { highlightSearchText } from "./searchHighlight";

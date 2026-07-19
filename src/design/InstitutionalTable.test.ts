@@ -7,6 +7,7 @@
 import { describe, expect, it } from "vitest";
 import {
   applyTablePreferences,
+  applySortClick,
   CELL_TONE_PILL_CLASS,
   CELL_TONE_TEXT_CLASS,
   createInstitutionalTable,
@@ -15,6 +16,7 @@ import {
   DENSITY_CELL_CLASSES,
   DENSITY_MODES,
   filterRows,
+  filterRowsAdvanced,
   isColumnSearchable,
   moveColumn,
   moveFocus,
@@ -23,11 +25,13 @@ import {
   registerColumn,
   renderCell,
   resetTableLayout,
+  resolveSortStack,
   restoreTablePreferences,
   saveTablePreferences,
   searchRows,
   setColumnWidth,
   sortRows,
+  sortRowsMulti,
   TABLE_CLASSES,
   tablePreferencesFromState,
   toCsv,
@@ -89,6 +93,9 @@ describe("table creation and column registry", () => {
     expect(table.defaultState.columnWidths).toEqual({ price: 100 });
     expect(table.defaultState.pageSize).toBe(25);
     expect(table.defaultState.density).toBe("comfortable");
+    expect(table.defaultState.sorts).toEqual([]);
+    expect(table.defaultState.pinLeft).toEqual(["symbol"]);
+    expect(table.defaultState.rangeFilters).toEqual({});
   });
 
   it("registerColumn appends without mutating and rejects duplicates", () => {
@@ -136,6 +143,34 @@ describe("sorting", () => {
       "INFY",
       "TCS",
       "WIPRO",
+    ]);
+  });
+
+  it("supports multi-column sort via applySortClick", () => {
+    const table = makeTable();
+    let state = table.defaultState;
+    state = applySortClick(state, "changePercent", false);
+    state = applySortClick(state, "price", true);
+    expect(resolveSortStack(state).map((s) => s.columnId)).toEqual([
+      "changePercent",
+      "price",
+    ]);
+    const ordered = sortRowsMulti(ROWS, COLUMNS, resolveSortStack(state)).map(
+      (row) => row.symbol
+    );
+    expect(ordered[0]).toBe("TCS");
+  });
+
+  it("applies numeric range and multi-select filters", () => {
+    const filtered = filterRowsAdvanced(
+      ROWS,
+      COLUMNS,
+      { price: { min: 1600, max: 2000 } },
+      { symbol: ["INFY", "HDFCBANK"] }
+    );
+    expect(filtered.map((row) => row.symbol).sort()).toEqual([
+      "HDFCBANK",
+      "INFY",
     ]);
   });
 });

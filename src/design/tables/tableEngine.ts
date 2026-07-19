@@ -60,6 +60,11 @@ export interface TableColumn<Row = Record<string, unknown>> {
 
 export type SortDirection = "asc" | "desc";
 
+export interface SortSpec {
+  columnId: string;
+  direction: SortDirection;
+}
+
 export type DensityMode = "comfortable" | "compact" | "ultra";
 
 export const DENSITY_MODES: readonly DensityMode[] = [
@@ -68,15 +73,16 @@ export const DENSITY_MODES: readonly DensityMode[] = [
   "ultra",
 ];
 
+/** Spec labels: Spacious / Comfortable / Compact. */
 export const DENSITY_LABELS: Record<DensityMode, string> = {
-  comfortable: "Comfortable",
-  compact: "Compact",
-  ultra: "Ultra compact",
+  comfortable: "Spacious",
+  compact: "Comfortable",
+  ultra: "Compact",
 };
 
 /** Cell padding / text-size classes per density mode. */
 export const DENSITY_CELL_CLASSES: Record<DensityMode, string> = {
-  comfortable: "px-3 py-2.5 text-sm",
+  comfortable: "px-3 py-3 text-sm",
   compact: "px-2.5 py-1.5 text-xs",
   ultra: "px-2 py-1 text-[11px]",
 };
@@ -86,18 +92,35 @@ export function cycleDensity(mode: DensityMode): DensityMode {
   return DENSITY_MODES[(index + 1) % DENSITY_MODES.length];
 }
 
+/** Numeric / date range filter (inclusive). */
+export interface RangeFilter {
+  min?: number | null;
+  max?: number | null;
+}
+
 export interface TableState {
-  sort: { columnId: string; direction: SortDirection } | null;
+  /** Primary sort (backward compatible). */
+  sort: SortSpec | null;
+  /** Multi-column sort — applied left-to-right after `sort` when present. */
+  sorts: readonly SortSpec[];
   search: string;
   /** Per-column substring filters (case-insensitive). */
   filters: Record<string, string>;
+  /** Per-column numeric range filters. */
+  rangeFilters: Record<string, RangeFilter>;
+  /** Multi-select equality filters (string values). */
+  multiFilters: Record<string, readonly string[]>;
   page: number;
   pageSize: number;
   density: DensityMode;
   hiddenColumns: readonly string[];
   columnOrder: readonly string[];
   columnWidths: Record<string, number>;
+  /** Extra pinned column ids (in addition to column.sticky). */
+  pinLeft: readonly string[];
+  pinRight: readonly string[];
 }
+
 
 export interface InstitutionalTableConfig<Row> {
   /** Unique id — also used as the preferences persistence key. */
@@ -143,8 +166,11 @@ export function createInstitutionalTable<Row>(
   const columns = config.columns.map((column) => ({ ...column }));
   const defaultState: TableState = {
     sort: config.defaultSort ?? null,
+    sorts: config.defaultSort ? [config.defaultSort] : [],
     search: "",
     filters: {},
+    rangeFilters: {},
+    multiFilters: {},
     page: 0,
     pageSize: config.pageSize ?? 25,
     density: config.density ?? "comfortable",
@@ -157,6 +183,8 @@ export function createInstitutionalTable<Row>(
         .filter((column) => column.width !== undefined)
         .map((column) => [column.id, column.width as number])
     ),
+    pinLeft: columns.filter((c) => c.sticky).map((c) => c.id),
+    pinRight: [],
   };
   return { id: config.id, columns, defaultState };
 }
@@ -259,6 +287,126 @@ export function filterRows<Row>(
   );
 }
 
+export function filterRowsAdvanced<Row>(
+  rows: readonly Row[],
+  columns: readonly TableColumn<Row>[],
+  rangeFilters: Record<string, RangeFilter>,
+  multiFilters: Record<string, readonly string[]>
+): Row[] {
+  let working = [...rows];
+  for (const [columnId, range] of Object.entries(rangeFilters)) {
+    if (range.min == null && range.max == null) continue;
+    const column = columns.find((c) => c.id === columnId);
+    if (!column) continue;
+    working = working.filter((row) => {
+      const raw = columnValue(column, row);
+      const num =
+        typeof raw === "number"
+          ? raw
+          : typeof raw === "string"
+            ? Number.parseFloat(raw)
+            : NaN;
+      if (!Number.isFinite(num)) return false;
+      if (range.min != null && num < range.min) return false;
+      if (range.max != null && num > range.max) return false;
+      return true;
+    });
+  }
+  for (const [columnId, values] of Object.entries(multiFilters)) {
+    if (!values || values.length === 0) continue;
+    const column = columns.find((c) => c.id === columnId);
+    if (!column) continue;
+    const allowed = new Set(values.map((v) => v.toLowerCase()));
+    working = working.filter((row) => {
+      const raw = columnValue(column, row);
+      if (raw === null || raw === undefined) return false;
+      return allowed.has(String(raw).toLowerCase());
+    });
+  }
+  return working;
+}
+
+/** Resolve active sort stack (multi-sort with primary fallback). */
+export function resolveSortStack(state: TableState): SortSpec[] {
+  if (state.sorts && state.sorts.length > 0) return [...state.sorts];
+  if (state.sort) return [state.sort];
+  return [];
+}
+
+export function sortRowsMulti<Row>(
+  rows: readonly Row[],
+  columns: readonly TableColumn<Row>[],
+  specs: readonly SortSpec[]
+): Row[] {
+  if (specs.length === 0) return [...rows];
+  const resolved = specs
+    .map((spec) => ({
+      spec,
+      column: columns.find((c) => c.id === spec.columnId),
+    }))
+    .filter(
+      (entry): entry is { spec: SortSpec; column: TableColumn<Row> } =>
+        entry.column != null && entry.column.sortable !== false
+    );
+  if (resolved.length === 0) return [...rows];
+
+  return [...rows].sort((a, b) => {
+    for (const { spec, column } of resolved) {
+      const factor = spec.direction === "asc" ? 1 : -1;
+      const va = comparableValue(columnValue(column, a));
+      const vb = comparableValue(columnValue(column, b));
+      const aMissing = va.num === null && va.text === "";
+      const bMissing = vb.num === null && vb.text === "";
+      if (aMissing && bMissing) continue;
+      if (aMissing) return 1;
+      if (bMissing) return -1;
+      let cmp = 0;
+      if (va.num !== null && vb.num !== null) cmp = va.num - vb.num;
+      else
+        cmp = va.text.localeCompare(vb.text, undefined, { numeric: true });
+      if (cmp !== 0) return cmp * factor;
+    }
+    return 0;
+  });
+}
+
+/**
+ * Toggle / cycle sort. Shift+click appends secondary sorts.
+ */
+export function applySortClick(
+  state: TableState,
+  columnId: string,
+  multi: boolean
+): TableState {
+  const stack = resolveSortStack(state);
+  const existing = stack.findIndex((s) => s.columnId === columnId);
+
+  if (!multi) {
+    const direction: SortDirection =
+      existing === 0 && stack[0]?.direction === "desc" ? "asc" : "desc";
+    const next: SortSpec = { columnId, direction };
+    return { ...state, sort: next, sorts: [next], page: 0 };
+  }
+
+  const nextStack = [...stack];
+  if (existing >= 0) {
+    const current = nextStack[existing];
+    if (current.direction === "desc") {
+      nextStack[existing] = { columnId, direction: "asc" };
+    } else {
+      nextStack.splice(existing, 1);
+    }
+  } else {
+    nextStack.push({ columnId, direction: "desc" });
+  }
+  return {
+    ...state,
+    sorts: nextStack,
+    sort: nextStack[0] ?? null,
+    page: 0,
+  };
+}
+
 export function paginateRows<Row>(
   rows: readonly Row[],
   page: number,
@@ -308,14 +456,16 @@ export function processTable<Row>(
   state: TableState
 ): ProcessedTable<Row> {
   let working = filterRows(rows, table.columns, state.filters);
+  working = filterRowsAdvanced(
+    working,
+    table.columns,
+    state.rangeFilters ?? {},
+    state.multiFilters ?? {}
+  );
   working = searchRows(working, table.columns, state.search);
-  if (state.sort) {
-    const column = table.columns.find(
-      (candidate) => candidate.id === state.sort?.columnId
-    );
-    if (column && column.sortable !== false) {
-      working = sortRows(working, column, state.sort.direction);
-    }
+  const specs = resolveSortStack(state);
+  if (specs.length > 0) {
+    working = sortRowsMulti(working, table.columns, specs);
   }
   const filteredCount = working.length;
   const paged = paginateRows(working, state.page, state.pageSize);
@@ -382,6 +532,11 @@ export function resetTableLayout<Row>(
     columnOrder: table.defaultState.columnOrder,
     columnWidths: table.defaultState.columnWidths,
     density: table.defaultState.density,
+    pinLeft: table.defaultState.pinLeft,
+    pinRight: table.defaultState.pinRight,
+    filters: {},
+    rangeFilters: {},
+    multiFilters: {},
   };
 }
 

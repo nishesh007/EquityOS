@@ -38,6 +38,8 @@ import {
   toCsv,
   toggleColumnVisibility,
   visibleColumns,
+  applySortClick,
+  resolveSortStack,
   type CellPosition,
   type InstitutionalTableDef,
   type SortDirection,
@@ -50,6 +52,8 @@ import {
   saveTablePreferences,
   tablePreferencesFromState,
 } from "./tablePreferences";
+import { AdvancedFilterBar } from "./AdvancedFilterBar";
+import { highlightSearchText } from "./searchHighlight";
 
 export interface BulkAction<Row> {
   id: string;
@@ -77,6 +81,14 @@ interface InstitutionalTableProps<Row> {
   paginated?: boolean;
   maxHeight?: number;
   className?: string;
+  /**
+   * One-shot state apply for saved views.
+   * Only applied when `applyStateKey` changes (avoids controlled loops).
+   */
+  applyState?: TableState | null;
+  applyStateKey?: number;
+  /** Snapshot callback for saved views / parent tooling. */
+  onStateChange?: (state: TableState) => void;
 }
 
 export function InstitutionalTable<Row>({
@@ -95,20 +107,31 @@ export function InstitutionalTable<Row>({
   paginated = true,
   maxHeight = 480,
   className,
+  applyState = null,
+  applyStateKey = 0,
+  onStateChange,
 }: InstitutionalTableProps<Row>) {
   const [state, setState] = useState<TableState>(table.defaultState);
+  const [searchInput, setSearchInput] = useState("");
   const [fullscreen, setFullscreen] = useState(false);
   const [focused, setFocused] = useState<CellPosition | null>(null);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const hydrated = useRef(false);
   const gridRef = useRef<HTMLDivElement>(null);
+  const lastApplyKey = useRef(0);
+  const onStateChangeRef = useRef(onStateChange);
+  onStateChangeRef.current = onStateChange;
 
   // Restore persisted preferences after mount (avoids hydration mismatch).
   useEffect(() => {
     if (!persistPreferences) return;
     const prefs = restoreTablePreferences(table.id);
     if (prefs) {
-      setState((current) => applyTablePreferences(current, prefs));
+      setState((current) => {
+        const next = applyTablePreferences(current, prefs);
+        setSearchInput(next.search);
+        return next;
+      });
     }
     hydrated.current = true;
   }, [table.id, persistPreferences]);
@@ -117,6 +140,30 @@ export function InstitutionalTable<Row>({
     if (!persistPreferences || !hydrated.current) return;
     saveTablePreferences(table.id, tablePreferencesFromState(state));
   }, [state, table.id, persistPreferences]);
+
+  // Apply saved-view / preset patches only when the key bumps.
+  useEffect(() => {
+    if (!applyState || applyStateKey === lastApplyKey.current) return;
+    lastApplyKey.current = applyStateKey;
+    setState(applyState);
+    setSearchInput(applyState.search);
+  }, [applyState, applyStateKey]);
+
+  useEffect(() => {
+    onStateChangeRef.current?.(state);
+  }, [state]);
+
+  // Debounced global search (150ms).
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      setState((current) =>
+        current.search === searchInput
+          ? current
+          : { ...current, search: searchInput, page: 0 }
+      );
+    }, 150);
+    return () => window.clearTimeout(handle);
+  }, [searchInput]);
 
   useEffect(() => {
     if (!fullscreen) return;
@@ -152,21 +199,22 @@ export function InstitutionalTable<Row>({
     []
   );
 
-  const handleSort = (column: TableColumn<Row>) => {
+  const handleSort = (column: TableColumn<Row>, multi = false) => {
     if (column.sortable === false) return;
-    setState((current) => {
-      const direction: SortDirection =
-        current.sort?.columnId === column.id && current.sort.direction === "desc"
-          ? "asc"
-          : "desc";
-      return { ...current, sort: { columnId: column.id, direction }, page: 0 };
-    });
+    setState((current) => applySortClick(current, column.id, multi));
   };
 
   const handleExport = () => {
     const allVisible = visibleColumns(table.columns, state);
-    const exportRows = selectedRows.length > 0 ? selectedRows : rows;
-    const csv = toCsv(allVisible, exportRows);
+    const filtered =
+      selectedRows.length > 0
+        ? selectedRows
+        : processTable(table, rows, {
+            ...state,
+            page: 0,
+            pageSize: Math.max(1, rows.length),
+          }).rows;
+    const csv = toCsv(allVisible, filtered);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -265,20 +313,48 @@ export function InstitutionalTable<Row>({
       <TableToolbar
         title={title}
         subtitle={subtitle}
-        search={state.search}
-        onSearchChange={(value) => update({ search: value, page: 0 })}
+        search={searchInput}
+        onSearchChange={setSearchInput}
         density={state.density}
         onCycleDensity={() => update({ density: cycleDensity(state.density) })}
         columns={table.columns as readonly TableColumn<never>[]}
         hiddenColumns={state.hiddenColumns}
         columnOrder={state.columnOrder}
+        pinLeft={state.pinLeft ?? []}
         onToggleColumn={(id) => setState((s) => toggleColumnVisibility(s, id))}
         onMoveColumn={(id, dir) => setState((s) => moveColumn(s, id, dir))}
+        onTogglePinLeft={(id) =>
+          setState((s) => {
+            const pinned = s.pinLeft ?? [];
+            return {
+              ...s,
+              pinLeft: pinned.includes(id)
+                ? pinned.filter((c) => c !== id)
+                : [...pinned, id],
+            };
+          })
+        }
         onResetLayout={() => setState((s) => resetTableLayout(table, s))}
         onExport={handleExport}
         fullscreen={fullscreen}
         onToggleFullscreen={() => setFullscreen((f) => !f)}
         onRefresh={onRefresh}
+        extra={
+          <AdvancedFilterBar
+            columns={table.columns}
+            filters={state.filters}
+            rangeFilters={state.rangeFilters ?? {}}
+            multiFilters={state.multiFilters ?? {}}
+            rows={rows}
+            onFiltersChange={(filters) => update({ filters, page: 0 })}
+            onRangeFiltersChange={(rangeFilters) =>
+              update({ rangeFilters, page: 0 })
+            }
+            onMultiFiltersChange={(multiFilters) =>
+              update({ multiFilters, page: 0 })
+            }
+          />
+        }
       />
 
       {selectionEnabled && selected.size > 0 && (
@@ -341,15 +417,24 @@ export function InstitutionalTable<Row>({
                     const align = defaultColumnAlign(
                       column as TableColumn<never>
                     );
-                    const sortActive = state.sort?.columnId === column.id;
+                    const sortStack = resolveSortStack(state);
+                    const sortIndex = sortStack.findIndex(
+                      (s) => s.columnId === column.id
+                    );
+                    const sortActive = sortIndex >= 0;
+                    const sortDir =
+                      sortIndex >= 0 ? sortStack[sortIndex].direction : null;
                     const width = state.columnWidths[column.id] ?? column.width;
+                    const pinnedLeft =
+                      column.sticky ||
+                      (state.pinLeft ?? []).includes(column.id);
                     return (
                       <th
                         key={column.id}
                         scope="col"
                         aria-sort={
                           sortActive
-                            ? state.sort?.direction === "asc"
+                            ? sortDir === "asc"
                               ? "ascending"
                               : "descending"
                             : undefined
@@ -357,14 +442,17 @@ export function InstitutionalTable<Row>({
                         style={width ? { width, minWidth: width } : undefined}
                         className={cn(
                           "group/th relative select-none",
-                          column.sticky && "institutional-table-sticky-col z-20",
+                          pinnedLeft && "institutional-table-sticky-col z-20",
                           align === "right" && "!text-right"
                         )}
                       >
                         <button
                           type="button"
-                          onClick={() => handleSort(column)}
+                          onClick={(event) =>
+                            handleSort(column, event.shiftKey)
+                          }
                           disabled={column.sortable === false}
+                          title="Click to sort · Shift+click for multi-sort"
                           className={cn(
                             "inline-flex items-center gap-1 uppercase tracking-wider",
                             align === "right" && "flex-row-reverse",
@@ -373,9 +461,14 @@ export function InstitutionalTable<Row>({
                           )}
                         >
                           {column.label}
+                          {sortActive && sortStack.length > 1 ? (
+                            <span className="rounded bg-accent/15 px-1 text-[9px] font-bold text-accent">
+                              {sortIndex + 1}
+                            </span>
+                          ) : null}
                           {column.sortable !== false &&
                             (sortActive ? (
-                              state.sort?.direction === "asc" ? (
+                              sortDir === "asc" ? (
                                 <ArrowUp className="h-3 w-3 text-accent" />
                               ) : (
                                 <ArrowDown className="h-3 w-3 text-accent" />
@@ -444,13 +537,22 @@ export function InstitutionalTable<Row>({
                           const isFocused =
                             focused?.row === rowIndex &&
                             focused?.col === colIndex;
+                          const pinnedLeft =
+                            column.sticky ||
+                            (state.pinLeft ?? []).includes(column.id);
+                          const rawValue = columnValue(column, row);
+                          const showHighlight =
+                            Boolean(state.search.trim()) &&
+                            (column.kind === "text" ||
+                              column.kind === "badge" ||
+                              column.kind === "tag" ||
+                              column.kind === "status");
                           return (
                             <td
                               key={column.id}
                               className={cn(
                                 "!p-0",
-                                column.sticky &&
-                                  "institutional-table-sticky-col"
+                                pinnedLeft && "institutional-table-sticky-col"
                               )}
                             >
                               <div
@@ -461,10 +563,20 @@ export function InstitutionalTable<Row>({
                                     "rounded ring-1 ring-inset ring-accent"
                                 )}
                               >
-                                <CellRenderer
-                                  kind={column.kind}
-                                  value={columnValue(column, row)}
-                                />
+                                {showHighlight &&
+                                typeof rawValue === "string" ? (
+                                  <span>
+                                    {highlightSearchText(
+                                      rawValue,
+                                      state.search
+                                    )}
+                                  </span>
+                                ) : (
+                                  <CellRenderer
+                                    kind={column.kind}
+                                    value={rawValue}
+                                  />
+                                )}
                               </div>
                             </td>
                           );

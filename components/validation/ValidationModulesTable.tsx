@@ -10,7 +10,7 @@ import { useMemo } from "react";
 import { ShieldCheck } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import type { InstitutionalPlatformSnapshot } from "@/lib/opportunity-engine/institutional-presentation";
-import { createInstitutionalTable, InstitutionalTable } from "@/src/design";
+import { createInstitutionalTable, ResearchDataGrid } from "@/src/design";
 
 interface ValidationModuleRow {
   id: string;
@@ -74,7 +74,7 @@ export function ValidationModulesTable({
           </div>
         }
       />
-      <InstitutionalTable
+      <ResearchDataGrid
         table={VALIDATION_TABLE}
         rows={rows}
         getRowId={(row) => row.id}

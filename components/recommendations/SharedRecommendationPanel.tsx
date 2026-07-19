@@ -1,10 +1,17 @@
+"use client";
+
 import type { SharedRecommendation } from "@/lib/recommendations";
 import { CATEGORY_LABELS } from "@/lib/opportunity-engine/types";
 import { Badge } from "@/components/ui/Badge";
 import { CardFooter } from "@/components/ui/Card";
 import { ConfidenceBar } from "@/components/ui/ConfidenceBar";
 import { EmptyStatePanel } from "@/components/ui/EmptyStatePanel";
-import { StatusBadge, statusToneFromLabel } from "@/src/design";
+import {
+  StatusBadge,
+  statusToneFromLabel,
+  createInstitutionalTable,
+  ResearchDataGrid,
+} from "@/src/design";
 import {
   Crosshair,
   Eye,
@@ -14,6 +21,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
+import { useMemo } from "react";
 
 function price(value: number): string {
   return `₹${value.toLocaleString("en-IN", {
@@ -96,6 +104,48 @@ function formatTs(iso: string): string {
   }
 }
 
+interface OpportunityGridRow {
+  id: string;
+  symbol: string;
+  company: string;
+  action: string;
+  category: string;
+  strategy: string;
+  strategyCount: number;
+  entry: number;
+  stopLoss: number;
+  target: number;
+  riskReward: number;
+  confidence: number;
+  conviction: number;
+  regime: string;
+  timestamp: string;
+  source: SharedRecommendation;
+}
+
+const OPPORTUNITIES_TABLE = createInstitutionalTable<OpportunityGridRow>({
+  id: "ai-opportunities",
+  pageSize: 25,
+  density: "compact",
+  defaultSort: { columnId: "confidence", direction: "desc" },
+  columns: [
+    { id: "symbol", label: "Symbol", kind: "text", sticky: true, width: 110 },
+    { id: "company", label: "Company", kind: "text", hidden: true },
+    { id: "action", label: "Action", kind: "badge", width: 90 },
+    { id: "category", label: "Category", kind: "text", hidden: true },
+    { id: "strategy", label: "Strategy", kind: "text", width: 160 },
+    { id: "strategyCount", label: "Matched", kind: "number" },
+    { id: "entry", label: "Entry", kind: "price" },
+    { id: "stopLoss", label: "Stop", kind: "price" },
+    { id: "target", label: "Target", kind: "price" },
+    { id: "riskReward", label: "R:R", kind: "number" },
+    { id: "confidence", label: "Confidence", kind: "percent" },
+    { id: "conviction", label: "Conviction", kind: "number" },
+    { id: "regime", label: "Regime", kind: "status" },
+    { id: "timestamp", label: "Updated", kind: "date", hidden: true },
+  ],
+});
+
 /** Mobile card row — collapses table gracefully. */
 function OpportunityCard({
   recommendation,
@@ -162,6 +212,80 @@ function OpportunityCard({
   );
 }
 
+function OpportunityExpanded({
+  recommendation,
+}: {
+  recommendation: SharedRecommendation;
+}) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-text-faint">
+          AI Summary
+        </p>
+        <p className="mt-1 text-xs text-text-secondary">
+          {recommendation.reasons.length > 0
+            ? recommendation.reasons.join(" · ")
+            : recommendation.marketContext || "No summary available."}
+        </p>
+      </div>
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-text-faint">
+          Strategy Details
+        </p>
+        <p className="mt-1 text-xs text-text-secondary">
+          {recommendation.primaryStrategy}
+          {recommendation.matchedStrategies.length > 0
+            ? ` · ${recommendation.matchedStrategies.join(", ")}`
+            : ""}
+        </p>
+      </div>
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-text-faint">
+          Bull Case
+        </p>
+        <p className="mt-1 text-xs text-text-secondary">
+          {recommendation.supportingStrategies.length > 0
+            ? recommendation.supportingStrategies.join(", ")
+            : recommendation.evidence.slice(0, 3).join(" · ") || "—"}
+        </p>
+      </div>
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-text-faint">
+          Bear Case
+        </p>
+        <p className="mt-1 text-xs text-text-secondary">
+          {recommendation.opposingStrategies.length > 0
+            ? recommendation.opposingStrategies.join(", ")
+            : "—"}
+        </p>
+      </div>
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-text-faint">
+          Risks
+        </p>
+        <p className="mt-1 text-xs text-text-secondary">
+          Risk {recommendation.risk.toFixed(2)} · Mode {recommendation.riskMode}
+          {recommendation.validation.reasons.length > 0
+            ? ` · ${recommendation.validation.reasons.slice(0, 2).join(" · ")}`
+            : ""}
+        </p>
+      </div>
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-text-faint">
+          Catalysts / Notes
+        </p>
+        <p className="mt-1 text-xs text-text-secondary">
+          {recommendation.holdingPeriod} · {recommendation.marketContext}
+          {recommendation.evidence.length > 0
+            ? ` · ${recommendation.evidence.slice(0, 2).join(" · ")}`
+            : ""}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function SharedRecommendationPanel({
   recommendations,
   title = "Strategy Engine Recommendations",
@@ -171,6 +295,29 @@ export function SharedRecommendationPanel({
   title?: string;
   emptyMessage?: string;
 }) {
+  const rows = useMemo<OpportunityGridRow[]>(
+    () =>
+      recommendations.map((rec) => ({
+        id: rec.id,
+        symbol: rec.symbol,
+        company: rec.company,
+        action: toDisplayAction(rec),
+        category: CATEGORY_LABELS[rec.category],
+        strategy: rec.primaryStrategy,
+        strategyCount: rec.strategyCount,
+        entry: rec.entry,
+        stopLoss: rec.stopLoss,
+        target: rec.targets.at(-1) ?? 0,
+        riskReward: rec.riskReward,
+        confidence: rec.confidence,
+        conviction: rec.conviction,
+        regime: rec.marketRegime,
+        timestamp: formatTs(rec.timestamp),
+        source: rec,
+      })),
+    [recommendations]
+  );
+
   return (
     <section className="relative overflow-hidden rounded-xl border border-surface-border-subtle bg-surface-card p-5 shadow-[var(--eos-shadow-card)] transition-[box-shadow,transform] duration-300 hover:-translate-y-0.5 hover:shadow-[var(--eos-shadow-floating)] sm:p-6">
       <span
@@ -220,7 +367,6 @@ export function SharedRecommendationPanel({
         </div>
       ) : (
         <>
-          {/* Mobile / tablet card stack */}
           <div className="mt-4 space-y-3 lg:hidden">
             {recommendations.map((recommendation) => (
               <OpportunityCard
@@ -230,109 +376,17 @@ export function SharedRecommendationPanel({
             ))}
           </div>
 
-          {/* Desktop table */}
-          <div className="mt-4 hidden max-h-[560px] overflow-auto lg:block">
-            <table className="w-full min-w-[960px] text-left text-xs">
-              <thead className="sticky top-0 z-10 bg-surface-card/95 backdrop-blur-sm">
-                <tr className="border-b border-surface-border-subtle text-[10px] uppercase tracking-wider text-text-faint">
-                  <th className="pb-2.5 pr-3 pt-1 font-medium">Symbol</th>
-                  <th className="pb-2.5 pr-3 pt-1 font-medium">Action</th>
-                  <th className="pb-2.5 pr-3 pt-1 font-medium">Strategy</th>
-                  <th className="pb-2.5 pr-3 pt-1 text-right font-medium">
-                    Entry
-                  </th>
-                  <th className="pb-2.5 pr-3 pt-1 text-right font-medium">
-                    Stop
-                  </th>
-                  <th className="pb-2.5 pr-3 pt-1 text-right font-medium">
-                    Target
-                  </th>
-                  <th className="pb-2.5 pr-3 pt-1 text-right font-medium">
-                    R:R
-                  </th>
-                  <th className="pb-2.5 pr-3 pt-1 font-medium">Confidence</th>
-                  <th className="pb-2.5 pr-3 pt-1 font-medium">Conviction</th>
-                  <th className="pb-2.5 pt-1 font-medium">Regime</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recommendations.map((recommendation) => {
-                  const display = toDisplayAction(recommendation);
-                  const style = ACTION_STYLES[display];
-                  const target = recommendation.targets.at(-1) ?? 0;
-                  return (
-                    <tr
-                      key={recommendation.id}
-                      className={`border-b border-l-4 border-surface-border-subtle/50 border-l-transparent transition-colors duration-200 last:border-b-0 ${style.border} ${style.hover}`}
-                    >
-                      <td className="py-3.5 pr-3 align-top">
-                        <p className="font-semibold text-text-primary">
-                          {recommendation.symbol}
-                        </p>
-                        <p className="max-w-[140px] truncate text-[10px] text-text-muted">
-                          {recommendation.company}
-                        </p>
-                      </td>
-                      <td className="py-3.5 pr-3 align-top">
-                        <ActionBadge action={display} />
-                        <p className="mt-1 text-[10px] text-text-faint">
-                          {CATEGORY_LABELS[recommendation.category]}
-                        </p>
-                      </td>
-                      <td className="py-3.5 pr-3 align-top">
-                        <p className="flex items-center gap-1 text-text-secondary">
-                          <Target className="h-3 w-3 shrink-0 text-text-faint" />
-                          <span className="line-clamp-2 max-w-[160px]">
-                            {recommendation.primaryStrategy}
-                          </span>
-                        </p>
-                        <p className="mt-0.5 text-[10px] text-text-faint">
-                          {recommendation.strategyCount} matched
-                        </p>
-                      </td>
-                      <td className="py-3.5 pr-3 text-right font-mono text-[11px] tabular-nums align-top">
-                        {price(recommendation.entry)}
-                      </td>
-                      <td className="py-3.5 pr-3 text-right font-mono text-[11px] tabular-nums align-top">
-                        {price(recommendation.stopLoss)}
-                      </td>
-                      <td className="py-3.5 pr-3 text-right font-mono text-[11px] tabular-nums align-top">
-                        {price(target)}
-                      </td>
-                      <td className="py-3.5 pr-3 text-right font-mono text-[11px] tabular-nums align-top">
-                        {recommendation.riskReward.toFixed(2)}
-                      </td>
-                      <td className="py-3.5 pr-3 align-top">
-                        <ConfidenceBar
-                          value={recommendation.confidence}
-                          size="sm"
-                        />
-                      </td>
-                      <td className="py-3.5 pr-3 align-top">
-                        <Badge size="sm" variant="neutral">
-                          {recommendation.conviction}
-                        </Badge>
-                      </td>
-                      <td className="py-3.5 align-top">
-                        <div className="flex flex-col items-start gap-1">
-                          <StatusBadge
-                            size="sm"
-                            tone={statusToneFromLabel(
-                              recommendation.marketRegime
-                            )}
-                          >
-                            {recommendation.marketRegime}
-                          </StatusBadge>
-                          <span className="text-[10px] text-text-faint">
-                            {formatTs(recommendation.timestamp)}
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="mt-4 hidden lg:block">
+            <ResearchDataGrid
+              table={OPPORTUNITIES_TABLE}
+              rows={rows}
+              getRowId={(row) => row.id}
+              maxHeight={520}
+              emptyTitle="No opportunities"
+              renderExpandedRow={(row) => (
+                <OpportunityExpanded recommendation={row.source} />
+              )}
+            />
           </div>
         </>
       )}

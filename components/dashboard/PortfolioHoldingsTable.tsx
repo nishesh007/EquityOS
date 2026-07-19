@@ -8,7 +8,7 @@ import { createUnavailableQuote } from "@/lib/market-data/enriched-quote";
 import { getCompanyRoute } from "@/lib/routes";
 import { buildInitialQuotesMap } from "@/lib/market-data/enriched-quote";
 import type { PortfolioHolding } from "@/types";
-import { createInstitutionalTable, InstitutionalTable } from "@/src/design";
+import { createInstitutionalTable, ResearchDataGrid } from "@/src/design";
 import { Briefcase } from "lucide-react";
 import type { SharedRecommendation } from "@/lib/recommendations";
 
@@ -123,13 +123,44 @@ export function PortfolioHoldingsTable({
         }
       />
 
-      <InstitutionalTable
+      <ResearchDataGrid
         table={HOLDINGS_TABLE}
         rows={rows}
         getRowId={(row) => row.id}
         emptyTitle="No Holdings"
         emptyDescription="Add positions to your portfolio to see them here."
         onRowClick={(row) => router.push(getCompanyRoute(row.symbol))}
+        renderExpandedRow={(row) => (
+          <div className="grid gap-2 sm:grid-cols-3">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-text-faint">
+                Strategy Details
+              </p>
+              <p className="mt-1 text-xs">
+                {row.signal} · {row.strategy}
+                {row.holdingConfidence != null
+                  ? ` · Confidence ${row.holdingConfidence.toFixed(1)}%`
+                  : ""}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-text-faint">
+                Risks
+              </p>
+              <p className="mt-1 text-xs">
+                Risk {row.risk ?? "—"} · Regime {row.regime}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-text-faint">
+                Notes
+              </p>
+              <p className="mt-1 text-xs">
+                {row.name} · Opportunity {row.opportunityChange}
+              </p>
+            </div>
+          </div>
+        )}
       />
     </Card>
   );

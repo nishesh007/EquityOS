@@ -1,7 +1,6 @@
 "use client";
 
 import { Card, CardHeader } from "@/components/ui/Card";
-import { QuoteDisplayCompact } from "@/components/market/QuoteDisplay";
 import { EmptyStatePanel } from "@/components/ui/EmptyStatePanel";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { useMarketQuotes } from "@/hooks/useMarketQuotes";
@@ -12,10 +11,53 @@ import type { WatchlistItem } from "@/types";
 import type { SharedRecommendation } from "@/lib/recommendations";
 import { useRouter } from "next/navigation";
 import { Star, X } from "lucide-react";
+import { useMemo } from "react";
+import {
+  createInstitutionalTable,
+  ResearchDataGrid,
+  type BulkAction,
+} from "@/src/design";
 
 interface WatchlistProps {
   initialItems: WatchlistItem[];
   recommendations?: Record<string, SharedRecommendation>;
+}
+
+interface WatchlistGridRow {
+  id: string;
+  symbol: string;
+  sector: string;
+  ltp: number | null;
+  dayChangePercent: number | null;
+  updated: string;
+  volume: string;
+  strategy: string;
+  confidence: number | null;
+  action: string;
+}
+
+const WATCHLIST_TABLE = createInstitutionalTable<WatchlistGridRow>({
+  id: "watchlist-grid",
+  pageSize: 50,
+  density: "compact",
+  columns: [
+    { id: "symbol", label: "Symbol", kind: "text", sticky: true, width: 100 },
+    { id: "sector", label: "Sector", kind: "text" },
+    { id: "ltp", label: "LTP", kind: "price" },
+    { id: "dayChangePercent", label: "Change", kind: "trend" },
+    { id: "updated", label: "Updated", kind: "text" },
+    { id: "volume", label: "Vol", kind: "text" },
+    { id: "action", label: "Signal", kind: "badge" },
+    { id: "strategy", label: "Strategy", kind: "text" },
+    { id: "confidence", label: "Confidence", kind: "percent" },
+  ],
+});
+
+function formatVolume(volume: number | null, fallback: string): string {
+  if (volume === null) return fallback;
+  if (volume >= 1e7) return `${(volume / 1e7).toFixed(2)} Cr`;
+  if (volume >= 1e5) return `${(volume / 1e5).toFixed(2)} L`;
+  return `${Math.round(volume)}`;
 }
 
 export function Watchlist({
@@ -29,6 +71,47 @@ export function Watchlist({
     initialQuotes: buildInitialQuotesMap(items),
   });
 
+  const rows = useMemo<WatchlistGridRow[]>(
+    () =>
+      items.map((item) => {
+        const quote =
+          quotes.get(item.symbol) ??
+          item.quote ??
+          createUnavailableQuote(item.symbol);
+        const recommendation = recommendations[item.symbol.toUpperCase()];
+        return {
+          id: item.id,
+          symbol: item.symbol,
+          sector: item.sector,
+          ltp: quote.price,
+          dayChangePercent: quote.changePercent,
+          updated:
+            quote.availability === "unavailable"
+              ? quote.lastSuccessfulUpdateIST ?? "N/A"
+              : quote.lastUpdatedIST?.split(" ").slice(-3).join(" ") ?? "N/A",
+          volume: formatVolume(quote.volume, item.volume),
+          strategy: recommendation?.primaryStrategy ?? "No active signal",
+          confidence: recommendation?.confidence ?? null,
+          action: recommendation?.action ?? "—",
+        };
+      }),
+    [items, quotes, recommendations]
+  );
+
+  const bulkActions = useMemo<BulkAction<WatchlistGridRow>[]>(
+    () => [
+      {
+        id: "remove",
+        label: "Remove",
+        icon: <X className="h-3 w-3" />,
+        onAction: (selected) => {
+          selected.forEach((row) => removeItem(row.id));
+        },
+      },
+    ],
+    [removeItem]
+  );
+
   return (
     <Card padding="lg" accent="cyan" className="h-full">
       <CardHeader
@@ -37,113 +120,45 @@ export function Watchlist({
         icon={<Star className="h-4 w-4 text-cyan-400" />}
       />
 
-      <div className="overflow-x-auto">
-        {items.length === 0 ? (
-          <EmptyStatePanel
-            message="Watchlist is empty. Add symbols from company pages or Markets to track Strategy Engine signals here."
-            source="Watchlist registry · Strategy Engine"
-            icon={Star}
-          />
-        ) : (
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-surface-border-subtle text-left">
-              <th className="pb-2 text-[10px] font-medium uppercase tracking-wider text-text-faint">
-                Symbol
-              </th>
-              <th className="pb-2 text-right text-[10px] font-medium uppercase tracking-wider text-text-faint">
-                LTP
-              </th>
-              <th className="pb-2 text-right text-[10px] font-medium uppercase tracking-wider text-text-faint">
-                Updated
-              </th>
-              <th className="pb-2 text-right text-[10px] font-medium uppercase tracking-wider text-text-faint">
-                Vol
-              </th>
-              <th className="pb-2 text-right text-[10px] font-medium uppercase tracking-wider text-text-faint">
-                Strategy
-              </th>
-              <th className="pb-2 w-8" />
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => {
-              const quote =
-                quotes.get(item.symbol) ?? item.quote ?? createUnavailableQuote(item.symbol);
-              const volume =
-                quote.volume !== null
-                  ? quote.volume >= 1e7
-                    ? `${(quote.volume / 1e7).toFixed(2)} Cr`
-                    : quote.volume >= 1e5
-                      ? `${(quote.volume / 1e5).toFixed(2)} L`
-                      : `${Math.round(quote.volume)}`
-                  : item.volume;
-              const recommendation =
-                recommendations[item.symbol.toUpperCase()];
-
-              return (
-                <tr
-                  key={item.id}
-                  onClick={() => router.push(getCompanyRoute(item.symbol))}
-                  className="group cursor-pointer border-b border-surface-border-subtle/50 transition-colors hover:bg-surface-hover/30"
-                >
-                  <td className="py-2.5">
-                    <div>
-                      <p className="text-sm font-medium text-text-primary group-hover:text-accent">
-                        {item.symbol}
-                      </p>
-                      <p className="text-[10px] text-text-muted">{item.sector}</p>
-                    </div>
-                  </td>
-                  <td className="py-2.5 text-right">
-                    <QuoteDisplayCompact quote={quote} className="flex flex-col items-end" />
-                  </td>
-                  <td className="py-2.5 text-right">
-                    <p className="text-[10px] font-semibold text-accent">
-                      {recommendation?.action ?? "—"}
-                    </p>
-                    <p className="text-[9px] text-text-muted">
-                      {recommendation
-                        ? `${recommendation.primaryStrategy} · ${recommendation.confidence.toFixed(2)}%`
-                        : "No active signal · Strategy Engine & fallback exhausted"}
-                    </p>
-                  </td>
-                  <td className="py-2.5 text-right">
-                    <p className="text-[9px] text-text-faint">
-                      {quote.availability === "unavailable"
-                        ? quote.lastSuccessfulUpdateIST ?? "N/A"
-                        : quote.lastUpdatedIST?.split(" ").slice(-3).join(" ") ??
-                          "N/A"}
-                    </p>
-                    <p className="mt-0.5 text-[9px] text-text-faint">
-                      AI Reviewed{" "}
-                      <span className="text-text-muted">Not reviewed yet.</span>
-                    </p>
-                  </td>
-                  <td className="py-2.5 text-right">
-                    <p className="text-xs font-mono text-text-muted tabular-nums">
-                      {volume}
-                    </p>
-                  </td>
-                  <td className="py-2.5">
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        removeItem(item.id);
-                      }}
-                      className="rounded p-1 text-text-faint opacity-0 transition-all hover:bg-surface-overlay hover:text-text-muted group-hover:opacity-100"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        )}
-      </div>
+      {items.length === 0 ? (
+        <EmptyStatePanel
+          message="Watchlist is empty. Add symbols from company pages or Markets to track Strategy Engine signals here."
+          source="Watchlist registry · Strategy Engine"
+          icon={Star}
+        />
+      ) : (
+        <ResearchDataGrid
+          table={WATCHLIST_TABLE}
+          rows={rows}
+          getRowId={(row) => row.id}
+          bulkActions={bulkActions}
+          maxHeight={420}
+          onRowClick={(row) => router.push(getCompanyRoute(row.symbol))}
+          renderExpandedRow={(row) => (
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-text-faint">
+                  Strategy Details
+                </p>
+                <p className="mt-1 text-xs">
+                  {row.action} · {row.strategy}
+                  {row.confidence != null
+                    ? ` · Confidence ${row.confidence.toFixed(1)}%`
+                    : ""}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-text-faint">
+                  Notes
+                </p>
+                <p className="mt-1 text-xs">
+                  {row.sector} · Updated {row.updated} · Vol {row.volume}
+                </p>
+              </div>
+            </div>
+          )}
+        />
+      )}
     </Card>
   );
 }

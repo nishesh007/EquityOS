@@ -37,8 +37,10 @@ interface TableToolbarProps {
   columns: readonly TableColumn<never>[];
   hiddenColumns: readonly string[];
   columnOrder: readonly string[];
+  pinLeft?: readonly string[];
   onToggleColumn: (columnId: string) => void;
   onMoveColumn: (columnId: string, direction: -1 | 1) => void;
+  onTogglePinLeft?: (columnId: string) => void;
   onResetLayout: () => void;
   onExport: () => void;
   fullscreen: boolean;
@@ -58,8 +60,10 @@ export function TableToolbar({
   columns,
   hiddenColumns,
   columnOrder,
+  pinLeft = [],
   onToggleColumn,
   onMoveColumn,
+  onTogglePinLeft,
   onResetLayout,
   onExport,
   fullscreen,
@@ -158,6 +162,7 @@ export function TableToolbar({
               <div className="max-h-64 overflow-y-auto">
                 {orderedColumns.map((column, index) => {
                   const visible = !hiddenColumns.includes(column.id);
+                  const pinned = pinLeft.includes(column.id) || column.sticky;
                   return (
                     <div
                       key={column.id}
@@ -176,6 +181,26 @@ export function TableToolbar({
                       >
                         {column.label}
                       </label>
+                      {onTogglePinLeft ? (
+                        <button
+                          type="button"
+                          onClick={() => onTogglePinLeft(column.id)}
+                          aria-label={
+                            pinned
+                              ? `Unpin ${column.label}`
+                              : `Pin ${column.label} left`
+                          }
+                          title={pinned ? "Unpin left" : "Pin left"}
+                          className={cn(
+                            "rounded px-1 text-[9px] font-semibold",
+                            pinned
+                              ? "bg-accent/15 text-accent"
+                              : "text-text-faint hover:text-text-primary"
+                          )}
+                        >
+                          Pin
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         onClick={() => onMoveColumn(column.id, -1)}
