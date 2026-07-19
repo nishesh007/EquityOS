@@ -100,7 +100,7 @@ export function Watchlist({
                     </p>
                     <p className="text-[9px] text-text-muted">
                       {recommendation
-                        ? `${recommendation.primaryStrategy} · ${recommendation.confidence}%`
+                        ? `${recommendation.primaryStrategy} · ${recommendation.confidence.toFixed(2)}%`
                         : "No validated match"}
                     </p>
                   </td>

@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { triggerOpportunityScan } from "@/services/opportunityEngine";
+import {
+  triggerOpportunityScan,
+  toSharedSnapshot,
+} from "@/services/opportunityEngine";
 import { getStrategyPlatformStatus } from "@/src/modules/strategies";
 import { selectRecommendationsWithFallback } from "@/lib/recommendations";
 
@@ -14,7 +17,10 @@ export async function POST() {
   return NextResponse.json({
     success: true,
     state,
-    recommendations: selectRecommendationsWithFallback(state),
+    recommendations: selectRecommendationsWithFallback(
+      state,
+      toSharedSnapshot(result.marketIntelligence)
+    ),
     durationMs: result.durationMs,
     symbolsScanned: result.symbolsScanned,
     added: result.added,

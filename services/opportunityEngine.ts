@@ -8,20 +8,43 @@ import {
 import type { MarketIntelligenceSnapshot } from "@/lib/market-intelligence";
 import {
   selectRecommendationsWithFallback,
+  type SharedMarketSnapshot,
   type SharedRecommendation,
 } from "@/lib/recommendations";
-import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
+import {
+  getCachedMarketIntelligenceSnapshot,
+  getMarketIntelligenceSnapshot,
+} from "@/services/marketIntelligence";
 
 export interface OpportunityEngineBundle {
   state: OpportunityEngineState;
   marketIntelligence: MarketIntelligenceSnapshot;
 }
 
+/** Shared regime/context for fallback recommendations (never recalculates). */
+export function toSharedSnapshot(
+  intelligence: MarketIntelligenceSnapshot | null
+): SharedMarketSnapshot | undefined {
+  if (!intelligence) return undefined;
+  return {
+    regime: intelligence.regime.regime,
+    marketTrend: intelligence.context.marketTrend,
+    riskMode: intelligence.context.riskMode,
+    confidence: intelligence.confidence,
+  };
+}
+
 export async function fetchSharedRecommendationsFresh(
   limit?: number
 ): Promise<SharedRecommendation[]> {
-  const state = await ensureOpportunityEngineState();
-  const recommendations = selectRecommendationsWithFallback(state);
+  const [state, marketIntelligence] = await Promise.all([
+    ensureOpportunityEngineState(),
+    getMarketIntelligenceSnapshot(),
+  ]);
+  const recommendations = selectRecommendationsWithFallback(
+    state,
+    toSharedSnapshot(marketIntelligence)
+  );
   return typeof limit === "number"
     ? recommendations.slice(0, limit)
     : recommendations;
@@ -32,7 +55,10 @@ export function fetchRecommendationForSymbol(
 ): SharedRecommendation | null {
   const normalized = symbol.trim().toUpperCase();
   return (
-    selectRecommendationsWithFallback(getOpportunityState()).find(
+    selectRecommendationsWithFallback(
+      getOpportunityState(),
+      toSharedSnapshot(getCachedMarketIntelligenceSnapshot())
+    ).find(
       (recommendation) => recommendation.symbol.toUpperCase() === normalized
     ) ?? null
   );
@@ -43,7 +69,10 @@ export function fetchRecommendationsForSymbols(
 ): Map<string, SharedRecommendation> {
   const wanted = new Set(symbols.map((symbol) => symbol.toUpperCase()));
   return new Map(
-    selectRecommendationsWithFallback(getOpportunityState())
+    selectRecommendationsWithFallback(
+      getOpportunityState(),
+      toSharedSnapshot(getCachedMarketIntelligenceSnapshot())
+    )
       .filter((recommendation) => wanted.has(recommendation.symbol.toUpperCase()))
       .map((recommendation) => [
         recommendation.symbol.toUpperCase(),

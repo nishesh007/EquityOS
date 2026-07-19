@@ -127,7 +127,15 @@ describe("shared recommendation projection", () => {
       action: "BUY",
       source: "OpportunityEngine",
       opportunityScore: 88,
-      confidence: 84,
+      strategyCount: 1,
+      marketRegime: "Strong Bull",
     });
+    // Dynamic confidence: blended from scan confidence, conviction and
+    // risk/reward quality — never the fixed candidate value.
+    expect(recommendations[0].confidence).toBeGreaterThan(0);
+    expect(recommendations[0].confidence).toBeLessThanOrEqual(95);
+    expect(recommendations[0].confidence).toBe(
+      Math.round(recommendations[0].confidence * 100) / 100
+    );
   });
 });

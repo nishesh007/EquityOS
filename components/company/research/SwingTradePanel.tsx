@@ -166,7 +166,7 @@ export function SwingTradePanel({ swing, symbol, initialQuote }: SwingTradePanel
 
 function formatRiskReward(ratio: number): string {
   if (!Number.isFinite(ratio) || ratio <= 0) return "N/A";
-  return `1 : ${ratio}`;
+  return `1 : ${ratio.toFixed(2)}`;
 }
 
 function MetaTile({ label, value }: { label: string; value: string }) {

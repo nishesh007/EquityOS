@@ -1,7 +1,9 @@
 import type { SharedRecommendation } from "@/lib/recommendations";
+import { CATEGORY_LABELS } from "@/lib/opportunity-engine/types";
 
 function price(value: number): string {
   return `₹${value.toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
 }
@@ -59,15 +61,33 @@ export function SharedRecommendationPanel({
                       {recommendation.action}
                     </p>
                     <p className="text-[10px] text-text-muted">
-                      {recommendation.primaryStrategy} · {recommendation.source}
+                      {recommendation.primaryStrategy}
+                    </p>
+                    <p className="text-[10px] text-text-faint">
+                      {CATEGORY_LABELS[recommendation.category]} ·{" "}
+                      {recommendation.action} signal
                     </p>
                   </td>
                   <td className="py-2.5">
                     <p>{recommendation.strategyCount} matched</p>
-                    <p className="text-[10px] text-text-muted">
-                      Agree {recommendation.agreementPercent}% · Conflict{" "}
-                      {recommendation.conflictPercent}%
-                    </p>
+                    {recommendation.supportingStrategies.length > 0 ? (
+                      <p className="text-[10px] text-text-muted">
+                        +{recommendation.supportingStrategies.length}{" "}
+                        supporting
+                      </p>
+                    ) : null}
+                    {recommendation.strategyCount > 1 ? (
+                      <p className="text-[10px] text-text-muted">
+                        Agree {recommendation.agreementPercent.toFixed(1)}% ·
+                        Conflict {recommendation.conflictPercent.toFixed(1)}%
+                      </p>
+                    ) : (
+                      <p className="text-[10px] text-text-faint">
+                        {recommendation.source === "OpportunityEngine"
+                          ? "Screen-ranked fallback"
+                          : "Single-strategy signal"}
+                      </p>
+                    )}
                   </td>
                   <td className="py-2.5 text-right font-mono text-[10px]">
                     {price(recommendation.entry)} /{" "}
@@ -78,13 +98,14 @@ export function SharedRecommendationPanel({
                     {recommendation.opportunityScore}
                   </td>
                   <td className="py-2.5 text-right font-mono text-[10px]">
-                    {recommendation.risk} / {recommendation.reward}
+                    {recommendation.risk.toFixed(2)} /{" "}
+                    {recommendation.reward.toFixed(2)}
                     <p className="text-text-muted">
-                      R:R {recommendation.riskReward}
+                      R:R {recommendation.riskReward.toFixed(2)}
                     </p>
                   </td>
                   <td className="py-2.5 text-right font-mono">
-                    {recommendation.confidence}%
+                    {recommendation.confidence.toFixed(2)}%
                   </td>
                   <td className="py-2.5 text-right">
                     <p>{recommendation.marketRegime}</p>

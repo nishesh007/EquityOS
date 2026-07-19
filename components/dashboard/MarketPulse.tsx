@@ -129,7 +129,11 @@ export function MarketPulse({ pulse }: MarketPulseProps) {
         <PulseMetric
           label="FII / DII"
           icon={<ArrowDownToLine className="h-4 w-4" />}
-          detail={`Net cash flow · ${flow.asOf}`}
+          detail={
+            flowAvailable
+              ? `Net cash flow · ${flow.asOf}`
+              : "Coming in Sprint 10D · data source pending"
+          }
         >
           {flowAvailable ? (
             <div className="flex items-center gap-3 font-mono text-xs tabular-nums">
@@ -141,7 +145,9 @@ export function MarketPulse({ pulse }: MarketPulseProps) {
               </span>
             </div>
           ) : (
-            <p className="text-xl font-semibold text-text-muted">Unavailable</p>
+            <p className="text-xl font-semibold text-text-muted">
+              Available Soon
+            </p>
           )}
         </PulseMetric>
 
@@ -151,11 +157,11 @@ export function MarketPulse({ pulse }: MarketPulseProps) {
           detail={
             pulse.putCallRatio > 0
               ? "Options positioning"
-              : "Options data unavailable"
+              : "Coming in Sprint 10D · data source pending"
           }
         >
           <p className="data-value text-xl font-semibold">
-            {pulse.putCallRatio > 0 ? pulse.putCallRatio : "Unavailable"}
+            {pulse.putCallRatio > 0 ? pulse.putCallRatio : "Available Soon"}
           </p>
         </PulseMetric>
 
@@ -173,12 +179,12 @@ export function MarketPulse({ pulse }: MarketPulseProps) {
           detail={
             pulse.breadthScore > 0
               ? "Tracked-universe participation"
-              : "Breadth data unavailable"
+              : "Coming in Sprint 10D · data source pending"
           }
         >
           <div className="flex items-center gap-3">
             <p className="data-value text-xl font-semibold">
-              {pulse.breadthScore > 0 ? pulse.breadthScore : "Unavailable"}
+              {pulse.breadthScore > 0 ? pulse.breadthScore : "Available Soon"}
             </p>
             <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-border">
               <div
