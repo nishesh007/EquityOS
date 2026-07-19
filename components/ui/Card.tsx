@@ -1,9 +1,14 @@
 import { cn } from "@/lib/utils";
+import {
+  SECTION_ACCENTS,
+  type SectionAccent,
+} from "@/lib/ui/section-accents";
 
 /**
  * Shared card chrome, now backed by the R1 design system. Every panel that
  * renders <Card> inherits the institutional surface (theme-driven border,
  * radius, elevation) — no legacy glass styling remains.
+ * R4 adds an optional section accent strip and hover elevation.
  */
 
 interface CardProps {
@@ -13,6 +18,8 @@ interface CardProps {
   hover?: boolean;
   /** Translucent glass variant for overlays and hero panels. */
   glass?: boolean;
+  /** R4 premium accent — renders a 4px strip along the card's left edge. */
+  accent?: SectionAccent;
 }
 
 const paddingMap = {
@@ -27,18 +34,32 @@ export function Card({
   padding = "md",
   hover = false,
   glass = false,
+  accent,
 }: CardProps) {
+  const tokens = accent ? SECTION_ACCENTS[accent] : null;
+
   return (
     <div
       className={cn(
         "rounded-xl border border-surface-border-subtle shadow-card",
+        "transition-[box-shadow,border-color,transform] duration-200 hover:shadow-lg",
         glass ? "bg-surface-raised/80 backdrop-blur-xl shadow-glass" : "bg-surface-raised",
         paddingMap[padding],
+        tokens && "relative overflow-hidden",
         hover &&
           "transition-[background-color,border-color,box-shadow] duration-200 hover:border-surface-border hover:bg-surface-hover/60",
         className
       )}
     >
+      {tokens ? (
+        <span
+          aria-hidden
+          className={cn(
+            "absolute inset-y-0 left-0 w-1 rounded-r-full",
+            tokens.strip
+          )}
+        />
+      ) : null}
       {children}
     </div>
   );

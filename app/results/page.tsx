@@ -14,6 +14,7 @@ import {
   fetchWatchlistPlatformHealth,
   formatWatchlistPlatformSubtitle,
 } from "@/services/watchlistPlatform";
+import { CalendarDays } from "lucide-react";
 
 export default async function ResultsPage() {
   const [
@@ -41,6 +42,8 @@ export default async function ResultsPage() {
   return (
     <div className="p-6">
       <PageHeader
+        accent="orange"
+        icon={<CalendarDays className="h-5 w-5" />}
         title="Executive Earnings Hub"
         subtitle={`Sprint 9B complete · institutional calendar, AI, transcripts, workspace & reports · watchlists ${formatWatchlistPlatformSubtitle(watchlistPlatform)} · Screener institutional ${screenerHealth.institutionalReady ? "ready" : screenerHealth.emptyMessage} · discovery ${screenerHealth.discoveryReady ? "ready" : screenerHealth.emptyMessage} · screener workspace ${screenerHealth.workspaceReady ? "ready" : screenerHealth.emptyMessage} · executive ${screenerHealth.executiveReady ? (screenerHealth.sprint9DFrozen ? "9D frozen" : screenerHealth.executiveSummary) : screenerHealth.emptyMessage} · research workspace ${researchWorkspace.ready ? `${researchWorkspace.openSessions} sessions · ${researchWorkspace.openTabs} tabs · executive ${researchWorkspace.executiveReady ? researchWorkspace.executiveSummary : researchWorkspace.executiveEmptyMessage}` : researchWorkspace.emptyMessage}${researchWorkspace.sprint10AFrozen ? " · 10A FROZEN" : ""}`}
       />

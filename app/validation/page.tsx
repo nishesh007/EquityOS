@@ -12,6 +12,7 @@ import { fetchInstitutionalPlatformSnapshot } from "@/services/institutionalVali
 import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
 import { fetchSharedRecommendationsFresh } from "@/services/opportunityEngine";
 import { KpiTile, PageContainer } from "@/src/design";
+import { ShieldCheck } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -31,12 +32,24 @@ export default async function ValidationPage() {
   return (
     <PageContainer>
       <div className="mb-6 animate-fade-in-up">
-        <h1 className="text-xl font-semibold tracking-tight text-text-primary">
-          Validation Center
-        </h1>
-        <p className="mt-0.5 text-sm text-text-muted">
-          Data integrity, trust and validation platform health — institutional
-          read-only view · market regime {marketIntelligence.regime.regime}
+        <div className="flex items-center gap-3">
+          <span
+            aria-hidden
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-400"
+          >
+            <ShieldCheck className="h-5 w-5" />
+          </span>
+          <h1 className="text-xl font-semibold tracking-tight text-text-primary">
+            Research Confidence
+          </h1>
+        </div>
+        <div
+          aria-hidden
+          className="mt-3 h-px w-full bg-gradient-to-r from-indigo-500/60 via-indigo-500/20 to-transparent"
+        />
+        <p className="mt-2 text-sm text-text-muted">
+          Data integrity, trust and validation platform health — read-only
+          view · market regime {marketIntelligence.regime.regime}
         </p>
       </div>
 

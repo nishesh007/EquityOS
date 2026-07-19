@@ -30,7 +30,7 @@ export function Watchlist({
   });
 
   return (
-    <Card padding="lg" className="h-full">
+    <Card padding="lg" accent="cyan" className="h-full">
       <CardHeader
         title="Watchlist"
         subtitle={`${items.length} stocks tracked`}

@@ -101,10 +101,22 @@ export default async function ResearchPage() {
   return (
     <PageContainer>
       <div className="mb-6">
-        <h1 className="text-xl font-semibold tracking-tight text-text-primary">
-          Institutional Research Workspace
-        </h1>
-        <p className="mt-0.5 text-sm text-text-muted">
+        <div className="flex items-center gap-3">
+          <span
+            aria-hidden
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400"
+          >
+            <BookOpen className="h-5 w-5" />
+          </span>
+          <h1 className="text-xl font-semibold tracking-tight text-text-primary">
+            Research Workspace
+          </h1>
+        </div>
+        <div
+          aria-hidden
+          className="mt-3 h-px w-full bg-gradient-to-r from-violet-500/60 via-violet-500/20 to-transparent"
+        />
+        <p className="mt-2 text-sm text-text-muted">
           Multi-tab research terminal · regime {marketIntelligence.regime.regime} ·{" "}
           {health.workspaceCount > 0
             ? `${health.workspaceCount} workspace${health.workspaceCount === 1 ? "" : "s"}`

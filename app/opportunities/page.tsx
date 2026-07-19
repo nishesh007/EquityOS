@@ -8,6 +8,7 @@ import {
 import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
 import { fetchSharedRecommendationsFresh } from "@/services/opportunityEngine";
 import { PageContainer } from "@/src/design";
+import { Sparkles } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,8 @@ export default async function OpportunitiesPage() {
   return (
     <PageContainer>
       <PageHeader
+        accent="blue"
+        icon={<Sparkles className="h-5 w-5" />}
         title="AI Opportunities"
         subtitle={`Strategy Engine ranked · ${marketIntelligence.regime.regime} · ${marketIntelligence.context.marketTrend} · confidence ${Math.round(marketIntelligence.confidence)}%`}
       />

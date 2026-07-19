@@ -35,6 +35,8 @@ interface PulseMetricProps {
   children: ReactNode;
   detail: ReactNode;
   icon: ReactNode;
+  /** R4 subtle tinted background (5–8% opacity), dark theme preserved. */
+  tint?: string;
 }
 
 function formatFlow(value: number): string {
@@ -42,9 +44,13 @@ function formatFlow(value: number): string {
   return `${sign}₹${Math.abs(value).toLocaleString("en-IN")}Cr`;
 }
 
-function PulseMetric({ label, children, detail, icon }: PulseMetricProps) {
+function PulseMetric({ label, children, detail, icon, tint }: PulseMetricProps) {
   return (
-    <div className="group rounded-lg border border-surface-border-subtle bg-surface-overlay/50 p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-accent/20 hover:bg-surface-hover/60">
+    <div
+      className={`group rounded-lg border p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-accent/20 hover:bg-surface-hover/60 ${
+        tint ?? "border-surface-border-subtle bg-surface-overlay/50"
+      }`}
+    >
       <div className="flex items-center justify-between">
         <p className="data-label">{label}</p>
         <div className="text-text-faint transition-colors group-hover:text-accent">
@@ -56,6 +62,19 @@ function PulseMetric({ label, children, detail, icon }: PulseMetricProps) {
     </div>
   );
 }
+
+/** Per-metric tinted surfaces (5–8% opacity) — presentation only. */
+const METRIC_TINTS = {
+  vix: "border-emerald-500/15 bg-emerald-500/5",
+  flow: "border-emerald-500/15 bg-emerald-500/5",
+  pcr: "border-orange-500/15 bg-orange-500/5",
+  trend: "border-emerald-500/15 bg-emerald-500/5",
+  breadth: "border-cyan-500/15 bg-cyan-500/5",
+  momentum: "border-sky-500/15 bg-sky-500/5",
+  volatility: "border-amber-500/15 bg-amber-500/5",
+  liquidity: "border-indigo-500/15 bg-indigo-500/5",
+  participation: "border-violet-500/15 bg-violet-500/5",
+} as const;
 
 function resolveVixQuote(
   polled: EnrichedQuote | undefined,
@@ -115,7 +134,7 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
   const volatility = context?.volatilityRegime ?? null;
 
   return (
-    <Card padding="lg" className="relative overflow-hidden">
+    <Card padding="lg" accent="emerald" className="relative overflow-hidden">
       <div className="pointer-events-none absolute left-0 top-0 h-px w-full animate-terminal-scan bg-gradient-to-r from-transparent via-accent/50 to-transparent" />
       <CardHeader
         title="Market Pulse"
@@ -131,6 +150,7 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <PulseMetric
           label="India VIX"
+          tint={METRIC_TINTS.vix}
           icon={<Activity className="h-4 w-4" />}
           detail={
             vixUpdated ? (
@@ -158,6 +178,7 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
 
         <PulseMetric
           label="FII / DII"
+          tint={METRIC_TINTS.flow}
           icon={<ArrowDownToLine className="h-4 w-4" />}
           detail={
             flowAvailable
@@ -183,6 +204,7 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
 
         <PulseMetric
           label="Put Call Ratio"
+          tint={METRIC_TINTS.pcr}
           icon={<Gauge className="h-4 w-4" />}
           detail={
             pulse.putCallRatio > 0
@@ -199,6 +221,7 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
 
         <PulseMetric
           label="Market Trend"
+          tint={METRIC_TINTS.trend}
           icon={<ArrowUpFromLine className="h-4 w-4" />}
           detail={
             context
@@ -213,6 +236,7 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
 
         <PulseMetric
           label="Breadth"
+          tint={METRIC_TINTS.breadth}
           icon={<Radio className="h-4 w-4" />}
           detail={
             breadthScore > 0
@@ -237,6 +261,7 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
 
         <PulseMetric
           label="Momentum"
+          tint={METRIC_TINTS.momentum}
           icon={<Waves className="h-4 w-4" />}
           detail={
             momentum != null
@@ -251,6 +276,7 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
 
         <PulseMetric
           label="Volatility"
+          tint={METRIC_TINTS.volatility}
           icon={<Activity className="h-4 w-4" />}
           detail={
             volatility
@@ -265,6 +291,7 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
 
         <PulseMetric
           label="Liquidity"
+          tint={METRIC_TINTS.liquidity}
           icon={<Droplets className="h-4 w-4" />}
           detail={
             liquidity != null
@@ -279,6 +306,7 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
 
         <PulseMetric
           label="Participation"
+          tint={METRIC_TINTS.participation}
           icon={<Users className="h-4 w-4" />}
           detail={
             participation != null

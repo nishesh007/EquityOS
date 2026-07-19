@@ -22,6 +22,7 @@ import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
 import { fetchInstitutionalScreenerHealth } from "@/services/screenerData";
 import { fetchResearchWorkspaceHealth } from "@/services/researchWorkspace";
 import { MainGrid, PageContainer } from "@/src/design";
+import { Briefcase } from "lucide-react";
 
 export default async function PortfolioPage() {
   const [
@@ -58,6 +59,8 @@ export default async function PortfolioPage() {
   return (
     <PageContainer>
       <PageHeader
+        accent="amber"
+        icon={<Briefcase className="h-5 w-5" />}
         title="Portfolio"
         subtitle={`Holdings, performance and monitored opportunities · ${screenerHealth.portfolioScreens} institutional portfolio screens · workspace ${screenerHealth.workspaceReady ? "ready" : screenerHealth.emptyMessage} · research ${researchWorkspace.ready ? `${researchWorkspace.openTabs} tabs · executive ${researchWorkspace.executiveReady ? researchWorkspace.executiveSummary : researchWorkspace.executiveEmptyMessage}` : researchWorkspace.emptyMessage}${researchWorkspace.sprint10AFrozen ? " · 10A FROZEN" : ""}`}
       />

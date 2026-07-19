@@ -22,7 +22,7 @@ const SEGMENT_LABELS: Readonly<Record<string, string>> = Object.freeze({
   results: "Results Calendar",
   opportunities: "AI Insights",
   screener: "Screener",
-  validation: "Validation Center",
+  validation: "Research Confidence",
   settings: "Settings",
   company: "Companies",
   alerts: "Alerts",

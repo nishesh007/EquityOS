@@ -34,7 +34,7 @@ const navItems = [
 
 const bottomNavItems = [
   { label: "Screener", href: "/screener", icon: TrendingUp },
-  { label: "Validation", href: "/validation", icon: ShieldCheck },
+  { label: "Research Confidence", href: "/validation", icon: ShieldCheck },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 

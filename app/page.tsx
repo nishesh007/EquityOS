@@ -21,7 +21,14 @@ import {
   fetchMarketPulse,
 } from "@/services/researchDashboardData";
 import { PageContainer, SectionHeader } from "@/src/design";
-import { BellRing, ChevronRight } from "lucide-react";
+import {
+  Activity,
+  BellRing,
+  CalendarDays,
+  ChevronRight,
+  Newspaper,
+  Sparkles,
+} from "lucide-react";
 import Link from "next/link";
 
 export default async function DashboardPage() {
@@ -61,10 +68,10 @@ export default async function DashboardPage() {
     <PageContainer>
       <header className="mb-8 animate-fade-in-up">
         <h1 className="text-xl font-semibold tracking-tight text-text-primary">
-          Institutional Dashboard
+          Dashboard
         </h1>
         <p className="mt-1 text-sm text-text-muted">
-          Market conditions, investable opportunities and portfolio context
+          AI-powered Equity Research &amp; Market Intelligence
         </p>
       </header>
 
@@ -73,6 +80,8 @@ export default async function DashboardPage() {
           <SectionHeader
             title="01 · Market Pulse"
             subtitle="Indices, breadth, sector strength and institutional flow"
+            accent="emerald"
+            icon={<Activity className="h-4 w-4" />}
           />
           <div id="market-pulse-heading" className="space-y-5">
             <MarketIntelligenceStrip snapshot={marketIntelligence} />
@@ -86,6 +95,8 @@ export default async function DashboardPage() {
           <SectionHeader
             title="02 · AI Opportunities"
             subtitle="Conviction-ranked ideas, watchlist, portfolio and alerts"
+            accent="blue"
+            icon={<Sparkles className="h-4 w-4" />}
           />
           <div id="opportunities-heading" className="space-y-5">
             <SharedRecommendationPanel
@@ -127,6 +138,8 @@ export default async function DashboardPage() {
           <SectionHeader
             title="03 · Earnings"
             subtitle="Compact result windows; full analysis lives in the Earnings workspace"
+            accent="orange"
+            icon={<CalendarDays className="h-4 w-4" />}
             actions={
               <Link href="/results" className="text-xs font-semibold text-accent">
                 Open Earnings →
@@ -142,6 +155,8 @@ export default async function DashboardPage() {
           <SectionHeader
             title="04 · Verified Market News"
             subtitle="Clickable coverage from approved financial publishers"
+            accent="indigo"
+            icon={<Newspaper className="h-4 w-4" />}
           />
           <div id="news-heading">
             <LatestMarketNews news={news} />

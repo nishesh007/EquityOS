@@ -34,13 +34,20 @@ function Metric({
   label,
   value,
   tone,
+  tint,
 }: {
   label: string;
   value: string;
   tone?: string;
+  /** R4 subtle tinted surface (5–8% opacity). */
+  tint?: string;
 }) {
   return (
-    <div className="rounded-md border border-surface-border-subtle/70 bg-surface-overlay/40 px-2.5 py-2">
+    <div
+      className={`rounded-md border px-2.5 py-2 ${
+        tint ?? "border-surface-border-subtle/70 bg-surface-overlay/40"
+      }`}
+    >
       <p className="text-[9px] font-medium uppercase tracking-wider text-text-faint">
         {label}
       </p>
@@ -70,7 +77,7 @@ export function MarketContextCard({
   }
 
   return (
-    <Card padding="sm" data-testid="market-context-card">
+    <Card padding="sm" accent="indigo" data-testid="market-context-card">
       <CardHeader
         title="Market Context"
         subtitle="Trend · volatility · breadth · risk"
@@ -104,11 +111,17 @@ export function MarketContextCard({
           label="Risk"
           value={context.riskMode}
           tone={riskTone(context.riskMode)}
+          tint="border-amber-500/15 bg-amber-500/5"
         />
-        <Metric label="Volatility" value={context.volatilityRegime} />
+        <Metric
+          label="Volatility"
+          value={context.volatilityRegime}
+          tint="border-amber-500/15 bg-amber-500/5"
+        />
         <Metric
           label="Breadth"
           value={`${Math.round(context.breadthScore)} · ${context.breadthQuality}`}
+          tint="border-cyan-500/15 bg-cyan-500/5"
         />
         <Metric
           label="A/D"
@@ -117,14 +130,17 @@ export function MarketContextCard({
         <Metric
           label="Momentum"
           value={String(Math.round(context.momentum))}
+          tint="border-sky-500/15 bg-sky-500/5"
         />
         <Metric
           label="Liquidity"
           value={String(Math.round(context.liquidity))}
+          tint="border-indigo-500/15 bg-indigo-500/5"
         />
         <Metric
           label="Participation"
           value={`${Math.round(context.institutionalParticipation)}%`}
+          tint="border-violet-500/15 bg-violet-500/5"
         />
         <Metric
           label="Sector Breadth"

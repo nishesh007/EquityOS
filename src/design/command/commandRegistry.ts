@@ -71,7 +71,7 @@ const PAGE_COMMANDS: readonly CommandItem[] = Object.freeze([
   { id: "page-results", title: "Results Calendar", category: "page", href: "/results", keywords: ["earnings", "calendar"] },
   { id: "page-opportunities", title: "AI Insights", category: "page", href: "/opportunities", keywords: ["recommendations", "conviction", "ideas"] },
   { id: "page-screener", title: "Screener", category: "page", href: "/screener", keywords: ["filter", "scan"] },
-  { id: "page-validation", title: "Validation Center", category: "page", href: "/validation", keywords: ["health", "modules", "integrity"] },
+  { id: "page-validation", title: "Research Confidence", category: "page", href: "/validation", keywords: ["health", "modules", "integrity", "validation"] },
   { id: "page-settings", title: "Settings", category: "page", href: "/settings", keywords: ["appearance", "theme", "preferences"], shortcut: "Ctrl+," },
 ]);
 

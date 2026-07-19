@@ -83,7 +83,7 @@ export function PortfolioSummary({
   }, [portfolio.holdings, resolveQuote]);
 
   return (
-    <Card padding="lg" className="h-full">
+    <Card padding="lg" accent="amber" className="h-full">
       <CardHeader
         title="Portfolio Summary"
         subtitle="Your investment overview"

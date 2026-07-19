@@ -9,6 +9,7 @@ import {
   fetchMarketBreadth,
   fetchMarketPulse,
 } from "@/services/researchDashboardData";
+import { LineChart } from "lucide-react";
 
 export default async function MarketsPage() {
   const [indices, pulse, breadth, marketIntelligence] = await Promise.all([
@@ -21,6 +22,8 @@ export default async function MarketsPage() {
   return (
     <div className="p-6">
       <PageHeader
+        accent="indigo"
+        icon={<LineChart className="h-5 w-5" />}
         title="Markets"
         subtitle="Live indices, market context, regime, pulse and breadth across NSE & BSE"
       />

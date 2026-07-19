@@ -31,13 +31,20 @@ function Metric({
   label,
   value,
   tone,
+  tint,
 }: {
   label: string;
   value: string;
   tone?: string;
+  /** R4 subtle tinted surface (5–8% opacity). */
+  tint?: string;
 }) {
   return (
-    <div className="rounded-md border border-surface-border-subtle/70 bg-surface-overlay/40 px-2.5 py-2">
+    <div
+      className={`rounded-md border px-2.5 py-2 ${
+        tint ?? "border-surface-border-subtle/70 bg-surface-overlay/40"
+      }`}
+    >
       <p className="text-[9px] font-medium uppercase tracking-wider text-text-faint">
         {label}
       </p>
@@ -69,7 +76,7 @@ export function MarketRegimeCard({
   const c = regime.components;
 
   return (
-    <Card padding="sm" data-testid="market-regime-card">
+    <Card padding="sm" accent="indigo" data-testid="market-regime-card">
       <CardHeader
         title="Market Regime"
         subtitle="Institutional classification · confidence"
@@ -105,10 +112,15 @@ export function MarketRegimeCard({
         <Metric label="Momentum" value={String(Math.round(c.momentum))} />
         <Metric label="Volatility" value={String(Math.round(c.volatility))} />
         <Metric label="Breadth" value={String(Math.round(c.breadth))} />
-        <Metric label="Risk" value={c.risk} />
+        <Metric
+          label="Risk"
+          value={c.risk}
+          tint="border-amber-500/15 bg-amber-500/5"
+        />
         <Metric
           label="Confidence"
           value={`${Math.round(regime.confidence)} · ${regime.confidenceGrade}`}
+          tint="border-indigo-500/15 bg-indigo-500/5"
         />
       </div>
 

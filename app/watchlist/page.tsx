@@ -20,6 +20,7 @@ import {
   formatWatchlistPlatformSubtitle,
 } from "@/services/watchlistPlatform";
 import { MainGrid, PageContainer } from "@/src/design";
+import { Star } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,8 @@ export default async function WatchlistPage() {
   return (
     <PageContainer>
       <PageHeader
+        accent="cyan"
+        icon={<Star className="h-5 w-5" />}
         title="Watchlist"
         subtitle={`Track symbols, price action and upcoming earnings · ${formatWatchlistPlatformSubtitle(watchlistPlatform)} · ${screenerHealth.watchlistScreens} institutional watchlist screens · workspace ${screenerHealth.workspaceReady ? "ready" : screenerHealth.emptyMessage} · research ${researchWorkspace.ready ? `${researchWorkspace.openTabs} tabs · executive ${researchWorkspace.executiveReady ? `${researchWorkspace.decisionCount} decisions` : researchWorkspace.executiveEmptyMessage}` : researchWorkspace.emptyMessage}${researchWorkspace.sprint10AFrozen ? " · 10A FROZEN" : ""} · regime ${marketIntelligence.regime.regime}`}
       />

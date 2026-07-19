@@ -98,7 +98,7 @@ export function ExecutiveInstitutionalDashboard({
         <div className="flex items-center gap-2">
           <LayoutDashboard className="h-3.5 w-3.5 text-accent" />
           <p className="text-xs font-semibold text-text-primary">
-            Executive Institutional Dashboard
+            Executive Overview
           </p>
         </div>
         {!view.exportPreviewOnly ? (

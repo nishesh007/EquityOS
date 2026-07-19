@@ -93,7 +93,7 @@ const BUILT_IN_WIDGETS: readonly WidgetDefinition[] = Object.freeze([
   { id: "results-calendar", label: "Results Calendar", description: "Upcoming earnings and events", category: "calendar", defaultRegion: "main", defaultSize: "small" },
   { id: "market-news", label: "Market News", description: "Latest market headlines", category: "news", defaultRegion: "main", defaultSize: "small" },
   { id: "earnings-intelligence", label: "Earnings Intelligence", description: "Ranked earnings dashboard, alerts and history", category: "tables", defaultRegion: "bottom", defaultSize: "full" },
-  { id: "validation-center", label: "Validation Center", description: "Link to the dedicated validation page", category: "validation", defaultRegion: "main", defaultSize: "small" },
+  { id: "validation-center", label: "Research Confidence", description: "Link to the dedicated research confidence page", category: "validation", defaultRegion: "main", defaultSize: "small" },
 ]);
 
 const registry = new Map<string, WidgetDefinition>(

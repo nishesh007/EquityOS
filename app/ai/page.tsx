@@ -3,6 +3,7 @@ import { MarketIntelligenceStrip } from "@/components/market";
 import { SharedRecommendationPanel } from "@/components/recommendations";
 import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
 import { fetchSharedRecommendationsFresh } from "@/services/opportunityEngine";
+import { Bot } from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -50,8 +51,10 @@ export default async function AIInsightsPage() {
   return (
     <div className="space-y-6 p-6">
       <PageHeader
+        accent="purple"
+        icon={<Bot className="h-5 w-5" />}
         title="AI Insights"
-        subtitle="Institutional AI research workspace"
+        subtitle="Investment intelligence and AI research workspace"
       />
 
       <div className="grid gap-4 md:grid-cols-4">

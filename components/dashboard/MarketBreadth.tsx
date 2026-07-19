@@ -65,7 +65,7 @@ function MoverList({
     : items;
 
   return (
-    <Card padding="lg" className="h-full">
+    <Card padding="lg" accent="emerald" className="h-full">
       <CardHeader title={title} subtitle={subtitle} />
       {displayItems.length === 0 ? (
         <EmptyStatePanel
@@ -140,7 +140,7 @@ function AdvanceDecline({ breadth }: MarketBreadthProps) {
   const total = breadth.advances + breadth.declines + breadth.unchanged;
   if (total <= 0) {
     return (
-      <Card padding="lg" className="h-full">
+      <Card padding="lg" accent="emerald" className="h-full">
         <CardHeader
           title="Advance / Decline"
           subtitle="NSE tracked universe"
@@ -162,7 +162,7 @@ function AdvanceDecline({ breadth }: MarketBreadthProps) {
       : breadth.advances;
 
   return (
-    <Card padding="lg" className="h-full">
+    <Card padding="lg" accent="emerald" className="h-full">
       <CardHeader
         title="Advance / Decline"
         subtitle={`${total.toLocaleString("en-IN")} NSE stocks`}
@@ -228,7 +228,7 @@ function AdvanceDecline({ breadth }: MarketBreadthProps) {
 
 function SectorHeatmap({ breadth }: MarketBreadthProps) {
   return (
-    <Card padding="lg" className="h-full">
+    <Card padding="lg" accent="emerald" className="h-full">
       <CardHeader
         title="Sector Heatmap"
         subtitle="NSE sector performance and internal breadth"
@@ -288,7 +288,7 @@ function WeekHighLow({ breadth }: MarketBreadthProps) {
     breadth.weekHighs.length > 0 || breadth.weekLows.length > 0;
 
   return (
-    <Card padding="lg" className="h-full">
+    <Card padding="lg" accent="emerald" className="h-full">
       <CardHeader
         title="Session Extremes"
         subtitle={
