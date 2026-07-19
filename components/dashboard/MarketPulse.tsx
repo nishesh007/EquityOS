@@ -3,26 +3,38 @@
 import { Card, CardHeader } from "@/components/ui/Card";
 import { ChangeIndicator } from "@/components/ui/ChangeIndicator";
 import { MarketSessionIndicator } from "@/components/market/MarketSessionIndicator";
+import { EmptyStatePanel } from "@/components/ui/EmptyStatePanel";
 import { useMarketQuotes } from "@/hooks/useMarketQuotes";
 import {
   createUnavailableQuote,
   type EnrichedQuote,
 } from "@/lib/market-data/enriched-quote";
+import type { MarketIntelligenceSnapshot } from "@/lib/market-intelligence";
 import type { MarketStatus } from "@/lib/market/session";
 import { getMarketStatusLabel } from "@/lib/market/session";
 import type { MarketPulse as MarketPulseType } from "@/types";
-import { Activity, ArrowDownToLine, ArrowUpFromLine, Gauge, Radio } from "lucide-react";
-import { useMemo } from "react";
+import {
+  Activity,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Droplets,
+  Gauge,
+  Radio,
+  Users,
+  Waves,
+} from "lucide-react";
+import { useMemo, type ReactNode } from "react";
 
 interface MarketPulseProps {
   pulse: MarketPulseType;
+  marketIntelligence?: MarketIntelligenceSnapshot | null;
 }
 
 interface PulseMetricProps {
   label: string;
-  children: React.ReactNode;
-  detail: React.ReactNode;
-  icon: React.ReactNode;
+  children: ReactNode;
+  detail: ReactNode;
+  icon: ReactNode;
 }
 
 function formatFlow(value: number): string {
@@ -57,9 +69,13 @@ function resolveVixQuote(
   );
 }
 
-export function MarketPulse({ pulse }: MarketPulseProps) {
+export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
   const flow = pulse.institutionalFlow;
-  const flowAvailable = flow.asOf !== "Unavailable";
+  const flowAvailable =
+    flow.asOf !== "Unavailable" &&
+    flow.asOf !== "Coming in Sprint 10D" &&
+    (flow.fii !== 0 || flow.dii !== 0);
+  const context = marketIntelligence?.context ?? null;
   const initialQuotes = useMemo(() => {
     const map: Record<string, EnrichedQuote> = {};
     if (pulse.vixQuote) {
@@ -83,8 +99,20 @@ export function MarketPulse({ pulse }: MarketPulseProps) {
     vixQuote.price > 0;
 
   const vixUpdated = vixQuote.lastUpdatedIST?.replace("\n", " ");
-
   const sessionLabel = getMarketStatusLabel(marketStatus as MarketStatus);
+
+  const breadthScore =
+    pulse.breadthScore > 0
+      ? pulse.breadthScore
+      : context
+        ? Math.round(context.breadthScore)
+        : 0;
+  const momentum = context ? Math.round(context.momentum) : null;
+  const liquidity = context ? Math.round(context.liquidity) : null;
+  const participation = context
+    ? Math.round(context.institutionalParticipation)
+    : null;
+  const volatility = context?.volatilityRegime ?? null;
 
   return (
     <Card padding="lg" className="relative overflow-hidden">
@@ -100,7 +128,7 @@ export function MarketPulse({ pulse }: MarketPulseProps) {
         }
       />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <PulseMetric
           label="India VIX"
           icon={<Activity className="h-4 w-4" />}
@@ -108,7 +136,7 @@ export function MarketPulse({ pulse }: MarketPulseProps) {
             vixUpdated ? (
               <>Updated {vixUpdated}</>
             ) : (
-              "Volatility data unavailable"
+              "Coming in Sprint 10D · data source pending"
             )
           }
         >
@@ -121,7 +149,9 @@ export function MarketPulse({ pulse }: MarketPulseProps) {
                 <ChangeIndicator value={vixQuote.changePercent ?? 0} size="sm" />
               </>
             ) : (
-              <p className="text-xl font-semibold text-text-muted">Unavailable</p>
+              <p className="text-xl font-semibold text-text-muted">
+                Coming in Sprint 10D
+              </p>
             )}
           </div>
         </PulseMetric>
@@ -146,7 +176,7 @@ export function MarketPulse({ pulse }: MarketPulseProps) {
             </div>
           ) : (
             <p className="text-xl font-semibold text-text-muted">
-              Available Soon
+              Coming in Sprint 10D
             </p>
           )}
         </PulseMetric>
@@ -161,40 +191,117 @@ export function MarketPulse({ pulse }: MarketPulseProps) {
           }
         >
           <p className="data-value text-xl font-semibold">
-            {pulse.putCallRatio > 0 ? pulse.putCallRatio : "Available Soon"}
+            {pulse.putCallRatio > 0
+              ? pulse.putCallRatio
+              : "Coming in Sprint 10D"}
           </p>
         </PulseMetric>
 
         <PulseMetric
           label="Market Trend"
           icon={<ArrowUpFromLine className="h-4 w-4" />}
-          detail="Derived from live benchmark direction"
+          detail={
+            context
+              ? `Regime ${marketIntelligence?.regime.regime ?? "—"}`
+              : "Derived from live benchmark direction"
+          }
         >
-          <p className="text-sm font-semibold text-gain">{pulse.marketTrend}</p>
+          <p className="text-sm font-semibold text-gain">
+            {context?.marketTrend ?? pulse.marketTrend}
+          </p>
         </PulseMetric>
 
         <PulseMetric
-          label="Breadth Score"
+          label="Breadth"
           icon={<Radio className="h-4 w-4" />}
           detail={
-            pulse.breadthScore > 0
-              ? "Tracked-universe participation"
+            breadthScore > 0
+              ? (context?.breadthQuality ?? "Tracked-universe participation")
               : "Coming in Sprint 10D · data source pending"
           }
         >
           <div className="flex items-center gap-3">
             <p className="data-value text-xl font-semibold">
-              {pulse.breadthScore > 0 ? pulse.breadthScore : "Available Soon"}
+              {breadthScore > 0 ? breadthScore : "Coming in Sprint 10D"}
             </p>
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-border">
-              <div
-                className="h-full rounded-full bg-gain transition-[width] duration-1000 ease-out"
-                style={{ width: `${pulse.breadthScore}%` }}
-              />
-            </div>
+            {breadthScore > 0 ? (
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-border">
+                <div
+                  className="h-full rounded-full bg-gain transition-[width] duration-1000 ease-out"
+                  style={{ width: `${breadthScore}%` }}
+                />
+              </div>
+            ) : null}
           </div>
         </PulseMetric>
+
+        <PulseMetric
+          label="Momentum"
+          icon={<Waves className="h-4 w-4" />}
+          detail={
+            momentum != null
+              ? "Shared Market Context"
+              : "Coming in Sprint 10D · data source pending"
+          }
+        >
+          <p className="data-value text-xl font-semibold">
+            {momentum != null ? momentum : "Coming in Sprint 10D"}
+          </p>
+        </PulseMetric>
+
+        <PulseMetric
+          label="Volatility"
+          icon={<Activity className="h-4 w-4" />}
+          detail={
+            volatility
+              ? "Shared Market Context"
+              : "Coming in Sprint 10D · data source pending"
+          }
+        >
+          <p className="text-sm font-semibold text-text-primary">
+            {volatility ?? "Coming in Sprint 10D"}
+          </p>
+        </PulseMetric>
+
+        <PulseMetric
+          label="Liquidity"
+          icon={<Droplets className="h-4 w-4" />}
+          detail={
+            liquidity != null
+              ? "Shared Market Context"
+              : "Coming in Sprint 10D · data source pending"
+          }
+        >
+          <p className="data-value text-xl font-semibold">
+            {liquidity != null ? liquidity : "Coming in Sprint 10D"}
+          </p>
+        </PulseMetric>
+
+        <PulseMetric
+          label="Participation"
+          icon={<Users className="h-4 w-4" />}
+          detail={
+            participation != null
+              ? "Institutional participation score"
+              : "Coming in Sprint 10D · data source pending"
+          }
+        >
+          <p className="data-value text-xl font-semibold">
+            {participation != null
+              ? `${participation}%`
+              : "Coming in Sprint 10D"}
+          </p>
+        </PulseMetric>
       </div>
+
+      {!context && !vixAvailable && !flowAvailable ? (
+        <div className="mt-4">
+          <EmptyStatePanel
+            message="Market Pulse is waiting on live quotes and Sprint 10D institutional feeds."
+            source="Market Context · India VIX · FII/DII"
+          />
+        </div>
+      ) : null}
     </Card>
   );
 }

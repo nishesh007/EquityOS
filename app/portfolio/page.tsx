@@ -18,6 +18,7 @@ import {
   fetchRecommendationsForSymbols,
   ensureOpportunityEngineState,
 } from "@/services/opportunityEngine";
+import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
 import { fetchInstitutionalScreenerHealth } from "@/services/screenerData";
 import { fetchResearchWorkspaceHealth } from "@/services/researchWorkspace";
 import { MainGrid, PageContainer } from "@/src/design";
@@ -42,6 +43,8 @@ export default async function PortfolioPage() {
     Promise.resolve(fetchInstitutionalScreenerHealth()),
     Promise.resolve(fetchResearchWorkspaceHealth()),
   ]);
+  // Warm shared Market Intelligence before sync recommendation selectors.
+  await getMarketIntelligenceSnapshot();
   const holdingRecommendationMap = fetchRecommendationsForSymbols(
     portfolio.holdings.map((holding) => holding.symbol)
   );

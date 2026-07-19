@@ -62,7 +62,7 @@ export default async function WatchlistPage() {
         <SharedRecommendationPanel
           recommendations={strategyRecommendations}
           title="Watchlist · Strategy Matches"
-          emptyMessage="No validated strategy recommendation for watched stocks."
+          emptyMessage="No active strategy signal for watched stocks — Strategy Engine and Opportunity Engine fallback both returned none."
         />
       </section>
 

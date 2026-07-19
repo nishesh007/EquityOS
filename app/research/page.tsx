@@ -42,6 +42,8 @@ import { SharedRecommendationPanel } from "@/components/recommendations";
 import { fetchSharedRecommendationsFresh } from "@/services/opportunityEngine";
 
 import { PageContainer } from "@/src/design";
+import { EmptyStatePanel } from "@/components/ui/EmptyStatePanel";
+import { BookOpen } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -153,9 +155,22 @@ export default async function ResearchPage() {
       </div>
 
       {view.empty && multi.empty ? (
-        <div className="rounded-lg border border-surface-border-subtle px-4 py-10 text-center text-sm text-text-muted">
-          {multi.emptyMessage || view.emptyMessage}
-        </div>
+        <EmptyStatePanel
+          className="py-10"
+          title="Research workspace ready"
+          message={
+            multi.emptyMessage ||
+            view.emptyMessage ||
+            "Open a company from Markets or Watchlist to populate AI Summary, Bull/Bear cases, valuation and Strategy Engine enrichment."
+          }
+          source="Research Workspace · Strategy Engine"
+          icon={BookOpen}
+          action={
+            <Link href="/opportunities" className="text-[11px] font-semibold text-accent">
+              Browse Opportunities →
+            </Link>
+          }
+        />
       ) : (
         <div className="space-y-6">
           {view.active ? (

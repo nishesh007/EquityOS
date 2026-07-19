@@ -34,7 +34,7 @@ export default async function MarketsPage() {
       </section>
 
       <section className="mb-6 animate-fade-in-up [animation-delay:120ms]">
-        <MarketPulse pulse={pulse} />
+        <MarketPulse pulse={pulse} marketIntelligence={marketIntelligence} />
       </section>
 
       <section className="animate-fade-in-up [animation-delay:180ms]">

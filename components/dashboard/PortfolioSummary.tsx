@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { QuoteDisplayCompact } from "@/components/market/QuoteDisplay";
 import { StockLink } from "@/components/ui/StockLink";
+import { EmptyStatePanel } from "@/components/ui/EmptyStatePanel";
 import { ViewFullPortfolioLink } from "@/components/dashboard/ViewFullPortfolioLink";
 import { useMarketQuotes } from "@/hooks/useMarketQuotes";
 import { createUnavailableQuote, type EnrichedQuote } from "@/lib/market-data/enriched-quote";
@@ -12,6 +12,7 @@ import { buildInitialQuotesMap } from "@/lib/market-data/enriched-quote";
 import type { PortfolioSummary as PortfolioSummaryType } from "@/types";
 import { AllocationRing, KpiTile } from "@/src/design";
 import { Wallet } from "lucide-react";
+import { useCallback, useMemo } from "react";
 
 interface PortfolioSummaryProps {
   portfolio: PortfolioSummaryType;
@@ -114,7 +115,7 @@ export function PortfolioSummary({
         />
       </div>
 
-      {portfolio.holdings.length > 0 && (
+      {portfolio.holdings.length > 0 ? (
         <div className="mt-5">
           <p className="mb-3 text-xs font-medium text-text-muted">
             Capital Allocation
@@ -135,9 +136,17 @@ export function PortfolioSummary({
             })}
           />
         </div>
+      ) : (
+        <div className="mt-5">
+          <EmptyStatePanel
+            message="No holdings in the local portfolio seed. Brokerage sync will enrich this view when connected."
+            source="Local portfolio · brokerage optional"
+            icon={Wallet}
+          />
+        </div>
       )}
 
-      {showTopHoldings && (
+      {showTopHoldings && portfolio.holdings.length > 0 ? (
         <div className="mt-5">
           <p className="mb-3 text-xs font-medium text-text-muted">Top Holdings</p>
           <div className="space-y-2">
@@ -167,7 +176,7 @@ export function PortfolioSummary({
             })}
           </div>
         </div>
-      )}
+      ) : null}
 
       {showViewAllLink && <ViewFullPortfolioLink />}
     </Card>

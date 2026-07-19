@@ -1,4 +1,5 @@
 import { Card, CardHeader } from "@/components/ui/Card";
+import { EmptyStatePanel } from "@/components/ui/EmptyStatePanel";
 import type { MarketContextView } from "@/lib/market-intelligence";
 import { Activity, Gauge, TrendingUp, Waves } from "lucide-react";
 
@@ -59,7 +60,11 @@ export function MarketContextCard({
     return (
       <Card padding="sm" data-testid="market-context-card-empty">
         <CardHeader title="Market Context" subtitle="Awaiting market data" />
-        <p className="text-xs text-text-muted">No context available</p>
+        <EmptyStatePanel
+          message="Shared Market Context is warming up. Dashboard will refresh automatically once the Trading Pipeline publishes a snapshot."
+          source="Trading Pipeline · Market Context"
+          icon={Activity}
+        />
       </Card>
     );
   }

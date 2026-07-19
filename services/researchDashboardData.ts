@@ -2,7 +2,9 @@ import type {
   MarketBreadth,
   MarketMover,
   MarketPulse,
+  SectorPerformance,
 } from "@/types";
+import { lookupCompanyMaster } from "@/lib/company-master";
 import { marketDataService } from "@/lib/market-data";
 import { formatVolume } from "@/lib/utils";
 import { getCached, cacheKey, CACHE_TTL } from "@/lib/cache";
@@ -82,6 +84,77 @@ export function selectDirectionalMovers(
     .slice(0, limit);
 }
 
+function buildSectorPerformance(movers: MarketMover[]): SectorPerformance[] {
+  const bySector = new Map<
+    string,
+    { changes: number[]; advances: number; total: number }
+  >();
+
+  for (const mover of movers) {
+    const sector =
+      lookupCompanyMaster(mover.symbol)?.sector?.trim() || "Diversified";
+    const bucket = bySector.get(sector) ?? {
+      changes: [],
+      advances: 0,
+      total: 0,
+    };
+    bucket.changes.push(mover.changePercent);
+    bucket.total += 1;
+    if (mover.changePercent > 0) bucket.advances += 1;
+    bySector.set(sector, bucket);
+  }
+
+  return [...bySector.entries()]
+    .map(([name, bucket]) => {
+      const avg =
+        bucket.changes.reduce((sum, value) => sum + value, 0) /
+        Math.max(1, bucket.changes.length);
+      return {
+        name,
+        changePercent: Math.round(avg * 100) / 100,
+        breadth: Math.round((bucket.advances / Math.max(1, bucket.total)) * 100),
+      };
+    })
+    .sort((left, right) => right.changePercent - left.changePercent)
+    .slice(0, 8);
+}
+
+/** Session extremes as a stand-in until true 52W high/low data lands in 10D. */
+function selectSessionExtremes(
+  movers: MarketMover[],
+  direction: "high" | "low",
+  limit = 4
+): MarketMover[] {
+  return movers
+    .filter((mover) => {
+      const high = mover.quote?.high;
+      const low = mover.quote?.low;
+      const price = mover.quote?.price ?? mover.price;
+      if (direction === "high") {
+        return (
+          typeof high === "number" &&
+          high > 0 &&
+          typeof price === "number" &&
+          price > 0 &&
+          Math.abs(price - high) / high < 0.005
+        );
+      }
+      return (
+        typeof low === "number" &&
+        low > 0 &&
+        typeof price === "number" &&
+        price > 0 &&
+        Math.abs(price - low) / low < 0.005
+      );
+    })
+    .sort((a, b) =>
+      direction === "high"
+        ? b.changePercent - a.changePercent
+        : a.changePercent - b.changePercent
+    )
+    .slice(0, limit);
+}
+
 async function buildLiveMarketBreadth(): Promise<MarketBreadth> {
   const movers = await enrichMovers(
     BREADTH_UNIVERSE.map(({ symbol, name }) => ({
@@ -98,18 +171,20 @@ async function buildLiveMarketBreadth(): Promise<MarketBreadth> {
   const advances = available.filter((mover) => mover.changePercent > 0).length;
   const declines = available.filter((mover) => mover.changePercent < 0).length;
   const unchanged = available.length - advances - declines;
+  const weekHighs = selectSessionExtremes(available, "high");
+  const weekLows = selectSessionExtremes(available, "low");
 
   return {
     advances,
     declines,
     unchanged,
-    newHighs: 0,
-    newLows: 0,
-    sectors: [],
+    newHighs: weekHighs.length,
+    newLows: weekLows.length,
+    sectors: buildSectorPerformance(available),
     gainers: selectDirectionalMovers(available, "gainers"),
     losers: selectDirectionalMovers(available, "losers"),
-    weekHighs: [],
-    weekLows: [],
+    weekHighs,
+    weekLows,
     mostActive: available
       .slice()
       .sort(
@@ -125,7 +200,11 @@ function buildMarketPulse(): MarketPulse {
   return {
     indiaVix: 0,
     indiaVixChange: 0,
-    institutionalFlow: { fii: 0, dii: 0, asOf: "Unavailable" },
+    institutionalFlow: {
+      fii: 0,
+      dii: 0,
+      asOf: "Coming in Sprint 10D",
+    },
     putCallRatio: 0,
     marketTrend: "Neutral",
     breadthScore: 0,

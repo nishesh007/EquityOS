@@ -2,6 +2,7 @@
 
 import { Card, CardHeader } from "@/components/ui/Card";
 import { QuoteDisplayCompact } from "@/components/market/QuoteDisplay";
+import { EmptyStatePanel } from "@/components/ui/EmptyStatePanel";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { useMarketQuotes } from "@/hooks/useMarketQuotes";
 import { createUnavailableQuote } from "@/lib/market-data/enriched-quote";
@@ -41,6 +42,13 @@ export function Watchlist({
       />
 
       <div className="overflow-x-auto">
+        {items.length === 0 ? (
+          <EmptyStatePanel
+            message="Watchlist is empty. Add symbols from company pages or Markets to track Strategy Engine signals here."
+            source="Watchlist registry · Strategy Engine"
+            icon={Star}
+          />
+        ) : (
         <table className="w-full">
           <thead>
             <tr className="border-b border-surface-border-subtle text-left">
@@ -101,7 +109,7 @@ export function Watchlist({
                     <p className="text-[9px] text-text-muted">
                       {recommendation
                         ? `${recommendation.primaryStrategy} · ${recommendation.confidence.toFixed(2)}%`
-                        : "No validated match"}
+                        : "No active signal · Strategy Engine & fallback exhausted"}
                     </p>
                   </td>
                   <td className="py-2.5 text-right">
@@ -138,6 +146,7 @@ export function Watchlist({
             })}
           </tbody>
         </table>
+        )}
       </div>
     </Card>
   );

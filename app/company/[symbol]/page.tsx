@@ -25,10 +25,15 @@ import {
 } from "@/services/watchlistPlatform";
 import { PageContainer } from "@/src/design";
 import { SharedRecommendationPanel } from "@/components/recommendations";
+import { EmptyStatePanel } from "@/components/ui/EmptyStatePanel";
+import { Card, CardHeader } from "@/components/ui/Card";
 import {
   ensureOpportunityEngineState,
   fetchRecommendationForSymbol,
 } from "@/services/opportunityEngine";
+import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
+import { Brain } from "lucide-react";
+import Link from "next/link";
 
 interface CompanyPageProps {
   params: Promise<{ symbol: string }>;
@@ -50,7 +55,12 @@ export async function generateMetadata({ params }: CompanyPageProps) {
 
 export default async function CompanyPage({ params }: CompanyPageProps) {
   const { symbol } = await params;
-  await ensureOpportunityEngineState();
+  // Warm OE state + shared Market Intelligence before sync recommendation
+  // selectors so company cards never diverge from Dashboard regime/context.
+  await Promise.all([
+    ensureOpportunityEngineState(),
+    getMarketIntelligenceSnapshot(),
+  ]);
   const strategyRecommendation = fetchRecommendationForSymbol(symbol);
   const [company, research, intelligence] = await Promise.all([
     fetchCompanyProfile(symbol),
@@ -114,7 +124,7 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
           {companyWorkspace.empty
             ? companyWorkspace.emptyMessage
             : `${companyWorkspace.panels.length} panels · Strategy Engine ${
-                strategyRecommendation?.action ?? "no validated recommendation"
+                strategyRecommendation?.action ?? "no active signal"
               }`}{" "}
           · knowledge{" "}
           {knowledge.empty
@@ -177,7 +187,27 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
             symbol={company.symbol}
             initialQuote={company.quote}
           />
-        ) : null}
+        ) : (
+          <Card padding="lg">
+            <CardHeader
+              title="Equity Intelligence"
+              subtitle="Fundamentals · valuation · risk"
+            />
+            <EmptyStatePanel
+              message="Live fundamentals for this symbol are not available yet. Overview, research and Strategy Engine panels above remain authoritative."
+              source="Fundamentals providers · Equity Intelligence"
+              icon={Brain}
+              action={
+                <Link
+                  href="/research"
+                  className="text-[11px] font-semibold text-accent"
+                >
+                  Open Research Workspace →
+                </Link>
+              }
+            />
+          </Card>
+        )}
         <FinancialSummaryCards
           financials={company.financials}
           dataTransparency={intelligence?.dataTransparency}

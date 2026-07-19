@@ -1,5 +1,8 @@
 import type { SharedRecommendation } from "@/lib/recommendations";
 import { CATEGORY_LABELS } from "@/lib/opportunity-engine/types";
+import { EmptyStatePanel } from "@/components/ui/EmptyStatePanel";
+import { Crosshair } from "lucide-react";
+import Link from "next/link";
 
 function price(value: number): string {
   return `₹${value.toLocaleString("en-IN", {
@@ -11,7 +14,7 @@ function price(value: number): string {
 export function SharedRecommendationPanel({
   recommendations,
   title = "Strategy Engine Recommendations",
-  emptyMessage = "No validated Strategy Engine recommendations in the latest scan.",
+  emptyMessage = "No active recommendations — Strategy Engine and Opportunity Engine fallback both returned none for this surface.",
 }: {
   recommendations: readonly SharedRecommendation[];
   title?: string;
@@ -26,7 +29,21 @@ export function SharedRecommendationPanel({
         </span>
       </div>
       {recommendations.length === 0 ? (
-        <p className="mt-3 text-xs text-text-muted">{emptyMessage}</p>
+        <div className="mt-3">
+          <EmptyStatePanel
+            message={emptyMessage}
+            source="Strategy Engine · Opportunity Engine fallback"
+            icon={Crosshair}
+            action={
+              <Link
+                href="/opportunities"
+                className="text-[11px] font-semibold text-accent"
+              >
+                Open AI Opportunities →
+              </Link>
+            }
+          />
+        </div>
       ) : (
         <div className="mt-3 overflow-x-auto">
           <table className="w-full text-left text-xs">

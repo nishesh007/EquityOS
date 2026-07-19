@@ -76,7 +76,7 @@ export default async function DashboardPage() {
           />
           <div id="market-pulse-heading" className="space-y-5">
             <MarketIntelligenceStrip snapshot={marketIntelligence} />
-            <MarketPulse pulse={pulse} />
+            <MarketPulse pulse={pulse} marketIntelligence={marketIntelligence} />
             <MarketOverviewCards indices={indices} />
             <MarketBreadth breadth={breadth} />
           </div>

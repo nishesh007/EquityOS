@@ -1,4 +1,5 @@
 import { Card, CardHeader } from "@/components/ui/Card";
+import { EmptyStatePanel } from "@/components/ui/EmptyStatePanel";
 import type { MarketRegimeView } from "@/lib/market-intelligence";
 import { Compass, Shield } from "lucide-react";
 
@@ -56,7 +57,11 @@ export function MarketRegimeCard({
     return (
       <Card padding="sm" data-testid="market-regime-card-empty">
         <CardHeader title="Market Regime" subtitle="Awaiting classification" />
-        <p className="text-xs text-text-muted">No regime available</p>
+        <EmptyStatePanel
+          message="Shared Market Regime is warming up. Classification appears once the Trading Pipeline finishes."
+          source="Trading Pipeline · Market Regime"
+          icon={Compass}
+        />
       </Card>
     );
   }

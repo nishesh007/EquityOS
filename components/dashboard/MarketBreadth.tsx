@@ -4,12 +4,21 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { ChangeIndicator } from "@/components/ui/ChangeIndicator";
 import { QuoteDisplayCompact } from "@/components/market/QuoteDisplay";
 import { StockLink } from "@/components/ui/StockLink";
+import { EmptyStatePanel } from "@/components/ui/EmptyStatePanel";
 import { useMarketQuotes } from "@/hooks/useMarketQuotes";
 import { createUnavailableQuote } from "@/lib/market-data/enriched-quote";
 import { buildInitialQuotesMap } from "@/lib/market-data/enriched-quote";
 import type { MarketBreadth as MarketBreadthType, MarketMover } from "@/types";
 import { HeatMeter } from "@/src/design";
-import { BarChart3, CircleArrowDown, CircleArrowUp, Layers3 } from "lucide-react";
+import {
+  BarChart3,
+  CircleArrowDown,
+  CircleArrowUp,
+  Layers3,
+  TrendingDown,
+  TrendingUp,
+} from "lucide-react";
+import Link from "next/link";
 
 interface MarketBreadthProps {
   breadth: MarketBreadthType;
@@ -58,49 +67,66 @@ function MoverList({
   return (
     <Card padding="lg" className="h-full">
       <CardHeader title={title} subtitle={subtitle} />
-      <div className="space-y-0.5">
-        {displayItems.map((item, index) => {
-          const quote =
-            quotes.get(item.symbol) ?? item.quote ?? createUnavailableQuote(item.symbol);
+      {displayItems.length === 0 ? (
+        <EmptyStatePanel
+          message={`No qualifying ${direction ?? "movers"} in the tracked universe right now.`}
+          source="Live NSE quotes · tracked large & mid caps"
+          icon={direction === "losers" ? TrendingDown : TrendingUp}
+          action={
+            <Link href="/markets" className="text-[11px] font-semibold text-accent">
+              Refresh Markets →
+            </Link>
+          }
+        />
+      ) : (
+        <div className="space-y-0.5">
+          {displayItems.map((item, index) => {
+            const quote =
+              quotes.get(item.symbol) ??
+              item.quote ??
+              createUnavailableQuote(item.symbol);
 
-          return (
-            <StockLink
-              key={item.symbol}
-              symbol={item.symbol}
-              className="group flex items-center justify-between rounded-lg px-2 py-2 transition-colors hover:bg-surface-hover/50"
-            >
-              <div className="flex min-w-0 items-center gap-2.5">
-                <span className="w-4 text-[10px] font-mono text-text-faint">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-                <div className="min-w-0">
-                  <p className="truncate text-xs font-semibold text-text-primary transition-colors group-hover:text-accent">
-                    {item.symbol}
-                  </p>
-                  <p className="truncate text-[10px] text-text-muted">{item.name}</p>
-                </div>
-              </div>
-              <div className="ml-3 text-right">
-                {valueLabel === "Volume" ? (
-                  <>
-                    <p className="font-mono text-xs text-text-secondary tabular-nums">
-                      {item.volume}
+            return (
+              <StockLink
+                key={item.symbol}
+                symbol={item.symbol}
+                className="group flex items-center justify-between rounded-lg px-2 py-2 transition-colors hover:bg-surface-hover/50"
+              >
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <span className="w-4 text-[10px] font-mono text-text-faint">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-semibold text-text-primary transition-colors group-hover:text-accent">
+                      {item.symbol}
                     </p>
-                    <ChangeIndicator
-                      value={quote.changePercent ?? item.changePercent}
-                      size="sm"
-                      showIcon={false}
-                    />
-                  </>
-                ) : (
-                  <QuoteDisplayCompact quote={quote} className="text-right" />
-                )}
-              </div>
-            </StockLink>
-          );
-        })}
-      </div>
-      {direction && displayItems.length < MAX_MOVER_ROWS ? (
+                    <p className="truncate text-[10px] text-text-muted">
+                      {item.name}
+                    </p>
+                  </div>
+                </div>
+                <div className="ml-3 text-right">
+                  {valueLabel === "Volume" ? (
+                    <>
+                      <p className="font-mono text-xs text-text-secondary tabular-nums">
+                        {item.volume}
+                      </p>
+                      <ChangeIndicator
+                        value={quote.changePercent ?? item.changePercent}
+                        size="sm"
+                        showIcon={false}
+                      />
+                    </>
+                  ) : (
+                    <QuoteDisplayCompact quote={quote} className="text-right" />
+                  )}
+                </div>
+              </StockLink>
+            );
+          })}
+        </div>
+      )}
+      {direction && displayItems.length > 0 && displayItems.length < MAX_MOVER_ROWS ? (
         <p className="mt-3 border-t border-surface-border-subtle pt-3 text-[11px] text-text-muted">
           Only {displayItems.length} qualifying{" "}
           {direction === "gainers" ? "gainers" : "losers"} today
@@ -112,9 +138,28 @@ function MoverList({
 
 function AdvanceDecline({ breadth }: MarketBreadthProps) {
   const total = breadth.advances + breadth.declines + breadth.unchanged;
+  if (total <= 0) {
+    return (
+      <Card padding="lg" className="h-full">
+        <CardHeader
+          title="Advance / Decline"
+          subtitle="NSE tracked universe"
+          action={<BarChart3 className="h-4 w-4 text-accent" />}
+        />
+        <EmptyStatePanel
+          message="Advance/decline breadth will appear once live quotes resolve for the tracked universe."
+          source="Live NSE quotes"
+          icon={BarChart3}
+        />
+      </Card>
+    );
+  }
   const advanceWidth = (breadth.advances / total) * 100;
   const declineWidth = (breadth.declines / total) * 100;
-  const ratio = breadth.advances / breadth.declines;
+  const ratio =
+    breadth.declines > 0
+      ? breadth.advances / breadth.declines
+      : breadth.advances;
 
   return (
     <Card padding="lg" className="h-full">
@@ -189,80 +234,132 @@ function SectorHeatmap({ breadth }: MarketBreadthProps) {
         subtitle="NSE sector performance and internal breadth"
         action={<Layers3 className="h-4 w-4 text-accent" />}
       />
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {breadth.sectors.map((sector) => {
-          const positive = sector.changePercent >= 0;
-          const intensity = Math.min(Math.abs(sector.changePercent) / 2.5, 1);
+      {breadth.sectors.length === 0 ? (
+        <EmptyStatePanel
+          message="Sector performance will populate once live quotes resolve for the tracked universe."
+          source="Company master sectors · live quotes"
+          icon={Layers3}
+        />
+      ) : (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {breadth.sectors.map((sector) => {
+            const positive = sector.changePercent >= 0;
+            const intensity = Math.min(Math.abs(sector.changePercent) / 2.5, 1);
 
-          return (
-            <div
-              key={sector.name}
-              className="group relative overflow-hidden rounded-lg border border-surface-border-subtle bg-surface-overlay/50 p-3 transition-all duration-300 hover:-translate-y-0.5 hover:border-surface-border"
-            >
+            return (
               <div
-                className="pointer-events-none absolute inset-0 transition-opacity group-hover:opacity-100"
-                style={{
-                  background: `linear-gradient(135deg, ${
-                    positive ? "rgba(34,197,94," : "rgba(239,68,68,"
-                  }${0.05 + intensity * 0.12}), transparent 75%)`,
-                }}
-              />
-              <div className="relative">
-                <p className="truncate text-[10px] font-medium uppercase tracking-wider text-text-muted">
-                  {sector.name}
-                </p>
-                <p className={`mt-2 font-mono text-lg font-semibold ${positive ? "text-gain" : "text-loss"}`}>
-                  {positive ? "+" : ""}
-                  {sector.changePercent.toFixed(2)}%
-                </p>
-                <div className="mt-2 flex items-center justify-between text-[10px] text-text-faint">
-                  <span>Breadth</span>
-                  <span className="font-mono">{sector.breadth}/100</span>
+                key={sector.name}
+                className="group relative overflow-hidden rounded-lg border border-surface-border-subtle bg-surface-overlay/50 p-3 transition-all duration-300 hover:-translate-y-0.5 hover:border-surface-border"
+              >
+                <div
+                  className="pointer-events-none absolute inset-0 transition-opacity group-hover:opacity-100"
+                  style={{
+                    background: `linear-gradient(135deg, ${
+                      positive ? "rgba(34,197,94," : "rgba(239,68,68,"
+                    }${0.05 + intensity * 0.12}), transparent 75%)`,
+                  }}
+                />
+                <div className="relative">
+                  <p className="truncate text-[10px] font-medium uppercase tracking-wider text-text-muted">
+                    {sector.name}
+                  </p>
+                  <p
+                    className={`mt-2 font-mono text-lg font-semibold ${positive ? "text-gain" : "text-loss"}`}
+                  >
+                    {positive ? "+" : ""}
+                    {sector.changePercent.toFixed(2)}%
+                  </p>
+                  <div className="mt-2 flex items-center justify-between text-[10px] text-text-faint">
+                    <span>Breadth</span>
+                    <span className="font-mono">{sector.breadth}/100</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </Card>
   );
 }
 
 function WeekHighLow({ breadth }: MarketBreadthProps) {
+  const hasExtremes =
+    breadth.weekHighs.length > 0 || breadth.weekLows.length > 0;
+
   return (
     <Card padding="lg" className="h-full">
       <CardHeader
-        title="52 Week High / Low"
-        subtitle={`${breadth.newHighs} highs · ${breadth.newLows} lows today`}
+        title="Session Extremes"
+        subtitle={
+          hasExtremes
+            ? `${breadth.newHighs} near high · ${breadth.newLows} near low`
+            : "Coming in Sprint 10D · full 52W high/low feed"
+        }
       />
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-gain">
-            New highs
-          </p>
-          <div className="space-y-2">
-            {breadth.weekHighs.map((item) => (
-              <StockLink key={item.symbol} symbol={item.symbol} className="block">
-                <p className="text-xs font-semibold text-text-primary hover:text-accent">{item.symbol}</p>
-                <ChangeIndicator value={item.changePercent} size="sm" showIcon={false} />
-              </StockLink>
-            ))}
+      {!hasExtremes ? (
+        <EmptyStatePanel
+          message="True 52-week highs and lows arrive with Sprint 10D. Session extremes appear here when quotes trade at the day high or low."
+          source="Sprint 10D market data · live session quotes"
+        />
+      ) : (
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-gain">
+              Near session high
+            </p>
+            <div className="space-y-2">
+              {breadth.weekHighs.length === 0 ? (
+                <p className="text-[11px] text-text-muted">None right now</p>
+              ) : (
+                breadth.weekHighs.map((item) => (
+                  <StockLink
+                    key={item.symbol}
+                    symbol={item.symbol}
+                    className="block"
+                  >
+                    <p className="text-xs font-semibold text-text-primary hover:text-accent">
+                      {item.symbol}
+                    </p>
+                    <ChangeIndicator
+                      value={item.changePercent}
+                      size="sm"
+                      showIcon={false}
+                    />
+                  </StockLink>
+                ))
+              )}
+            </div>
+          </div>
+          <div className="border-l border-surface-border-subtle pl-4">
+            <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-loss">
+              Near session low
+            </p>
+            <div className="space-y-2">
+              {breadth.weekLows.length === 0 ? (
+                <p className="text-[11px] text-text-muted">None right now</p>
+              ) : (
+                breadth.weekLows.map((item) => (
+                  <StockLink
+                    key={item.symbol}
+                    symbol={item.symbol}
+                    className="block"
+                  >
+                    <p className="text-xs font-semibold text-text-primary hover:text-accent">
+                      {item.symbol}
+                    </p>
+                    <ChangeIndicator
+                      value={item.changePercent}
+                      size="sm"
+                      showIcon={false}
+                    />
+                  </StockLink>
+                ))
+              )}
+            </div>
           </div>
         </div>
-        <div className="border-l border-surface-border-subtle pl-4">
-          <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-loss">
-            New lows
-          </p>
-          <div className="space-y-2">
-            {breadth.weekLows.map((item) => (
-              <StockLink key={item.symbol} symbol={item.symbol} className="block">
-                <p className="text-xs font-semibold text-text-primary hover:text-accent">{item.symbol}</p>
-                <ChangeIndicator value={item.changePercent} size="sm" showIcon={false} />
-              </StockLink>
-            ))}
-          </div>
-        </div>
-      </div>
+      )}
     </Card>
   );
 }
