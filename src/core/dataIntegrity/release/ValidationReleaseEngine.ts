@@ -278,7 +278,7 @@ export class ValidationReleaseEngine {
         severity:
           run.certification.status === "blocked" ||
           run.certification.status === "not_ready"
-            ? "WARN"
+            ? "WARNING"
             : "INFO",
         payload: {
           certificationId: run.certification.certificationId,

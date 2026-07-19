@@ -158,7 +158,7 @@ describe("Earnings Workspace", () => {
     expect(allowed.allowed).toBe(true);
 
     const denied = canUserExport(
-      { userId: "free-user", role: "free", subscriptionTier: "free" },
+      { userId: "free-user", role: "free", subscriptionTier: "none" },
       "EXCEL"
     );
     expect(denied.allowed).toBe(false);

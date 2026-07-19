@@ -223,8 +223,17 @@ export function emptySavedScreenRecord(
   };
 }
 
+/** Store inputs may carry null field values; every field is defaulted during normalization. */
+export type SavedScreenRecordInput = {
+  [K in keyof Omit<SavedScreenRecord, "institutionalScores">]?:
+    | SavedScreenRecord[K]
+    | null;
+} & {
+  institutionalScores?: Partial<InstitutionalScoresSummary> | null;
+};
+
 export function normalizeSavedScreenRecord(
-  input?: Partial<SavedScreenRecord> | null,
+  input?: SavedScreenRecordInput | null,
   message: WorkspaceEmptyMessage = WORKSPACE_EMPTY.noSavedScreens
 ): SavedScreenRecord {
   if (!input) return emptySavedScreenRecord(message);
@@ -277,8 +286,13 @@ export function emptyScreenHistoryRun(
   };
 }
 
+/** Store inputs may carry null field values; every field is defaulted during normalization. */
+export type ScreenHistoryRunInput = {
+  [K in keyof ScreenHistoryRun]?: ScreenHistoryRun[K] | null;
+};
+
 export function normalizeScreenHistoryRun(
-  input?: Partial<ScreenHistoryRun> | null,
+  input?: ScreenHistoryRunInput | null,
   message: WorkspaceEmptyMessage = WORKSPACE_EMPTY.noHistory
 ): ScreenHistoryRun {
   if (!input) return emptyScreenHistoryRun(message);

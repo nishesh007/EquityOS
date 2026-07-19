@@ -8,7 +8,7 @@ import {
   formatPct,
   formatScore,
   safeNumeric,
-  type ExecutiveResearchOverview,
+  type ExecutiveResearchOverview as ExecutiveResearchOverviewView,
   type ExecutiveResearchHealthView,
   type ExecutiveResearchMetricBundle,
   type ExecutiveSummaryCard,
@@ -60,7 +60,7 @@ export class ExecutiveResearchOverview {
   build(
     metrics: ExecutiveResearchMetricBundle,
     health: ExecutiveResearchHealthView
-  ): ExecutiveResearchOverview {
+  ): ExecutiveResearchOverviewView {
     const empty = health.empty;
     const researchProgress = Math.min(
       100,
@@ -117,6 +117,6 @@ export class ExecutiveResearchOverview {
 export function getExecutiveResearchOverview(
   metrics: ExecutiveResearchMetricBundle,
   health: ExecutiveResearchHealthView
-): ExecutiveResearchOverview {
+): ExecutiveResearchOverviewView {
   return new ExecutiveResearchOverview().build(metrics, health);
 }

@@ -36,8 +36,8 @@ import {
 
 /** Framework test double — proves extensibility without implementing a real strategy. */
 class FrameworkProbeStrategy extends BaseStrategy {
-  readonly id = "framework-probe";
-  readonly name = "Framework Probe";
+  readonly id: string = "framework-probe";
+  readonly name: string = "Framework Probe";
   readonly category = "Scalp" as const;
   readonly eligibilityId = "scalping" as const;
   forceInvalid = false;

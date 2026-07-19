@@ -303,7 +303,7 @@ function buildSetup(
   detection: ORBDetection,
   candles: ORBCandle[],
   marketOverrides: Partial<InstitutionalMarketContext> = {},
-  tradeConfig?: Parameters<ORBTradeBuilder["constructor"]>[0]
+  tradeConfig?: ConstructorParameters<typeof ORBTradeBuilder>[0]
 ): ORBTradeSetup {
   return new ORBTradeBuilder({
     maxRiskPercentOfPrice: 0.05,
@@ -526,7 +526,7 @@ describe("ORB production integration", () => {
       context: ctx.marketContext,
       regime: ctx.regime,
       confidence: ctx.confidence,
-      eligibleStrategies: ctx.eligibleStrategies,
+      eligibleStrategies: [...ctx.eligibleStrategies],
       pipelineHealth: 80,
       healthGrade: "Good",
       pipelineConfidence: 80,

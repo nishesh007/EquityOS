@@ -4,8 +4,7 @@
  */
 
 import type { WatchlistItemSnapshot } from "@/src/core/alerts/intelligence/AlertPresentationModels";
-import { computeWatchlistMetrics } from "../WatchlistMetrics";
-import type { WatchlistRecord } from "../WatchlistModels";
+import { computeWatchlistMetrics, type WatchlistMetricsRecord } from "../WatchlistMetrics";
 import {
   WATCHLIST_ANALYTICS_EMPTY,
   emptyPerformanceView,
@@ -20,7 +19,7 @@ function round2(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-function recordFromContext(context: WatchlistAnalyticsContext): WatchlistRecord {
+function recordFromContext(context: WatchlistAnalyticsContext): WatchlistMetricsRecord {
   const symbols = (context.symbols ?? []).map((s) => s.toUpperCase());
   return {
     id: safeAnalyticsText(context.watchlistId, "watchlist"),

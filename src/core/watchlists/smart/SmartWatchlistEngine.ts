@@ -13,6 +13,7 @@ import {
   type SmartWatchlistCandidate,
   type SmartWatchlistView,
   type WatchlistGroupingView,
+  type CompanyTag,
   type WatchlistLeafRule,
   type WatchlistRecommendationsView,
   type WatchlistRuleGroup,
@@ -39,7 +40,6 @@ import {
   listTaggedCompanies,
   resetWatchlistTags,
   tagCompanies,
-  type CompanyTag,
 } from "./WatchlistTagEngine";
 import {
   detectDuplicateWatchlists,

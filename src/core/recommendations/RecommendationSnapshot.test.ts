@@ -142,7 +142,7 @@ describe("Recommendation snapshot creation and integrity", () => {
   it("detaches the snapshot from mutable engine inputs", () => {
     const source = input();
     const snapshot = createRecommendationSnapshot(source);
-    source.reasons.push("Late mutation");
+    source.reasons?.push("Late mutation");
     source.entryRange.low = 1;
     (source.technicalSnapshot.trend as { direction: string }).direction =
       "DOWN";

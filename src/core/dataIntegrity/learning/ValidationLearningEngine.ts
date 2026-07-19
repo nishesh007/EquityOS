@@ -354,7 +354,7 @@ export class ValidationLearningEngine {
         eventType: "WarningRaised",
         module: "learning",
         source: "learning-engine",
-        severity: errors.length > 0 ? "WARN" : "INFO",
+        severity: errors.length > 0 ? "WARNING" : "INFO",
         payload: {
           runId,
           advisoryOnly: true,

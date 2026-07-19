@@ -155,10 +155,7 @@ export class ValidationDiagnosticsEngine {
           mode === "memory" ||
           mode === "custom" ||
           mode === "engine");
-      const includeModules =
-        mode !== "rule" && mode !== "pipeline"
-          ? true
-          : mode === "engine" || mode === "deep" || mode === "custom";
+      const includeModules = mode !== "rule" && mode !== "pipeline";
 
       const modules = includeModules
         ? this.inspector.inspectModules(probes)

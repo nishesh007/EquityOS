@@ -111,17 +111,18 @@ export function createSourceVerificationRules(
       author: "equityos-hallucination",
       datasetTypes: ["AI_OUTPUT"],
       validate: (ctx) => {
-        if (!isPlainObject(ctx.data)) return halPass();
+        const data = ctx.data;
+        if (!isPlainObject(data)) return halPass();
         const mentionsFinancial =
-          ctx.data.mentionsFinancials === true ||
-          hasNonEmptyText(ctx.data.financialDiscussion) ||
+          data.mentionsFinancials === true ||
+          hasNonEmptyText(data.financialDiscussion) ||
           ["revenue", "profit", "eps", "cashFlow", "margins"].some(
-            (k) => k in ctx.data
+            (k) => k in data
           );
         if (!mentionsFinancial) return halPass();
-        const evidence = evidenceSection(ctx.data);
+        const evidence = evidenceSection(data);
         const src = readString(
-          { ...ctx.data, ...evidence },
+          { ...data, ...evidence },
           ["financialSource"]
         );
         if (!src) {
@@ -184,12 +185,13 @@ export function createSourceVerificationRules(
       author: "equityos-hallucination",
       datasetTypes: ["AI_OUTPUT"],
       validate: (ctx) => {
-        if (!isPlainObject(ctx.data)) return halPass();
+        const data = ctx.data;
+        if (!isPlainObject(data)) return halPass();
         const cfg = configFromContext(ctx);
         if (cfg.mode !== "strict") return halPass();
-        const evidence = evidenceSection(ctx.data);
+        const evidence = evidenceSection(data);
         const present = SOURCE_KEYS.filter(([key]) =>
-          hasNonEmptyText(evidence[key] ?? ctx.data[key])
+          hasNonEmptyText(evidence[key] ?? data[key])
         ).length;
         if (present < 2) {
           return halFail({

@@ -35,8 +35,17 @@ export interface WatchlistMetricsBundle {
   fromCache: boolean;
 }
 
+/**
+ * Metrics accept any watchlist-shaped record; sub-platform engines
+ * (analytics, intelligence) build synthetic records with their own
+ * empty-state vocabularies, so `emptyMessage` is widened to string here.
+ */
+export type WatchlistMetricsRecord = Omit<WatchlistRecord, "emptyMessage"> & {
+  emptyMessage: string;
+};
+
 export interface WatchlistMetricsInput {
-  record: WatchlistRecord;
+  record: WatchlistMetricsRecord;
   snapshots?: Record<string, WatchlistItemSnapshot> | null;
   alertCount?: number | null;
   upcomingEarnings?: number | null;
@@ -47,7 +56,7 @@ export interface WatchlistMetricsInput {
 let lastExecutionMs = 0;
 
 export function emptyWatchlistMetrics(
-  message = WATCHLIST_EMPTY.noCompanies
+  message: string = WATCHLIST_EMPTY.noCompanies
 ): WatchlistMetricsBundle {
   return {
     watchlistId: "",
@@ -145,7 +154,7 @@ export function computeWatchlistMetrics(
 }
 
 function buildMetricsBundle(
-  record: WatchlistRecord,
+  record: WatchlistMetricsRecord,
   input: WatchlistMetricsInput,
   fromCache: boolean
 ): WatchlistMetricsBundle {

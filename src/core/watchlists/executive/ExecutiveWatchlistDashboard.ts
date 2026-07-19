@@ -94,7 +94,7 @@ export class ExecutiveWatchlistDashboard {
         },
         sprintFrozen: isSprint10BFrozen(),
         empty: false,
-        emptyMessage: "",
+        emptyMessage: EXECUTIVE_WATCHLIST_EMPTY.noWatchlists,
         surfaceHints: {
           watchlist: "/watchlist",
           dashboard: "/",

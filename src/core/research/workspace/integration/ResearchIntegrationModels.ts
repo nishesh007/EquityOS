@@ -294,7 +294,12 @@ export function emptySnapshot(
   };
 }
 
-export function normalizeSnapshot(input: Partial<ResearchSnapshot>): ResearchSnapshot {
+/** Snapshot input may carry a partially-populated payload; every field is defaulted. */
+export type ResearchSnapshotInput = Partial<Omit<ResearchSnapshot, "payload">> & {
+  payload?: Partial<ResearchSnapshotPayload> | null;
+};
+
+export function normalizeSnapshot(input: ResearchSnapshotInput): ResearchSnapshot {
   const payload = input.payload ?? emptySnapshot().payload;
   return {
     id: safeWorkspaceText(input.id, ""),

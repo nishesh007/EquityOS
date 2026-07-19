@@ -97,7 +97,7 @@ describe("Institutional Strategy Screener (9D.R5)", () => {
       ]);
       const result = createStrategy(def);
       expect(result.created).toBe(true);
-      expect(result.definition.id).toBe(def.id);
+      expect(result.definition?.id).toBe(def.id);
       expect(getStrategy(def.id)?.name).toBe("Alpha");
     });
 

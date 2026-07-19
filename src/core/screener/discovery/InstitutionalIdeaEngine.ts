@@ -161,7 +161,7 @@ export function generateInstitutionalIdeas(
     };
 
     const priority = generateResearchPriority(institutionalFactors, {
-      matchedSignals: candidate.tags ?? [],
+      matchedSignals: (candidate.tags ?? []).length,
       hasCatalyst: hasTag(candidate, "catalyst", "earnings", "breakout"),
     });
     const insight = buildInstitutionalInsights({

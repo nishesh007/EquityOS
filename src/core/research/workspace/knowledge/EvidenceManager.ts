@@ -8,6 +8,7 @@ import {
   EVIDENCE_KINDS,
   KNOWLEDGE_EMPTY,
   emptyEvidence,
+  emptyEvidenceByKind,
   normalizeEvidence,
   type EvidenceItem,
   type EvidenceKind,
@@ -85,9 +86,7 @@ export function getEvidence(options?: {
   if (items.length === 0) {
     return {
       items: [],
-      byKind: Object.fromEntries(
-        EVIDENCE_KINDS.map((k) => [k, []])
-      ) as Record<EvidenceKind, EvidenceItem[]>,
+      byKind: emptyEvidenceByKind(),
       bull: [],
       bear: [],
       catalysts: [],

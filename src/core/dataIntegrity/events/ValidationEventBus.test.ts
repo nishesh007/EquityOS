@@ -127,12 +127,12 @@ describe("Publishing and subscriptions", () => {
     const sev: string[] = [];
     const filtered: string[] = [];
 
-    bus.subscribe((e) => wild.push(e.eventType), { eventType: "*" });
-    bus.subscribe((e) => mods.push(e.eventType), { module: "trust" });
-    bus.subscribe((e) => sev.push(e.eventType), {
+    bus.subscribe((e) => { wild.push(e.eventType); }, { eventType: "*" });
+    bus.subscribe((e) => { mods.push(e.eventType); }, { module: "trust" });
+    bus.subscribe((e) => { sev.push(e.eventType); }, {
       filters: { severity: "CRITICAL" },
     });
-    bus.subscribe((e) => filtered.push(e.eventId), {
+    bus.subscribe((e) => { filtered.push(e.eventId); }, {
       filters: { stock: "INFY", eventType: "TrustScoreUpdated" },
     });
 
@@ -250,7 +250,7 @@ describe("Queue, priority dispatch, failure recovery", () => {
       queueSize: 10,
     });
     const received: string[] = [];
-    bus.subscribe((e) => received.push(e.eventId));
+    bus.subscribe((e) => { received.push(e.eventId); });
 
     await bus.publishEvent({
       eventType: "ValidationStarted",
@@ -284,7 +284,7 @@ describe("Queue, priority dispatch, failure recovery", () => {
     });
 
     const order: string[] = [];
-    bus.subscribe((e) => order.push(e.severity));
+    bus.subscribe((e) => { order.push(e.severity); });
 
     // Critical triggers flush
     await bus.publishEvent({
@@ -308,7 +308,7 @@ describe("Queue, priority dispatch, failure recovery", () => {
       throw new Error("subscriber boom");
     });
     const ok: string[] = [];
-    bus.subscribe((e) => ok.push(e.eventId));
+    bus.subscribe((e) => { ok.push(e.eventId); });
 
     const result = await bus.publishEvent({
       eventType: "ValidationCompleted",
@@ -374,7 +374,7 @@ describe("Public API", () => {
     });
 
     const seen: string[] = [];
-    const id = subscribe((e) => seen.push(e.eventType), {
+    const id = subscribe((e) => { seen.push(e.eventType); }, {
       eventType: "DashboardRefreshed",
     });
 

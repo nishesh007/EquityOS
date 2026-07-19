@@ -177,7 +177,6 @@ describe("Alert Intelligence R4 (Technical / Fundamental / Market)", () => {
           prevEma50: 2850,
           ema20: 2680,
           prevEma20: 2900,
-          prevEma50: 2850,
           price: 2600,
           support: 2650,
           resistance: 3000,

@@ -4,8 +4,7 @@
  */
 
 import type { WatchlistItemSnapshot } from "@/src/core/alerts/intelligence/AlertPresentationModels";
-import { computeWatchlistMetrics } from "../WatchlistMetrics";
-import type { WatchlistRecord } from "../WatchlistModels";
+import { computeWatchlistMetrics, type WatchlistMetricsRecord } from "../WatchlistMetrics";
 import {
   WATCHLIST_INTELLIGENCE_EMPTY,
   emptyHealthView,
@@ -36,7 +35,7 @@ export function getWatchlistHealth(
   const sectorBySymbol = context?.sectorBySymbol ?? {};
   const marketCapBySymbol = context?.marketCapBySymbol ?? {};
 
-  const record: WatchlistRecord = {
+  const record: WatchlistMetricsRecord = {
     id: safeIntelText(context?.watchlistId, "watchlist"),
     kind: "custom",
     status: "active",

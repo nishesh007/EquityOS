@@ -102,7 +102,7 @@ function rankPendingTasks(workspaceId: string | null, limit = 8): RankedResearch
     count: 1,
     score: task.priority === "high" ? 90 : task.priority === "medium" ? 60 : 30,
     scoreLabel: safeExecutiveResearchText(task.priority, "normal"),
-    detail: safeExecutiveResearchText(task.linkedTicker ?? task.linkedResearchId, "pending"),
+    detail: safeExecutiveResearchText(task.linkedTicker ?? task.linkedResearch, "pending"),
   }));
 }
 
@@ -124,7 +124,7 @@ function rankRecentCompanies(
       count: 1,
       score: 80,
       scoreLabel: safeExecutiveResearchText(entry.kind, "research"),
-      detail: safeExecutiveResearchText(entry.summary, sym),
+      detail: safeExecutiveResearchText(entry.detail, sym),
     });
     if (items.length >= limit) break;
   }
@@ -145,15 +145,15 @@ function buildDashboardSummary(
   const alertLines = timeline.entries
     .filter((e) => e.kind.includes("alert"))
     .slice(0, 3)
-    .map((e) => e.summary);
+    .map((e) => e.detail);
   const earningsLines = timeline.entries
     .filter((e) => e.kind.includes("earnings"))
     .slice(0, 3)
-    .map((e) => e.summary);
+    .map((e) => e.detail);
   const screenLines = timeline.entries
     .filter((e) => e.kind.includes("screen"))
     .slice(0, 3)
-    .map((e) => e.summary);
+    .map((e) => e.detail);
 
   return {
     timelineSummary: presentEmptyOrValue(

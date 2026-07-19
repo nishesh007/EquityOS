@@ -138,6 +138,21 @@ export interface KnowledgeBaseView {
   emptyMessage: KnowledgeEmptyMessage;
 }
 
+/** Build a fully-keyed evidence map without unsafe casting. */
+export function emptyEvidenceByKind(): Record<EvidenceKind, EvidenceItem[]> {
+  return {
+    news: [],
+    technical: [],
+    risk: [],
+    confidence: [],
+    bull: [],
+    bear: [],
+    financial: [],
+    management: [],
+    catalyst: [],
+  };
+}
+
 export interface EvidenceView {
   items: EvidenceItem[];
   byKind: Record<EvidenceKind, EvidenceItem[]>;
@@ -366,9 +381,7 @@ export function emptyKnowledgeView(
     },
     evidence: {
       items: [],
-      byKind: Object.fromEntries(
-        EVIDENCE_KINDS.map((k) => [k, []])
-      ) as Record<EvidenceKind, EvidenceItem[]>,
+      byKind: emptyEvidenceByKind(),
       bull: [],
       bear: [],
       catalysts: [],

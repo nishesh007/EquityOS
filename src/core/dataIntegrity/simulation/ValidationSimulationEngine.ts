@@ -227,7 +227,7 @@ export class ValidationSimulationEngine {
         eventType: "WarningRaised",
         module: "simulation",
         source: "simulation-engine",
-        severity: result.errors.length > 0 ? "WARN" : "INFO",
+        severity: result.errors.length > 0 ? "WARNING" : "INFO",
         payload: {
           scenarioId: scenario.scenarioId,
           runId: result.runId,

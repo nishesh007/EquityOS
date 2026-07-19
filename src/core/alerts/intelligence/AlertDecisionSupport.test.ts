@@ -199,7 +199,7 @@ describe("Alert Decision Support (9C.R6)", () => {
     });
 
     it("returns No Supporting Evidence empty state when barren", () => {
-      const alert = makeAlert({ evidence: [], reason: "" });
+      const alert = makeAlert({ evidence: [] });
       // force empty evidence path via platform alert with no extras
       const barren = {
         ...alert,

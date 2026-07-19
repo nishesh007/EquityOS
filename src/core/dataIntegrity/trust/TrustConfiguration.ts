@@ -175,16 +175,28 @@ export type TrustConfigurationInput = Partial<
   bonusScoring?: Partial<TrustBonusScoring>;
 };
 
+/**
+ * Merge weight overrides into a base map, skipping undefined entries so the
+ * result satisfies the required `number` index signature of TrustWeightMap.
+ */
+export function mergeTrustWeights(
+  base: TrustWeightMap,
+  overrides?: Partial<TrustWeightMap> | null
+): TrustWeightMap {
+  const merged: TrustWeightMap = { ...base };
+  for (const [moduleId, weight] of Object.entries(overrides ?? {})) {
+    if (weight !== undefined) merged[moduleId] = weight;
+  }
+  return merged;
+}
+
 export function resolveTrustConfiguration(
   input?: TrustConfigurationInput
 ): TrustConfiguration {
   return {
     ...DEFAULT_TRUST_CONFIGURATION,
     ...input,
-    weights: {
-      ...DEFAULT_TRUST_CONFIGURATION.weights,
-      ...(input?.weights ?? {}),
-    },
+    weights: mergeTrustWeights(DEFAULT_TRUST_CONFIGURATION.weights, input?.weights),
     classificationThresholds: {
       ...DEFAULT_TRUST_CONFIGURATION.classificationThresholds,
       ...(input?.classificationThresholds ?? {}),

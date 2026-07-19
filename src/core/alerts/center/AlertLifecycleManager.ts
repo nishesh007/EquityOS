@@ -104,11 +104,9 @@ export class AlertLifecycleManager {
         break;
     }
 
-    if (to !== "Pinned") {
-      // unpin when leaving pinned unless explicitly pinning
-      if (item.inboxStatus === "Pinned" && to !== "Pinned") {
-        pinned = to === "Pinned";
-      }
+    // unpin when leaving pinned unless explicitly pinning
+    if (to !== "Pinned" && item.inboxStatus === "Pinned") {
+      pinned = false;
     }
 
     return {

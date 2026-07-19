@@ -41,9 +41,9 @@ export {
 } from "./ExecutiveResearchHealth";
 export type { ExecutiveHealthComposeInput } from "./ExecutiveResearchHealth";
 
-export {
-  ExecutiveResearchOverview,
-} from "./ExecutiveResearchOverview";
+// The ExecutiveResearchOverview *view type* is exported from ExecutiveResearchModels
+// above; the engine class of the same name stays module-local to avoid a duplicate
+// identifier in this barrel (instantiate via getExecutiveResearchOverview).
 
 export {
   ExecutiveResearchPresentation,

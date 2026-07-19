@@ -234,8 +234,8 @@ describe("Sprint 10A.R8 — Executive Research Hub", () => {
     it("denied export returns ACL reason for restricted subject", () => {
       const result = exportExecutiveResearchReport("PDF", { workspaceId }, {
         userId: "guest",
-        role: "viewer",
-        subscriptionTier: "free",
+        role: "free",
+        subscriptionTier: "none",
       });
       if (!result.ok) {
         expect(result.deniedReason.length).toBeGreaterThan(0);

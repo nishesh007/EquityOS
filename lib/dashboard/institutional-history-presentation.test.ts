@@ -316,7 +316,7 @@ describe("institutional history — full view + expired/archived", () => {
 
   it("includes expired section when outcome present", () => {
     const candidate = makeCandidate({
-      expiredOutcome: "TARGET_HIT",
+      expiredOutcome: "Target Hit",
       expiredReason: "Target 1 reached",
       peakTime: "2026-07-14T06:00:00.000Z",
     });

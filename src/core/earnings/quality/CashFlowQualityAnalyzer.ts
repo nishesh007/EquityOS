@@ -12,6 +12,7 @@ import {
   signal,
   type DimensionAnalysisResult,
   type EarningsQualityInput,
+  type QualitySignal,
 } from "./qualityTypes";
 
 export class CashFlowQualityAnalyzer {
@@ -20,7 +21,7 @@ export class CashFlowQualityAnalyzer {
     thresholds: QualityThresholds
   ): DimensionAnalysisResult {
     const warnings: string[] = [];
-    const signals = [];
+    const signals: QualitySignal[] = [];
     let score = 100;
 
     try {

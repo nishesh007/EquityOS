@@ -259,7 +259,7 @@ export class ValidationSecurityEngine {
         eventType: "WarningRaised",
         module: "security",
         source: "security-engine",
-        severity: allowed ? "INFO" : "WARN",
+        severity: allowed ? "INFO" : "WARNING",
         payload: {
           subjectId: context.subject.subjectId,
           action: context.action,

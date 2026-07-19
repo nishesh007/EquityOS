@@ -261,7 +261,7 @@ export class ValidationExplainabilityEngine {
         eventType: "WarningRaised",
         module: "explainability",
         source: "explainability-engine",
-        severity: errors.length > 0 ? "WARN" : "INFO",
+        severity: errors.length > 0 ? "WARNING" : "INFO",
         payload: {
           traceId: trace.traceId,
           decisionId: trace.decisionId,

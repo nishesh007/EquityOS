@@ -6,6 +6,7 @@
 import {
   BUILTIN_TRUST_MODULE_IDS,
   DEFAULT_TRUST_CONFIGURATION,
+  mergeTrustWeights,
   type TrustModuleId,
   type TrustWeightMap,
 } from "./TrustConfiguration";
@@ -14,10 +15,7 @@ export class TrustWeightManager {
   private weights: TrustWeightMap;
 
   constructor(weights?: Partial<TrustWeightMap>) {
-    this.weights = {
-      ...DEFAULT_TRUST_CONFIGURATION.weights,
-      ...(weights ?? {}),
-    };
+    this.weights = mergeTrustWeights(DEFAULT_TRUST_CONFIGURATION.weights, weights);
   }
 
   getWeights(): TrustWeightMap {

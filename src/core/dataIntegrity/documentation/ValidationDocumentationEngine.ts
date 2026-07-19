@@ -463,7 +463,7 @@ export class ValidationDocumentationEngine {
       eventType: "WarningRaised",
       module: "documentation",
       source: "documentation-engine",
-      severity: doc.errors.length > 0 ? "WARN" : "INFO",
+      severity: doc.errors.length > 0 ? "WARNING" : "INFO",
       payload: {
         documentId: doc.documentId,
         kind: doc.kind,

@@ -29,6 +29,7 @@ export const TAB_KINDS = [
   "portfolio",
   "opportunity",
   "notes",
+  "watchlist",
 ] as const;
 
 export type WorkspaceTabKind = (typeof TAB_KINDS)[number];
@@ -42,6 +43,7 @@ export const TAB_KIND_LABELS: Record<WorkspaceTabKind, string> = {
   portfolio: "Portfolio",
   opportunity: "Opportunity",
   notes: "Notes",
+  watchlist: "Watchlist",
 };
 
 export const DOCK_REGIONS = ["left", "right", "bottom", "center"] as const;
@@ -273,8 +275,18 @@ export function emptyDockLayout(
   };
 }
 
+/** Layout input with partially-specified panes; panes are normalized individually. */
+export type DockLayoutStateInput = Partial<
+  Omit<DockLayoutState, "left" | "right" | "bottom" | "center">
+> & {
+  left?: Partial<DockPaneState> | null;
+  right?: Partial<DockPaneState> | null;
+  bottom?: Partial<DockPaneState> | null;
+  center?: Partial<DockPaneState> | null;
+};
+
 export function normalizeDockLayout(
-  input?: Partial<DockLayoutState> | null,
+  input?: DockLayoutStateInput | null,
   message: LayoutEmptyMessage = LAYOUT_EMPTY.awaitingWorkspace
 ): DockLayoutState {
   if (!input) return emptyDockLayout("", message);

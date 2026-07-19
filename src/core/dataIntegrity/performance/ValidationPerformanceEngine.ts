@@ -183,7 +183,7 @@ export class ValidationPerformanceEngine {
         eventType: "WarningRaised",
         module: "performance",
         source: "performance-engine",
-        severity: result.errors.length > 0 ? "WARN" : "INFO",
+        severity: result.errors.length > 0 ? "WARNING" : "INFO",
         payload: {
           benchmarkId: result.benchmarkId,
           mode: result.mode,

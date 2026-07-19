@@ -162,7 +162,7 @@ describe("Executive Earnings Hub Presentation", () => {
       subject: {
         userId: "free",
         role: "free",
-        subscriptionTier: "free",
+        subscriptionTier: "none",
       },
     });
     expect(free.access.previewOnly).toBe(true);

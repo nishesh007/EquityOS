@@ -30,17 +30,18 @@ export function createAIOutputIntegrityRules(
       author: "equityos-hallucination",
       datasetTypes: ["AI_OUTPUT"],
       validate: (ctx) => {
-        if (!isPlainObject(ctx.data)) return halPass();
+        const data = ctx.data;
+        if (!isPlainObject(data)) return halPass();
         const cfg = configFromContext(ctx);
         if (cfg.mode !== "strict") return halPass();
-        if (ctx.data.skipSectionCheck === true) return halPass();
+        if (data.skipSectionCheck === true) return halPass();
         const missing = cfg.requiredSections.filter(
-          (section) => !hasNonEmptyText(ctx.data[section])
+          (section) => !hasNonEmptyText(data[section])
         );
         // Allow recommendation via action alias
         const filtered = missing.filter((s) => {
-          if (s === "recommendation" && readAction(ctx.data)) return false;
-          if (s === "keyFindings" && hasNonEmptyText(ctx.data.supportingFactors))
+          if (s === "recommendation" && readAction(data)) return false;
+          if (s === "keyFindings" && hasNonEmptyText(data.supportingFactors))
             return false;
           return true;
         });

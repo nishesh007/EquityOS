@@ -42,6 +42,8 @@ import {
 } from "./WatchlistPresentationModels";
 
 export interface WatchlistEngineContext {
+  /** Optional explicit watchlist/workspace scope for downstream health engines. */
+  watchlistId?: string | null;
   snapshots?: Record<string, WatchlistItemSnapshot> | null;
   upcomingEarnings?: number | null;
   now?: Date | null;

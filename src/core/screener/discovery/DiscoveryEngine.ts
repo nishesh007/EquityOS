@@ -269,7 +269,7 @@ export function buildDiscoveryInsights(
       matchedSignals: matched,
     });
     const priority = generateResearchPriority(institutionalFactors, {
-      matchedSignals: matched,
+      matchedSignals: matched.length,
       hasCatalyst: matched.some((m) =>
         /breakout|catalyst|earnings/i.test(m)
       ),

@@ -134,7 +134,7 @@ export class PlatformEngine {
         eventType: "WarningRaised",
         module: "platform",
         source: "platform-engine",
-        severity: result.errors.length > 0 ? "WARN" : "INFO",
+        severity: result.errors.length > 0 ? "WARNING" : "INFO",
         payload: {
           initialized: this.initialized,
           registeredCount: result.registeredCount,
@@ -300,7 +300,7 @@ export class PlatformEngine {
           result.status === "production_ready" ||
           result.status === "conditionally_ready"
             ? "INFO"
-            : "WARN",
+            : "WARNING",
         payload: {
           certificationId: result.certificationId,
           status: result.status,
