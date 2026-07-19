@@ -1,26 +1,27 @@
 "use client";
 
 /**
- * Sprint 10C.R7 — floating action menu (FAB).
- *
- * Bottom-right quick launcher for the most common flows. Sits above
- * the status bar; actions navigate or fire UI-bus events.
+ * Sprint 10C.1 — floating quick action menu (FAB).
  */
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  Briefcase,
   Download,
   Eye,
   FileText,
-  GitCompare,
-  LayoutGrid,
+  LayoutDashboard,
   Plus,
+  RefreshCw,
+  ScanSearch,
   Settings,
+  Sparkles,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { openCommandPalette } from "../command/uiBus";
+import { openCommandPalette, showNotificationCenter } from "../command/uiBus";
+import { recordActivity } from "./activityFeed";
 
 interface FabAction {
   id: string;
@@ -30,12 +31,69 @@ interface FabAction {
 }
 
 const ACTIONS: readonly FabAction[] = [
-  { id: "workspace", label: "New Workspace", icon: <LayoutGrid className="h-4 w-4" />, run: (router) => router.push("/") },
-  { id: "research", label: "Research", icon: <FileText className="h-4 w-4" />, run: (router) => router.push("/research") },
-  { id: "watchlist", label: "Watchlist", icon: <Eye className="h-4 w-4" />, run: (router) => router.push("/watchlist") },
-  { id: "export", label: "Export", icon: <Download className="h-4 w-4" />, run: () => openCommandPalette("export") },
-  { id: "compare", label: "Compare", icon: <GitCompare className="h-4 w-4" />, run: () => openCommandPalette("compare") },
-  { id: "settings", label: "Settings", icon: <Settings className="h-4 w-4" />, run: (router) => router.push("/settings") },
+  {
+    id: "dashboard",
+    label: "Open Dashboard",
+    icon: <LayoutDashboard className="h-4 w-4" />,
+    run: (router) => router.push("/"),
+  },
+  {
+    id: "portfolio",
+    label: "Open Portfolio",
+    icon: <Briefcase className="h-4 w-4" />,
+    run: (router) => router.push("/portfolio"),
+  },
+  {
+    id: "screener",
+    label: "Open Screener",
+    icon: <ScanSearch className="h-4 w-4" />,
+    run: (router) => router.push("/screener"),
+  },
+  {
+    id: "scan",
+    label: "Scan Market",
+    icon: <Sparkles className="h-4 w-4" />,
+    run: (router) => router.push("/screener"),
+  },
+  {
+    id: "research",
+    label: "Run AI Research",
+    icon: <FileText className="h-4 w-4" />,
+    run: (router) => router.push("/ai/research"),
+  },
+  {
+    id: "watchlist",
+    label: "Create Watchlist",
+    icon: <Eye className="h-4 w-4" />,
+    run: (router) => router.push("/watchlist"),
+  },
+  {
+    id: "refresh",
+    label: "Refresh Market",
+    icon: <RefreshCw className="h-4 w-4" />,
+    run: (router) => {
+      recordActivity("market", "Market data refreshed", "/markets");
+      router.refresh();
+    },
+  },
+  {
+    id: "report",
+    label: "Generate Report",
+    icon: <Download className="h-4 w-4" />,
+    run: () => openCommandPalette("export"),
+  },
+  {
+    id: "hub",
+    label: "Productivity Hub",
+    icon: <Sparkles className="h-4 w-4" />,
+    run: () => showNotificationCenter(),
+  },
+  {
+    id: "settings",
+    label: "Settings",
+    icon: <Settings className="h-4 w-4" />,
+    run: (router) => router.push("/settings"),
+  },
 ];
 
 export function FloatingActionMenu() {
@@ -67,7 +125,11 @@ export function FloatingActionMenu() {
       className="fixed bottom-12 right-5 z-40 flex flex-col items-end gap-2"
     >
       {open && (
-        <div role="menu" aria-label="Quick actions" className="flex flex-col items-end gap-1.5 animate-fade-in">
+        <div
+          role="menu"
+          aria-label="Quick actions"
+          className="flex max-h-[60vh] flex-col items-end gap-1.5 overflow-y-auto animate-fade-in"
+        >
           {ACTIONS.map((action) => (
             <button
               key={action.id}

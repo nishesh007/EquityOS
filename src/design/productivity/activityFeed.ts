@@ -1,28 +1,33 @@
 /**
- * Sprint 10C.R7 — activity feed engine.
+ * Sprint 10C.1 — activity feed engine.
  *
- * Chronological record of presentation-side events: research updates,
- * recommendation lifecycle, portfolio activity, workspace changes,
- * exports, validation updates and AI decisions. localStorage-backed.
+ * Chronological presentation-side events with timestamps.
+ * localStorage-backed (injectable for tests).
  */
 
 export type ActivityCategory =
   | "research"
   | "recommendation"
   | "portfolio"
+  | "watchlist"
   | "workspace"
   | "export"
   | "validation"
-  | "ai";
+  | "ai"
+  | "market"
+  | "strategy";
 
 export const ACTIVITY_CATEGORIES: readonly ActivityCategory[] = Object.freeze([
   "research",
   "recommendation",
   "portfolio",
+  "watchlist",
   "workspace",
   "export",
   "validation",
   "ai",
+  "market",
+  "strategy",
 ]);
 
 export const ACTIVITY_CATEGORY_LABELS: Readonly<
@@ -31,10 +36,13 @@ export const ACTIVITY_CATEGORY_LABELS: Readonly<
   research: "Research",
   recommendation: "Recommendations",
   portfolio: "Portfolio",
+  watchlist: "Watchlist",
   workspace: "Workspace",
   export: "Exports",
   validation: "Validation",
   ai: "AI Decisions",
+  market: "Market Data",
+  strategy: "Strategy",
 });
 
 export interface ActivityEvent {
@@ -51,7 +59,7 @@ export type ActivityStorage = Pick<
 >;
 
 const STORAGE_KEY = "equityos.activity";
-const MAX_EVENTS = 100;
+const MAX_EVENTS = 120;
 
 function browserStorage(): ActivityStorage | undefined {
   return typeof window !== "undefined" ? window.localStorage : undefined;
@@ -111,6 +119,22 @@ export function getActivityFeed(
   return filtered.slice(0, limit);
 }
 
+/** Search activity messages. */
+export function searchActivity(
+  query: string,
+  limit = 40,
+  storage: ActivityStorage | undefined = browserStorage()
+): ActivityEvent[] {
+  const q = query.trim().toLowerCase();
+  const events = getActivityFeed(undefined, MAX_EVENTS, storage);
+  if (!q) return events.slice(0, limit);
+  return events
+    .filter((event) =>
+      `${event.message} ${event.category}`.toLowerCase().includes(q)
+    )
+    .slice(0, limit);
+}
+
 export function clearActivityFeed(
   storage: ActivityStorage | undefined = browserStorage()
 ): void {
@@ -119,5 +143,59 @@ export function clearActivityFeed(
     storage.setItem(STORAGE_KEY, "[]");
   } catch {
     // ignore storage failures
+  }
+}
+
+/** Seed a short demo timeline when empty. */
+export function seedDemoActivityIfEmpty(
+  storage: ActivityStorage | undefined = browserStorage()
+): void {
+  if (read(storage).length > 0) return;
+  const seeds: Array<{ category: ActivityCategory; message: string; href?: string }> = [
+    {
+      category: "portfolio",
+      message: "Portfolio updated",
+      href: "/portfolio",
+    },
+    {
+      category: "watchlist",
+      message: "Watchlist modified",
+      href: "/watchlist",
+    },
+    {
+      category: "ai",
+      message: "AI recommendation generated",
+      href: "/opportunities",
+    },
+    {
+      category: "research",
+      message: "Research report created",
+      href: "/research",
+    },
+    {
+      category: "strategy",
+      message: "Strategy triggered (presentation signal)",
+      href: "/opportunities",
+    },
+    {
+      category: "market",
+      message: "Market data refreshed",
+      href: "/markets",
+    },
+  ];
+  const now = Date.now();
+  const events: ActivityEvent[] = seeds.map((seed, index) => ({
+    id: `act-demo-${index}`,
+    category: seed.category,
+    message: seed.message,
+    href: seed.href,
+    at: now - index * 450_000,
+  }));
+  if (storage) {
+    try {
+      storage.setItem(STORAGE_KEY, JSON.stringify(events));
+    } catch {
+      /* ignore */
+    }
   }
 }

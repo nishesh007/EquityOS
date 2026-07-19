@@ -22,11 +22,13 @@ import {
 import {
   clearNotifications,
   dismissNotification,
+  groupNotifications,
   listNotifications,
   markAllNotificationsRead,
   markNotificationRead,
   pinNotification,
   pushNotification,
+  searchNotifications,
   unreadCount,
   type NotificationStorage,
 } from "./productivity/notificationEngine";
@@ -228,6 +230,37 @@ describe("Sprint 10C.R7 — notification center", () => {
     clearNotifications(storage);
     expect(listNotifications(undefined, storage)).toHaveLength(0);
   });
+
+  it("groups similar notifications and supports search + priority", () => {
+    pushNotification(
+      {
+        category: "opportunity",
+        title: "New AI Opportunity",
+        groupKey: "ai-opportunities",
+        priority: "high",
+        source: "AI",
+      },
+      storage
+    );
+    pushNotification(
+      {
+        category: "opportunity",
+        title: "New AI Opportunity",
+        groupKey: "ai-opportunities",
+        priority: "high",
+      },
+      storage
+    );
+    pushNotification(
+      { category: "portfolio", title: "Portfolio alert", priority: "critical" },
+      storage
+    );
+    const groups = groupNotifications(listNotifications(undefined, storage));
+    expect(groups.some((g) => g.grouped && g.count === 2)).toBe(true);
+    expect(searchNotifications("portfolio", undefined, storage)).toHaveLength(1);
+    expect(listNotifications("today", storage).length).toBeGreaterThan(0);
+    expect(listNotifications("ai", storage)).toHaveLength(2);
+  });
 });
 
 describe("Sprint 10C.R7 — activity feed", () => {
@@ -236,10 +269,13 @@ describe("Sprint 10C.R7 — activity feed", () => {
       "research",
       "recommendation",
       "portfolio",
+      "watchlist",
       "workspace",
       "export",
       "validation",
       "ai",
+      "market",
+      "strategy",
     ]);
     recordActivity("workspace", "Applied template", undefined, storage);
     recordActivity("export", "Exported report", undefined, storage);

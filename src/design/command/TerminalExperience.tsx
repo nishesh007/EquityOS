@@ -18,10 +18,6 @@ import {
   showShortcutHelp,
 } from "./uiBus";
 import { NotificationCenter } from "../productivity/NotificationCenter";
-import {
-  listNotifications,
-  pushNotification,
-} from "../productivity/notificationEngine";
 import { FloatingActionMenu } from "../productivity/FloatingActionMenu";
 import { HelpCenter } from "../help/HelpCenter";
 import { OnboardingTour } from "../help/OnboardingTour";
@@ -81,18 +77,6 @@ export function TerminalExperience() {
     });
     return () => offs.forEach((off) => off());
   }, [router]);
-
-  // Seed a one-time welcome notification so the inbox demonstrates itself.
-  useEffect(() => {
-    if (listNotifications().length === 0) {
-      pushNotification({
-        id: "ntf-welcome",
-        category: "system",
-        title: "Welcome to the EquityOS terminal",
-        body: "Press Ctrl+K for the command palette, ? for shortcuts, and customize your dashboard from the workspace toolbar.",
-      });
-    }
-  }, []);
 
   return (
     <>

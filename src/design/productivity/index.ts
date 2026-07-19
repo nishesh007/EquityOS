@@ -1,5 +1,5 @@
 /**
- * Sprint 10C.R7 — productivity barrel.
+ * Sprint 10C.1 — productivity barrel.
  */
 
 export {
@@ -17,22 +17,34 @@ export {
 export {
   pushNotification,
   listNotifications,
+  searchNotifications,
+  groupNotifications,
   unreadCount,
   markNotificationRead,
+  markGroupRead,
   markAllNotificationsRead,
   pinNotification,
   dismissNotification,
+  dismissGroup,
   clearNotifications,
   subscribeNotifications,
+  seedDemoNotificationsIfEmpty,
   NOTIFICATION_CATEGORIES,
+  NOTIFICATION_CATEGORY_LABELS,
+  PRIORITY_LABELS,
   type AppNotification,
   type NotificationCategory,
+  type NotificationPriority,
   type NotificationStorage,
+  type NotificationListFilter,
+  type NotificationGroup,
 } from "./notificationEngine";
 export {
   recordActivity,
   getActivityFeed,
+  searchActivity,
   clearActivityFeed,
+  seedDemoActivityIfEmpty,
   ACTIVITY_CATEGORIES,
   ACTIVITY_CATEGORY_LABELS,
   type ActivityCategory,
@@ -40,6 +52,8 @@ export {
   type ActivityStorage,
 } from "./activityFeed";
 export { NotificationCenter } from "./NotificationCenter";
+export { AICommandCenter } from "./AICommandCenter";
+export { ProductivityPanel } from "./ProductivityPanel";
 export { SmartEmptyState, type SmartEmptyStateProps, type EmptyStateAction } from "./SmartEmptyState";
 export { ContextMenu, type ContextMenuItem, type ContextMenuProps } from "./ContextMenu";
 export { FloatingActionMenu } from "./FloatingActionMenu";
