@@ -141,6 +141,7 @@ export {
   WIDGET_SIZE_SPECS,
   resolveWidgetSize,
   type WidgetProps,
+  type WidgetMenuItem,
   type WidgetSize,
   type WidgetSizeSpec,
 } from "./widgets";

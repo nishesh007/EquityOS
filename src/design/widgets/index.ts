@@ -1,4 +1,4 @@
-export { Widget, type WidgetProps } from "./Widget";
+export { Widget, type WidgetProps, type WidgetMenuItem } from "./Widget";
 export { WidgetEmptyState } from "./WidgetEmptyState";
 export { WidgetSkeleton } from "./WidgetSkeleton";
 export {

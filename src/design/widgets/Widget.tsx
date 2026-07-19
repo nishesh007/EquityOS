@@ -9,21 +9,40 @@
  */
 
 import { useCallback, useState } from "react";
-import { ChevronDown, Maximize2, Minimize2, RefreshCw, TriangleAlert } from "lucide-react";
+import {
+  ChevronDown,
+  Maximize2,
+  Minimize2,
+  MoreVertical,
+  RefreshCw,
+  TriangleAlert,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StatusBadge, type StatusTone } from "../components/StatusBadge";
 import { WidgetEmptyState } from "./WidgetEmptyState";
 import { WidgetSkeleton } from "./WidgetSkeleton";
 import { resolveWidgetSize, type WidgetSize } from "./widgetSizes";
 
+export interface WidgetMenuItem {
+  label: string;
+  onSelect: () => void;
+  destructive?: boolean;
+}
+
 export interface WidgetProps {
   title: string;
   subtitle?: string;
+  /** Leading icon for visual consistency. */
+  icon?: React.ReactNode;
+  /** Last-updated / as-of timestamp. */
+  timestamp?: string;
   /** Status badge text, rendered next to the title. */
   badge?: string;
   badgeTone?: StatusTone;
   /** Right-aligned custom actions (buttons, filters). */
   actions?: React.ReactNode;
+  /** Overflow action menu (⋮). */
+  menuItems?: WidgetMenuItem[];
   /** Preferred size — drives skeleton height; grid span is resolved by the page. */
   size?: WidgetSize;
   collapsible?: boolean;
@@ -48,9 +67,12 @@ export interface WidgetProps {
 export function Widget({
   title,
   subtitle,
+  icon,
+  timestamp,
   badge,
   badgeTone = "neutral",
   actions,
+  menuItems,
   size = "m",
   collapsible = false,
   defaultCollapsed = false,
@@ -68,6 +90,7 @@ export function Widget({
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const [fullscreen, setFullscreen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const spec = resolveWidgetSize(size);
 
@@ -88,16 +111,22 @@ export function Widget({
     <section
       aria-label={title}
       className={cn(
-        "flex flex-col rounded-xl border border-surface-border-subtle bg-surface-raised shadow-card",
+        "flex h-full flex-col rounded-xl border border-surface-border-subtle bg-surface-raised shadow-card",
+        "transition-[box-shadow,border-color,transform] duration-300 hover:shadow-floating",
         fullscreen &&
           "fixed inset-4 z-[1200] overflow-auto bg-surface shadow-overlay md:inset-10",
         className,
       )}
     >
-      <header className="flex items-start justify-between gap-3 px-4 pb-0 pt-4">
+      <header className="flex items-start justify-between gap-3 px-4 pb-0 pt-4 sm:px-5 sm:pt-5">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="truncate text-sm font-semibold tracking-tight text-text-primary">
+            {icon ? (
+              <span className="text-text-muted" aria-hidden>
+                {icon}
+              </span>
+            ) : null}
+            <h2 className="truncate text-base font-semibold tracking-tight text-text-primary">
               {title}
             </h2>
             {badge && <StatusBadge tone={badgeTone}>{badge}</StatusBadge>}
@@ -105,6 +134,11 @@ export function Widget({
           {subtitle && (
             <p className="mt-0.5 truncate text-xs text-text-muted">{subtitle}</p>
           )}
+          {timestamp ? (
+            <p className="mt-1 text-[10px] uppercase tracking-wider text-text-faint">
+              {timestamp}
+            </p>
+          ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-1">
           {actions}
@@ -132,6 +166,45 @@ export function Widget({
               )}
             </button>
           )}
+          {menuItems && menuItems.length > 0 ? (
+            <div className="relative">
+              <button
+                type="button"
+                aria-label={`${title} actions`}
+                aria-expanded={menuOpen}
+                onClick={() => setMenuOpen((v) => !v)}
+                className={iconButton}
+              >
+                <MoreVertical className="h-3.5 w-3.5" />
+              </button>
+              {menuOpen ? (
+                <div
+                  role="menu"
+                  className="absolute right-0 z-20 mt-1 min-w-[10rem] rounded-lg border border-surface-border bg-surface-raised py-1 shadow-floating"
+                >
+                  {menuItems.map((item) => (
+                    <button
+                      key={item.label}
+                      type="button"
+                      role="menuitem"
+                      className={cn(
+                        "block w-full px-3 py-1.5 text-left text-xs transition-colors hover:bg-surface-hover",
+                        item.destructive
+                          ? "text-loss"
+                          : "text-text-secondary"
+                      )}
+                      onClick={() => {
+                        setMenuOpen(false);
+                        item.onSelect();
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           {collapsible && (
             <button
               type="button"
@@ -152,7 +225,7 @@ export function Widget({
       </header>
 
       {!collapsed && (
-        <div className={cn("min-w-0 flex-1 p-4", contentClassName)}>
+        <div className={cn("min-w-0 flex-1 p-4 sm:p-5", contentClassName)}>
           {loading ? (
             <WidgetSkeleton rows={spec.skeletonRows} minHeight={spec.minContentHeight} />
           ) : error ? (
