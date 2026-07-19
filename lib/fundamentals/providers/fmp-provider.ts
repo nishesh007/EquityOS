@@ -5,7 +5,6 @@
 import { fmpAdapter } from "@/lib/adapters/financial-modeling-prep";
 import { hasApiKey } from "@/lib/adapters/http";
 import { loadProviderConfig } from "@/lib/providers/config";
-import { generateCorporateActions } from "@/lib/fundamentals/corporate-actions";
 import {
   fmpIncomeToAnnualFinancials,
   fmpIncomeToQuarterly,
@@ -90,7 +89,7 @@ export class FMPFundamentalsProvider implements FundamentalsProvider {
       public: 100,
       lastUpdated: "Latest",
     };
-    const corporateActions = generateCorporateActions(normalized);
+    const corporateActions: FundamentalsBundle["corporateActions"] = [];
     const news: FundamentalsBundle["news"] = [];
     const notes: FundamentalsBundle["notes"] = [];
     const peers: FundamentalsBundle["peers"] = [];

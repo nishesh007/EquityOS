@@ -1,11 +1,11 @@
 /**
  * Institutional AI Compare Engine — head-to-head comparison for 2–5 companies.
+ * Scorecard/rating remain research signals; trade recommendation comes from Strategy Engine.
  */
 
 import { CompareEngineError } from "@/lib/ai/core/errors";
 import { loadInstitutionalBundle } from "@/lib/ai/institutional/loadBundle";
 import {
-  buildAIDecision,
   type AIDecisionSummary,
   type InvestorProfile,
 } from "@/lib/ai/decision/decisionEngine";
@@ -34,6 +34,11 @@ import {
   type StrengthWeaknessEntry,
 } from "@/lib/compare/scorecardEngine";
 import { buildInstitutionalRating } from "@/lib/research/ratingEngine";
+import type { SharedRecommendation } from "@/lib/recommendations";
+import {
+  ensureOpportunityEngineState,
+  fetchRecommendationsForSymbols,
+} from "@/services/opportunityEngine";
 import type { InstitutionalPeer, RecommendationLevel } from "@/types";
 import type { InstitutionalRating } from "@/lib/research/ratingEngine";
 
@@ -80,6 +85,75 @@ interface LoadedCompareCompany {
   bundle: NonNullable<Awaited<ReturnType<typeof loadInstitutionalBundle>>>;
 }
 
+function toCompareDecision(
+  recommendation: SharedRecommendation | null,
+  companyName: string,
+  symbol: string,
+  fallback: {
+    suitableInvestor: InvestorProfile[];
+    redFlags: string[];
+    compositeScore: number;
+  }
+): AIDecisionSummary {
+  if (!recommendation) {
+    return {
+      symbol,
+      companyName,
+      recommendation: "Hold",
+      confidenceScore: 0,
+      aiConvictionScore: 0,
+      reasonsToBuy: [],
+      reasonsNotToBuy: [
+        "No validated Strategy Engine recommendation for this symbol.",
+      ],
+      redFlags: fallback.redFlags,
+      upcomingCatalysts: [],
+      timeHorizon: "1 Year",
+      timeHorizonRationale: "Unavailable until Strategy Engine validates a setup.",
+      suitableInvestor: fallback.suitableInvestor,
+      positionSizing: "Watchlist",
+      earningsTrend: "Unknown",
+      compositeScore: fallback.compositeScore,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  return {
+    symbol: recommendation.symbol,
+    companyName,
+    recommendation:
+      recommendation.action === "BUY"
+        ? "Buy"
+        : recommendation.action === "SELL"
+          ? "Sell"
+          : "Hold",
+    confidenceScore: recommendation.confidence,
+    aiConvictionScore: recommendation.conviction,
+    reasonsToBuy:
+      recommendation.action === "BUY" ? recommendation.reasons : [],
+    reasonsNotToBuy:
+      recommendation.action !== "BUY" ? recommendation.reasons : [],
+    redFlags:
+      recommendation.opposingStrategies.length > 0
+        ? recommendation.opposingStrategies
+        : fallback.redFlags,
+    upcomingCatalysts: recommendation.evidence,
+    timeHorizon:
+      recommendation.category === "intraday" ? "Swing" : "1 Year",
+    timeHorizonRationale: recommendation.holdingPeriod,
+    suitableInvestor: fallback.suitableInvestor,
+    positionSizing:
+      recommendation.confidence >= 75
+        ? "High Conviction"
+        : recommendation.confidence >= 55
+          ? "Medium Conviction"
+          : "Watchlist",
+    earningsTrend: recommendation.marketContext,
+    compositeScore: recommendation.opportunityScore,
+    generatedAt: recommendation.timestamp,
+  };
+}
+
 async function loadCompareCompany(symbol: string): Promise<LoadedCompareCompany | null> {
   const normalized = normalizeNseSymbol(symbol);
   const prompt = `Compare ${normalized}`;
@@ -92,17 +166,6 @@ async function loadCompareCompany(symbol: string): Promise<LoadedCompareCompany 
     risk: bundle.risk,
     moat: bundle.moat,
     intelligence: bundle.intelligence,
-  });
-
-  const decision = buildAIDecision({
-    context: bundle.context,
-    profile: bundle.profile,
-    valuation: bundle.valuation,
-    risk: bundle.risk,
-    moat: bundle.moat,
-    intelligence: bundle.intelligence,
-    ragChunks: bundle.ragChunks,
-    opportunities: bundle.opportunities,
   });
 
   const decisionScores = buildDecisionScores({
@@ -122,6 +185,12 @@ async function loadCompareCompany(symbol: string): Promise<LoadedCompareCompany 
     risk: bundle.risk,
     moat: bundle.moat,
     decisionScores,
+  });
+
+  const decision = toCompareDecision(null, bundle.profile.name, normalized, {
+    suitableInvestor: ["Value", "Growth"],
+    redFlags: bundle.risk.redFlags.map((flag) => flag.label).slice(0, 5),
+    compositeScore: decisionScores.compositeScore,
   });
 
   return {
@@ -155,6 +224,8 @@ export function normalizeCompareSymbols(symbols: string[]): string[] {
 
 export async function buildCompareResult(symbols: string[]): Promise<CompareResult> {
   const normalized = normalizeCompareSymbols(symbols);
+  await ensureOpportunityEngineState();
+  const strategyRecommendations = fetchRecommendationsForSymbols(normalized);
   const loaded = await Promise.all(normalized.map((symbol) => loadCompareCompany(symbol)));
   const companies = loaded.filter((item): item is LoadedCompareCompany => item !== null);
 
@@ -176,22 +247,37 @@ export async function buildCompareResult(symbols: string[]): Promise<CompareResu
     )
   );
 
-  const snapshots: CompareCompanySnapshot[] = companies.map((company) => ({
-    symbol: company.bundle.profile.symbol,
-    name: company.bundle.profile.name,
-    sector: company.bundle.profile.sector,
-    industry: company.bundle.profile.industry,
-    price: company.bundle.profile.price,
-    marketCap: company.bundle.profile.marketCap,
-    overallScore: company.overallScore,
-    scorecard: company.scorecard,
-    recommendation: company.decision.recommendation,
-    confidenceScore: company.decision.confidenceScore,
-    aiConvictionScore: company.decision.aiConvictionScore,
-    suitableInvestor: company.decision.suitableInvestor,
-    redFlags: company.decision.redFlags,
-    decision: company.decision,
-  }));
+  const snapshots: CompareCompanySnapshot[] = companies.map((company) => {
+    const strategy = strategyRecommendations.get(
+      company.bundle.profile.symbol.toUpperCase()
+    );
+    const decision = toCompareDecision(
+      strategy ?? null,
+      company.bundle.profile.name,
+      company.bundle.profile.symbol,
+      {
+        suitableInvestor: company.decision.suitableInvestor,
+        redFlags: company.decision.redFlags,
+        compositeScore: company.decision.compositeScore,
+      }
+    );
+    return {
+      symbol: company.bundle.profile.symbol,
+      name: company.bundle.profile.name,
+      sector: company.bundle.profile.sector,
+      industry: company.bundle.profile.industry,
+      price: company.bundle.profile.price,
+      marketCap: company.bundle.profile.marketCap,
+      overallScore: company.overallScore,
+      scorecard: company.scorecard,
+      recommendation: decision.recommendation,
+      confidenceScore: decision.confidenceScore,
+      aiConvictionScore: decision.aiConvictionScore,
+      suitableInvestor: decision.suitableInvestor,
+      redFlags: decision.redFlags,
+      decision,
+    };
+  });
 
   const rankings = rankCompareCompanies(
     snapshots.map((company) => ({

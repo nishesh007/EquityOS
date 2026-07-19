@@ -6,7 +6,7 @@ import { useWatchlist } from "@/hooks/useWatchlist";
 import { useMarketQuotes } from "@/hooks/useMarketQuotes";
 import { createUnavailableQuote } from "@/lib/market-data/enriched-quote";
 import { getCompanyRoute } from "@/lib/routes";
-import { buildInitialQuotesMap } from "@/services/marketData";
+import { buildInitialQuotesMap } from "@/lib/market-data/enriched-quote";
 import type { WatchlistItem } from "@/types";
 import type { SharedRecommendation } from "@/lib/recommendations";
 import { useRouter } from "next/navigation";

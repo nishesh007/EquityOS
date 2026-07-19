@@ -6,7 +6,7 @@ import { QuoteDisplayCompact } from "@/components/market/QuoteDisplay";
 import { StockLink } from "@/components/ui/StockLink";
 import { useMarketQuotes } from "@/hooks/useMarketQuotes";
 import { createUnavailableQuote } from "@/lib/market-data/enriched-quote";
-import { buildInitialQuotesMap } from "@/services/marketData";
+import { buildInitialQuotesMap } from "@/lib/market-data/enriched-quote";
 import type { MarketBreadth as MarketBreadthType, MarketMover } from "@/types";
 import { HeatMeter } from "@/src/design";
 import { BarChart3, CircleArrowDown, CircleArrowUp, Layers3 } from "lucide-react";

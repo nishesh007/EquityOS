@@ -6,7 +6,7 @@ import { Sparkline } from "@/src/design";
 import { useMarketQuotes } from "@/hooks/useMarketQuotes";
 import { createUnavailableQuote } from "@/lib/market-data/enriched-quote";
 import { formatNumber } from "@/lib/utils";
-import { buildInitialQuotesMap } from "@/services/marketData";
+import { buildInitialQuotesMap } from "@/lib/market-data/enriched-quote";
 import type { MarketIndex } from "@/types";
 
 interface MarketOverviewCardsProps {

@@ -59,6 +59,7 @@ function resolveVixQuote(
 
 export function MarketPulse({ pulse }: MarketPulseProps) {
   const flow = pulse.institutionalFlow;
+  const flowAvailable = flow.asOf !== "Unavailable";
   const initialQuotes = useMemo(() => {
     const map: Record<string, EnrichedQuote> = {};
     if (pulse.vixQuote) {
@@ -130,28 +131,38 @@ export function MarketPulse({ pulse }: MarketPulseProps) {
           icon={<ArrowDownToLine className="h-4 w-4" />}
           detail={`Net cash flow · ${flow.asOf}`}
         >
-          <div className="flex items-center gap-3 font-mono text-xs tabular-nums">
-            <span className={flow.fii >= 0 ? "text-gain" : "text-loss"}>
-              FII {formatFlow(flow.fii)}
-            </span>
-            <span className={flow.dii >= 0 ? "text-gain" : "text-loss"}>
-              DII {formatFlow(flow.dii)}
-            </span>
-          </div>
+          {flowAvailable ? (
+            <div className="flex items-center gap-3 font-mono text-xs tabular-nums">
+              <span className={flow.fii >= 0 ? "text-gain" : "text-loss"}>
+                FII {formatFlow(flow.fii)}
+              </span>
+              <span className={flow.dii >= 0 ? "text-gain" : "text-loss"}>
+                DII {formatFlow(flow.dii)}
+              </span>
+            </div>
+          ) : (
+            <p className="text-xl font-semibold text-text-muted">Unavailable</p>
+          )}
         </PulseMetric>
 
         <PulseMetric
           label="Put Call Ratio"
           icon={<Gauge className="h-4 w-4" />}
-          detail="Options positioning · Balanced bullish"
+          detail={
+            pulse.putCallRatio > 0
+              ? "Options positioning"
+              : "Options data unavailable"
+          }
         >
-          <p className="data-value text-xl font-semibold">{pulse.putCallRatio}</p>
+          <p className="data-value text-xl font-semibold">
+            {pulse.putCallRatio > 0 ? pulse.putCallRatio : "Unavailable"}
+          </p>
         </PulseMetric>
 
         <PulseMetric
           label="Market Trend"
           icon={<ArrowUpFromLine className="h-4 w-4" />}
-          detail="Price above key moving averages"
+          detail="Derived from live benchmark direction"
         >
           <p className="text-sm font-semibold text-gain">{pulse.marketTrend}</p>
         </PulseMetric>
@@ -159,10 +170,16 @@ export function MarketPulse({ pulse }: MarketPulseProps) {
         <PulseMetric
           label="Breadth Score"
           icon={<Radio className="h-4 w-4" />}
-          detail="Broad-based participation"
+          detail={
+            pulse.breadthScore > 0
+              ? "Tracked-universe participation"
+              : "Breadth data unavailable"
+          }
         >
           <div className="flex items-center gap-3">
-            <p className="data-value text-xl font-semibold">{pulse.breadthScore}</p>
+            <p className="data-value text-xl font-semibold">
+              {pulse.breadthScore > 0 ? pulse.breadthScore : "Unavailable"}
+            </p>
             <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-border">
               <div
                 className="h-full rounded-full bg-gain transition-[width] duration-1000 ease-out"

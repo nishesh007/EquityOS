@@ -35,6 +35,7 @@ export function SharedRecommendationPanel({
                 <th className="pb-2">Strategies</th>
                 <th className="pb-2 text-right">Entry / SL / Target</th>
                 <th className="pb-2 text-right">Score</th>
+                <th className="pb-2 text-right">Risk / Reward</th>
                 <th className="pb-2 text-right">Confidence</th>
                 <th className="pb-2 text-right">Regime</th>
               </tr>
@@ -58,7 +59,7 @@ export function SharedRecommendationPanel({
                       {recommendation.action}
                     </p>
                     <p className="text-[10px] text-text-muted">
-                      {recommendation.primaryStrategy}
+                      {recommendation.primaryStrategy} · {recommendation.source}
                     </p>
                   </td>
                   <td className="py-2.5">
@@ -76,6 +77,12 @@ export function SharedRecommendationPanel({
                   <td className="py-2.5 text-right font-mono">
                     {recommendation.opportunityScore}
                   </td>
+                  <td className="py-2.5 text-right font-mono text-[10px]">
+                    {recommendation.risk} / {recommendation.reward}
+                    <p className="text-text-muted">
+                      R:R {recommendation.riskReward}
+                    </p>
+                  </td>
                   <td className="py-2.5 text-right font-mono">
                     {recommendation.confidence}%
                   </td>
@@ -83,6 +90,9 @@ export function SharedRecommendationPanel({
                     <p>{recommendation.marketRegime}</p>
                     <p className="text-[10px] text-text-muted">
                       {recommendation.marketContext}
+                    </p>
+                    <p className="text-[10px] text-text-faint">
+                      {new Date(recommendation.timestamp).toLocaleString("en-IN")}
                     </p>
                   </td>
                 </tr>

@@ -1,11 +1,8 @@
-import { AIInvestmentThesisCard } from "@/components/company/intelligence/AIInvestmentThesisCard";
 import { CompanyIntelligenceTimeline } from "@/components/company/intelligence/CompanyIntelligenceTimeline";
-import { DecisionEnginePanel } from "@/components/company/intelligence/DecisionEnginePanel";
 import { EquityScoreEngine } from "@/components/company/intelligence/EquityScoreEngine";
 import { FinancialHealthGrid } from "@/components/company/intelligence/FinancialHealthGrid";
 import { FinancialQualityPanel } from "@/components/company/intelligence/FinancialQualityPanel";
 import { InstitutionalPeerComparison } from "@/components/company/intelligence/InstitutionalPeerComparison";
-import { InvestorDecisionPanel } from "@/components/company/intelligence/InvestorDecisionPanel";
 import { MultiYearTrendPanel } from "@/components/company/intelligence/MultiYearTrendPanel";
 import { OpportunityPanel } from "@/components/company/intelligence/OpportunityPanel";
 import { QuarterlyIntelligence } from "@/components/company/intelligence/QuarterlyIntelligence";
@@ -55,21 +52,9 @@ export function EquityIntelligenceEngine({
       <DataTransparencyBar transparency={intelligence.dataTransparency} />
 
       <EquityScoreEngine score={intelligence.score} />
-      <DecisionEnginePanel
-        decision={intelligence.decision}
-        dataTransparency={intelligence.dataTransparency}
-        symbol={symbol}
-        initialQuote={initialQuote}
-      />
       <ResearchConfidencePanel
         confidence={intelligence.researchConfidence}
         dataTransparency={intelligence.dataTransparency}
-      />
-      <AIInvestmentThesisCard
-        thesis={intelligence.thesis}
-        dataTransparency={intelligence.dataTransparency}
-        symbol={symbol}
-        initialQuote={initialQuote}
       />
       <FinancialQualityPanel
         analysis={intelligence.financialQuality}
@@ -92,10 +77,6 @@ export function EquityIntelligenceEngine({
       <FinancialHealthGrid metrics={intelligence.financialHealth} dataTransparency={intelligence.dataTransparency} />
       <InstitutionalPeerComparison peers={intelligence.peers} />
       <QuarterlyIntelligence quarterly={intelligence.quarterly} />
-      <InvestorDecisionPanel
-        summary={intelligence.summary}
-        checklist={intelligence.checklist}
-      />
       <CompanyIntelligenceTimeline events={intelligence.timeline} />
     </section>
   );

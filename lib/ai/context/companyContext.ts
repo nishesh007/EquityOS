@@ -373,18 +373,9 @@ function normalizeCompanyContext(
     peerComparison: buildPeerComparison(profile, intelligence),
     valuation: bundle?.valuation ?? profile.valuation,
     latestResults: research?.results ?? null,
-    intelligence: intelligence
-      ? {
-          verdict: intelligence.decision.verdict,
-          conviction: {
-            overall: intelligence.decision.conviction.overall,
-            confidence: intelligence.decision.conviction.confidence,
-            upside: intelligence.decision.conviction.upside,
-            downside: intelligence.decision.conviction.downside,
-          },
-          summary: intelligence.summary.summary,
-        }
-      : null,
+    // Trade decisions are supplied exclusively by the centralized Strategy
+    // Engine recommendation context in researchEngine.
+    intelligence: null,
     dataSource: resolveDataSource(profile.quote ?? null, bundle, intelligence),
     generatedAt: new Date().toISOString(),
   };

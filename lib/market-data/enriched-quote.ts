@@ -165,6 +165,18 @@ export function createUnavailableQuote(symbol: string, now = new Date()): Enrich
   return toEnrichedQuote(symbol, null, now);
 }
 
+export function buildInitialQuotesMap(
+  items: Array<{ symbol: string; quote?: EnrichedQuote }>
+): Record<string, EnrichedQuote> {
+  const map: Record<string, EnrichedQuote> = {};
+  for (const item of items) {
+    if (item.quote) {
+      map[item.symbol.toUpperCase()] = item.quote;
+    }
+  }
+  return map;
+}
+
 export function enrichedQuoteToJSON(quote: EnrichedQuote): EnrichedQuote {
   return { ...quote };
 }

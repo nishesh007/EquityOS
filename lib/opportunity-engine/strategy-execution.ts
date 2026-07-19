@@ -7,17 +7,8 @@
 
 import { CATEGORY_STRATEGY_IDS } from "@/lib/opportunity-engine/pipeline-enrichment";
 import { computeLongTermRankingFactors } from "@/lib/opportunity-engine/long-term-ranking";
-import {
-  buildBuffettInput,
-  buildEarningsMomentumInput,
-  buildGrahamInput,
-  buildMagicFormulaInput,
-  buildPeterLynchInput,
-  buildQualityCompounderInput,
-} from "@/lib/opportunity-engine/position-fundamentals-adapter";
 import { buildStrategyConsensus } from "@/lib/opportunity-engine/strategy-consensus";
 import {
-  POSITION_STRATEGY_IDS,
   SWING_STRATEGY_IDS,
   isPositionStrategyId,
   isSwingStrategyId,
@@ -70,6 +61,20 @@ function baseInput(candidate: OpportunityCandidate): StrategyMarketInput {
     candidate.quote?.price ??
     metric(candidate, "cmp") ??
     candidate.entryZone.low;
+  const indicators = [
+    ["rsi", metric(candidate, "rsi")],
+    ["adx", metric(candidate, "adx")],
+    ["ema20", metric(candidate, "ema20")],
+    ["ema50", metric(candidate, "ema50")],
+    ["ema200", metric(candidate, "ema200")],
+    ["relativeStrength", metric(candidate, "relative_strength")],
+    ["relativeVolume", metric(candidate, "volume_ratio")],
+  ].reduce<Record<string, number>>((values, [name, value]) => {
+    if (typeof name === "string" && typeof value === "number") {
+      values[name] = value;
+    }
+    return values;
+  }, {});
   return {
     symbol: candidate.symbol,
     lastPrice,
@@ -79,15 +84,7 @@ function baseInput(candidate: OpportunityCandidate): StrategyMarketInput {
     close: lastPrice,
     volume: metric(candidate, "volume") ?? undefined,
     atr: metric(candidate, "atr") ?? undefined,
-    indicators: {
-      rsi: metric(candidate, "rsi") ?? 0,
-      adx: metric(candidate, "adx") ?? 0,
-      ema20: metric(candidate, "ema20") ?? 0,
-      ema50: metric(candidate, "ema50") ?? 0,
-      ema200: metric(candidate, "ema200") ?? 0,
-      relativeStrength: metric(candidate, "relative_strength") ?? 0,
-      relativeVolume: metric(candidate, "volume_ratio") ?? 0,
-    },
+    indicators,
   };
 }
 
@@ -153,26 +150,14 @@ function buildStrategyInput(
   strategyId: string,
   candidate: OpportunityCandidate,
   candles: readonly OhlcBar[]
-): StrategyMarketInput {
+): StrategyMarketInput | null {
   const base = baseInput(candidate);
 
-  if (strategyId === "earnings-momentum") {
-    return strategyInput(buildEarningsMomentumInput(base, candidate, candles));
-  }
-  if (strategyId === "buffett") {
-    return strategyInput(buildBuffettInput(base, candidate));
-  }
-  if (strategyId === "graham") {
-    return strategyInput(buildGrahamInput(base, candidate));
-  }
-  if (strategyId === "lynch") {
-    return strategyInput(buildPeterLynchInput(base, candidate));
-  }
-  if (strategyId === "greenblatt") {
-    return strategyInput(buildMagicFormulaInput(base, candidate));
-  }
-  if (strategyId === "quality-compounder") {
-    return strategyInput(buildQualityCompounderInput(base, candidate));
+  if (
+    strategyId === "earnings-momentum" ||
+    isPositionStrategyId(strategyId)
+  ) {
+    return null;
   }
 
   const { daily, closes, common } = buildSwingDailyCommon(
@@ -322,7 +307,7 @@ function resolveSuiteIds(
   const registry = getStrategyRegistry();
   const suite =
     candidate.category === "ai_high_conviction"
-      ? [...POSITION_STRATEGY_IDS]
+      ? []
       : candidate.category === "swing" ||
           candidate.category === "breakout" ||
           candidate.category === "momentum"
@@ -339,8 +324,7 @@ function resolveSuiteIds(
     return Boolean(eligibility?.eligible);
   });
 
-  if (eligible.length > 0) return eligible;
-  return suite.filter((strategyId) => registry.has(strategyId));
+  return eligible;
 }
 
 /**
@@ -357,7 +341,11 @@ export function executeOpportunityStrategies(
       primary: null,
       signals: [],
       executedStrategyIds: [],
-      rejectedReasons: ["No registered strategies mapped for category"],
+      rejectedReasons: [
+        candidate.category === "ai_high_conviction"
+          ? "Position strategies require verified financial statements and qualitative research inputs."
+          : "No registered pipeline-eligible strategies mapped for category.",
+      ],
       consensus: null,
       longTermRanking: null,
     };
@@ -374,6 +362,7 @@ export function executeOpportunityStrategies(
       continue;
     }
     const input = buildStrategyInput(strategyId, candidate, candles);
+    if (!input) continue;
     const context: StrategyExecutionContext = {
       input,
       marketContext: pipeline.context,

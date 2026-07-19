@@ -8,7 +8,7 @@ import { ViewFullPortfolioLink } from "@/components/dashboard/ViewFullPortfolioL
 import { useMarketQuotes } from "@/hooks/useMarketQuotes";
 import { createUnavailableQuote, type EnrichedQuote } from "@/lib/market-data/enriched-quote";
 import { formatCurrency } from "@/lib/utils";
-import { buildInitialQuotesMap } from "@/services/marketData";
+import { buildInitialQuotesMap } from "@/lib/market-data/enriched-quote";
 import type { PortfolioSummary as PortfolioSummaryType } from "@/types";
 import { AllocationRing, KpiTile } from "@/src/design";
 import { Wallet } from "lucide-react";

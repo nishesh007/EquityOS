@@ -5,7 +5,7 @@
 
 import type { OpportunityCandidate } from "@/lib/opportunity-engine/types";
 import { OPPORTUNITY_CATEGORIES } from "@/lib/opportunity-engine/types";
-import { getCategoryOpportunities } from "@/lib/opportunity-engine";
+import { getCategoryOpportunities } from "@/lib/opportunity-engine/engine";
 import { generateAlert, registerAlertEngine } from "../AlertFacade";
 import type { InstitutionalAlert } from "../AlertModels";
 import { safeAlertText } from "../AlertModels";

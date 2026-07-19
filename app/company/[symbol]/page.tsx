@@ -50,16 +50,17 @@ export async function generateMetadata({ params }: CompanyPageProps) {
 
 export default async function CompanyPage({ params }: CompanyPageProps) {
   const { symbol } = await params;
+  await ensureOpportunityEngineState();
+  const strategyRecommendation = fetchRecommendationForSymbol(symbol);
   const [company, research, intelligence] = await Promise.all([
     fetchCompanyProfile(symbol),
-    fetchCompanyResearch(symbol),
+    fetchCompanyResearch(symbol, strategyRecommendation),
     fetchEquityIntelligence(symbol),
   ]);
 
-  if (!company || !research || !intelligence) {
+  if (!company || !research) {
     notFound();
   }
-  await ensureOpportunityEngineState();
 
   const indicatorMap = Object.fromEntries(
     research.technicals.indicators.map((i) => [
@@ -103,7 +104,6 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
   });
   const analytics = fetchWorkspaceAnalyticsView();
   const executive = fetchExecutiveResearchView({ ticker: company.symbol });
-  const strategyRecommendation = fetchRecommendationForSymbol(company.symbol);
 
   return (
     <PageContainer>
@@ -171,13 +171,21 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
           research={research}
           screenerInsight={screenerInsight}
         />
-        <EquityIntelligenceEngine
-          intelligence={intelligence}
-          symbol={company.symbol}
-          initialQuote={company.quote}
+        {intelligence ? (
+          <EquityIntelligenceEngine
+            intelligence={intelligence}
+            symbol={company.symbol}
+            initialQuote={company.quote}
+          />
+        ) : null}
+        <FinancialSummaryCards
+          financials={company.financials}
+          dataTransparency={intelligence?.dataTransparency}
         />
-        <FinancialSummaryCards financials={company.financials} dataTransparency={intelligence.dataTransparency} />
-        <CompanyTabs company={company} dataTransparency={intelligence.dataTransparency} />
+        <CompanyTabs
+          company={company}
+          dataTransparency={intelligence?.dataTransparency}
+        />
       </div>
     </PageContainer>
   );

@@ -11,7 +11,6 @@ import {
   normalizeAvIncomeStatement,
   normalizeAvOverview,
 } from "@/lib/fundamentals/av-normalizer";
-import { generateCorporateActions } from "@/lib/fundamentals/corporate-actions";
 import { formatFmpMarketCap } from "@/lib/fundamentals/fmp-normalizer";
 import { calculateGrowthFromStatements } from "@/lib/fundamentals/growth-engine";
 import {
@@ -83,7 +82,7 @@ export class AlphaVantageFundamentalsProvider implements FundamentalsProvider {
       public: 100,
       lastUpdated: "Latest",
     };
-    const corporateActions = generateCorporateActions(normalized);
+    const corporateActions: FundamentalsBundle["corporateActions"] = [];
     const news: FundamentalsBundle["news"] = [];
     const notes: FundamentalsBundle["notes"] = [];
     const peers: FundamentalsBundle["peers"] = [];

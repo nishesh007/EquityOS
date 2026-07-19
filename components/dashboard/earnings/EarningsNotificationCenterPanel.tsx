@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Bell } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -42,14 +42,12 @@ export function EarningsNotificationCenterPanel({
   compact = false,
 }: EarningsNotificationCenterPanelProps) {
   const [section, setSection] = useState<AlertInboxSection>("unread");
-  const [tick, setTick] = useState(0);
+  const [, setTick] = useState(0);
   const [toast, setToast] = useState("");
   const [, startTransition] = useTransition();
 
-  const inbox: NotificationCenterView = useMemo(() => {
-    const alerts = getEarningsAlertEngine().generateForEvents(events);
-    return buildNotificationCenterView(alerts);
-  }, [events, tick]);
+  const alerts = getEarningsAlertEngine().generateForEvents(events);
+  const inbox: NotificationCenterView = buildNotificationCenterView(alerts);
 
   const cards = inbox[section];
   const emptyMessage =

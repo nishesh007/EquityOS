@@ -1,9 +1,8 @@
 /**
  * Earnings preview engine — orchestrates AI earnings intelligence previews.
- * Reuses fundamentals mock seeds + surprise enrichment; caches visible-card previews.
+ * Uses calendar event context only; does not fabricate fundamentals from mock seeds.
  */
 
-import { MOCK_COMPANY_SEEDS } from "@/lib/fundamentals/mock-data";
 import type { EarningsCalendarEvent } from "@/src/core/earnings/calendar";
 import { getEarningsCalendarService } from "@/src/core/earnings/calendar";
 import { getAIExpectation as computeAIExpectation } from "./EarningsExpectationEngine";
@@ -31,35 +30,19 @@ function cacheKey(ticker: string, resultDate: string): string {
   return `${ticker.trim().toUpperCase()}::${resultDate}`;
 }
 
-function resolveValuationStatus(
-  seed: (typeof MOCK_COMPANY_SEEDS)[string] | undefined
-): EarningsResearchContext["valuationStatus"] {
-  const statuses = seed?.valuation?.map((v) => v.status) ?? [];
-  if (statuses.includes("undervalued") && !statuses.includes("overvalued")) {
-    return "undervalued";
-  }
-  if (statuses.includes("overvalued") && !statuses.includes("undervalued")) {
-    return "overvalued";
-  }
-  if (statuses.length > 0) return "fair";
-  return null;
-}
-
 export function buildEarningsResearchContext(
   event: EarningsCalendarEvent
 ): EarningsResearchContext {
-  const seed = MOCK_COMPANY_SEEDS[event.ticker.toUpperCase()];
-  const quarters = seed?.quarterlyResults ?? [];
   return {
     event,
-    quarters,
-    pe: seed?.financials.pe ?? null,
-    revenueGrowth: seed?.financials.revenueGrowth ?? null,
-    netProfitGrowth: seed?.financials.netProfitGrowth ?? null,
-    valuationStatus: resolveValuationStatus(seed),
-    fiiPercent: seed?.shareholding.fii ?? null,
-    diiPercent: seed?.shareholding.dii ?? null,
-    hasAnalystCoverage: Boolean(seed && quarters.length >= 2),
+    quarters: [],
+    pe: null,
+    revenueGrowth: null,
+    netProfitGrowth: null,
+    valuationStatus: null,
+    fiiPercent: null,
+    diiPercent: null,
+    hasAnalystCoverage: false,
   };
 }
 

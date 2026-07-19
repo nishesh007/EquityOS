@@ -5,11 +5,32 @@ import type {
   UpcomingResult,
   WatchlistItem,
 } from "@/types";
-import { marketDataService, type EnrichedQuote } from "@/lib/market-data";
+import {
+  createUnavailableQuote,
+  marketDataService,
+  type EnrichedQuote,
+} from "@/lib/market-data";
 import { formatVolume } from "@/lib/utils";
 import { CACHE_TTL, cacheKey, getCached } from "@/lib/cache";
 import { fetchVerifiedMarketNews } from "@/services/verifiedMarketNews";
+import { getCompanyEnrichment } from "@/lib/company-master/enrichment";
+import { lookupCompanyMaster } from "@/lib/company-master";
+import {
+  ensureBuiltinWatchlists,
+  searchWatchlists,
+} from "@/src/core/watchlists/WatchlistRegistry";
+import type {
+  WatchlistQuery,
+  WatchlistRecord,
+} from "@/src/core/watchlists/WatchlistModels";
 
+function ensureDefaultWatchlists(now?: Date | null): WatchlistRecord[] {
+  return ensureBuiltinWatchlists(now);
+}
+
+function getWatchlists(query?: WatchlistQuery | null): WatchlistRecord[] {
+  return searchWatchlists(query ?? undefined);
+}
 const INDEX_META: Record<
   string,
   { id: string; name: string; sparkline: number[] }
@@ -53,120 +74,11 @@ async function resolveIndex(symbol: string): Promise<MarketIndex> {
   };
 }
 
-export const aiMarketSummary: AIMarketSummary = {
-  sentiment: "bullish",
-  confidence: 72,
-  summary:
-    "Indian equity markets are showing resilience with Nifty 50 trading near all-time highs. FII inflows remain strong at ₹3,240 Cr this week, while domestic institutional investors continue their buying streak. IT and banking sectors are leading gains, though Bank Nifty faces mild profit-booking near resistance levels.",
-  keyPoints: [
-    "Nifty 50 breached 24,800 with strong volume confirmation",
-    "FII net buying at ₹3,240 Cr — highest in 3 weeks",
-    "IT sector up 1.8% on improved US client spending outlook",
-    "India VIX at 13.42 suggests low fear, potential complacency risk",
-    "RBI policy decision next week — markets pricing in status quo",
-  ],
-  sectors: [
-    { name: "IT", outlook: "positive", change: 1.82 },
-    { name: "Banking", outlook: "neutral", change: -0.27 },
-    { name: "Auto", outlook: "positive", change: 1.45 },
-    { name: "Pharma", outlook: "negative", change: -0.68 },
-    { name: "FMCG", outlook: "neutral", change: 0.12 },
-  ],
-};
-
-export const upcomingResults: UpcomingResult[] = [
-  {
-    id: "1",
-    company: "Reliance Industries",
-    symbol: "RELIANCE",
-    date: "2026-07-18",
-    quarter: "Q1 FY26",
-    sector: "Conglomerate",
-    marketCap: "₹19.5L Cr",
-  },
-  {
-    id: "2",
-    company: "HDFC Bank",
-    symbol: "HDFCBANK",
-    date: "2026-07-19",
-    quarter: "Q1 FY26",
-    sector: "Banking",
-    marketCap: "₹13.2L Cr",
-  },
-  {
-    id: "3",
-    company: "Infosys",
-    symbol: "INFY",
-    date: "2026-07-21",
-    quarter: "Q1 FY26",
-    sector: "IT",
-    marketCap: "₹7.8L Cr",
-  },
-  {
-    id: "4",
-    company: "Tata Motors",
-    symbol: "TATAMOTORS",
-    date: "2026-07-22",
-    quarter: "Q1 FY26",
-    sector: "Auto",
-    marketCap: "₹3.4L Cr",
-  },
-  {
-    id: "5",
-    company: "Asian Paints",
-    symbol: "ASIANPAINT",
-    date: "2026-07-24",
-    quarter: "Q1 FY26",
-    sector: "FMCG",
-    marketCap: "₹2.8L Cr",
-  },
-  {
-    id: "6",
-    company: "Bajaj Finance",
-    symbol: "BAJFINANCE",
-    date: "2026-07-25",
-    quarter: "Q1 FY26",
-    sector: "NBFC",
-    marketCap: "₹4.6L Cr",
-  },
-];
-
-const WATCHLIST_SEED: Omit<
-  WatchlistItem,
-  "price" | "change" | "changePercent" | "volume" | "quote"
->[] = [
-  { id: "1", symbol: "BHARTIARTL", name: "Bharti Airtel", sector: "Telecom" },
-  { id: "2", symbol: "SBIN", name: "State Bank of India", sector: "Banking" },
-  { id: "3", symbol: "LT", name: "Larsen & Toubro", sector: "Infrastructure" },
-  { id: "4", symbol: "WIPRO", name: "Wipro", sector: "IT" },
-  { id: "5", symbol: "ADANIENT", name: "Adani Enterprises", sector: "Conglomerate" },
-  { id: "6", symbol: "MARUTI", name: "Maruti Suzuki", sector: "Auto" },
-];
-
-const PORTFOLIO_SEED = {
-  holdings: [
-    { id: "1", symbol: "RELIANCE", name: "Reliance Industries", quantity: 50, avgPrice: 2450 },
-    { id: "2", symbol: "TCS", name: "Tata Consultancy", quantity: 30, avgPrice: 3200 },
-    { id: "3", symbol: "HDFCBANK", name: "HDFC Bank", quantity: 80, avgPrice: 1580 },
-    { id: "4", symbol: "INFY", name: "Infosys", quantity: 100, avgPrice: 1420 },
-    { id: "5", symbol: "ICICIBANK", name: "ICICI Bank", quantity: 60, avgPrice: 980 },
-  ],
-};
-
-function holdingFromQuote(
-  holding: (typeof PORTFOLIO_SEED.holdings)[number],
-  quote: EnrichedQuote
-) {
-  return {
-    ...holding,
-    currentPrice: quote.price ?? 0,
-    changePercent: quote.changePercent ?? 0,
-    quote,
-  };
-}
-
 function watchlistFromQuote(
-  item: (typeof WATCHLIST_SEED)[number],
+  item: Omit<
+    WatchlistItem,
+    "price" | "change" | "changePercent" | "volume" | "quote"
+  >,
   quote: EnrichedQuote
 ): WatchlistItem {
   return {
@@ -192,48 +104,15 @@ export async function fetchMarketIndices(): Promise<MarketIndex[]> {
 export async function fetchPortfolioSummary(): Promise<PortfolioSummary> {
   return getCached(
     { key: cacheKey("portfolio-summary"), ttlMs: CACHE_TTL.QUOTE },
-    async () => {
-      const quoteMap = await marketDataService.getEnrichedQuotes(
-        PORTFOLIO_SEED.holdings.map((holding) => holding.symbol)
-      );
-      const holdings = PORTFOLIO_SEED.holdings.map((holding) =>
-        holdingFromQuote(
-          holding,
-          quoteMap.get(holding.symbol) ?? quoteMap.get(holding.symbol.toUpperCase())!
-        )
-      );
-
-      const pricedHoldings = holdings.filter(
-        (h) => h.quote.availability !== "unavailable"
-      );
-      const totalValue = pricedHoldings.reduce(
-        (sum, h) => sum + h.currentPrice * h.quantity,
-        0
-      );
-      const totalInvested = holdings.reduce(
-        (sum, h) => sum + h.avgPrice * h.quantity,
-        0
-      );
-      const dayChange = pricedHoldings.reduce(
-        (sum, h) =>
-          sum + h.currentPrice * h.quantity * (h.changePercent / 100),
-        0
-      );
-
-      return {
-        totalValue,
-        dayChange,
-        dayChangePercent:
-          totalValue > 0 ? (dayChange / totalValue) * 100 : 0,
-        totalInvested,
-        totalGain: totalValue - totalInvested,
-        totalGainPercent:
-          totalInvested > 0
-            ? ((totalValue - totalInvested) / totalInvested) * 100
-            : 0,
-        holdings,
-      };
-    }
+    async () => ({
+      totalValue: 0,
+      dayChange: 0,
+      dayChangePercent: 0,
+      totalInvested: 0,
+      totalGain: 0,
+      totalGainPercent: 0,
+      holdings: [],
+    })
   );
 }
 
@@ -241,13 +120,29 @@ export async function fetchWatchlist(): Promise<WatchlistItem[]> {
   return getCached(
     { key: cacheKey("watchlist"), ttlMs: CACHE_TTL.QUOTE },
     async () => {
+      ensureDefaultWatchlists();
+      const active =
+        getWatchlists({ status: "active", pinned: true })[0] ??
+        getWatchlists({ status: "active" })[0];
+      const items = (active?.symbols ?? []).map((symbol) => {
+        const master = lookupCompanyMaster(symbol);
+        const enrichment = getCompanyEnrichment(symbol);
+        return {
+          id: `${active?.id ?? "watchlist"}:${symbol}`,
+          symbol,
+          name: master?.name ?? symbol,
+          sector: enrichment?.sector ?? master?.sector ?? "Unknown",
+        };
+      });
       const quoteMap = await marketDataService.getEnrichedQuotes(
-        WATCHLIST_SEED.map((item) => item.symbol)
+        items.map((item) => item.symbol)
       );
-      return WATCHLIST_SEED.map((item) =>
+      return items.map((item) =>
         watchlistFromQuote(
           item,
-          quoteMap.get(item.symbol) ?? quoteMap.get(item.symbol.toUpperCase())!
+          quoteMap.get(item.symbol) ??
+            quoteMap.get(item.symbol.toUpperCase()) ??
+            createUnavailableQuote(item.symbol)
         )
       );
     }
@@ -332,23 +227,18 @@ export async function fetchUpcomingResults(): Promise<UpcomingResult[]> {
     getEarningsCalendarService,
   } = await import("@/src/core/earnings/calendar");
   const service = getEarningsCalendarService();
+  ensureDefaultWatchlists();
+  const watchlistSymbols = getWatchlists({ status: "active" }).flatMap(
+    (watchlist) => watchlist.symbols
+  );
   service.setMembership({
-    portfolioSymbols: PORTFOLIO_SEED.holdings.map((h) => h.symbol),
-    watchlistSymbols: WATCHLIST_SEED.map((w) => w.symbol),
+    portfolioSymbols: [],
+    watchlistSymbols,
   });
   const fromCalendar = service.toUpcomingResults();
-  return fromCalendar.length > 0 ? fromCalendar : upcomingResults;
+  return fromCalendar;
 }
 
 /** Build initial quotes map for client-side live polling */
-export function buildInitialQuotesMap(
-  items: Array<{ symbol: string; quote?: EnrichedQuote }>
-): Record<string, EnrichedQuote> {
-  const map: Record<string, EnrichedQuote> = {};
-  for (const item of items) {
-    if (item.quote) {
-      map[item.symbol.toUpperCase()] = item.quote;
-    }
-  }
-  return map;
-}
+export { buildInitialQuotesMap } from "@/lib/market-data/enriched-quote";
+

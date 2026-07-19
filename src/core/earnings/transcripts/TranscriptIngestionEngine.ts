@@ -2,7 +2,7 @@
  * Transcript ingestion — resolves concall text from seeds / uploads (no new AI pipeline).
  */
 
-import { MOCK_COMPANY_SEEDS } from "@/lib/fundamentals/mock-data";
+import { lookupCompanyMaster } from "@/lib/company-master";
 import type { RawTranscriptDocument } from "./TranscriptModels";
 
 interface TranscriptSeed {
@@ -166,7 +166,7 @@ export class TranscriptIngestionEngine {
     if (cached) return cached;
 
     const seed = MOCK_TRANSCRIPT_SEEDS[ticker];
-    const profile = MOCK_COMPANY_SEEDS[ticker];
+    const master = lookupCompanyMaster(ticker);
     const prepared =
       input.preparedRemarks?.trim() ||
       seed?.preparedRemarks ||
@@ -179,7 +179,7 @@ export class TranscriptIngestionEngine {
       resultDate: input.resultDate,
       quarter: input.quarter ?? "—",
       financialYear: input.financialYear ?? "—",
-      companyName: profile?.name ?? ticker,
+      companyName: master?.name ?? ticker,
       hasConferenceCall: seed?.hasConferenceCall ?? hasText,
       preparedRemarks: prepared,
       questionAnswer: qa,

@@ -3,10 +3,10 @@ import type {
   CompanyNews,
   CompanyProfile,
   CompanyResearch,
-  ConvictionLevel,
   ResultsSummary,
   RiskLevel,
   Signal,
+  SwingTradeSetup,
   TradingData,
 } from "@/types";
 import type { OhlcBar } from "@/lib/providers/types";
@@ -17,7 +17,7 @@ import { isValidMarketPrice } from "@/lib/utils";
 import { getCached, cacheKey, CACHE_TTL } from "@/lib/cache";
 import { marketDataService } from "@/lib/market-data";
 import type { EnrichedQuote } from "@/lib/market-data";
-import { createRng, hashSeed } from "@/lib/random";
+import type { SharedRecommendation } from "@/lib/recommendations";
 
 const REFERENCE_CAPITAL = 1_000_000;
 
@@ -27,8 +27,8 @@ function toExchangeSymbol(symbol: string): string {
 
 function buildTradingData(
   profile: CompanyProfile,
-  rng: () => number,
-  liveQuote?: EnrichedQuote
+  liveQuote?: EnrichedQuote,
+  candles: readonly OhlcBar[] = []
 ): TradingData {
   const close = liveQuote?.price ?? profile.price;
 
@@ -57,9 +57,16 @@ function buildTradingData(
     const low = liveQuote.low ?? close;
     const previousClose = liveQuote.previousClose ?? close - (liveQuote.change ?? 0);
     const volume = liveQuote.volume ?? 0;
-    const vwap = liveQuote.vwap ?? close;
+    const vwap =
+      liveQuote.vwap ??
+      (liveQuote.high && liveQuote.low
+        ? (liveQuote.high + liveQuote.low + close) / 3
+        : close);
     const deliveryPercent = liveQuote.deliveryPercent ?? 0;
     const turnoverCr = volume > 0 ? (volume * vwap) / 1e7 : 0;
+    const validCandles = candles.filter(
+      (candle) => candle.high > 0 && candle.low > 0
+    );
 
     return {
       open,
@@ -71,33 +78,42 @@ function buildTradingData(
       turnover: turnoverCr > 0 ? `₹${turnoverCr.toFixed(0)} Cr` : "N/A",
       deliveryPercent,
       vwap,
-      weekHigh52: round(close * (1.12 + rng() * 0.35)),
-      weekLow52: round(close * (0.62 + rng() * 0.15)),
-      dividendYield: round(0.2 + rng() * 2.4, 2),
+      weekHigh52:
+        validCandles.length > 0
+          ? Math.max(...validCandles.map((candle) => candle.high))
+          : 0,
+      weekLow52:
+        validCandles.length > 0
+          ? Math.min(...validCandles.map((candle) => candle.low))
+          : 0,
+      dividendYield: profile.fundamentals?.dividendYield ?? 0,
       upperCircuit: round(previousClose * 1.1),
       lowerCircuit: round(previousClose * 0.9),
     };
   }
 
-  const previousClose = round(close - profile.change);
-  const open = liveQuote?.open ?? round(previousClose * (1 + (rng() - 0.5) * 0.01));
-
-  const intradaySwing = 0.008 + rng() * 0.02;
-  const high =
-    liveQuote?.high ?? round(Math.max(open, close) * (1 + intradaySwing));
-  const low =
-    liveQuote?.low ?? round(Math.min(open, close) * (1 - intradaySwing * 0.9));
-  const vwap = liveQuote?.vwap ?? round(low + (high - low) * (0.35 + rng() * 0.3));
-
-  const weekHigh52 = round(close * (1.12 + rng() * 0.35));
-  const weekLow52 = round(close * (0.62 + rng() * 0.15));
-
-  const volume = liveQuote?.volume ?? Math.round((3e6 + rng() * 1.4e7) / 100) * 100;
+  const latest = candles.at(-1);
+  const previous = candles.at(-2);
+  const previousClose = liveQuote?.previousClose ?? previous?.close ?? close;
+  const open = liveQuote?.open ?? latest?.open ?? close;
+  const high = liveQuote?.high ?? latest?.high ?? close;
+  const low = liveQuote?.low ?? latest?.low ?? close;
+  const vwap = liveQuote?.vwap ?? (high + low + close) / 3;
+  const validCandles = candles.filter(
+    (candle) => candle.high > 0 && candle.low > 0
+  );
+  const weekHigh52 =
+    validCandles.length > 0
+      ? Math.max(...validCandles.map((candle) => candle.high))
+      : 0;
+  const weekLow52 =
+    validCandles.length > 0
+      ? Math.min(...validCandles.map((candle) => candle.low))
+      : 0;
+  const volume = liveQuote?.volume ?? latest?.volume ?? 0;
   const turnoverCr = (volume * vwap) / 1e7;
-  const deliveryPercent =
-    liveQuote?.deliveryPercent ?? round(38 + rng() * 34, 1);
-
-  const dividendYield = round(0.2 + rng() * 2.4, 2);
+  const deliveryPercent = liveQuote?.deliveryPercent ?? 0;
+  const dividendYield = profile.fundamentals?.dividendYield ?? 0;
 
   return {
     open,
@@ -121,11 +137,18 @@ function buildAI(
   profile: CompanyProfile,
   technicals: { score: number; summary: Signal; bullishCount: number; indicators: { name: string; value: string; detail: string }[] },
   trading: TradingData,
-  rng: () => number
+  candles: readonly OhlcBar[]
 ): AIAnalysis {
   const hasPrice = isValidMarketPrice(profile.price);
-  const support = hasPrice ? round(profile.price * (1 - (0.025 + rng() * 0.02))) : 0;
-  const resistance = hasPrice ? round(profile.price * (1 + (0.03 + rng() * 0.03))) : 0;
+  const recent = candles.slice(-20);
+  const support =
+    hasPrice && recent.length > 0
+      ? Math.min(...recent.map((candle) => candle.low))
+      : 0;
+  const resistance =
+    hasPrice && recent.length > 0
+      ? Math.max(...recent.map((candle) => candle.high))
+      : 0;
 
   const atrIndicator = technicals.indicators.find((i) => i.name === "ATR");
   const highVol = atrIndicator?.detail.includes("Elevated") ?? false;
@@ -203,7 +226,8 @@ function buildResults(profile: CompanyProfile): ResultsSummary {
       : profile.financials.netProfitGrowth;
 
   const netMargin = latest?.margin ?? 0;
-  const operatingMargin = round(netMargin + 4 + (profile.financials.roce % 5), 1);
+  const operatingMargin =
+    profile.fundamentals?.operatingMargin ?? netMargin;
 
   const verdict: Signal =
     profile.financials.netProfitGrowth > 12
@@ -216,13 +240,7 @@ function buildResults(profile: CompanyProfile): ResultsSummary {
     latest?.revenue ?? profile.financials.revenue
   } grew ${profile.financials.revenueGrowth}% YoY while net profit of ${
     latest?.netProfit ?? profile.financials.netProfit
-  } expanded ${profile.financials.netProfitGrowth}%. Net margin held at ${netMargin}%, ${
-    verdict === "bullish"
-      ? "ahead of street estimates on operating leverage"
-      : verdict === "bearish"
-        ? "pressured by cost inflation and a softer demand mix"
-        : "broadly in line with expectations"
-  }.`;
+  } changed ${profile.financials.netProfitGrowth}% YoY. Reported net margin was ${netMargin}%.`;
 
   return {
     quarter: latest?.quarter ?? "Latest",
@@ -240,74 +258,70 @@ function buildResults(profile: CompanyProfile): ResultsSummary {
   };
 }
 
-const SECTOR_HEADLINES: Record<string, string[]> = {
-  IT: [
-    "Analysts flag deal-win momentum as a key FY27 growth lever",
-    "Brokerage retains Buy citing margin recovery and GenAI pipeline",
-  ],
-  Banking: [
-    "Asset quality steady as slippages stay below guidance",
-    "NIM commentary in focus ahead of the RBI policy meeting",
-  ],
-  Telecom: [
-    "ARPU expansion story keeps long-term investors engaged",
-    "5G monetisation timeline seen as the next re-rating trigger",
-  ],
-  Auto: [
-    "Festive demand and new launches drive volume optimism",
-    "Export mix improvement cushions domestic seasonality",
-  ],
-  Conglomerate: [
-    "Sum-of-the-parts narrative attracts institutional interest",
-    "Capex cycle and demerger chatter keep the counter active",
-  ],
-  Infrastructure: [
-    "Record order book underpins multi-year earnings visibility",
-    "Execution pace and working-capital discipline in spotlight",
-  ],
-};
-
 function buildNews(profile: CompanyProfile): CompanyNews[] {
-  const base = [...profile.news];
-  const templates =
-    SECTOR_HEADLINES[profile.sector] ?? [
-      "Institutional activity picks up as valuations turn attractive",
-      "Management commentary points to a stable demand outlook",
-    ];
+  return [...profile.news];
+}
 
-  templates.forEach((headline, index) => {
-    if (base.length >= 4) return;
-    base.push({
-      id: `gen-${index}`,
-      title: `${profile.name}: ${headline}`,
-      source: index % 2 === 0 ? "Bloomberg Quint" : "CNBC-TV18",
-      timestamp: index === 0 ? "6 hours ago" : "1 day ago",
-      summary: `Coverage of ${profile.name} in the ${profile.sector} sector — ${headline.toLowerCase()}.`,
-    });
-  });
-
-  return base;
+function buildStrategySwingSetup(
+  recommendation: SharedRecommendation | null
+): SwingTradeSetup {
+  if (!recommendation) {
+    return {
+      entryLow: 0,
+      entryHigh: 0,
+      stopLoss: 0,
+      target1: 0,
+      target2: 0,
+      target3: 0,
+      riskRewardRatio: 0,
+      capitalAllocationPercent: 0,
+      referenceCapital: REFERENCE_CAPITAL,
+      positionSize: 0,
+      conviction: "Low",
+      swingScore: 0,
+      timeHorizon: "Unavailable",
+      strategy: "No validated Strategy Engine recommendation",
+    };
+  }
+  const [target1 = 0, target2 = target1, target3 = target2] =
+    recommendation.targets;
+  return {
+    entryLow: recommendation.entry,
+    entryHigh: recommendation.entry,
+    stopLoss: recommendation.stopLoss,
+    target1,
+    target2,
+    target3,
+    riskRewardRatio: recommendation.riskReward,
+    capitalAllocationPercent: 0,
+    referenceCapital: REFERENCE_CAPITAL,
+    positionSize: 0,
+    conviction:
+      recommendation.conviction >= 75
+        ? "High"
+        : recommendation.conviction >= 55
+          ? "Medium"
+          : "Low",
+    swingScore: recommendation.opportunityScore,
+    timeHorizon: recommendation.holdingPeriod,
+    strategy: recommendation.primaryStrategy,
+  };
 }
 
 function buildResearch(
   profile: CompanyProfile,
   liveQuote?: EnrichedQuote,
-  candles?: OhlcBar[]
+  candles: OhlcBar[] = [],
+  recommendation: SharedRecommendation | null = null
 ): CompanyResearch {
-  const rng = createRng(hashSeed(profile.symbol));
-  const trading = buildTradingData(profile, rng, liveQuote);
+  const trading = buildTradingData(profile, liveQuote, candles);
   const { analysis: technicals } = EquityIntelligenceEngine.buildTechnicalAnalysis(
     profile,
     trading,
     { candles }
   );
-  const { setup: swing } = EquityIntelligenceEngine.buildSwingSetup(
-    profile.price,
-    technicals,
-    trading,
-    rng
-  );
-  const ai = buildAI(profile, technicals, trading, rng);
+  const swing = buildStrategySwingSetup(recommendation);
+  const ai = buildAI(profile, technicals, trading, candles);
   const results = buildResults(profile);
   const news = buildNews(profile);
 
@@ -324,10 +338,18 @@ function buildResearch(
 }
 
 export async function fetchCompanyResearch(
-  symbol: string
+  symbol: string,
+  recommendation: SharedRecommendation | null = null
 ): Promise<CompanyResearch | null> {
   return getCached(
-    { key: cacheKey("company-research", symbol), ttlMs: CACHE_TTL.QUOTE },
+    {
+      key: cacheKey(
+        "company-research",
+        symbol,
+        recommendation?.id ?? "no-strategy"
+      ),
+      ttlMs: CACHE_TTL.QUOTE,
+    },
     async () => {
       const profile = await fetchCompanyProfile(symbol);
       if (!profile) return null;
@@ -342,7 +364,7 @@ export async function fetchCompanyResearch(
         candles = undefined;
       }
 
-      return buildResearch(profile, liveQuote, candles);
+      return buildResearch(profile, liveQuote, candles, recommendation);
     }
   );
 }

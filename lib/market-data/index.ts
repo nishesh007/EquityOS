@@ -16,7 +16,7 @@ export {
 } from "@/lib/market-data/service";
 export type { QuoteResult } from "@/lib/market-data/service";
 export type { EnrichedQuote, QuoteAvailability } from "@/lib/market-data/enriched-quote";
-export { toEnrichedQuote, createUnavailableQuote } from "@/lib/market-data/enriched-quote";
+export { toEnrichedQuote, createUnavailableQuote, buildInitialQuotesMap } from "@/lib/market-data/enriched-quote";
 export type { OhlcResult } from "@/lib/market/ohlc-engine";
 
 export type {

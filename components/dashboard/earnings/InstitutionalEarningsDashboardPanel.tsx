@@ -77,10 +77,8 @@ export function InstitutionalEarningsDashboardPanel({
     return engine.scoreAll(events);
   }, [events]);
 
-  const metrics = useMemo(() => {
-    if (initialMetrics) return initialMetrics;
-    return getEarningsDashboardEngine().getDashboard().metrics;
-  }, [initialMetrics, scoredAll]);
+  const metrics =
+    initialMetrics ?? getEarningsDashboardEngine().getDashboard().metrics;
 
   const sectors = useMemo(
     () => [...new Set(events.map((e) => e.sector).filter(Boolean))].sort(),

@@ -55,6 +55,7 @@ export interface SharedRecommendation {
   marketContext: string;
   marketRegime: string;
   riskMode: string;
+  eligibility: OpportunityStrategySignal["eligibility"];
   reasons: string[];
   evidence: string[];
   matchedFrameworks: {
@@ -65,7 +66,7 @@ export interface SharedRecommendation {
   };
   validation: SharedRecommendationValidation;
   longTermRanking: OpportunityLongTermRanking | null;
-  lastScanTime: string;
+  timestamp: string;
   source: "StrategyEngine";
 }
 
@@ -169,6 +170,10 @@ export function buildSharedRecommendation(
     marketContext: signal.marketContext || candidate.marketTrend || "Unknown",
     marketRegime: signal.marketRegime || candidate.marketRegime || "Unknown",
     riskMode: candidate.riskMode ?? "Neutral",
+    eligibility: {
+      ...signal.eligibility,
+      reasons: [...signal.eligibility.reasons],
+    },
     reasons: [...signal.reasons],
     evidence: [...signal.evidence],
     matchedFrameworks: {
@@ -179,7 +184,7 @@ export function buildSharedRecommendation(
     },
     validation,
     longTermRanking: candidate.longTermRanking ?? null,
-    lastScanTime,
+    timestamp: lastScanTime,
     source: "StrategyEngine",
   };
 }

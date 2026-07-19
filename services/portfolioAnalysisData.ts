@@ -36,19 +36,20 @@ async function enrichHoldings(): Promise<PortfolioHoldingContext[]> {
   return contexts.filter((ctx): ctx is PortfolioHoldingContext => ctx !== null);
 }
 
-export async function fetchPortfolioDoctorAnalysis(): Promise<PortfolioDoctorAnalysis> {
+export async function fetchPortfolioDoctorAnalysis(): Promise<PortfolioDoctorAnalysis | null> {
   return getCached(
     { key: cacheKey("portfolio-doctor"), ttlMs: CACHE_TTL.QUOTE },
     async () => {
       const holdings = await enrichHoldings();
+      if (holdings.length === 0) return null;
 
       const dataTransparency = EquityIntelligenceEngine.buildDataTransparency({
-        provider: holdings[0]?.intelligence.dataTransparency.provider ?? "EquityOS Engine",
-        source: holdings[0]?.intelligence.dataTransparency.freshness === "live"
+        provider: holdings[0].intelligence.dataTransparency.provider,
+        source: holdings[0].intelligence.dataTransparency.freshness === "live"
           ? "live"
-          : holdings[0]?.intelligence.dataTransparency.freshness === "delayed"
+          : holdings[0].intelligence.dataTransparency.freshness === "delayed"
             ? "cached"
-            : "mock",
+            : "unavailable",
         fetchedAt: new Date().toISOString(),
         dataSource: "Portfolio Doctor · Equity Intelligence Engine",
         ttlMs: CACHE_TTL.RESEARCH,

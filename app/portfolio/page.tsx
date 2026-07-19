@@ -93,7 +93,9 @@ export default async function PortfolioPage() {
                   )}
                 />
               </div>
-              <PortfolioDoctor analysis={doctorAnalysis} />
+              {doctorAnalysis ? (
+                <PortfolioDoctor analysis={doctorAnalysis} />
+              ) : null}
             </>
           }
           secondary={

@@ -78,7 +78,7 @@ function toReportDecision(
           : "Watchlist",
     earningsTrend: recommendation.marketContext,
     compositeScore: recommendation.opportunityScore,
-    generatedAt: recommendation.lastScanTime,
+    generatedAt: recommendation.timestamp,
   };
 }
 

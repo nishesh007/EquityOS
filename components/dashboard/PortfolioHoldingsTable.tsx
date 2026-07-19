@@ -6,7 +6,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { useMarketQuotes } from "@/hooks/useMarketQuotes";
 import { createUnavailableQuote } from "@/lib/market-data/enriched-quote";
 import { getCompanyRoute } from "@/lib/routes";
-import { buildInitialQuotesMap } from "@/services/marketData";
+import { buildInitialQuotesMap } from "@/lib/market-data/enriched-quote";
 import type { PortfolioHolding } from "@/types";
 import { createInstitutionalTable, InstitutionalTable } from "@/src/design";
 import { Briefcase } from "lucide-react";
