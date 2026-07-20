@@ -29,6 +29,7 @@ import { Suspense } from "react";
 /**
  * Dashboard shell — single consumer of the central market orchestrator.
  * Widgets receive typed slices only; they do not fetch shared dashboard context.
+ * MarketHeatmap receives snapshot.heatmap as initial so it skips the mount-time API scan.
  */
 export default async function DashboardPage() {
   const snapshot = await getDashboardMarketSnapshot();
@@ -80,7 +81,12 @@ export default async function DashboardPage() {
               />
             </Suspense>
           ),
-          "market-heatmap": <MarketHeatmap defaultUniverse="nse" />,
+          "market-heatmap": (
+            <MarketHeatmap
+              initial={snapshot.heatmap}
+              defaultUniverse="nse"
+            />
+          ),
           "market-breadth": (
             <Suspense fallback={<WidgetSkeleton label="Market Breadth" className="h-72" />}>
               <MarketBreadthWidget breadth={snapshot.breadth} />

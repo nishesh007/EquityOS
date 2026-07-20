@@ -2,6 +2,7 @@
  * Central Market Data Orchestrator.
  * Aggregates existing dashboard services once; no new calculations or data transforms.
  * Breadth is resolved once as a shared snapshot before dependent intelligence/context loads.
+ * Heatmap is resolved once as a shared snapshot and passed to MarketHeatmap as initial.
  */
 
 import {
@@ -13,12 +14,10 @@ import {
 } from "@/services/marketData";
 import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
 import { fetchSharedRecommendationsFresh } from "@/services/opportunityEngine";
-import {
-  fetchMarketHeatmap,
-  fetchMarketPulse,
-} from "@/services/researchDashboardData";
+import { fetchMarketPulse } from "@/services/researchDashboardData";
 import { getSharedDashboardBreadth } from "./breadth";
 import { dedupeInFlight } from "./cache";
+import { getSharedDashboardHeatmap } from "./heatmap";
 import type { DashboardMarketSnapshot } from "./types";
 
 const DASHBOARD_SNAPSHOT_KEY = "dashboard-market-snapshot";
@@ -26,6 +25,7 @@ const DASHBOARD_SNAPSHOT_KEY = "dashboard-market-snapshot";
 /**
  * Load and aggregate existing dashboard market services.
  * Breadth runs once first so Market Context / Intelligence reuse the same cached object.
+ * Heatmap runs once via shared snapshot; dashboard widgets reuse that object (no second engine).
  */
 async function loadDashboardMarketSnapshot(): Promise<DashboardMarketSnapshot> {
   // Shared breadth snapshot — sole orchestrator-owned breadth fetch for this request.
@@ -44,7 +44,7 @@ async function loadDashboardMarketSnapshot(): Promise<DashboardMarketSnapshot> {
   ] = await Promise.all([
     fetchMarketIndices(),
     fetchMarketPulse(),
-    fetchMarketHeatmap(),
+    getSharedDashboardHeatmap(),
     fetchPortfolioSummary(),
     fetchWatchlist(),
     fetchSharedRecommendationsFresh(),
