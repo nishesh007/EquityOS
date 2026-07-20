@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useDashboardQuoteContext } from "@/components/dashboard/DashboardQuoteProvider";
 import type { EnrichedQuote } from "@/lib/market-data/enriched-quote";
 
 interface MarketStatusResponse {
@@ -46,14 +47,33 @@ function isQuoteAvailable(quote: EnrichedQuote): boolean {
 /**
  * Client hook for live market quotes.
  * Polls every 5 seconds during market hours; disabled outside session.
+ *
+ * Inside DashboardQuoteProvider, subscribers share one status + quotes loop.
+ * Outside the dashboard, each caller keeps its own independent poll loop.
  */
 export function useMarketQuotes(
   symbols: string[],
   options: UseMarketQuotesOptions = {}
 ): UseMarketQuotesResult {
+  const dashboard = useDashboardQuoteContext();
+  const subscriberId = useId();
   const { initialQuotes = {}, enabled = true } = options;
   const normalized = useMemo(() => normalizeSymbols(symbols), [symbols]);
   const symbolsKey = normalized.join(",");
+  const initialQuotesRef = useRef(initialQuotes);
+  initialQuotesRef.current = initialQuotes;
+
+  // Dashboard path: register symbols with the shared provider (no local polling).
+  useEffect(() => {
+    if (!dashboard || !enabled) return;
+    dashboard.register(subscriberId, normalized, initialQuotesRef.current);
+    return () => {
+      dashboard.unregister(subscriberId);
+    };
+  }, [dashboard, subscriberId, symbolsKey, enabled, normalized]);
+
+  // Standalone path — disabled while a dashboard provider owns quotes.
+  const standaloneEnabled = enabled && !dashboard;
 
   const [quotes, setQuotes] = useState<Map<string, EnrichedQuote>>(() => {
     const map = new Map<string, EnrichedQuote>();
@@ -65,12 +85,12 @@ export function useMarketQuotes(
   const [marketOpen, setMarketOpen] = useState(false);
   const [marketStatus, setMarketStatus] = useState("closed");
   const [pollIntervalMs, setPollIntervalMs] = useState(0);
-  const [loading, setLoading] = useState(enabled && normalized.length > 0);
+  const [loading, setLoading] = useState(standaloneEnabled && normalized.length > 0);
   const [error, setError] = useState<Error | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const fetchQuotes = useCallback(async () => {
-    if (!enabled || normalized.length === 0) return;
+    if (!standaloneEnabled || normalized.length === 0) return;
 
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -115,10 +135,10 @@ export function useMarketQuotes(
     } finally {
       setLoading(false);
     }
-  }, [enabled, normalized.length, symbolsKey]);
+  }, [standaloneEnabled, normalized.length, symbolsKey]);
 
   useEffect(() => {
-    if (!enabled || normalized.length === 0) {
+    if (!standaloneEnabled || normalized.length === 0) {
       setLoading(false);
       return;
     }
@@ -128,10 +148,10 @@ export function useMarketQuotes(
     return () => {
       abortRef.current?.abort();
     };
-  }, [enabled, fetchQuotes, normalized.length]);
+  }, [standaloneEnabled, fetchQuotes, normalized.length]);
 
   useEffect(() => {
-    if (!enabled || !marketOpen || pollIntervalMs <= 0 || normalized.length === 0) {
+    if (!standaloneEnabled || !marketOpen || pollIntervalMs <= 0 || normalized.length === 0) {
       return;
     }
 
@@ -140,7 +160,22 @@ export function useMarketQuotes(
     }, pollIntervalMs);
 
     return () => window.clearInterval(interval);
-  }, [enabled, marketOpen, pollIntervalMs, fetchQuotes, normalized.length]);
+  }, [standaloneEnabled, marketOpen, pollIntervalMs, fetchQuotes, normalized.length]);
+
+  if (dashboard && enabled) {
+    // Match standalone useState(enabled && symbols.length > 0): loading until first fetch.
+    const loading =
+      dashboard.loading || (normalized.length > 0 && !dashboard.hasFetched);
+    return {
+      quotes: dashboard.quotes,
+      marketOpen: dashboard.marketOpen,
+      marketStatus: dashboard.marketStatus,
+      pollIntervalMs: dashboard.pollIntervalMs,
+      loading,
+      error: dashboard.error,
+      refetch: dashboard.refetch,
+    };
+  }
 
   return {
     quotes,

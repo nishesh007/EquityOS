@@ -1,5 +1,6 @@
 "use client";
 
+import { DashboardQuoteProvider } from "@/components/dashboard/DashboardQuoteProvider";
 import { WorkspaceDashboard } from "@/src/design";
 import type { ReactNode } from "react";
 import { QuickActionBar } from "./QuickActionBar";
@@ -14,17 +15,20 @@ export interface PersonalizedDashboardProps {
 /**
  * Dashboard workspace shell — Edit Mode, DnD, resize, library and profiles
  * live in WorkspaceDashboard (presentation only, localStorage).
+ * DashboardQuoteProvider owns one shared quote poll for all widgets.
  */
 export function PersonalizedDashboard({
   header,
   widgets,
 }: PersonalizedDashboardProps) {
   return (
-    <div className="relative">
-      {header}
-      <QuickActionBar />
-      <WorkspaceDashboard widgets={widgets} />
-      <ScrollToTopButton />
-    </div>
+    <DashboardQuoteProvider>
+      <div className="relative">
+        {header}
+        <QuickActionBar />
+        <WorkspaceDashboard widgets={widgets} />
+        <ScrollToTopButton />
+      </div>
+    </DashboardQuoteProvider>
   );
 }
