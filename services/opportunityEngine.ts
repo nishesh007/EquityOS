@@ -115,10 +115,10 @@ let freshnessScan: Promise<OpportunityEngineState> | null = null;
  * Ensures consumers share one fresh scan instead of launching per-surface
  * Strategy Engine executions.
  *
- * Recovery: when the last scan is stale but the Opportunity Engine already
- * holds candidates, return them immediately and refresh in the background so
- * Dashboard / Watchlist / Portfolio never go empty while Strategy Engine
- * re-executes.
+ * Non-blocking for Dashboard / Watchlist / Portfolio (and other read paths):
+ * always return the last persisted snapshot immediately. When stale or never
+ * scanned, kick off a shared background refresh — never await runOpportunityScan
+ * on the render path. Manual refresh still goes through triggerOpportunityScan.
  */
 export async function ensureOpportunityEngineState(): Promise<OpportunityEngineState> {
   const current = getOpportunityState();
@@ -140,14 +140,8 @@ export async function ensureOpportunityEngineState(): Promise<OpportunityEngineS
       });
   }
 
-  const hasCandidates = Object.values(current.categories).some(
-    (candidates) => candidates.length > 0
-  );
-  if (hasCandidates) {
-    return current;
-  }
-
-  return freshnessScan;
+  // Persisted (or empty) snapshot — never block render on a full-universe scan.
+  return current;
 }
 
 export { getSchedulerHealth } from "@/lib/opportunity-engine/scheduler-health";
