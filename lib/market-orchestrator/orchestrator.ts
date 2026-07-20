@@ -1,6 +1,7 @@
 /**
  * Central Market Data Orchestrator.
  * Aggregates existing dashboard services once; no new calculations or data transforms.
+ * Breadth is resolved once as a shared snapshot before dependent intelligence/context loads.
  */
 
 import {
@@ -13,24 +14,26 @@ import {
 import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
 import { fetchSharedRecommendationsFresh } from "@/services/opportunityEngine";
 import {
-  fetchMarketBreadth,
   fetchMarketHeatmap,
   fetchMarketPulse,
 } from "@/services/researchDashboardData";
+import { getSharedDashboardBreadth } from "./breadth";
 import { dedupeInFlight } from "./cache";
 import type { DashboardMarketSnapshot } from "./types";
 
 const DASHBOARD_SNAPSHOT_KEY = "dashboard-market-snapshot";
 
 /**
- * Load and aggregate existing dashboard market services exactly once.
- * Passes service results through unchanged — no recalculation.
+ * Load and aggregate existing dashboard market services.
+ * Breadth runs once first so Market Context / Intelligence reuse the same cached object.
  */
 async function loadDashboardMarketSnapshot(): Promise<DashboardMarketSnapshot> {
+  // Shared breadth snapshot — sole orchestrator-owned breadth fetch for this request.
+  const breadth = await getSharedDashboardBreadth();
+
   const [
     indices,
     pulse,
-    breadth,
     heatmap,
     portfolio,
     watchlist,
@@ -41,7 +44,6 @@ async function loadDashboardMarketSnapshot(): Promise<DashboardMarketSnapshot> {
   ] = await Promise.all([
     fetchMarketIndices(),
     fetchMarketPulse(),
-    fetchMarketBreadth(),
     fetchMarketHeatmap(),
     fetchPortfolioSummary(),
     fetchWatchlist(),
