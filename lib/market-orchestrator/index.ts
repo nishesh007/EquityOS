@@ -4,6 +4,8 @@
  */
 
 export { getDashboardMarketSnapshot } from "./orchestrator";
+export { getDashboardContext } from "./dashboardContext";
+export type { DashboardContext } from "./dashboardContext";
 
 export type {
   DashboardMarketSnapshot,

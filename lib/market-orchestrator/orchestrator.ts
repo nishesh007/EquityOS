@@ -1,65 +1,68 @@
 /**
  * Central Market Data Orchestrator.
  * Aggregates existing dashboard services once; no new calculations or data transforms.
- * Breadth is resolved once as a shared snapshot before dependent intelligence/context loads.
+ * Summary widgets (Snapshot / Pulse / Intelligence) use lightweight dashboardContext —
+ * never runTradingPipeline() or fetchMarketBreadth() on the render path.
  * Heatmap is resolved once as a shared snapshot and passed to MarketHeatmap as initial.
  */
 
 import {
-  fetchMarketIndices,
   fetchMarketNews,
   fetchPortfolioSummary,
   fetchUpcomingResults,
   fetchWatchlist,
 } from "@/services/marketData";
-import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
-import { fetchSharedRecommendationsFresh } from "@/services/opportunityEngine";
-import { fetchMarketPulse } from "@/services/researchDashboardData";
-import { getSharedDashboardBreadth } from "./breadth";
+import {
+  ensureOpportunityEngineState,
+  toSharedSnapshot,
+} from "@/services/opportunityEngine";
+import { selectRecommendationsWithFallback } from "@/lib/recommendations";
 import { dedupeInFlight } from "./cache";
+import { getDashboardContext } from "./dashboardContext";
 import { getSharedDashboardHeatmap } from "./heatmap";
 import type { DashboardMarketSnapshot } from "./types";
 
 const DASHBOARD_SNAPSHOT_KEY = "dashboard-market-snapshot";
 
 /**
+ * Recommendations for the dashboard — reuse persisted OE state + cached MI.
+ * Does not await getMarketIntelligenceSnapshot() / trading pipeline.
+ */
+async function loadDashboardRecommendations(
+  intelligence: DashboardMarketSnapshot["intelligence"]
+) {
+  const state = await ensureOpportunityEngineState();
+  return selectRecommendationsWithFallback(
+    state,
+    toSharedSnapshot(intelligence)
+  );
+}
+
+/**
  * Load and aggregate existing dashboard market services.
- * Breadth runs once first so Market Context / Intelligence reuse the same cached object.
+ * Lightweight dashboardContext supplies indices, pulse, cached breadth, and cached MI.
  * Heatmap runs once via shared snapshot; dashboard widgets reuse that object (no second engine).
  */
 async function loadDashboardMarketSnapshot(): Promise<DashboardMarketSnapshot> {
-  // Shared breadth snapshot — sole orchestrator-owned breadth fetch for this request.
-  const breadth = await getSharedDashboardBreadth();
+  const dashboardContext = await getDashboardContext();
 
-  const [
-    indices,
-    pulse,
-    heatmap,
-    portfolio,
-    watchlist,
-    recommendations,
-    intelligence,
-    news,
-    upcomingResults,
-  ] = await Promise.all([
-    fetchMarketIndices(),
-    fetchMarketPulse(),
-    getSharedDashboardHeatmap(),
-    fetchPortfolioSummary(),
-    fetchWatchlist(),
-    fetchSharedRecommendationsFresh(),
-    getMarketIntelligenceSnapshot(),
-    fetchMarketNews(),
-    fetchUpcomingResults(),
-  ]);
+  const [heatmap, portfolio, watchlist, recommendations, news, upcomingResults] =
+    await Promise.all([
+      getSharedDashboardHeatmap(),
+      fetchPortfolioSummary(),
+      fetchWatchlist(),
+      loadDashboardRecommendations(dashboardContext.intelligence),
+      fetchMarketNews(),
+      fetchUpcomingResults(),
+    ]);
 
   return {
     market: {
-      indices,
-      pulse,
+      indices: dashboardContext.indices,
+      pulse: dashboardContext.pulse,
     },
-    context: intelligence.context,
-    breadth,
+    context: dashboardContext.intelligence.context,
+    breadth: dashboardContext.breadth,
     heatmap,
     portfolio,
     watchlist: {
@@ -68,10 +71,10 @@ async function loadDashboardMarketSnapshot(): Promise<DashboardMarketSnapshot> {
     opportunities: {
       recommendations,
     },
-    intelligence,
+    intelligence: dashboardContext.intelligence,
     news,
     upcomingResults,
-    timestamp: intelligence.timestamp,
+    timestamp: dashboardContext.timestamp,
   };
 }
 

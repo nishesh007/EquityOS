@@ -29,6 +29,8 @@ import { Suspense } from "react";
 /**
  * Dashboard shell — single consumer of the central market orchestrator.
  * Widgets receive typed slices only; they do not fetch shared dashboard context.
+ * Market Snapshot / Pulse / Intelligence use lightweight dashboardContext
+ * (no runTradingPipeline / fetchMarketBreadth on the render path).
  * MarketHeatmap receives snapshot.heatmap as initial so it skips the mount-time API scan.
  */
 export default async function DashboardPage() {
