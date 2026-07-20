@@ -1,29 +1,29 @@
-import { MarketHeatmap } from "@/components/dashboard/market-heatmap";
 import {
-  ComingSoonWidget,
   PersonalizedDashboard,
 } from "@/components/dashboard/workspace";
 import {
   AiOpportunitiesWidget,
-  EarningsIntelligenceWidget,
-  MarketBreadthWidget,
-  MarketMoversWidget,
-  MarketNewsWidget,
   MarketPulseWidget,
   MarketSnapshotWidget,
   PortfolioSummaryWidget,
-  ResultsCalendarWidget,
   WatchlistWidget,
 } from "@/components/dashboard/widgets/DashboardWidgets";
+import {
+  LazyAiAlertsCard,
+  LazyComingSoonWidget,
+  LazyEarningsIntelligenceWidget,
+  LazyMarketBreadthWidget,
+  LazyMarketHeatmap,
+  LazyMarketMoversWidget,
+  LazyMarketNewsWidget,
+  LazyResearchSummaryCard,
+  LazyResultsCalendarWidget,
+  LazyValidationCenterCard,
+} from "@/components/dashboard/widgets/LazyDashboardWidgets";
 import { WidgetSkeleton } from "@/components/dashboard/widgets/WidgetSkeleton";
 import { getDashboardMarketSnapshot } from "@/lib/market-orchestrator";
-import { AccentContainer, PageContainer } from "@/src/design";
-import {
-  BellRing,
-  ChevronRight,
-  LayoutDashboard,
-} from "lucide-react";
-import Link from "next/link";
+import { PageContainer } from "@/src/design";
+import { LayoutDashboard } from "lucide-react";
 import { Suspense } from "react";
 
 /**
@@ -32,6 +32,9 @@ import { Suspense } from "react";
  * Market Snapshot / Pulse / Intelligence use lightweight dashboardContext
  * (no runTradingPipeline / fetchMarketBreadth on the render path).
  * MarketHeatmap receives snapshot.heatmap as initial so it skips the mount-time API scan.
+ *
+ * Above-fold critical widgets hydrate immediately; below-fold widgets load via
+ * next/dynamic after the dashboard becomes interactive.
  */
 export default async function DashboardPage() {
   const snapshot = await getDashboardMarketSnapshot();
@@ -84,20 +87,16 @@ export default async function DashboardPage() {
             </Suspense>
           ),
           "market-heatmap": (
-            <MarketHeatmap
+            <LazyMarketHeatmap
               initial={snapshot.heatmap}
               defaultUniverse="nse"
             />
           ),
           "market-breadth": (
-            <Suspense fallback={<WidgetSkeleton label="Market Breadth" className="h-72" />}>
-              <MarketBreadthWidget breadth={snapshot.breadth} />
-            </Suspense>
+            <LazyMarketBreadthWidget breadth={snapshot.breadth} />
           ),
           "market-movers": (
-            <Suspense fallback={<WidgetSkeleton label="Market Movers" className="h-48" />}>
-              <MarketMoversWidget breadth={snapshot.breadth} />
-            </Suspense>
+            <LazyMarketMoversWidget breadth={snapshot.breadth} />
           ),
           "ai-opportunities": (
             <Suspense fallback={<WidgetSkeleton label="AI Opportunities" className="h-72" />}>
@@ -106,27 +105,7 @@ export default async function DashboardPage() {
               />
             </Suspense>
           ),
-          "ai-alerts": (
-            <AccentContainer accent="purple" tint strip padding="md">
-              <Link
-                href="/ai"
-                className="flex items-center justify-between transition-opacity hover:opacity-90"
-              >
-                <span className="flex items-center gap-3">
-                  <BellRing className="h-4 w-4 text-purple-400" />
-                  <span>
-                    <span className="block text-sm font-semibold text-text-primary">
-                      AI Alerts
-                    </span>
-                    <span className="block text-xs text-text-muted">
-                      Review material AI insights and market changes
-                    </span>
-                  </span>
-                </span>
-                <ChevronRight className="h-4 w-4 text-text-muted" />
-              </Link>
-            </AccentContainer>
-          ),
+          "ai-alerts": <LazyAiAlertsCard />,
           "portfolio-summary": (
             <Suspense fallback={<WidgetSkeleton label="Portfolio" className="h-56" />}>
               <PortfolioSummaryWidget portfolio={snapshot.portfolio} />
@@ -141,66 +120,29 @@ export default async function DashboardPage() {
             </Suspense>
           ),
           "portfolio-health": (
-            <ComingSoonWidget
+            <LazyComingSoonWidget
               title="Portfolio Health"
               subtitle="Open Portfolio Doctor for live health metrics"
             />
           ),
-          "research-summary": (
-            <AccentContainer accent="violet" tint strip padding="md">
-              <Link
-                href="/validation"
-                className="flex items-center justify-between transition-opacity hover:opacity-90"
-              >
-                <span>
-                  <span className="block text-sm font-semibold text-text-primary">
-                    Research Summary
-                  </span>
-                  <span className="block text-xs text-text-muted">
-                    Research Confidence · workspace shortcuts
-                  </span>
-                </span>
-                <ChevronRight className="h-4 w-4 text-text-muted" />
-              </Link>
-            </AccentContainer>
-          ),
+          "research-summary": <LazyResearchSummaryCard />,
           "ai-brief": (
-            <ComingSoonWidget
+            <LazyComingSoonWidget
               title="AI Market Brief"
               subtitle="Briefing surface reserved for layout"
             />
           ),
           "economic-calendar": (
-            <ComingSoonWidget title="Economic Calendar" />
+            <LazyComingSoonWidget title="Economic Calendar" />
           ),
           "results-calendar": (
-            <Suspense fallback={<WidgetSkeleton label="Results Calendar" className="h-48" />}>
-              <ResultsCalendarWidget results={snapshot.upcomingResults} />
-            </Suspense>
+            <LazyResultsCalendarWidget results={snapshot.upcomingResults} />
           ),
-          "market-news": (
-            <Suspense fallback={<WidgetSkeleton label="News" className="h-48" />}>
-              <MarketNewsWidget news={snapshot.news} />
-            </Suspense>
-          ),
+          "market-news": <LazyMarketNewsWidget news={snapshot.news} />,
           "earnings-intelligence": (
-            <Suspense fallback={<WidgetSkeleton label="Earnings" className="h-40" />}>
-              <EarningsIntelligenceWidget results={snapshot.upcomingResults} />
-            </Suspense>
+            <LazyEarningsIntelligenceWidget results={snapshot.upcomingResults} />
           ),
-          "validation-center": (
-            <AccentContainer accent="cyan" tint strip padding="md">
-              <Link
-                href="/validation"
-                className="flex items-center justify-between transition-opacity hover:opacity-90"
-              >
-                <span className="block text-sm font-semibold text-text-primary">
-                  Research Confidence
-                </span>
-                <ChevronRight className="h-4 w-4 text-text-muted" />
-              </Link>
-            </AccentContainer>
-          ),
+          "validation-center": <LazyValidationCenterCard />,
         }}
       />
     </PageContainer>
