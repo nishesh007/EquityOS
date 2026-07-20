@@ -1,248 +1,68 @@
 /**
  * Central Market Data Orchestrator — type contracts.
- * Foundation types for the future dashboard single source of truth.
- * Optional fields support incremental expansion without breaking callers.
+ * Concrete service return types so the dashboard page can pass slices through unchanged.
  */
+
+import type { MarketHeatmapSnapshot } from "@/lib/market-heatmap";
+import type {
+  MarketContextView,
+  MarketIntelligenceSnapshot,
+} from "@/lib/market-intelligence";
+import type { SharedRecommendation } from "@/lib/recommendations";
+import type {
+  MarketBreadth as DomainMarketBreadth,
+  MarketIndex,
+  MarketNews,
+  MarketPulse,
+  PortfolioSummary as DomainPortfolioSummary,
+  UpcomingResult,
+  WatchlistItem,
+} from "@/types";
 
 /** Index / pulse surface for the dashboard market snapshot. */
 export interface MarketSnapshot {
-  indices?: Array<{
-    id?: string;
-    name?: string;
-    symbol?: string;
-    value?: number;
-    change?: number;
-    changePercent?: number;
-    high?: number;
-    low?: number;
-    sparkline?: number[];
-  }>;
-  pulse?: {
-    indiaVix?: number;
-    indiaVixChange?: number;
-    putCallRatio?: number;
-    marketTrend?: string;
-    breadthScore?: number;
-    institutionalFlow?: {
-      fii?: number;
-      dii?: number;
-      asOf?: string;
-    };
-  };
+  indices: MarketIndex[];
+  pulse: MarketPulse;
 }
 
 /** Market context view (trend, breadth, risk mode). */
-export interface MarketContext {
-  marketTrend?: string;
-  marketStrength?: number;
-  contextScore?: number;
-  contextConfidence?: number;
-  riskMode?: string;
-  volatilityRegime?: string;
-  volatilityScore?: number;
-  breadthScore?: number;
-  breadthQuality?: string;
-  advanceCount?: number;
-  declineCount?: number;
-  advanceDeclineRatio?: number;
-  sectorBreadth?: number;
-  momentum?: number;
-  liquidity?: number;
-  institutionalParticipation?: number;
-  leadingSectors?: string[];
-  weakSectors?: string[];
-  summary?: string[];
-  warnings?: string[];
-  timestamp?: string;
-}
+export type MarketContext = MarketContextView;
 
 /** Market breadth / internals aggregate. */
-export interface MarketBreadth {
-  advances?: number;
-  declines?: number;
-  unchanged?: number;
-  newHighs?: number;
-  newLows?: number;
-  universe?: string;
-  universeLabel?: string;
-  totalStocks?: number;
-  quotedStocks?: number;
-  advanceDeclineRatio?: number;
-  breadthPercent?: number;
-  netAdvances?: number;
-  marketMood?: string;
-  moodGauge?: number;
-  participationPercent?: number;
-  highLowRatio?: number;
-  strongestSector?: string | null;
-  weakestSector?: string | null;
-  marketStatus?: string;
-  marketStatusLabel?: string;
-  lastUpdated?: string;
-  dataSource?: string;
-  sectors?: Array<{
-    name?: string;
-    changePercent?: number;
-    breadth?: number;
-    advances?: number;
-    declines?: number;
-    unchanged?: number;
-    total?: number;
-  }>;
-  gainers?: Array<{
-    symbol?: string;
-    name?: string;
-    price?: number;
-    changePercent?: number;
-    volume?: string;
-  }>;
-  losers?: Array<{
-    symbol?: string;
-    name?: string;
-    price?: number;
-    changePercent?: number;
-    volume?: string;
-  }>;
-  weekHighs?: Array<{
-    symbol?: string;
-    name?: string;
-    price?: number;
-    changePercent?: number;
-    volume?: string;
-  }>;
-  weekLows?: Array<{
-    symbol?: string;
-    name?: string;
-    price?: number;
-    changePercent?: number;
-    volume?: string;
-  }>;
-  mostActive?: Array<{
-    symbol?: string;
-    name?: string;
-    price?: number;
-    changePercent?: number;
-    volume?: string;
-  }>;
-}
+export type MarketBreadth = DomainMarketBreadth;
 
 /** Sector / market heatmap aggregate. */
-export interface MarketHeatmapData {
-  universe?: string;
-  universeLabel?: string;
-  totalStocks?: number;
-  quotedStocks?: number;
-  sectorCount?: number;
-  marketAvgChangePercent?: number;
-  moneyInflowSectors?: string[];
-  moneyOutflowSectors?: string[];
-  lastUpdated?: string;
-  dataSource?: string;
-  quoteCoveragePercent?: number;
-  periodCoveragePercent?: number;
-  sectors?: Array<{
-    name?: string;
-    dailyChangePercent?: number;
-    weeklyChangePercent?: number | null;
-    monthlyChangePercent?: number | null;
-    breadthPercent?: number;
-    advances?: number;
-    declines?: number;
-    unchanged?: number;
-    total?: number;
-    relativeStrength?: number;
-    momentumScore?: number;
-    moneyFlow?: string;
-  }>;
-}
+export type MarketHeatmapData = MarketHeatmapSnapshot;
 
 /** Portfolio holdings summary. */
-export interface PortfolioSummary {
-  totalValue?: number;
-  dayChange?: number;
-  dayChangePercent?: number;
-  totalInvested?: number;
-  totalGain?: number;
-  totalGainPercent?: number;
-  holdings?: Array<{
-    id?: string;
-    symbol?: string;
-    name?: string;
-    quantity?: number;
-    avgPrice?: number;
-    currentPrice?: number;
-    changePercent?: number;
-  }>;
-}
+export type PortfolioSummary = DomainPortfolioSummary;
 
 /** Watchlist summary. */
 export interface WatchlistSummary {
-  items?: Array<{
-    id?: string;
-    symbol?: string;
-    name?: string;
-    price?: number;
-    change?: number;
-    changePercent?: number;
-    volume?: string;
-    sector?: string;
-  }>;
+  items: WatchlistItem[];
 }
 
 /** Opportunity / recommendation summary. */
 export interface OpportunitySummary {
-  recommendations?: Array<{
-    id?: string;
-    symbol?: string;
-    company?: string;
-    category?: string;
-    action?: string;
-    primaryStrategy?: string;
-    opportunityScore?: number;
-    confidence?: number;
-    conviction?: number;
-    entry?: number;
-    stopLoss?: number;
-    targets?: number[];
-    riskReward?: number;
-    marketRegime?: string;
-    riskMode?: string;
-  }>;
+  recommendations: SharedRecommendation[];
 }
 
 /** Shared market intelligence (context + regime). */
-export interface MarketIntelligence {
-  context?: MarketContext;
-  regime?: {
-    regime?: string;
-    confidence?: number;
-    confidenceGrade?: string;
-    priority?: number;
-    reasons?: string[];
-    summary?: string[];
-    timestamp?: string;
-  };
-  confidence?: number;
-  confidenceGrade?: string;
-  pipelineHealth?: number | null;
-  pipelineHealthGrade?: string | null;
-  eligibleStrategyCount?: number;
-  timestamp?: string;
-  source?: string;
-}
+export type MarketIntelligence = MarketIntelligenceSnapshot;
 
 /**
- * Future dashboard entry aggregate — single source of truth shape.
- * All fields optional for phased adoption.
+ * Dashboard entry aggregate — single source of truth for server-side widgets.
  */
 export interface DashboardMarketSnapshot {
-  market?: MarketSnapshot;
-  context?: MarketContext;
-  breadth?: MarketBreadth;
-  heatmap?: MarketHeatmapData;
-  portfolio?: PortfolioSummary;
-  watchlist?: WatchlistSummary;
-  opportunities?: OpportunitySummary;
-  intelligence?: MarketIntelligence;
-  timestamp?: string;
+  market: MarketSnapshot;
+  context: MarketContext;
+  breadth: MarketBreadth;
+  heatmap: MarketHeatmapData;
+  portfolio: PortfolioSummary;
+  watchlist: WatchlistSummary;
+  opportunities: OpportunitySummary;
+  intelligence: MarketIntelligence;
+  news: MarketNews[];
+  upcomingResults: UpcomingResult[];
+  timestamp: string;
 }

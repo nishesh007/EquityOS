@@ -1,6 +1,6 @@
 /**
  * Central Market Data Orchestrator — public surface.
- * Infrastructure only; nothing should consume this yet (Prompt 1 of 12).
+ * Only app/page.tsx should import getDashboardMarketSnapshot().
  */
 
 export { getDashboardMarketSnapshot } from "./orchestrator";

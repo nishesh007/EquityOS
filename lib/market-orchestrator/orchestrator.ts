@@ -1,11 +1,13 @@
 /**
- * Central Market Data Orchestrator — foundation.
- * Aggregates existing services once; no new calculations or data transforms.
+ * Central Market Data Orchestrator.
+ * Aggregates existing dashboard services once; no new calculations or data transforms.
  */
 
 import {
   fetchMarketIndices,
+  fetchMarketNews,
   fetchPortfolioSummary,
+  fetchUpcomingResults,
   fetchWatchlist,
 } from "@/services/marketData";
 import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
@@ -34,6 +36,8 @@ async function loadDashboardMarketSnapshot(): Promise<DashboardMarketSnapshot> {
     watchlist,
     recommendations,
     intelligence,
+    news,
+    upcomingResults,
   ] = await Promise.all([
     fetchMarketIndices(),
     fetchMarketPulse(),
@@ -43,6 +47,8 @@ async function loadDashboardMarketSnapshot(): Promise<DashboardMarketSnapshot> {
     fetchWatchlist(),
     fetchSharedRecommendationsFresh(),
     getMarketIntelligenceSnapshot(),
+    fetchMarketNews(),
+    fetchUpcomingResults(),
   ]);
 
   return {
@@ -61,12 +67,14 @@ async function loadDashboardMarketSnapshot(): Promise<DashboardMarketSnapshot> {
       recommendations,
     },
     intelligence,
+    news,
+    upcomingResults,
     timestamp: intelligence.timestamp,
   };
 }
 
 /**
- * Future dashboard entry point — central market data snapshot.
+ * Dashboard entry point — central market data snapshot.
  * Concurrent callers share one in-flight Promise (request deduplication only).
  */
 export function getDashboardMarketSnapshot(): Promise<DashboardMarketSnapshot> {
