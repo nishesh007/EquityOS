@@ -6,12 +6,8 @@
  * Heatmap is resolved once as a shared snapshot and passed to MarketHeatmap as initial.
  */
 
-import {
-  fetchMarketNews,
-  fetchPortfolioSummary,
-  fetchUpcomingResults,
-  fetchWatchlist,
-} from "@/services/marketData";
+import { cache } from "react";
+import { fetchUpcomingResults } from "@/services/marketData";
 import {
   ensureOpportunityEngineState,
   toSharedSnapshot,
@@ -20,6 +16,11 @@ import { selectRecommendationsWithFallback } from "@/lib/recommendations";
 import { dedupeInFlight } from "./cache";
 import { getDashboardContext } from "./dashboardContext";
 import { getSharedDashboardHeatmap } from "./heatmap";
+import {
+  memoizedFetchMarketNews,
+  memoizedFetchPortfolioSummary,
+  memoizedFetchWatchlist,
+} from "./memoizedReads";
 import type { DashboardMarketSnapshot } from "./types";
 
 const DASHBOARD_SNAPSHOT_KEY = "dashboard-market-snapshot";
@@ -42,6 +43,7 @@ async function loadDashboardRecommendations(
  * Load and aggregate existing dashboard market services.
  * Lightweight dashboardContext supplies indices, pulse, cached breadth, and cached MI.
  * Heatmap runs once via shared snapshot; dashboard widgets reuse that object (no second engine).
+ * Pure reads go through React cache() memoized wrappers; mutable results fetch is not memoized.
  */
 async function loadDashboardMarketSnapshot(): Promise<DashboardMarketSnapshot> {
   const dashboardContext = await getDashboardContext();
@@ -49,10 +51,10 @@ async function loadDashboardMarketSnapshot(): Promise<DashboardMarketSnapshot> {
   const [heatmap, portfolio, watchlist, recommendations, news, upcomingResults] =
     await Promise.all([
       getSharedDashboardHeatmap(),
-      fetchPortfolioSummary(),
-      fetchWatchlist(),
+      memoizedFetchPortfolioSummary(),
+      memoizedFetchWatchlist(),
       loadDashboardRecommendations(dashboardContext.intelligence),
-      fetchMarketNews(),
+      memoizedFetchMarketNews(),
       fetchUpcomingResults(),
     ]);
 
@@ -80,8 +82,10 @@ async function loadDashboardMarketSnapshot(): Promise<DashboardMarketSnapshot> {
 
 /**
  * Dashboard entry point — central market data snapshot.
- * Concurrent callers share one in-flight Promise (request deduplication only).
+ * React cache() memoizes per RSC request; dedupeInFlight coalesces concurrent callers.
  */
-export function getDashboardMarketSnapshot(): Promise<DashboardMarketSnapshot> {
-  return dedupeInFlight(DASHBOARD_SNAPSHOT_KEY, loadDashboardMarketSnapshot);
-}
+export const getDashboardMarketSnapshot = cache(
+  function getDashboardMarketSnapshot(): Promise<DashboardMarketSnapshot> {
+    return dedupeInFlight(DASHBOARD_SNAPSHOT_KEY, loadDashboardMarketSnapshot);
+  }
+);

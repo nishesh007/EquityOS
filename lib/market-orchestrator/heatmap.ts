@@ -3,16 +3,21 @@
  * Single fetchMarketHeatmap("nse") ownership per dashboard load — no engine changes.
  */
 
-import { fetchMarketHeatmap } from "@/services/researchDashboardData";
+import { cache } from "react";
 import type { MarketHeatmapData } from "./types";
 import { dedupeInFlight } from "./cache";
+import { memoizedFetchMarketHeatmap } from "./memoizedReads";
 
 const SHARED_HEATMAP_KEY = "dashboard-shared-heatmap";
 
 /**
  * Shared NSE heatmap snapshot for one dashboard request.
- * Concurrent orchestrator callers coalesce on the same Promise.
+ * React cache() memoizes per RSC request; dedupeInFlight coalesces concurrent callers.
  */
-export function getSharedDashboardHeatmap(): Promise<MarketHeatmapData> {
-  return dedupeInFlight(SHARED_HEATMAP_KEY, () => fetchMarketHeatmap("nse"));
-}
+export const getSharedDashboardHeatmap = cache(
+  function getSharedDashboardHeatmap(): Promise<MarketHeatmapData> {
+    return dedupeInFlight(SHARED_HEATMAP_KEY, () =>
+      memoizedFetchMarketHeatmap("nse")
+    );
+  }
+);

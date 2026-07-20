@@ -4,18 +4,17 @@
  * Never invokes fetchMarketBreadth() or runTradingPipeline().
  */
 
+import { cache } from "react";
 import { cacheKey, getCachedSync, getStaleCachedSync } from "@/lib/cache";
 import {
   serializeContextRegimeSnapshot,
   serializePipelineSnapshot,
 } from "@/lib/market-intelligence/serialize";
 import type { MarketIntelligenceSnapshot } from "@/lib/market-intelligence";
-import { fetchMarketIndices } from "@/services/marketData";
 import {
   getCachedMarketIntelligenceSnapshot,
 } from "@/services/marketIntelligence";
 import {
-  fetchMarketPulse,
   marketBreadth as emptyMarketBreadth,
 } from "@/services/researchDashboardData";
 import {
@@ -32,6 +31,10 @@ import {
 } from "@/src/modules/tradingPipeline";
 import type { MarketBreadth, MarketIndex, MarketPulse } from "@/types";
 import { dedupeInFlight } from "./cache";
+import {
+  memoizedFetchMarketIndices,
+  memoizedFetchMarketPulse,
+} from "./memoizedReads";
 
 const DASHBOARD_CONTEXT_KEY = "dashboard-context";
 const BREADTH_CACHE_KEY = cacheKey("market-breadth", "nse");
@@ -51,29 +54,32 @@ export interface DashboardContext {
 /**
  * Resolve intelligence from warm caches only (MI → pipeline → context+regime → fallback).
  * Does not run the trading pipeline or refresh market context.
+ * React cache() ensures one resolution per dashboard RSC request.
  */
-function resolveCachedIntelligence(): MarketIntelligenceSnapshot {
-  const mi = getCachedMarketIntelligenceSnapshot();
-  if (mi) return mi;
+const resolveCachedIntelligence = cache(
+  function resolveCachedIntelligence(): MarketIntelligenceSnapshot {
+    const mi = getCachedMarketIntelligenceSnapshot();
+    if (mi) return mi;
 
-  const pipeline = getTradingPipelineService().getCachedResult();
-  if (pipeline) return serializePipelineSnapshot(pipeline);
+    const pipeline = getTradingPipelineService().getCachedResult();
+    if (pipeline) return serializePipelineSnapshot(pipeline);
 
-  const institutional: InstitutionalMarketContext | null =
-    getMarketContextService().getCachedInstitutionalContext();
-  const regime: MarketRegime | null =
-    getMarketRegimeService().getCachedRegime();
-  if (institutional && regime) {
-    return serializeContextRegimeSnapshot(institutional, regime);
+    const institutional: InstitutionalMarketContext | null =
+      getMarketContextService().getCachedInstitutionalContext();
+    const regime: MarketRegime | null =
+      getMarketRegimeService().getCachedRegime();
+    if (institutional && regime) {
+      return serializeContextRegimeSnapshot(institutional, regime);
+    }
+
+    return serializePipelineSnapshot(
+      createFallbackPipelineResult(
+        new Date(),
+        "Dashboard summary using neutral fallback — full pipeline not invoked."
+      )
+    );
   }
-
-  return serializePipelineSnapshot(
-    createFallbackPipelineResult(
-      new Date(),
-      "Dashboard summary using neutral fallback — full pipeline not invoked."
-    )
-  );
-}
+);
 
 /**
  * Peek TTL / stale breadth cache only. Never calls fetchMarketBreadth().
@@ -88,8 +94,8 @@ function resolveCachedBreadthSummary(): MarketBreadth {
 
 async function loadDashboardContext(): Promise<DashboardContext> {
   const [indices, pulse] = await Promise.all([
-    fetchMarketIndices(),
-    fetchMarketPulse(),
+    memoizedFetchMarketIndices(),
+    memoizedFetchMarketPulse(),
   ]);
 
   const intelligence = resolveCachedIntelligence();
@@ -105,9 +111,10 @@ async function loadDashboardContext(): Promise<DashboardContext> {
 }
 
 /**
- * Dashboard summary entry — request-scoped dedupe only.
- * Concurrent callers share one in-flight Promise.
+ * Dashboard summary entry — React cache() per RSC request + in-flight coalesce.
  */
-export function getDashboardContext(): Promise<DashboardContext> {
-  return dedupeInFlight(DASHBOARD_CONTEXT_KEY, loadDashboardContext);
-}
+export const getDashboardContext = cache(
+  function getDashboardContext(): Promise<DashboardContext> {
+    return dedupeInFlight(DASHBOARD_CONTEXT_KEY, loadDashboardContext);
+  }
+);

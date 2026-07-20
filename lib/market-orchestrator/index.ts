@@ -1,6 +1,7 @@
 /**
  * Central Market Data Orchestrator — public surface.
  * Only app/page.tsx should import getDashboardMarketSnapshot().
+ * Request memoization (React cache) lives in this package; lib/cache TTL is unchanged.
  */
 
 export { getDashboardMarketSnapshot } from "./orchestrator";

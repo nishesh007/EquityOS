@@ -1,6 +1,8 @@
 /**
- * Request-scoped in-flight Promise deduplication.
+ * Concurrent in-flight Promise deduplication.
  * No TTL, no persistence, no long-lived cache — only coalesce concurrent callers.
+ * Complements React cache() (per-RSC-request memo in memoizedReads / orchestrator
+ * entry points); does not replace lib/cache TTL storage.
  */
 
 const inFlight = new Map<string, Promise<unknown>>();
