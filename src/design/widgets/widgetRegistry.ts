@@ -78,11 +78,13 @@ export interface WidgetDefinition {
   category: WidgetCategory;
   defaultRegion: WorkspaceRegion;
   defaultSize: WorkspaceSize;
+  /** Permanent widgets cannot be hidden or unpinned. */
+  permanent?: boolean;
 }
 
 /** Built-in dockable widget catalog (matches the dashboard's sections). */
 const BUILT_IN_WIDGETS: readonly WidgetDefinition[] = Object.freeze([
-  { id: "market-snapshot", label: "Market Snapshot", description: "Indices with sparklines and session range", category: "charts", defaultRegion: "snapshot", defaultSize: "full" },
+  { id: "market-snapshot", label: "Market Snapshot", description: "Indices with sparklines and session range", category: "charts", defaultRegion: "snapshot", defaultSize: "full", permanent: true },
   { id: "market-pulse", label: "Market Pulse", description: "VIX, flow cues and market session pulse", category: "market", defaultRegion: "snapshot", defaultSize: "full" },
   { id: "market-breadth", label: "Market Internals", description: "Entire NSE breadth, participation and mood", category: "market", defaultRegion: "snapshot", defaultSize: "full" },
   { id: "market-heatmap", label: "Sector Heatmap", description: "Interactive NSE sector & stock heatmap with drilldowns", category: "market", defaultRegion: "snapshot", defaultSize: "full" },
@@ -104,6 +106,11 @@ const BUILT_IN_WIDGETS: readonly WidgetDefinition[] = Object.freeze([
 const registry = new Map<string, WidgetDefinition>(
   BUILT_IN_WIDGETS.map((widget) => [widget.id, widget])
 );
+
+/** True when a widget must stay visible and pinned on the dashboard. */
+export function isPermanentWidget(widgetId: string): boolean {
+  return getWidgetDefinition(widgetId)?.permanent === true;
+}
 
 /** Public API — register an additional dockable widget type. */
 export function registerWidget(definition: WidgetDefinition): void {

@@ -2,20 +2,20 @@
  * Heatmap tile colors — performance bands for sector & stock cells.
  */
 
-import {
-  performanceBand,
-  type HeatmapColorMetric,
-  type HeatmapSectorTile,
-  type HeatmapStockCell,
-  type PerformanceBand,
-} from "@/lib/market-heatmap";
+import { performanceBand } from "@/lib/market-heatmap/metrics";
+import type {
+  HeatmapColorMetric,
+  HeatmapSectorTile,
+  HeatmapStockCell,
+  PerformanceBand,
+} from "@/lib/market-heatmap/types";
 
 const BAND_BG: Record<PerformanceBand, string> = {
-  strongGain: "rgba(34, 197, 94, 0.72)",
-  moderateGain: "rgba(34, 197, 94, 0.42)",
-  neutral: "rgba(148, 163, 184, 0.28)",
-  moderateLoss: "rgba(239, 68, 68, 0.42)",
-  strongLoss: "rgba(239, 68, 68, 0.72)",
+  strongGain: "rgba(34, 197, 94, 0.78)",
+  moderateGain: "rgba(134, 239, 172, 0.45)",
+  neutral: "rgba(148, 163, 184, 0.30)",
+  moderateLoss: "rgba(249, 115, 22, 0.48)",
+  strongLoss: "rgba(239, 68, 68, 0.78)",
 };
 
 const BAND_LABEL: Record<PerformanceBand, string> = {

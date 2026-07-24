@@ -10,8 +10,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { Circle, Clock, Layers, Palette, Wifi, WifiOff } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Clock, Layers, Palette, Wifi, WifiOff } from "lucide-react";
 import { getTheme, getThemeEngine } from "../theme/ThemeEngine";
 import { getActiveWorkspace } from "../workspace/workspaceEngine";
 import { getMarketSession } from "./marketSession";
@@ -60,14 +59,7 @@ export function StatusBar({ sidebarWidth = "240px" }: { sidebarWidth?: string })
     >
       <div className="flex min-w-0 items-center gap-4">
         <span className="flex items-center gap-1.5">
-          <Circle
-            className={cn(
-              "h-2 w-2",
-              session?.open
-                ? "fill-gain text-gain"
-                : "fill-text-faint text-text-faint"
-            )}
-          />
+          <span aria-hidden>{session?.open ? "🟢" : session ? "🔴" : "⚪"}</span>
           {session ? session.label : "Market status"}
         </span>
         <span className="hidden items-center gap-1.5 sm:flex">

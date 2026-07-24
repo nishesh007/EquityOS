@@ -7,11 +7,6 @@ import {
   type BreadthUniverseId,
   type MarketBreadthSnapshot,
 } from "@/lib/market-breadth";
-import {
-  runMarketHeatmapEngine,
-  type HeatmapUniverseId,
-  type MarketHeatmapSnapshot,
-} from "@/lib/market-heatmap";
 import { marketDataService } from "@/lib/market-data";
 import {
   getCached,
@@ -25,6 +20,7 @@ import {
   readLastBreadthSnapshot,
   writeLastBreadthSnapshot,
 } from "@/lib/market-breadth/last-snapshot";
+import { emptyMarketBreadth } from "@/services/emptyMarketBreadth";
 import {
   fetchPortfolioSummary,
   fetchWatchlist,
@@ -82,26 +78,7 @@ function snapshotToMarketBreadth(
   };
 }
 
-export const marketBreadth: MarketBreadth = {
-  advances: 0,
-  declines: 0,
-  unchanged: 0,
-  newHighs: 0,
-  newLows: 0,
-  sectors: [],
-  gainers: [],
-  losers: [],
-  weekHighs: [],
-  weekLows: [],
-  mostActive: [],
-  universe: "nse",
-  universeLabel: "Entire NSE",
-  totalStocks: 0,
-  marketMood: "Insufficient Data",
-  moodGauge: 50,
-  highLowRatio: 0,
-  marketStatusLabel: "—",
-};
+export { emptyMarketBreadth as marketBreadth } from "@/services/emptyMarketBreadth";
 
 async function buildLiveMarketBreadth(
   universe: BreadthUniverseId = "nse"
@@ -210,19 +187,6 @@ export async function fetchMarketPulse(): Promise<MarketPulse> {
   return getCached(
     { key: cacheKey("market-pulse"), ttlMs: CACHE_TTL.QUOTE },
     buildLiveMarketPulse
-  );
-}
-
-export async function fetchMarketHeatmap(
-  universe: HeatmapUniverseId = "nse"
-): Promise<MarketHeatmapSnapshot> {
-  const ttl =
-    universe === "nse" || universe === "nifty500"
-      ? CACHE_TTL.FIFTEEN_MINUTES
-      : CACHE_TTL.DASHBOARD;
-  return getCached(
-    { key: cacheKey("market-heatmap", universe), ttlMs: ttl },
-    () => runMarketHeatmapEngine({ universe })
   );
 }
 

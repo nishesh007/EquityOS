@@ -339,8 +339,16 @@ describe("Sprint 10C.R7 — breadcrumbs & status bar", () => {
   it("reports the market session from IST hours", () => {
     // 2026-07-15 is a Wednesday; 05:30 UTC = 11:00 IST (open).
     expect(getMarketSession(new Date("2026-07-15T05:30:00Z")).open).toBe(true);
+    expect(getMarketSession(new Date("2026-07-15T05:30:00Z")).label).toBe(
+      "Markets Open"
+    );
+    // 03:30 UTC = 09:00 IST (open under display window).
+    expect(getMarketSession(new Date("2026-07-15T03:30:00Z")).open).toBe(true);
     // 18:00 UTC = 23:30 IST (closed); Sunday closed.
     expect(getMarketSession(new Date("2026-07-15T18:00:00Z")).open).toBe(false);
+    expect(getMarketSession(new Date("2026-07-15T18:00:00Z")).label).toBe(
+      "Markets Closed"
+    );
     expect(getMarketSession(new Date("2026-07-19T05:30:00Z")).open).toBe(false);
   });
 });

@@ -59,10 +59,10 @@ export default function DashboardPage() {
         </span>
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-text-primary">
-            Dashboard
+            EquityOS Dashboard
           </h1>
           <p className="mt-0.5 text-sm text-text-muted">
-            Customizable institutional workspace · Edit Mode to rearrange
+            AI-Powered Institutional Equity Research Terminal
           </p>
         </div>
       </div>

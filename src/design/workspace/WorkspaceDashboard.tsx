@@ -45,6 +45,7 @@ import {
   WORKSPACE_SIZE_LABELS,
   WORKSPACE_SIZE_SPANS,
   getWidgetDefinition,
+  isPermanentWidget,
   sizeFromSpan,
   type WidgetDefinition,
   type WorkspaceRegion,
@@ -337,6 +338,7 @@ export function WorkspaceDashboard({ children }: WorkspaceDashboardProps) {
     if (!content || !placement.visible) return null;
     const definition = getWidgetDefinition(placement.widgetId);
     const label = definition?.label ?? placement.widgetId;
+    const permanent = isPermanentWidget(placement.widgetId);
     const span = WORKSPACE_SIZE_SPANS[placement.size];
     const isDropTarget = editMode && dropTarget === placement.widgetId;
 
@@ -416,33 +418,35 @@ export function WorkspaceDashboard({ children }: WorkspaceDashboardProps) {
               ))}
             </select>
           ) : null}
-          <button
-            type="button"
-            onClick={() =>
-              commit(
-                setWidgetPinned(
-                  workspace,
-                  placement.widgetId,
-                  !placement.pinned
+          {!permanent ? (
+            <button
+              type="button"
+              onClick={() =>
+                commit(
+                  setWidgetPinned(
+                    workspace,
+                    placement.widgetId,
+                    !placement.pinned
+                  )
                 )
-              )
-            }
-            title={placement.pinned ? "Unpin" : "Pin to top"}
-            aria-label={placement.pinned ? `Unpin ${label}` : `Pin ${label}`}
-            aria-pressed={placement.pinned}
-            className={cn(
-              "rounded p-1 transition-colors hover:bg-surface-hover",
-              placement.pinned
-                ? "text-accent"
-                : "text-text-muted hover:text-text-primary"
-            )}
-          >
-            {placement.pinned ? (
-              <PinOff className="h-3.5 w-3.5" />
-            ) : (
-              <Pin className="h-3.5 w-3.5" />
-            )}
-          </button>
+              }
+              title={placement.pinned ? "Unpin" : "Pin to top"}
+              aria-label={placement.pinned ? `Unpin ${label}` : `Pin ${label}`}
+              aria-pressed={placement.pinned}
+              className={cn(
+                "rounded p-1 transition-colors hover:bg-surface-hover",
+                placement.pinned
+                  ? "text-accent"
+                  : "text-text-muted hover:text-text-primary"
+              )}
+            >
+              {placement.pinned ? (
+                <PinOff className="h-3.5 w-3.5" />
+              ) : (
+                <Pin className="h-3.5 w-3.5" />
+              )}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() =>
@@ -467,17 +471,19 @@ export function WorkspaceDashboard({ children }: WorkspaceDashboardProps) {
               <ChevronUp className="h-3.5 w-3.5" />
             )}
           </button>
-          <button
-            type="button"
-            onClick={() =>
-              commit(setWidgetVisible(workspace, placement.widgetId, false))
-            }
-            title="Hide widget"
-            aria-label={`Hide ${label}`}
-            className="rounded p-1 text-text-muted transition-colors hover:bg-surface-hover hover:text-loss"
-          >
-            <EyeOff className="h-3.5 w-3.5" />
-          </button>
+          {!permanent ? (
+            <button
+              type="button"
+              onClick={() =>
+                commit(setWidgetVisible(workspace, placement.widgetId, false))
+              }
+              title="Hide widget"
+              aria-label={`Hide ${label}`}
+              className="rounded p-1 text-text-muted transition-colors hover:bg-surface-hover hover:text-loss"
+            >
+              <EyeOff className="h-3.5 w-3.5" />
+            </button>
+          ) : null}
         </div>
 
         <ContextMenu
@@ -530,23 +536,27 @@ export function WorkspaceDashboard({ children }: WorkspaceDashboardProps) {
                 );
               },
             },
-            {
-              id: "pin",
-              label: placement.pinned ? "Unpin widget" : "Pin widget",
-              icon: placement.pinned ? (
-                <PinOff className="h-3.5 w-3.5" />
-              ) : (
-                <Pin className="h-3.5 w-3.5" />
-              ),
-              onSelect: () =>
-                commit(
-                  setWidgetPinned(
-                    workspace,
-                    placement.widgetId,
-                    !placement.pinned
-                  )
-                ),
-            },
+            ...(permanent
+              ? []
+              : [
+                  {
+                    id: "pin",
+                    label: placement.pinned ? "Unpin widget" : "Pin widget",
+                    icon: placement.pinned ? (
+                      <PinOff className="h-3.5 w-3.5" />
+                    ) : (
+                      <Pin className="h-3.5 w-3.5" />
+                    ),
+                    onSelect: () =>
+                      commit(
+                        setWidgetPinned(
+                          workspace,
+                          placement.widgetId,
+                          !placement.pinned
+                        )
+                      ),
+                  },
+                ]),
             ...WORKSPACE_SIZES.filter((size) => size !== placement.size).map(
               (size) => ({
                 id: `size-${size}`,
@@ -555,14 +565,20 @@ export function WorkspaceDashboard({ children }: WorkspaceDashboardProps) {
                   commit(resizeWidget(workspace, placement.widgetId, size)),
               })
             ),
-            {
-              id: "hide",
-              label: "Hide widget",
-              icon: <EyeOff className="h-3.5 w-3.5" />,
-              danger: true,
-              onSelect: () =>
-                commit(setWidgetVisible(workspace, placement.widgetId, false)),
-            },
+            ...(permanent
+              ? []
+              : [
+                  {
+                    id: "hide",
+                    label: "Hide widget",
+                    icon: <EyeOff className="h-3.5 w-3.5" />,
+                    danger: true as const,
+                    onSelect: () =>
+                      commit(
+                        setWidgetVisible(workspace, placement.widgetId, false)
+                      ),
+                  },
+                ]),
           ]}
         >
           {placement.collapsed ? (

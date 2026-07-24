@@ -4,7 +4,7 @@ import { StockLink } from "@/components/ui/StockLink";
 import type {
   HeatmapColorMetric,
   HeatmapStockCell,
-} from "@/lib/market-heatmap";
+} from "@/lib/market-heatmap/types";
 import { useMemo, useState } from "react";
 import {
   colorForValue,

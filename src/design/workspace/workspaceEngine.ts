@@ -18,6 +18,7 @@ import {
 import {
   WORKSPACE_REGIONS,
   WORKSPACE_SIZES,
+  isPermanentWidget,
   type WorkspaceRegion,
   type WorkspaceSize,
 } from "../widgets/widgetRegistry";
@@ -212,7 +213,10 @@ export function saveWorkspace(
   workspace: Workspace,
   storage: WorkspaceStorage | undefined = browserStorage()
 ): Workspace {
-  const stamped: Workspace = { ...workspace, updatedAt: Date.now() };
+  const stamped: Workspace = {
+    ...enforcePermanentWidgets(workspace),
+    updatedAt: Date.now(),
+  };
   const store = loadWorkspaceStore(storage);
   const index = store.workspaces.findIndex((w) => w.id === stamped.id);
   if (index >= 0) store.workspaces[index] = stamped;
@@ -240,10 +244,10 @@ export function getActiveWorkspace(
   storage: WorkspaceStorage | undefined = browserStorage()
 ): Workspace {
   const store = loadWorkspaceStore(storage);
-  return (
-    store.workspaces.find((workspace) => workspace.id === store.activeId) ??
-    store.workspaces[0]
-  );
+  const workspace =
+    store.workspaces.find((item) => item.id === store.activeId) ??
+    store.workspaces[0];
+  return enforcePermanentWidgets(workspace);
 }
 
 export function setActiveWorkspace(
@@ -255,7 +259,7 @@ export function setActiveWorkspace(
   if (!workspace) return null;
   store.activeId = id;
   saveWorkspaceStore(store, storage);
-  return workspace;
+  return enforcePermanentWidgets(workspace);
 }
 
 export function duplicateWorkspace(
@@ -402,6 +406,18 @@ export function importWorkspace(
 // Widget operations — pure functions over a workspace
 // ---------------------------------------------------------------------------
 
+/** Keep permanent widgets visible + pinned (Market Snapshot, etc.). */
+function enforcePermanentWidgets(workspace: Workspace): Workspace {
+  let changed = false;
+  const placements = workspace.placements.map((placement) => {
+    if (!isPermanentWidget(placement.widgetId)) return placement;
+    if (placement.visible && placement.pinned) return placement;
+    changed = true;
+    return { ...placement, visible: true, pinned: true };
+  });
+  return changed ? { ...workspace, placements } : workspace;
+}
+
 function reindex(placements: WidgetPlacement[]): WidgetPlacement[] {
   const byRegion = new Map<WorkspaceRegion, number>();
   return placements.map((placement) => {
@@ -509,6 +525,9 @@ export function setWidgetVisible(
   widgetId: string,
   visible: boolean
 ): Workspace {
+  if (isPermanentWidget(widgetId)) {
+    return patchWidget(workspace, widgetId, { visible: true, pinned: true });
+  }
   return patchWidget(workspace, widgetId, { visible });
 }
 
@@ -517,6 +536,9 @@ export function setWidgetPinned(
   widgetId: string,
   pinned: boolean
 ): Workspace {
+  if (isPermanentWidget(widgetId)) {
+    return patchWidget(workspace, widgetId, { pinned: true, visible: true });
+  }
   return patchWidget(workspace, widgetId, { pinned });
 }
 
@@ -564,6 +586,7 @@ export function removeWidgetFromWorkspace(
   workspace: Workspace,
   widgetId: string
 ): Workspace {
+  if (isPermanentWidget(widgetId)) return workspace;
   return {
     ...workspace,
     placements: reindex(

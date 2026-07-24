@@ -17,7 +17,7 @@ export const LazyMarketHeatmap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <WidgetSkeleton label="Sector Heatmap" className="h-96" />
+      <WidgetSkeleton label="Sector Heatmap" className="h-56" />
     ),
   }
 );

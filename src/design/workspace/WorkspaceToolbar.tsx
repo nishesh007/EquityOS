@@ -12,10 +12,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Briefcase,
   Check,
   ChevronDown,
-  Copy,
   Download,
   Eye,
   LayoutGrid,
@@ -27,7 +25,6 @@ import {
   RotateCcw,
   Search,
   Settings,
-  Trash2,
   Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -77,11 +74,10 @@ export interface WorkspaceToolbarProps {
   onFullscreen: () => void;
 }
 
-type OpenMenu = "workspace" | "layouts" | "hidden" | null;
+type OpenMenu = "layouts" | "hidden" | null;
 
 export function WorkspaceToolbar({
   workspace,
-  workspaces,
   hidden,
   editMode,
   onEditModeChange,
@@ -89,11 +85,6 @@ export function WorkspaceToolbar({
   onPickerOpenChange,
   searchOpen,
   onSearchOpenChange,
-  onSwitch,
-  onCreate,
-  onRename,
-  onDuplicate,
-  onDelete,
   onReset,
   onApplyTemplate,
   onExport,
@@ -104,10 +95,6 @@ export function WorkspaceToolbar({
 }: WorkspaceToolbarProps) {
   const router = useRouter();
   const [openMenu, setOpenMenu] = useState<OpenMenu>(null);
-  const [creating, setCreating] = useState(false);
-  const [renaming, setRenaming] = useState(false);
-  const [nameDraft, setNameDraft] = useState("");
-  const [templateDraft, setTemplateDraft] = useState("institutional");
   const [pickerQuery, setPickerQuery] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [importError, setImportError] = useState<string | null>(null);
@@ -129,22 +116,6 @@ export function WorkspaceToolbar({
 
   const toggleMenu = (menu: Exclude<OpenMenu, null>) =>
     setOpenMenu((current) => (current === menu ? null : menu));
-
-  const submitCreate = () => {
-    if (!nameDraft.trim()) return;
-    onCreate(nameDraft.trim(), templateDraft);
-    setNameDraft("");
-    setCreating(false);
-    setOpenMenu(null);
-  };
-
-  const submitRename = () => {
-    if (!nameDraft.trim()) return;
-    onRename(nameDraft.trim());
-    setNameDraft("");
-    setRenaming(false);
-    setOpenMenu(null);
-  };
 
   const handleImportFile = (file: File) => {
     const reader = new FileReader();
@@ -170,110 +141,6 @@ export function WorkspaceToolbar({
     <div ref={rootRef}>
       <GlassToolbar aria-label="Dashboard workspace toolbar" className="justify-between">
         <div className="flex flex-wrap items-center gap-1">
-          {/* Workspace profiles */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => toggleMenu("workspace")}
-              aria-haspopup="menu"
-              aria-expanded={openMenu === "workspace"}
-              className={cn(TOOLBAR_BUTTON_CLASS, "font-semibold text-text-primary")}
-            >
-              <Briefcase className="h-3.5 w-3.5" />
-              {workspace.name}
-              <ChevronDown className="h-3 w-3 opacity-60" />
-            </button>
-            <GlassDropdown open={openMenu === "workspace"} align="left" className="w-64">
-              <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
-                Workspace Profiles
-              </p>
-              {workspaces.map((profile) => (
-                <button
-                  key={profile.id}
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    onSwitch(profile.id);
-                    setOpenMenu(null);
-                  }}
-                  className={MENU_ITEM_CLASS}
-                >
-                  {profile.id === workspace.id ? (
-                    <Check className="h-3.5 w-3.5 text-accent" />
-                  ) : (
-                    <span className="w-3.5" />
-                  )}
-                  {profile.name}
-                </button>
-              ))}
-              <div className="my-1.5 border-t border-surface-border" />
-              {creating ? (
-                <div className="space-y-1.5 px-2 py-1">
-                  <input
-                    autoFocus
-                    value={nameDraft}
-                    onChange={(event) => setNameDraft(event.target.value)}
-                    onKeyDown={(event) => event.key === "Enter" && submitCreate()}
-                    placeholder="Profile name (e.g. My Research)"
-                    aria-label="New workspace name"
-                    className="w-full rounded-md border border-surface-border bg-surface px-2 py-1 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
-                  />
-                  <select
-                    value={templateDraft}
-                    onChange={(event) => setTemplateDraft(event.target.value)}
-                    aria-label="Template for new workspace"
-                    className="w-full rounded-md border border-surface-border bg-surface px-2 py-1 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
-                  >
-                    {DASHBOARD_TEMPLATES.map((template) => (
-                      <option key={template.id} value={template.id}>
-                        {template.name}
-                      </option>
-                    ))}
-                  </select>
-                  <button type="button" onClick={submitCreate} className={cn(MENU_ITEM_CLASS, "justify-center bg-surface-hover font-semibold text-text-primary")}>
-                    Create profile
-                  </button>
-                </div>
-              ) : renaming ? (
-                <div className="space-y-1.5 px-2 py-1">
-                  <input
-                    autoFocus
-                    value={nameDraft}
-                    onChange={(event) => setNameDraft(event.target.value)}
-                    onKeyDown={(event) => event.key === "Enter" && submitRename()}
-                    placeholder="New name"
-                    aria-label="Rename workspace"
-                    className="w-full rounded-md border border-surface-border bg-surface px-2 py-1 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
-                  />
-                  <button type="button" onClick={submitRename} className={cn(MENU_ITEM_CLASS, "justify-center bg-surface-hover font-semibold text-text-primary")}>
-                    Rename
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <button type="button" role="menuitem" onClick={() => { setCreating(true); setNameDraft(""); }} className={MENU_ITEM_CLASS}>
-                    <Plus className="h-3.5 w-3.5" /> New profile…
-                  </button>
-                  <button type="button" role="menuitem" onClick={() => { setRenaming(true); setNameDraft(workspace.name); }} className={MENU_ITEM_CLASS}>
-                    <Pencil className="h-3.5 w-3.5" /> Rename
-                  </button>
-                  <button type="button" role="menuitem" onClick={() => { onDuplicate(); setOpenMenu(null); }} className={MENU_ITEM_CLASS}>
-                    <Copy className="h-3.5 w-3.5" /> Duplicate
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    disabled={workspaces.length <= 1}
-                    onClick={() => { onDelete(); setOpenMenu(null); }}
-                    className={cn(MENU_ITEM_CLASS, "text-loss disabled:opacity-40")}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" /> Delete
-                  </button>
-                </>
-              )}
-            </GlassDropdown>
-          </div>
-
           {/* Layout templates */}
           <div className="relative">
             <button

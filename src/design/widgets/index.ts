@@ -27,6 +27,7 @@ export {
   listWidgetDefinitions,
   searchWidgets,
   resetWidgetRegistryForTests,
+  isPermanentWidget,
   type WorkspaceRegion,
   type WorkspaceSize,
   type WidgetCategory,

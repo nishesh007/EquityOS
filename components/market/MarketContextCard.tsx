@@ -2,7 +2,20 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { EmptyStatePanel } from "@/components/ui/EmptyStatePanel";
 import type { MarketContextView } from "@/lib/market-intelligence";
 import { StatusBadge, statusToneFromLabel } from "@/src/design";
-import { Activity, Gauge, Waves } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { LucideIcon } from "lucide-react";
+import {
+  Activity,
+  Droplets,
+  Gauge,
+  Layers,
+  ShieldAlert,
+  TrendingDown,
+  TrendingUp,
+  Users,
+  Waves,
+  Wind,
+} from "lucide-react";
 
 function formatUpdated(iso: string): string {
   try {
@@ -19,36 +32,287 @@ function formatUpdated(iso: string): string {
   }
 }
 
-function riskTone(risk: string): string {
-  if (risk === "Risk On") return "text-gain";
-  if (risk === "Risk Off") return "text-loss";
-  return "text-amber-400";
+type MetricTone = {
+  shell: string;
+  icon: string;
+  value: string;
+};
+
+function riskTone(risk: string): { label: string; tone: MetricTone } {
+  const normalized = risk.toLowerCase();
+  if (
+    normalized.includes("off") ||
+    normalized.includes("high") ||
+    normalized.includes("elevated")
+  ) {
+    return {
+      label: "High",
+      tone: {
+        shell: "border-red-500/35 bg-gradient-to-br from-red-500/15 via-red-400/10 to-transparent shadow-[0_0_20px_-12px_rgba(239,68,68,0.55)]",
+        icon: "text-red-400",
+        value: "text-red-300",
+      },
+    };
+  }
+  if (
+    normalized.includes("on") ||
+    normalized.includes("low") ||
+    normalized.includes("calm")
+  ) {
+    return {
+      label: "Low",
+      tone: {
+        shell: "border-emerald-500/35 bg-gradient-to-br from-emerald-500/15 via-emerald-400/10 to-transparent shadow-[0_0_20px_-12px_rgba(16,185,129,0.55)]",
+        icon: "text-emerald-400",
+        value: "text-emerald-300",
+      },
+    };
+  }
+  return {
+    label: "Medium",
+    tone: {
+      shell: "border-amber-500/35 bg-gradient-to-br from-amber-500/15 via-amber-400/10 to-transparent shadow-[0_0_20px_-12px_rgba(245,158,11,0.55)]",
+      icon: "text-amber-400",
+      value: "text-amber-300",
+    },
+  };
 }
 
-function Metric({
+function volatilityTone(regime: string): { label: string; tone: MetricTone } {
+  const normalized = regime.toLowerCase();
+  if (normalized.includes("high") || normalized.includes("elevated")) {
+    return {
+      label: regime || "High",
+      tone: {
+        shell: "border-orange-500/35 bg-gradient-to-br from-orange-500/15 via-orange-400/10 to-transparent shadow-[0_0_20px_-12px_rgba(249,115,22,0.55)]",
+        icon: "text-orange-400",
+        value: "text-orange-300",
+      },
+    };
+  }
+  if (normalized.includes("low") || normalized.includes("quiet")) {
+    return {
+      label: regime || "Low",
+      tone: {
+        shell: "border-blue-500/35 bg-gradient-to-br from-blue-500/15 via-blue-400/10 to-transparent shadow-[0_0_20px_-12px_rgba(59,130,246,0.55)]",
+        icon: "text-blue-400",
+        value: "text-blue-300",
+      },
+    };
+  }
+  return {
+    label: regime || "Normal",
+    tone: {
+      shell: "border-cyan-500/35 bg-gradient-to-br from-cyan-500/15 via-cyan-400/10 to-transparent shadow-[0_0_20px_-12px_rgba(34,211,238,0.55)]",
+      icon: "text-cyan-400",
+      value: "text-cyan-300",
+    },
+  };
+}
+
+function breadthTone(
+  quality: string,
+  score: number
+): { label: string; tone: MetricTone } {
+  const normalized = quality.toLowerCase();
+  if (
+    normalized.includes("positive") ||
+    normalized.includes("strong") ||
+    score >= 55
+  ) {
+    return {
+      label: `${Math.round(score)} · Positive`,
+      tone: {
+        shell: "border-emerald-500/35 bg-gradient-to-br from-emerald-500/15 via-emerald-400/10 to-transparent shadow-[0_0_20px_-12px_rgba(16,185,129,0.55)]",
+        icon: "text-emerald-400",
+        value: "text-emerald-300",
+      },
+    };
+  }
+  if (
+    normalized.includes("negative") ||
+    normalized.includes("weak") ||
+    score <= 45
+  ) {
+    return {
+      label: `${Math.round(score)} · Negative`,
+      tone: {
+        shell: "border-red-500/35 bg-gradient-to-br from-red-500/15 via-red-400/10 to-transparent shadow-[0_0_20px_-12px_rgba(239,68,68,0.55)]",
+        icon: "text-red-400",
+        value: "text-red-300",
+      },
+    };
+  }
+  return {
+    label: `${Math.round(score)} · Neutral`,
+    tone: {
+      shell: "border-blue-500/35 bg-gradient-to-br from-blue-500/15 via-blue-400/10 to-transparent shadow-[0_0_20px_-12px_rgba(59,130,246,0.55)]",
+      icon: "text-blue-400",
+      value: "text-blue-300",
+    },
+  };
+}
+
+function momentumTone(value: number): { label: string; tone: MetricTone } {
+  if (value >= 55) {
+    return {
+      label: "Bullish",
+      tone: {
+        shell: "border-emerald-500/35 bg-gradient-to-br from-emerald-500/15 via-emerald-400/10 to-transparent shadow-[0_0_20px_-12px_rgba(16,185,129,0.55)]",
+        icon: "text-emerald-400",
+        value: "text-emerald-300",
+      },
+    };
+  }
+  if (value <= 45) {
+    return {
+      label: "Bearish",
+      tone: {
+        shell: "border-red-500/35 bg-gradient-to-br from-red-500/15 via-red-400/10 to-transparent shadow-[0_0_20px_-12px_rgba(239,68,68,0.55)]",
+        icon: "text-red-400",
+        value: "text-red-300",
+      },
+    };
+  }
+  return {
+    label: "Neutral",
+    tone: {
+      shell: "border-slate-500/35 bg-gradient-to-br from-slate-500/15 via-slate-400/10 to-transparent shadow-[0_0_20px_-12px_rgba(100,116,139,0.5)]",
+      icon: "text-slate-400",
+      value: "text-slate-300",
+    },
+  };
+}
+
+function liquidityTone(value: number): { label: string; tone: MetricTone } {
+  if (value >= 70) {
+    return {
+      label: "High",
+      tone: {
+        shell: "border-emerald-500/35 bg-gradient-to-br from-emerald-500/15 via-emerald-400/10 to-transparent shadow-[0_0_20px_-12px_rgba(16,185,129,0.55)]",
+        icon: "text-emerald-400",
+        value: "text-emerald-300",
+      },
+    };
+  }
+  if (value <= 40) {
+    return {
+      label: "Low",
+      tone: {
+        shell: "border-red-500/35 bg-gradient-to-br from-red-500/15 via-red-400/10 to-transparent shadow-[0_0_20px_-12px_rgba(239,68,68,0.55)]",
+        icon: "text-red-400",
+        value: "text-red-300",
+      },
+    };
+  }
+  return {
+    label: "Medium",
+    tone: {
+      shell: "border-yellow-500/35 bg-gradient-to-br from-yellow-500/15 via-yellow-400/10 to-transparent shadow-[0_0_20px_-12px_rgba(234,179,8,0.55)]",
+      icon: "text-yellow-400",
+      value: "text-yellow-300",
+    },
+  };
+}
+
+function participationTone(
+  value: number
+): { label: string; tone: MetricTone } {
+  if (value >= 60) {
+    return {
+      label: "Strong",
+      tone: {
+        shell: "border-emerald-500/35 bg-gradient-to-br from-emerald-500/15 via-emerald-400/10 to-transparent shadow-[0_0_20px_-12px_rgba(16,185,129,0.55)]",
+        icon: "text-emerald-400",
+        value: "text-emerald-300",
+      },
+    };
+  }
+  if (value <= 30) {
+    return {
+      label: "Weak",
+      tone: {
+        shell: "border-orange-500/35 bg-gradient-to-br from-orange-500/15 via-orange-400/10 to-transparent shadow-[0_0_20px_-12px_rgba(249,115,22,0.55)]",
+        icon: "text-orange-400",
+        value: "text-orange-300",
+      },
+    };
+  }
+  return {
+    label: "Average",
+    tone: {
+      shell: "border-blue-500/35 bg-gradient-to-br from-blue-500/15 via-blue-400/10 to-transparent shadow-[0_0_20px_-12px_rgba(59,130,246,0.55)]",
+      icon: "text-blue-400",
+      value: "text-blue-300",
+    },
+  };
+}
+
+function sectorBreadthTone(
+  value: number
+): { label: string; tone: MetricTone } {
+  if (!Number.isFinite(value) || value === 0) {
+    return {
+      label: "—",
+      tone: {
+        shell: "border-cyan-500/25 bg-gradient-to-br from-cyan-500/12 via-cyan-400/8 to-transparent",
+        icon: "text-cyan-400",
+        value: "text-cyan-300",
+      },
+    };
+  }
+  if (value > 0) {
+    return {
+      label: String(Math.round(value)),
+      tone: {
+        shell: "border-emerald-500/35 bg-gradient-to-br from-emerald-500/15 via-emerald-400/10 to-transparent shadow-[0_0_20px_-12px_rgba(16,185,129,0.55)]",
+        icon: "text-emerald-400",
+        value: "text-emerald-300",
+      },
+    };
+  }
+  return {
+    label: String(Math.round(value)),
+    tone: {
+      shell: "border-red-500/35 bg-gradient-to-br from-red-500/15 via-red-400/10 to-transparent shadow-[0_0_20px_-12px_rgba(239,68,68,0.55)]",
+      icon: "text-red-400",
+      value: "text-red-300",
+    },
+  };
+}
+
+function MetricTile({
   label,
   value,
+  detail,
+  icon: Icon,
   tone,
-  tint,
 }: {
   label: string;
   value: string;
-  tone?: string;
-  /** R4 subtle tinted surface (5–8% opacity). */
-  tint?: string;
+  detail?: string;
+  icon: LucideIcon;
+  tone: MetricTone;
 }) {
   return (
     <div
-      className={`rounded-md border px-2.5 py-2 ${
-        tint ?? "border-surface-border-subtle/70 bg-surface-overlay/40"
-      }`}
+      className={cn(
+        "rounded-xl border px-3 py-2.5 transition-colors",
+        tone.shell
+      )}
     >
-      <p className="text-[9px] font-medium uppercase tracking-wider text-text-faint">
-        {label}
-      </p>
-      <p className={`mt-0.5 text-xs font-semibold ${tone ?? "text-text-primary"}`}>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-text-faint">
+          {label}
+        </p>
+        <Icon className={cn("h-3.5 w-3.5 shrink-0", tone.icon)} aria-hidden />
+      </div>
+      <p className={cn("mt-1.5 text-sm font-semibold tracking-tight", tone.value)}>
         {value}
       </p>
+      {detail ? (
+        <p className="mt-0.5 text-[10px] text-text-muted">{detail}</p>
+      ) : null}
     </div>
   );
 }
@@ -63,26 +327,34 @@ export function MarketContextCard({
       <Card padding="sm" data-testid="market-context-card-empty">
         <CardHeader title="Market Context" subtitle="Awaiting market data" />
         <EmptyStatePanel
-          message="Shared Market Context is warming up. Dashboard will refresh automatically once the Trading Pipeline publishes a snapshot."
-          source="Trading Pipeline · Market Context"
+          message="Market context is warming up and will appear automatically."
+          source="Market Intelligence"
           icon={Activity}
         />
       </Card>
     );
   }
 
+  const risk = riskTone(context.riskMode);
+  const volatility = volatilityTone(context.volatilityRegime);
+  const breadth = breadthTone(context.breadthQuality, context.breadthScore);
+  const momentum = momentumTone(context.momentum);
+  const liquidity = liquidityTone(context.liquidity);
+  const participation = participationTone(context.institutionalParticipation);
+  const sectorBreadth = sectorBreadthTone(context.sectorBreadth);
+
   return (
-    <Card padding="sm" accent="indigo" data-testid="market-context-card">
+    <Card
+      padding="sm"
+      accent="indigo"
+      data-testid="market-context-card"
+      className="shadow-[0_8px_30px_-18px_rgba(15,23,42,0.85)]"
+    >
       <CardHeader
         title="Market Context"
         subtitle="Trend · volatility · breadth · risk"
         icon={<Activity className="h-4 w-4" />}
         timestamp={`Updated ${formatUpdated(context.timestamp)} IST`}
-        badge={
-          <StatusBadge tone="info" size="sm">
-            Conf {Math.round(context.contextConfidence)}
-          </StatusBadge>
-        }
       />
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -98,49 +370,63 @@ export function MarketContextCard({
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Metric
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        <MetricTile
           label="Risk"
-          value={context.riskMode}
-          tone={riskTone(context.riskMode)}
-          tint="border-amber-500/15 bg-amber-500/5"
+          value={risk.label}
+          detail={context.riskMode}
+          icon={ShieldAlert}
+          tone={risk.tone}
         />
-        <Metric
+        <MetricTile
           label="Volatility"
-          value={context.volatilityRegime}
-          tint="border-amber-500/15 bg-amber-500/5"
+          value={volatility.label}
+          icon={Wind}
+          tone={volatility.tone}
         />
-        <Metric
+        <MetricTile
           label="Breadth"
-          value={`${Math.round(context.breadthScore)} · ${context.breadthQuality}`}
-          tint="border-cyan-500/15 bg-cyan-500/5"
+          value={breadth.label}
+          detail={`${context.advanceCount}/${context.declineCount} A/D`}
+          icon={Layers}
+          tone={breadth.tone}
         />
-        <Metric
+        <MetricTile
+          label="Momentum"
+          value={momentum.label}
+          detail={`${Math.round(context.momentum)}`}
+          icon={TrendingUp}
+          tone={momentum.tone}
+        />
+        <MetricTile
+          label="Liquidity"
+          value={liquidity.label}
+          detail={`${Math.round(context.liquidity)}`}
+          icon={Droplets}
+          tone={liquidity.tone}
+        />
+        <MetricTile
+          label="Participation"
+          value={participation.label}
+          detail={`${Math.round(context.institutionalParticipation)}%`}
+          icon={Users}
+          tone={participation.tone}
+        />
+        <MetricTile
+          label="Sector Breadth"
+          value={sectorBreadth.label}
+          icon={sectorBreadth.label.startsWith("-") ? TrendingDown : Waves}
+          tone={sectorBreadth.tone}
+        />
+        <MetricTile
           label="A/D"
           value={`${context.advanceCount}/${context.declineCount}`}
-        />
-        <Metric
-          label="Momentum"
-          value={String(Math.round(context.momentum))}
-          tint="border-sky-500/15 bg-sky-500/5"
-        />
-        <Metric
-          label="Liquidity"
-          value={String(Math.round(context.liquidity))}
-          tint="border-indigo-500/15 bg-indigo-500/5"
-        />
-        <Metric
-          label="Participation"
-          value={`${Math.round(context.institutionalParticipation)}%`}
-          tint="border-violet-500/15 bg-violet-500/5"
-        />
-        <Metric
-          label="Sector Breadth"
-          value={
-            Math.round(context.sectorBreadth) > 0
-              ? String(Math.round(context.sectorBreadth))
-              : "—"
-          }
+          icon={Gauge}
+          tone={{
+            shell: "border-indigo-500/30 bg-gradient-to-br from-indigo-500/15 via-indigo-400/10 to-transparent shadow-[0_0_20px_-12px_rgba(99,102,241,0.5)]",
+            icon: "text-indigo-400",
+            value: "text-indigo-200",
+          }}
         />
       </div>
 

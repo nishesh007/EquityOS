@@ -1,6 +1,6 @@
 /**
- * Sprint 10C.R7 — display-only NSE/BSE session state for the status bar.
- * Not market data logic — purely a clock label.
+ * Sprint 10C — display-only NSE session state for chrome badges.
+ * Pure local clock — no market-data API.
  */
 
 export interface MarketSession {
@@ -8,7 +8,7 @@ export interface MarketSession {
   label: string;
 }
 
-/** Indian market hours: Mon–Fri, 09:15–15:30 IST. */
+/** NSE cash display window: Mon–Fri, 09:00–15:30 IST. */
 export function getMarketSession(date: Date): MarketSession {
   const ist = new Date(
     date.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
@@ -16,10 +16,7 @@ export function getMarketSession(date: Date): MarketSession {
   const day = ist.getDay();
   const minutes = ist.getHours() * 60 + ist.getMinutes();
   const weekday = day >= 1 && day <= 5;
-  const open = weekday && minutes >= 9 * 60 + 15 && minutes <= 15 * 60 + 30;
-  if (open) return { open: true, label: "Markets Open · NSE · BSE" };
-  if (weekday && minutes < 9 * 60 + 15) {
-    return { open: false, label: "Pre-market · Opens 09:15 IST" };
-  }
-  return { open: false, label: "Markets Closed · NSE · BSE" };
+  const open = weekday && minutes >= 9 * 60 && minutes <= 15 * 60 + 30;
+  if (open) return { open: true, label: "Markets Open" };
+  return { open: false, label: "Markets Closed" };
 }

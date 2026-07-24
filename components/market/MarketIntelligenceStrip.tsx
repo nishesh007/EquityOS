@@ -13,7 +13,7 @@ export function MarketIntelligenceStrip({
 }) {
   return (
     <div
-      className="grid gap-4 lg:grid-cols-2"
+      className="grid gap-2.5 lg:grid-cols-2"
       data-testid="market-intelligence-strip"
     >
       <MarketContextCard context={snapshot?.context ?? null} />

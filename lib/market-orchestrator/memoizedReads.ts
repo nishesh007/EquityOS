@@ -14,9 +14,9 @@ import {
 } from "@/services/marketData";
 import {
   fetchMarketBreadth as fetchMarketBreadthImpl,
-  fetchMarketHeatmap as fetchMarketHeatmapImpl,
   fetchMarketPulse as fetchMarketPulseImpl,
 } from "@/services/researchDashboardData";
+import { fetchMarketHeatmap as fetchMarketHeatmapImpl } from "@/services/marketHeatmapData";
 
 /** Dashboard-scoped request memo for market indices. */
 export const memoizedFetchMarketIndices = cache(fetchMarketIndicesImpl);

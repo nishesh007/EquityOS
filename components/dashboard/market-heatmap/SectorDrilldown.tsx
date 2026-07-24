@@ -6,7 +6,7 @@ import { StatusBadge } from "@/src/design";
 import type {
   HeatmapColorMetric,
   HeatmapSectorTile,
-} from "@/lib/market-heatmap";
+} from "@/lib/market-heatmap/types";
 import {
   ArrowDownRight,
   ArrowUpRight,

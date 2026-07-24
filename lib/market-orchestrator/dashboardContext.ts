@@ -21,9 +21,7 @@ import type { MarketIntelligenceSnapshot } from "@/lib/market-intelligence";
 import {
   getCachedMarketIntelligenceSnapshot,
 } from "@/services/marketIntelligence";
-import {
-  marketBreadth as emptyMarketBreadth,
-} from "@/services/researchDashboardData";
+import { emptyMarketBreadth } from "@/services/emptyMarketBreadth";
 import {
   getMarketContextService,
   type InstitutionalMarketContext,

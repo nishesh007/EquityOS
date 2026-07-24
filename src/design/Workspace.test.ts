@@ -111,7 +111,25 @@ describe("Sprint 10C.R6 — workspace persistence", () => {
     saveWorkspace(setWidgetVisible(workspace, "watchlist", false), storage);
     const reset = resetWorkspace(workspace.id, storage);
     const template = getTemplate("minimal")!;
-    expect(reset.placements).toEqual(template.placements);
+    expect(reset.placements).toEqual(
+      template.placements.map((placement) =>
+        placement.widgetId === "market-snapshot"
+          ? { ...placement, pinned: true, visible: true }
+          : placement
+      )
+    );
+  });
+
+  it("refuses to hide or unpin the permanent Market Snapshot widget", () => {
+    const workspace = createWorkspace("Locked Snapshot", "minimal", storage);
+    const hidden = setWidgetVisible(workspace, "market-snapshot", false);
+    const unpinned = setWidgetPinned(workspace, "market-snapshot", false);
+    expect(
+      hidden.placements.find((p) => p.widgetId === "market-snapshot")?.visible
+    ).toBe(true);
+    expect(
+      unpinned.placements.find((p) => p.widgetId === "market-snapshot")?.pinned
+    ).toBe(true);
   });
 });
 

@@ -7,6 +7,7 @@ import {
   subscribeNotifications,
   unreadCount,
 } from "@/src/design/productivity/notificationEngine";
+import { getMarketSession } from "@/src/design/navigation/marketSession";
 import { Bell, User } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -16,10 +17,18 @@ interface TopNavProps {
 
 export function TopNav({ sidebarWidth = "240px" }: TopNavProps) {
   const [unread, setUnread] = useState(0);
+  const [session, setSession] = useState(() => getMarketSession(new Date()));
 
   useEffect(() => {
     setUnread(unreadCount());
     return subscribeNotifications(() => setUnread(unreadCount()));
+  }, []);
+
+  useEffect(() => {
+    const tick = () => setSession(getMarketSession(new Date()));
+    tick();
+    const id = window.setInterval(tick, 30_000);
+    return () => window.clearInterval(id);
   }, []);
 
   return (
@@ -34,12 +43,16 @@ export function TopNav({ sidebarWidth = "240px" }: TopNavProps) {
       <div className="flex items-center gap-3">
         <AskAIButton variant="button" label="Ask AI" className="hidden md:inline-flex" />
         <AskAIButton variant="icon" label="Ask AI" className="md:hidden" />
-        <div className="hidden items-center gap-2 rounded-lg border border-surface-border bg-surface-overlay px-3 py-1.5 md:flex">
-          <span className="h-2 w-2 rounded-full bg-gain animate-pulse-slow" />
+        <div
+          className="hidden items-center gap-2 rounded-lg border border-surface-border bg-surface-overlay px-3 py-1.5 md:flex"
+          aria-live="polite"
+          title="NSE cash session · Mon–Fri 09:00–15:30 IST"
+        >
+          <span aria-hidden>{session.open ? "🟢" : "🔴"}</span>
           <span className="text-xs font-medium text-text-secondary">
-            Markets Open
+            {session.label}
           </span>
-          <span className="text-xs text-text-muted">NSE · BSE</span>
+          <span className="text-xs text-text-muted">NSE</span>
         </div>
 
         <button

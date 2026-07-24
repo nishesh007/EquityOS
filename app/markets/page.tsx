@@ -8,9 +8,9 @@ import { fetchMarketIndices } from "@/services/marketData";
 import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
 import {
   fetchMarketBreadth,
-  fetchMarketHeatmap,
   fetchMarketPulse,
 } from "@/services/researchDashboardData";
+import { fetchMarketHeatmap } from "@/services/marketHeatmapData";
 import { LineChart } from "lucide-react";
 
 export default async function MarketsPage() {

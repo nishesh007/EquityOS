@@ -8,18 +8,16 @@ import type {
   HeatmapSectorTile,
   HeatmapUniverseId,
   MarketHeatmapSnapshot,
-} from "@/lib/market-heatmap";
-import { median } from "@/lib/market-heatmap";
+} from "@/lib/market-heatmap/types";
+import { median } from "@/lib/market-heatmap/metrics";
 import {
   ArrowDownRight,
   ArrowUpRight,
   LayoutGrid,
-  Loader2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import {
   colorForValue,
-  formatMetricDisplay,
   metricValueForSector,
 } from "./color";
 import { HeatmapControls } from "./HeatmapControls";
@@ -31,6 +29,49 @@ interface MarketHeatmapProps {
   initial?: MarketHeatmapSnapshot | null;
   /** Default universe when lazy-loading. */
   defaultUniverse?: HeatmapUniverseId;
+}
+
+const CLIENT_CACHE_PREFIX = "equityos.heatmap.v1:";
+
+function clientCacheKey(universe: HeatmapUniverseId): string {
+  return `${CLIENT_CACHE_PREFIX}${universe}`;
+}
+
+function readClientHeatmapCache(
+  universe: HeatmapUniverseId
+): MarketHeatmapSnapshot | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(clientCacheKey(universe));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as MarketHeatmapSnapshot;
+    if (
+      !parsed ||
+      !Array.isArray(parsed.sectors) ||
+      parsed.sectors.length === 0 ||
+      !(parsed.quotedStocks > 0)
+    ) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeClientHeatmapCache(
+  universe: HeatmapUniverseId,
+  snapshot: MarketHeatmapSnapshot
+): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      clientCacheKey(universe),
+      JSON.stringify(snapshot)
+    );
+  } catch {
+    /* quota / private mode — ignore */
+  }
 }
 
 function formatTs(iso?: string): string {
@@ -62,59 +103,59 @@ function SectorTileButton({
 }) {
   const value = metricValueForSector(tile, colorMetric);
   const bg = colorForValue(value, colorMetric, levelMedian);
+  const change = tile.dailyChangePercent;
+  const trendUp = change > 0.05;
+  const trendDown = change < -0.05;
+  const tooltip = [
+    tile.name,
+    `Change ${change >= 0 ? "+" : ""}${change.toFixed(2)}%`,
+    `Breadth ${tile.breadthPercent.toFixed(0)}%`,
+    `Adv ${tile.advances} · Dec ${tile.declines}`,
+    `RS #${tile.relativeStrengthRank}`,
+    tile.averageVolume != null
+      ? `Vol ${
+          tile.averageVolume >= 1e5
+            ? `${(tile.averageVolume / 1e5).toFixed(1)}L`
+            : tile.averageVolume.toLocaleString("en-IN")
+        }`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <button
       type="button"
+      title={tooltip}
       onClick={() => onSelect(tile.name)}
-      className={`group relative overflow-hidden rounded-lg border p-3 text-left transition-all duration-300 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+      className={`group relative flex h-[100px] w-full flex-col overflow-hidden rounded-md border px-2 py-1.5 text-left transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent xl:h-[105px] ${
         selected
           ? "border-accent ring-1 ring-accent/40"
-          : "border-surface-border-subtle"
+          : "border-white/10"
       }`}
       style={{ backgroundColor: bg }}
       aria-pressed={selected}
+      aria-label={`${tile.name}: ${change >= 0 ? "+" : ""}${change.toFixed(2)}%, breadth ${tile.breadthPercent.toFixed(0)}%`}
     >
-      <div className="relative">
-        <div className="flex items-start justify-between gap-2">
-          <p className="truncate text-[11px] font-semibold text-text-primary">
-            {tile.name}
-          </p>
-          {tile.moneyFlow === "inflow" ? (
-            <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-gain" />
-          ) : tile.moneyFlow === "outflow" ? (
-            <ArrowDownRight className="h-3.5 w-3.5 shrink-0 text-loss" />
-          ) : null}
-        </div>
-        <p className="mt-2 font-mono text-lg font-semibold tabular-nums text-text-primary">
-          {formatMetricDisplay(value, colorMetric)}
+      <div className="flex min-w-0 items-start justify-between gap-1">
+        <p className="truncate text-[10px] font-bold leading-tight tracking-tight text-text-primary">
+          {tile.name}
         </p>
-        <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px] text-text-primary/80">
-          <span>
-            Chg{" "}
-            <span className="font-mono">
-              {tile.dailyChangePercent >= 0 ? "+" : ""}
-              {tile.dailyChangePercent.toFixed(2)}%
-            </span>
-          </span>
-          <span className="text-right">
-            Brd{" "}
-            <span className="font-mono">{tile.breadthPercent.toFixed(0)}%</span>
-          </span>
-          <span>
-            Adv <span className="font-mono">{tile.advances}</span>
-          </span>
-          <span className="text-right">
-            Dec <span className="font-mono">{tile.declines}</span>
-          </span>
-          <span className="col-span-2 truncate">
-            RS #{tile.relativeStrengthRank}
-            {tile.averageVolume != null
-              ? ` · Vol ${tile.averageVolume >= 1e5 ? `${(tile.averageVolume / 1e5).toFixed(1)}L` : tile.averageVolume.toLocaleString("en-IN")}`
-              : ""}
-          </span>
-        </div>
+        {trendUp ? (
+          <ArrowUpRight className="h-3 w-3 shrink-0 text-gain" aria-hidden />
+        ) : trendDown ? (
+          <ArrowDownRight className="h-3 w-3 shrink-0 text-loss" aria-hidden />
+        ) : null}
       </div>
+
+      <p className="mt-auto font-mono text-base font-semibold leading-none tabular-nums text-text-primary sm:text-[17px]">
+        {change >= 0 ? "+" : ""}
+        {change.toFixed(2)}%
+      </p>
+
+      <p className="mt-1 text-[9px] font-medium tabular-nums text-text-primary/75">
+        Breadth {tile.breadthPercent.toFixed(0)}%
+      </p>
     </button>
   );
 }
@@ -123,22 +164,25 @@ export function MarketHeatmap({
   initial = null,
   defaultUniverse = "nse",
 }: MarketHeatmapProps) {
-  const [snapshot, setSnapshot] = useState<MarketHeatmapSnapshot | null>(
-    initial
-  );
   const [universe, setUniverse] = useState<HeatmapUniverseId>(
     initial?.universe ?? defaultUniverse
+  );
+  const [snapshot, setSnapshot] = useState<MarketHeatmapSnapshot | null>(
+    initial
   );
   const [colorMetric, setColorMetric] =
     useState<HeatmapColorMetric>("dailyChange");
   const [selectedSector, setSelectedSector] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [loading, setLoading] = useState(!initial);
+  /** Quiet background refresh — never blocks cached tiles. */
+  const [refreshing, setRefreshing] = useState(false);
+  /** True when painted tiles came from local/SSR cache ahead of a live response. */
+  const [showingCached, setShowingCached] = useState(false);
 
   const load = useCallback(async (nextUniverse: HeatmapUniverseId) => {
-    setLoading(true);
     setError(null);
+    setRefreshing(true);
     try {
       const res = await fetch(
         `/api/market/heatmap?universe=${nextUniverse}`,
@@ -148,32 +192,52 @@ export function MarketHeatmap({
       const json = (await res.json()) as {
         heatmap?: MarketHeatmapSnapshot;
       };
-      if (json.heatmap) {
+      if (json.heatmap && json.heatmap.sectors?.length) {
         setSnapshot(json.heatmap);
+        writeClientHeatmapCache(nextUniverse, json.heatmap);
         setSelectedSector(null);
-      } else {
+        setShowingCached(false);
+      } else if (!json.heatmap) {
         throw new Error("Empty heatmap payload");
       }
     } catch (err) {
+      // Keep cached tiles visible; only surface the error when nothing is painted.
       setError(err instanceof Error ? err.message : "Failed to load heatmap");
     } finally {
-      setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
+    // Cache-first paint, then silent background refresh. Never block on rebuild.
     if (!initial) {
-      void load(universe);
+      const cached = readClientHeatmapCache(universe);
+      if (cached) {
+        setSnapshot(cached);
+        setShowingCached(true);
+      }
+    } else {
+      setShowingCached(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only lazy load
+    void load(universe);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount + universe owned by handlers
   }, []);
 
   useEffect(() => {
-    setSnapshot(initial);
+    if (initial) {
+      setSnapshot(initial);
+      setShowingCached(false);
+      writeClientHeatmapCache(initial.universe, initial);
+    }
   }, [initial]);
 
   const onUniverseChange = (id: HeatmapUniverseId) => {
     setUniverse(id);
+    const cached = readClientHeatmapCache(id);
+    if (cached) {
+      setSnapshot(cached);
+      setShowingCached(true);
+    }
     startTransition(() => {
       void load(id);
     });
@@ -195,10 +259,27 @@ export function MarketHeatmap({
   }, [snapshot, selectedSector]);
 
   const visibleSectors = snapshot?.sectors ?? [];
+  const showError = Boolean(error) && visibleSectors.length === 0;
+
+  const headerBadge = (() => {
+    if (!snapshot) return null;
+    if (showingCached && refreshing) {
+      return (
+        <StatusBadge tone="info" size="sm">
+          Cached · Updating
+        </StatusBadge>
+      );
+    }
+    return (
+      <StatusBadge tone="accent" size="sm">
+        {snapshot.quoteCoveragePercent.toFixed(0)}% coverage
+      </StatusBadge>
+    );
+  })();
 
   return (
-    <div className={pending || loading ? "opacity-80 transition-opacity" : undefined}>
-      <Card padding="lg" accent="indigo">
+    <div>
+      <Card padding="sm" accent="indigo">
         <CardHeader
           title="Sector & Market Heatmap"
           subtitle={
@@ -207,40 +288,24 @@ export function MarketHeatmap({
               : "Entire NSE institutional heatmap"
           }
           icon={<LayoutGrid className="h-4 w-4 text-indigo-400" />}
-          timestamp={
-            snapshot ? `Updated ${formatTs(snapshot.lastUpdated)}` : undefined
-          }
-          badge={
-            loading ? (
-              <StatusBadge tone="info" size="sm">
-                <span className="inline-flex items-center gap-1">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  Scanning
-                </span>
-              </StatusBadge>
-            ) : snapshot ? (
-              <StatusBadge tone="accent" size="sm">
-                {snapshot.quoteCoveragePercent.toFixed(0)}% coverage
-              </StatusBadge>
-            ) : null
-          }
+          badge={headerBadge}
           action={
             <HeatmapControls
               universe={universe}
               colorMetric={colorMetric}
-              pending={pending || loading}
+              pending={pending && !snapshot}
               onUniverseChange={onUniverseChange}
               onColorMetricChange={setColorMetric}
             />
           }
         />
 
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <HeatmapLegend />
           {snapshot &&
           (snapshot.moneyInflowSectors.length > 0 ||
             snapshot.moneyOutflowSectors.length > 0) ? (
-            <div className="flex flex-wrap gap-2 text-[10px]">
+            <div className="flex flex-wrap gap-1.5 text-[10px]">
               {snapshot.moneyInflowSectors.slice(0, 3).map((name) => (
                 <StatusBadge key={`in-${name}`} tone="success" size="sm">
                   Inflow · {name}
@@ -255,10 +320,10 @@ export function MarketHeatmap({
           ) : null}
         </div>
 
-        {error ? (
+        {showError ? (
           <EmptyStatePanel
-            message={error}
-            source="Market Heatmap Engine"
+            message={error ?? "Unable to load sector heatmap"}
+            source="Market Heatmap"
             action={
               <button
                 type="button"
@@ -269,29 +334,20 @@ export function MarketHeatmap({
               </button>
             }
           />
-        ) : !snapshot && loading ? (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {Array.from({ length: 10 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-28 animate-pulse rounded-lg bg-surface-overlay"
-              />
-            ))}
-          </div>
         ) : visibleSectors.length === 0 ? (
           <EmptyStatePanel
-            message="Sector heatmap populates once live quotes resolve for the selected universe."
-            source="Market Heatmap Engine · company master sectors"
+            message="Sector heatmap will appear once market quotes are available."
+            source="Market Heatmap"
             icon={LayoutGrid}
           />
         ) : (
           <div
-            className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+            className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6"
             role="list"
             aria-label="Sector heatmap"
           >
             {visibleSectors.map((tile) => (
-              <div key={tile.name} role="listitem">
+              <div key={tile.name} role="listitem" className="min-w-0">
                 <SectorTileButton
                   tile={tile}
                   colorMetric={colorMetric}
@@ -304,17 +360,17 @@ export function MarketHeatmap({
           </div>
         )}
 
-        <CardFooter>
-          <span>Source · {snapshot?.dataSource ?? "Market Heatmap Engine"}</span>
+        <CardFooter className="!mt-3 !pt-2 !text-[10px]">
           <span>
-            Period sample · {(snapshot?.periodCoveragePercent ?? 0).toFixed(1)}%
-            · Click a sector to drill down
+            Last updated · {formatTs(snapshot?.lastUpdated)} · Source ·{" "}
+            {snapshot?.dataSource ?? "Market Heatmap"}
           </span>
+          <span>Click a sector to drill down</span>
         </CardFooter>
       </Card>
 
       {selectedTile ? (
-        <div className="mt-4">
+        <div className="mt-3">
           <SectorDrilldown
             sector={selectedTile}
             colorMetric={colorMetric}

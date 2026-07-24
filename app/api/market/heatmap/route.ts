@@ -3,7 +3,7 @@ import {
   HEATMAP_UNIVERSE_OPTIONS,
   type HeatmapUniverseId,
 } from "@/lib/market-heatmap";
-import { fetchMarketHeatmap } from "@/services/researchDashboardData";
+import { fetchMarketHeatmap } from "@/services/marketHeatmapData";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;

@@ -24,6 +24,7 @@
 *.pem
 /.data/
 /data/market-breadth/
+/data/market-heatmap/
 
 # debug
 npm-debug.log*
