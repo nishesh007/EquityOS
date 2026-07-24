@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { AppShell } from "@/components/layout/AppShell";
-import { ThemeProvider } from "@/src/design";
+// Deep import — avoid compiling the entire @/src/design barrel on every page.
+import { ThemeProvider } from "@/src/design/theme/ThemeProvider";
 import "@/styles/globals.css";
 
 const inter = Inter({

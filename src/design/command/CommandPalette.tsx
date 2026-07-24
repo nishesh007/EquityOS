@@ -36,7 +36,6 @@ import {
   Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { preloadCompanySearch, searchCompanies } from "@/lib/company-search";
 import { getCompanyRoute } from "@/lib/routes";
 import { toggleTheme } from "../theme/ThemeEngine";
 import {
@@ -58,6 +57,16 @@ import {
   type SearchResult,
 } from "./commandRegistry";
 import { emitUiEvent, onUiEvent, type UiEventName } from "./uiBus";
+
+type CompanySearchModule = typeof import("@/lib/company-search");
+
+let companySearchModule: CompanySearchModule | null = null;
+
+async function loadCompanySearch(): Promise<CompanySearchModule> {
+  if (companySearchModule) return companySearchModule;
+  companySearchModule = await import("@/lib/company-search");
+  return companySearchModule;
+}
 
 const DEBOUNCE_MS = 120;
 const VIRTUAL_THRESHOLD = 28;
@@ -107,16 +116,23 @@ export function CommandPalette() {
   const [scrollTop, setScrollTop] = useState(0);
 
   useEffect(() => {
-    registerSearchProvider("companies", (q) =>
-      searchCompanies(q, 8).map((company) => ({
-        id: `company-${company.symbol}`,
-        title: company.name,
-        subtitle: `${company.displaySymbol} · ${company.sector}`,
-        category: "company" as const,
-        href: getCompanyRoute(company.displaySymbol),
-        keywords: [company.displaySymbol, company.symbol, company.sector],
-      }))
-    );
+    let cancelled = false;
+    void loadCompanySearch().then(({ searchCompanies }) => {
+      if (cancelled) return;
+      registerSearchProvider("companies", (q) =>
+        searchCompanies(q, 8).map((company) => ({
+          id: `company-${company.symbol}`,
+          title: company.name,
+          subtitle: `${company.displaySymbol} · ${company.sector}`,
+          category: "company" as const,
+          href: getCompanyRoute(company.displaySymbol),
+          keywords: [company.displaySymbol, company.symbol, company.sector],
+        }))
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -125,7 +141,9 @@ export function CommandPalette() {
       setDebouncedQuery(typeof detail === "string" ? detail : "");
       setActiveIndex(0);
       setOpen(true);
-      preloadCompanySearch();
+      void loadCompanySearch().then(({ preloadCompanySearch }) => {
+        preloadCompanySearch();
+      });
     });
   }, []);
 

@@ -1,62 +1,114 @@
 /**
- * Central Market Data Orchestrator.
- * Aggregates existing dashboard services once; no new calculations or data transforms.
- * Summary widgets (Snapshot / Pulse / Intelligence) use lightweight dashboardContext —
- * never runTradingPipeline() or fetchMarketBreadth() on the render path.
- * Heatmap is resolved once as a shared snapshot and passed to MarketHeatmap as initial.
+ * Central Market Data Orchestrator — granular dashboard loaders.
+ * Page SSR must never await the full aggregate; each Suspense slot
+ * calls only the slice it needs.
  */
 
 import { cache } from "react";
 import { fetchUpcomingResults } from "@/services/marketData";
-import {
-  ensureOpportunityEngineState,
-  toSharedSnapshot,
-} from "@/services/opportunityEngine";
+import { getOpportunityEngineState } from "@/lib/opportunity-engine/store";
+import type { MarketIntelligenceSnapshot } from "@/lib/market-intelligence";
 import { selectRecommendationsWithFallback } from "@/lib/recommendations";
-import { dedupeInFlight } from "./cache";
-import { getDashboardContext } from "./dashboardContext";
-import { getSharedDashboardHeatmap } from "./heatmap";
+import type { SharedRecommendation } from "@/lib/recommendations";
+import { getCachedMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
+import {
+  getDashboardContext,
+  resolveCachedIntelligence,
+} from "./dashboardContext";
 import {
   memoizedFetchMarketNews,
   memoizedFetchPortfolioSummary,
   memoizedFetchWatchlist,
 } from "./memoizedReads";
 import type { DashboardMarketSnapshot } from "./types";
+import type {
+  MarketNews,
+  PortfolioSummary as DomainPortfolioSummary,
+  UpcomingResult,
+  WatchlistItem,
+} from "@/types";
 
-const DASHBOARD_SNAPSHOT_KEY = "dashboard-market-snapshot";
-
-/**
- * Recommendations for the dashboard — reuse persisted OE state + cached MI.
- * Does not await getMarketIntelligenceSnapshot() / trading pipeline.
- */
-async function loadDashboardRecommendations(
-  intelligence: DashboardMarketSnapshot["intelligence"]
-) {
-  const state = await ensureOpportunityEngineState();
-  return selectRecommendationsWithFallback(
-    state,
-    toSharedSnapshot(intelligence)
-  );
+function toSharedSnapshot(intelligence: MarketIntelligenceSnapshot | null) {
+  if (!intelligence) return undefined;
+  return {
+    regime: intelligence.regime.regime,
+    marketTrend: intelligence.context.marketTrend,
+    riskMode: intelligence.context.riskMode,
+    confidence: intelligence.confidence,
+  };
 }
 
 /**
- * Load and aggregate existing dashboard market services.
- * Lightweight dashboardContext supplies indices, pulse, cached breadth, and cached MI.
- * Heatmap runs once via shared snapshot; dashboard widgets reuse that object (no second engine).
- * Pure reads go through React cache() memoized wrappers; mutable results fetch is not memoized.
+ * Above-fold market strip — indices + pulse + cached breadth/MI only.
+ * Never runs trading pipeline, OE scan, heatmap, or portfolio engines.
+ */
+export const loadDashboardAboveFold = cache(async function loadDashboardAboveFold() {
+  return getDashboardContext();
+});
+
+/**
+ * Persisted OE recommendations — sync store + cached MI only.
+ * Never awaits OE scan, MI pipeline, portfolio, watchlist, or heatmap.
+ */
+export const loadDashboardRecommendations = cache(
+  async function loadDashboardRecommendations(): Promise<SharedRecommendation[]> {
+    const intelligence =
+      getCachedMarketIntelligenceSnapshot() ?? resolveCachedIntelligence();
+    return selectRecommendationsWithFallback(
+      getOpportunityEngineState(),
+      toSharedSnapshot(intelligence)
+    );
+  }
+);
+
+/** Portfolio holdings summary — isolated Suspense slice. */
+export const loadDashboardPortfolio = cache(
+  async function loadDashboardPortfolio(): Promise<DomainPortfolioSummary> {
+    return memoizedFetchPortfolioSummary();
+  }
+);
+
+/** Watchlist items — isolated Suspense slice. */
+export const loadDashboardWatchlist = cache(
+  async function loadDashboardWatchlist(): Promise<WatchlistItem[]> {
+    return memoizedFetchWatchlist();
+  }
+);
+
+/** Verified news feed — isolated Suspense slice. */
+export const loadDashboardNews = cache(
+  async function loadDashboardNews(): Promise<MarketNews[]> {
+    return memoizedFetchMarketNews();
+  }
+);
+
+/** Upcoming results calendar — isolated Suspense slice. */
+export const loadDashboardUpcomingResults = cache(
+  async function loadDashboardUpcomingResults(): Promise<UpcomingResult[]> {
+    return fetchUpcomingResults();
+  }
+);
+
+/**
+ * Full aggregate — retained for non-dashboard callers / diagnostics.
+ * Dashboard page must not await this on the critical SSR path.
  */
 async function loadDashboardMarketSnapshot(): Promise<DashboardMarketSnapshot> {
-  const dashboardContext = await getDashboardContext();
-
-  const [heatmap, portfolio, watchlist, recommendations, news, upcomingResults] =
-    await Promise.all([
-      getSharedDashboardHeatmap(),
-      memoizedFetchPortfolioSummary(),
-      memoizedFetchWatchlist(),
-      loadDashboardRecommendations(dashboardContext.intelligence),
-      memoizedFetchMarketNews(),
-      fetchUpcomingResults(),
-    ]);
+  const [
+    dashboardContext,
+    portfolio,
+    watchlist,
+    recommendations,
+    news,
+    upcomingResults,
+  ] = await Promise.all([
+    loadDashboardAboveFold(),
+    loadDashboardPortfolio(),
+    loadDashboardWatchlist(),
+    loadDashboardRecommendations(),
+    loadDashboardNews(),
+    loadDashboardUpcomingResults(),
+  ]);
 
   return {
     market: {
@@ -65,7 +117,7 @@ async function loadDashboardMarketSnapshot(): Promise<DashboardMarketSnapshot> {
     },
     context: dashboardContext.intelligence.context,
     breadth: dashboardContext.breadth,
-    heatmap,
+    heatmap: null,
     portfolio,
     watchlist: {
       items: watchlist,
@@ -80,12 +132,8 @@ async function loadDashboardMarketSnapshot(): Promise<DashboardMarketSnapshot> {
   };
 }
 
-/**
- * Dashboard entry point — central market data snapshot.
- * React cache() memoizes per RSC request; dedupeInFlight coalesces concurrent callers.
- */
 export const getDashboardMarketSnapshot = cache(
   function getDashboardMarketSnapshot(): Promise<DashboardMarketSnapshot> {
-    return dedupeInFlight(DASHBOARD_SNAPSHOT_KEY, loadDashboardMarketSnapshot);
+    return loadDashboardMarketSnapshot();
   }
 );

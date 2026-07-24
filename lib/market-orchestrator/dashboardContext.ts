@@ -56,7 +56,7 @@ export interface DashboardContext {
  * Does not run the trading pipeline or refresh market context.
  * React cache() ensures one resolution per dashboard RSC request.
  */
-const resolveCachedIntelligence = cache(
+export const resolveCachedIntelligence = cache(
   function resolveCachedIntelligence(): MarketIntelligenceSnapshot {
     const mi = getCachedMarketIntelligenceSnapshot();
     if (mi) return mi;

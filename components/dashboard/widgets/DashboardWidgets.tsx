@@ -13,7 +13,8 @@ import type {
   PortfolioSummary as PortfolioSummaryData,
   WatchlistItem,
 } from "@/types";
-import { SectionHeader, StatusBadge } from "@/src/design";
+import { SectionHeader } from "@/src/design/components/SectionHeader";
+import { StatusBadge } from "@/src/design/components/StatusBadge";
 import { Activity, Briefcase, Sparkles, Star } from "lucide-react";
 
 /** Indices + intelligence strip — presentation only. Eager (above-fold). */

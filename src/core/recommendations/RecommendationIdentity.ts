@@ -31,10 +31,13 @@ export function generateRecommendationId(
     throw new Error("Recommendation generated timestamp is invalid");
   }
 
+  // Compact ISO timestamp digits only (strip separators / designator).
   const compact = date
     .toISOString()
     .slice(0, 19)
-    .replace(/[-:T]/g, "");
+    .replaceAll("-", "")
+    .replaceAll(":", "")
+    .replaceAll("T", "");
   const day = compact.slice(0, 8);
   const time = compact.slice(8);
   const symbol = normalizeRecommendationIdentityPart(input.symbol);

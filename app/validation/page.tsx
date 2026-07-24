@@ -11,7 +11,8 @@ import { ValidationModulesTable } from "@/components/validation/ValidationModule
 import { fetchInstitutionalPlatformSnapshot } from "@/services/institutionalValidationData";
 import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
 import { fetchSharedRecommendationsFresh } from "@/services/opportunityEngine";
-import { KpiTile, PageContainer } from "@/src/design";
+import { KpiTile } from "@/src/design/widgets/KpiTile";
+import { PageContainer } from "@/src/design/components/PageContainer";
 import { ShieldCheck } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +23,12 @@ export const dynamic = "force-dynamic";
  * Read-only presentation of existing Sprint 9E/9F engine metrics.
  */
 export default async function ValidationPage() {
+  // Ensure deferred institutional registrars have completed before reading.
+  const { ensureInstitutionalPlatformRegistered } = await import(
+    "@/lib/dev/deferred-bootstrap"
+  );
+  await ensureInstitutionalPlatformRegistered();
+
   const [snapshot, marketIntelligence] = await Promise.all([
     fetchInstitutionalPlatformSnapshot(),
     getMarketIntelligenceSnapshot(),

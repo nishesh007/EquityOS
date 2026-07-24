@@ -1,44 +1,55 @@
+import { PersonalizedDashboard } from "@/components/dashboard/workspace";
 import {
-  PersonalizedDashboard,
-} from "@/components/dashboard/workspace";
-import {
-  AiOpportunitiesWidget,
-  MarketPulseWidget,
-  MarketSnapshotWidget,
-  PortfolioSummaryWidget,
-  WatchlistWidget,
-} from "@/components/dashboard/widgets/DashboardWidgets";
+  AiOpportunitiesSlot,
+  EarningsIntelligenceSlot,
+  MarketBreadthSlot,
+  MarketMoversSlot,
+  MarketNewsSlot,
+  MarketPulseSlot,
+  MarketSnapshotSlot,
+  PortfolioSummarySlot,
+  ResultsCalendarSlot,
+  WatchlistSlot,
+} from "@/components/dashboard/widgets/DashboardAsyncSlots";
 import {
   LazyAiAlertsCard,
   LazyComingSoonWidget,
-  LazyEarningsIntelligenceWidget,
-  LazyMarketBreadthWidget,
   LazyMarketHeatmap,
-  LazyMarketMoversWidget,
-  LazyMarketNewsWidget,
   LazyResearchSummaryCard,
-  LazyResultsCalendarWidget,
   LazyValidationCenterCard,
 } from "@/components/dashboard/widgets/LazyDashboardWidgets";
 import { WidgetSkeleton } from "@/components/dashboard/widgets/WidgetSkeleton";
-import { getDashboardMarketSnapshot } from "@/lib/market-orchestrator";
-import { PageContainer } from "@/src/design";
+import { PageContainer } from "@/src/design/components/PageContainer";
 import { LayoutDashboard } from "lucide-react";
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 
 /**
- * Dashboard shell — single consumer of the central market orchestrator.
- * Widgets receive typed slices only; they do not fetch shared dashboard context.
- * Market Snapshot / Pulse / Intelligence use lightweight dashboardContext
- * (no runTradingPipeline / fetchMarketBreadth on the render path).
- * MarketHeatmap receives snapshot.heatmap as initial so it skips the mount-time API scan.
+ * Dashboard shell — returns HTML immediately (no top-level data await).
  *
- * Above-fold critical widgets hydrate immediately; below-fold widgets load via
- * next/dynamic after the dashboard becomes interactive.
+ * Streaming rules:
+ * - Heatmap: client-only (initial=null), never SSR-blocked
+ * - AI opportunities / OE: persisted store read inside Suspense
+ * - Market Intelligence: cache-only via above-fold context
+ * - Portfolio / watchlist / news / results: isolated Suspense slices
+ * - Above-fold snapshot/pulse: Suspense with skeleton (shell still paints first)
  */
-export default async function DashboardPage() {
-  const snapshot = await getDashboardMarketSnapshot();
+function Slot({
+  label,
+  heightClass,
+  children,
+}: {
+  label: string;
+  heightClass: string;
+  children: ReactNode;
+}) {
+  return (
+    <Suspense fallback={<WidgetSkeleton label={label} className={heightClass} />}>
+      {children}
+    </Suspense>
+  );
+}
 
+export default function DashboardPage() {
   const header = (
     <header className="mb-6 animate-fade-in-up">
       <div className="flex items-center gap-3">
@@ -70,54 +81,43 @@ export default async function DashboardPage() {
         header={header}
         widgets={{
           "market-snapshot": (
-            <Suspense fallback={<WidgetSkeleton label="Market Snapshot" className="h-64" />}>
-              <MarketSnapshotWidget
-                indices={snapshot.market.indices}
-                marketIntelligence={snapshot.intelligence}
-                breadth={snapshot.breadth}
-              />
-            </Suspense>
+            <Slot label="Market Snapshot" heightClass="h-64">
+              <MarketSnapshotSlot />
+            </Slot>
           ),
           "market-pulse": (
-            <Suspense fallback={<WidgetSkeleton label="Market Pulse" className="h-56" />}>
-              <MarketPulseWidget
-                pulse={snapshot.market.pulse}
-                marketIntelligence={snapshot.intelligence}
-              />
-            </Suspense>
+            <Slot label="Market Pulse" heightClass="h-56">
+              <MarketPulseSlot />
+            </Slot>
           ),
           "market-heatmap": (
-            <LazyMarketHeatmap
-              initial={snapshot.heatmap}
-              defaultUniverse="nse"
-            />
+            <LazyMarketHeatmap initial={null} defaultUniverse="nse" />
           ),
           "market-breadth": (
-            <LazyMarketBreadthWidget breadth={snapshot.breadth} />
+            <Slot label="Market Breadth" heightClass="h-72">
+              <MarketBreadthSlot />
+            </Slot>
           ),
           "market-movers": (
-            <LazyMarketMoversWidget breadth={snapshot.breadth} />
+            <Slot label="Market Movers" heightClass="h-48">
+              <MarketMoversSlot />
+            </Slot>
           ),
           "ai-opportunities": (
-            <Suspense fallback={<WidgetSkeleton label="AI Opportunities" className="h-72" />}>
-              <AiOpportunitiesWidget
-                recommendations={snapshot.opportunities.recommendations}
-              />
-            </Suspense>
+            <Slot label="AI Opportunities" heightClass="h-72">
+              <AiOpportunitiesSlot />
+            </Slot>
           ),
           "ai-alerts": <LazyAiAlertsCard />,
           "portfolio-summary": (
-            <Suspense fallback={<WidgetSkeleton label="Portfolio" className="h-56" />}>
-              <PortfolioSummaryWidget portfolio={snapshot.portfolio} />
-            </Suspense>
+            <Slot label="Portfolio" heightClass="h-56">
+              <PortfolioSummarySlot />
+            </Slot>
           ),
           watchlist: (
-            <Suspense fallback={<WidgetSkeleton label="Watchlist" className="h-48" />}>
-              <WatchlistWidget
-                watchlist={snapshot.watchlist.items}
-                recommendations={snapshot.opportunities.recommendations}
-              />
-            </Suspense>
+            <Slot label="Watchlist" heightClass="h-48">
+              <WatchlistSlot />
+            </Slot>
           ),
           "portfolio-health": (
             <LazyComingSoonWidget
@@ -136,11 +136,19 @@ export default async function DashboardPage() {
             <LazyComingSoonWidget title="Economic Calendar" />
           ),
           "results-calendar": (
-            <LazyResultsCalendarWidget results={snapshot.upcomingResults} />
+            <Slot label="Results Calendar" heightClass="h-48">
+              <ResultsCalendarSlot />
+            </Slot>
           ),
-          "market-news": <LazyMarketNewsWidget news={snapshot.news} />,
+          "market-news": (
+            <Slot label="News" heightClass="h-48">
+              <MarketNewsSlot />
+            </Slot>
+          ),
           "earnings-intelligence": (
-            <LazyEarningsIntelligenceWidget results={snapshot.upcomingResults} />
+            <Slot label="Earnings" heightClass="h-40">
+              <EarningsIntelligenceSlot />
+            </Slot>
           ),
           "validation-center": <LazyValidationCenterCard />,
         }}

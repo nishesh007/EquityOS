@@ -6,6 +6,10 @@ const nextConfig: NextConfig = {
   // `next build` while a dev server is active can otherwise invalidate the
   // shared webpack manifests and produce ENOENT/_document.js runtime errors.
   distDir: process.env.NODE_ENV === "development" ? ".next-dev" : ".next",
+  // Tree-shake heavy icon / UI packages during DEV compile.
+  experimental: {
+    optimizePackageImports: ["lucide-react"],
+  },
 };
 
 export default nextConfig;

@@ -70,18 +70,37 @@ export function startOpportunityScheduler(): void {
   schedulerStarted = true;
   markSchedulerStarted();
 
-  void (async () => {
-    try {
-      const state = getOpportunityState();
-      if (!state.lastScannedAt) {
-        await runOpportunityScan(true);
-        recordSchedulerSuccess();
+  // Cold initial scan is expensive (full-universe OE). In development, delay
+  // it so first page compile/render wins. Production keeps a short deferral
+  // so the HTTP server can accept connections first. Behavior is unchanged:
+  // a scan still runs when state has never been scanned.
+  const initialScanDelayMs =
+    process.env.EQUITYOS_BOOTSTRAP_IMMEDIATE === "1"
+      ? 0
+      : process.env.NODE_ENV === "development"
+        ? 15_000
+        : 1_000;
+
+  const runInitialScan = () => {
+    void (async () => {
+      try {
+        const state = getOpportunityState();
+        if (!state.lastScannedAt) {
+          await runOpportunityScan(true);
+          recordSchedulerSuccess();
+        }
+      } catch (error) {
+        recordSchedulerFailure(error);
+        console.error("[OpportunityEngine] Initial scan failed:", error);
       }
-    } catch (error) {
-      recordSchedulerFailure(error);
-      console.error("[OpportunityEngine] Initial scan failed:", error);
-    }
-  })();
+    })();
+  };
+
+  if (initialScanDelayMs <= 0) {
+    runInitialScan();
+  } else {
+    setTimeout(runInitialScan, initialScanDelayMs);
+  }
 
   intervalHandle = setInterval(() => {
     void tickScan();

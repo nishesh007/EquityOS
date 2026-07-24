@@ -5,19 +5,32 @@ import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TopNav } from "@/components/layout/TopNav";
 import { onUiEvent } from "@/src/design/command/uiBus";
-import { TerminalExperience } from "@/src/design/command/TerminalExperience";
 import { Breadcrumbs } from "@/src/design/navigation/BreadcrumbTrail";
 import { PageTransition } from "@/src/design/navigation/PageTransition";
 import { StatusBar } from "@/src/design/navigation/StatusBar";
 import { matchShortcut } from "@/src/design/workspace/workspaceShortcuts";
-import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
+import { useEffect, useState, type ReactNode } from "react";
+
+/**
+ * Command palette / help / notifications — client-only, idle-deferred.
+ * Keeps root layout compile free of the TerminalExperience graph.
+ */
+const TerminalExperience = dynamic(
+  () =>
+    import("@/src/design/command/TerminalExperience").then(
+      (mod) => mod.TerminalExperience
+    ),
+  { ssr: false }
+);
 
 interface AppShellProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 export function AppShell({ children }: AppShellProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [terminalReady, setTerminalReady] = useState(false);
   const sidebarWidth = sidebarCollapsed ? "68px" : "240px";
 
   useEffect(() => {
@@ -51,6 +64,26 @@ export function AppShell({ children }: AppShellProps) {
     };
   }, []);
 
+  // Defer TerminalExperience chunk until after first paint / idle.
+  useEffect(() => {
+    let cancelled = false;
+    const enable = () => {
+      if (!cancelled) setTerminalReady(true);
+    };
+    const idle =
+      typeof window !== "undefined" && "requestIdleCallback" in window
+        ? window.requestIdleCallback(enable, { timeout: 1500 })
+        : null;
+    const timeout = window.setTimeout(enable, idle == null ? 0 : 1500);
+    return () => {
+      cancelled = true;
+      if (idle != null && "cancelIdleCallback" in window) {
+        window.cancelIdleCallback(idle);
+      }
+      window.clearTimeout(timeout);
+    };
+  }, []);
+
   return (
     <div className="min-h-screen">
       <Sidebar
@@ -68,8 +101,7 @@ export function AppShell({ children }: AppShellProps) {
             <PageTransition>{children}</PageTransition>
           </ErrorBoundary>
         </main>
-        {/* Sprint 10C.R7 — command palette, notifications, help, onboarding, FAB. */}
-        <TerminalExperience />
+        {terminalReady ? <TerminalExperience /> : null}
         <StatusBar sidebarWidth={sidebarWidth} />
       </AIWorkspaceProvider>
     </div>

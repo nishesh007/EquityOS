@@ -23,7 +23,7 @@ import {
   fetchWatchlistPlatformHealth,
   formatWatchlistPlatformSubtitle,
 } from "@/services/watchlistPlatform";
-import { PageContainer } from "@/src/design";
+import { PageContainer } from "@/src/design/components/PageContainer";
 import { SharedRecommendationPanel } from "@/components/recommendations";
 import { EmptyStatePanel } from "@/components/ui/EmptyStatePanel";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -55,12 +55,11 @@ export async function generateMetadata({ params }: CompanyPageProps) {
 
 export default async function CompanyPage({ params }: CompanyPageProps) {
   const { symbol } = await params;
-  // Warm OE state + shared Market Intelligence before sync recommendation
-  // selectors so company cards never diverge from Dashboard regime/context.
-  await Promise.all([
-    ensureOpportunityEngineState(),
-    getMarketIntelligenceSnapshot(),
-  ]);
+  // Warm OE (non-blocking scan) + kick MI refresh in the background.
+  // Do not await cold trading-pipeline MI — recommendations already read the
+  // cached snapshot via fetchRecommendationForSymbol.
+  await ensureOpportunityEngineState();
+  void getMarketIntelligenceSnapshot().catch(() => null);
   const strategyRecommendation = fetchRecommendationForSymbol(symbol);
   const [company, research, intelligence] = await Promise.all([
     fetchCompanyProfile(symbol),

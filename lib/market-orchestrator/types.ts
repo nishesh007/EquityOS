@@ -57,7 +57,8 @@ export interface DashboardMarketSnapshot {
   market: MarketSnapshot;
   context: MarketContext;
   breadth: MarketBreadth;
-  heatmap: MarketHeatmapData;
+  /** Null when deferred to client LazyMarketHeatmap fetch. */
+  heatmap: MarketHeatmapData | null;
   portfolio: PortfolioSummary;
   watchlist: WatchlistSummary;
   opportunities: OpportunitySummary;

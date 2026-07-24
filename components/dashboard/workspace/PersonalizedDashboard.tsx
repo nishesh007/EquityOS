@@ -1,7 +1,7 @@
 "use client";
 
 import { DashboardQuoteProvider } from "@/components/dashboard/DashboardQuoteProvider";
-import { WorkspaceDashboard } from "@/src/design";
+import { WorkspaceDashboard } from "@/src/design/workspace/WorkspaceDashboard";
 import type { ReactNode } from "react";
 import { QuickActionBar } from "./QuickActionBar";
 import { ScrollToTopButton } from "./ScrollToTopButton";

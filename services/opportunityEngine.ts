@@ -1,10 +1,9 @@
+import { getOpportunityEngineState } from "@/lib/opportunity-engine/store";
 import {
-  getOpportunityState,
-  runOpportunityScan,
   SCAN_INTERVAL_MS,
   type OpportunityEngineState,
   type ScanResult,
-} from "@/lib/opportunity-engine";
+} from "@/lib/opportunity-engine/types";
 import type { MarketIntelligenceSnapshot } from "@/lib/market-intelligence";
 import {
   selectRecommendationsWithFallback,
@@ -19,6 +18,10 @@ import {
 export interface OpportunityEngineBundle {
   state: OpportunityEngineState;
   marketIntelligence: MarketIntelligenceSnapshot;
+}
+
+function getOpportunityState(): OpportunityEngineState {
+  return getOpportunityEngineState();
 }
 
 /** Shared regime/context for fallback recommendations (never recalculates). */
@@ -96,10 +99,12 @@ export async function fetchOpportunityEngineBundle(): Promise<OpportunityEngineB
 /**
  * Force scan through Trading Pipeline → Eligibility → Opportunity Score.
  * marketIntelligence is refreshed with the same shared pipeline cache.
+ * Engine module is loaded on demand — keeps page compile graphs lighter.
  */
 export async function triggerOpportunityScan(): Promise<
   ScanResult & { marketIntelligence: MarketIntelligenceSnapshot }
 > {
+  const { runOpportunityScan } = await import("@/lib/opportunity-engine/engine");
   const result = await runOpportunityScan(true);
   // Prefer engine-persisted pipeline; refresh shared snapshot without double force
   // when the scan already warmed the trading pipeline cache.
@@ -151,5 +156,3 @@ export type {
   SchedulerMarketState,
   DataFreshnessLevel,
 } from "@/lib/opportunity-engine/scheduler-health";
-
-

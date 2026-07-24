@@ -2,14 +2,23 @@
 
 import { useCallback, useEffect, useMemo, useState, createContext, useContext } from "react";
 import { usePathname } from "next/navigation";
-import { AIResearchChat } from "@/components/ai/AIResearchChat";
-import { ResearchHistory } from "@/components/ai/ResearchHistory";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import type { Conversation } from "@/lib/ai/conversation";
 import type { ExplainTarget } from "@/lib/ai/explainEngine";
 import { buildExplainSeedPrompt } from "@/lib/ai/explainEngine";
 import { cn } from "@/lib/utils";
 import { Bot, History, Sparkles, X } from "lucide-react";
+import dynamic from "next/dynamic";
+
+/** Chat/history panels — only compiled/loaded when the workspace opens. */
+const AIResearchChat = dynamic(
+  () => import("@/components/ai/AIResearchChat").then((mod) => mod.AIResearchChat),
+  { ssr: false }
+);
+const ResearchHistory = dynamic(
+  () => import("@/components/ai/ResearchHistory").then((mod) => mod.ResearchHistory),
+  { ssr: false }
+);
 
 export interface AIWorkspaceRequest {
   prompt?: string;
