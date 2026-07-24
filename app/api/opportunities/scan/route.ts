@@ -1,16 +1,31 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import {
+  requestBackgroundOpportunityScan,
   triggerOpportunityScan,
   toSharedSnapshot,
 } from "@/services/opportunityEngine";
+import { getCachedMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
 import { getStrategyPlatformStatus } from "@/src/modules/strategies";
 import { selectRecommendationsWithFallback } from "@/lib/recommendations";
 
 /**
  * POST /api/opportunities/scan
- * Forces a scan through Trading Pipeline → Eligibility → Opportunity Score.
+ * - ?async=1 → accept and kick background scan (dashboard post-hydrate). Never awaits OE.
+ * - default → await scan (manual "Refresh Strategy Scan" button).
  */
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const asyncMode =
+    request.nextUrl.searchParams.get("async") === "1" ||
+    request.nextUrl.searchParams.get("background") === "1";
+
+  if (asyncMode) {
+    requestBackgroundOpportunityScan();
+    return NextResponse.json(
+      { accepted: true, mode: "async" },
+      { status: 202 }
+    );
+  }
+
   const result = await triggerOpportunityScan();
   const state = result.state;
 
@@ -39,5 +54,30 @@ export async function POST() {
     context: result.marketIntelligence.context,
     regime: result.marketIntelligence.regime,
     confidence: result.marketIntelligence.confidence,
+  });
+}
+
+/** Lightweight status without starting a scan. */
+export async function GET() {
+  const { peekOpportunityEngineState } = await import(
+    "@/services/opportunityEngine"
+  );
+  const { getSchedulerObservability } = await import(
+    "@/lib/opportunity-engine/scheduler-observability"
+  );
+  const state = peekOpportunityEngineState();
+  const mi = getCachedMarketIntelligenceSnapshot();
+  const recommendationCount = selectRecommendationsWithFallback(
+    state,
+    toSharedSnapshot(mi)
+  ).length;
+  const obs = getSchedulerObservability();
+  return NextResponse.json({
+    isScanning: state.isScanning,
+    isFrozen: state.isFrozen,
+    lastScannedAt: state.lastScannedAt,
+    scanCount: state.scanCount,
+    recommendationCount,
+    lastError: obs.lastError?.message ?? null,
   });
 }

@@ -16,6 +16,10 @@ import { formatVolume } from "@/lib/utils";
 import type { MarketMover } from "@/types";
 import { classifyMarketMood } from "./mood";
 import {
+  isParticipationCoverageSufficient,
+  MAX_TECHNICAL_FETCHES,
+} from "./participation";
+import {
   recordBreadthTrend,
   recordParticipationTrend,
 } from "./trend-store";
@@ -23,13 +27,22 @@ import type {
   BreadthUniverseId,
   MarketBreadthSnapshot,
   SectorBreadthRow,
+  TrendDirection,
 } from "./types";
 import { resolveBreadthUniverse } from "./universe";
 
 const QUOTE_CHUNK = 40;
-/** Cap OHLC technical fetches per scan (honest coverage % reported). */
-const MAX_TECHNICAL_FETCHES = 120;
 const TECHNICAL_CONCURRENCY = 6;
+
+const UNKNOWN_PARTICIPATION_TRENDS: {
+  aboveEma20Trend: TrendDirection;
+  aboveEma50Trend: TrendDirection;
+  aboveEma200Trend: TrendDirection;
+} = {
+  aboveEma20Trend: "unknown",
+  aboveEma50Trend: "unknown",
+  aboveEma200Trend: "unknown",
+};
 
 export interface BreadthEngineOptions {
   universe?: BreadthUniverseId;
@@ -361,10 +374,30 @@ export async function runMarketBreadthEngine(
     .sort((a, b) => (b.quote.volume ?? 0) - (a.quote.volume ?? 0))
     .map((row) => row.symbol);
 
-  const technicals = await computeTechnicals(technicalSymbols);
-  const aboveEma20Pct = pctOf(technicals.aboveEma20, technicals.sampleSize);
-  const aboveEma50Pct = pctOf(technicals.aboveEma50, technicals.sampleSize);
-  const aboveEma200Pct = pctOf(technicals.aboveEma200, technicals.sampleSize);
+  const technicalsRaw = await computeTechnicals(technicalSymbols);
+  const participationReady = isParticipationCoverageSufficient({
+    sampleSize: technicalsRaw.sampleSize,
+    universeSize: technicalSymbols.length,
+  });
+  // Never publish EMA participation from a partial technical scan.
+  const technicals = participationReady
+    ? technicalsRaw
+    : {
+        ...technicalsRaw,
+        aboveEma20: null,
+        aboveEma50: null,
+        aboveEma200: null,
+        averageRsi: null,
+      };
+  const aboveEma20Pct = participationReady
+    ? pctOf(technicals.aboveEma20, technicals.sampleSize)
+    : null;
+  const aboveEma50Pct = participationReady
+    ? pctOf(technicals.aboveEma50, technicals.sampleSize)
+    : null;
+  const aboveEma200Pct = participationReady
+    ? pctOf(technicals.aboveEma200, technicals.sampleSize)
+    : null;
 
   const emaParts = [aboveEma20Pct, aboveEma50Pct, aboveEma200Pct].filter(
     (v): v is number => v != null
@@ -413,11 +446,13 @@ export async function runMarketBreadthEngine(
     netAdvances
   );
 
-  const participationTrends = recordParticipationTrend(universeId, {
-    aboveEma20Pct,
-    aboveEma50Pct,
-    aboveEma200Pct,
-  });
+  const participationTrends = participationReady
+    ? recordParticipationTrend(universeId, {
+        aboveEma20Pct,
+        aboveEma50Pct,
+        aboveEma200Pct,
+      })
+    : UNKNOWN_PARTICIPATION_TRENDS;
 
   const marketStatus = getMarketStatus();
   const strongestSector = sectorBreadth[0]?.name ?? null;

@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import type { ComponentProps } from "react";
 import { WidgetSkeleton } from "@/components/dashboard/widgets/WidgetSkeleton";
 
 /**
@@ -21,12 +22,18 @@ export const LazyMarketHeatmap = dynamic(
   }
 );
 
-/** Market Internals + Sector Breadth + movers lists + 52-Week Extremes */
+/** Market Internals + movers lists + 52-Week Extremes (Sector Breadth on Markets only). */
 export const LazyMarketBreadthWidget = dynamic(
   () =>
-    import("@/components/dashboard/MarketBreadth").then(
-      (mod) => mod.MarketBreadth
-    ),
+    import("@/components/dashboard/MarketBreadth").then((mod) => {
+      function DashboardMarketBreadth(
+        props: ComponentProps<typeof mod.MarketBreadth>
+      ) {
+        return <mod.MarketBreadth {...props} showSectorBreadth={false} />;
+      }
+      DashboardMarketBreadth.displayName = "DashboardMarketBreadth";
+      return DashboardMarketBreadth;
+    }),
   {
     ssr: false,
     loading: () => (

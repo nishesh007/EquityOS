@@ -12,7 +12,6 @@ import {
 } from "@/lib/recommendations";
 import {
   getCachedMarketIntelligenceSnapshot,
-  getMarketIntelligenceSnapshot,
 } from "@/services/marketIntelligence";
 
 export interface OpportunityEngineBundle {
@@ -37,13 +36,29 @@ export function toSharedSnapshot(
   };
 }
 
+/**
+ * Read persisted OE store only — never starts a scan.
+ * Safe for SSR Suspense slots and dashboard first paint.
+ */
+export async function ensureOpportunityEngineState(): Promise<OpportunityEngineState> {
+  return getOpportunityState();
+}
+
+/** Sync store peek — dashboard SSR / Suspense loaders. */
+export function peekOpportunityEngineState(): OpportunityEngineState {
+  return getOpportunityState();
+}
+
 export async function fetchSharedRecommendationsFresh(
   limit?: number
 ): Promise<SharedRecommendation[]> {
-  const [state, marketIntelligence] = await Promise.all([
-    ensureOpportunityEngineState(),
-    getMarketIntelligenceSnapshot(),
-  ]);
+  const state = getOpportunityState();
+  // Cache-only MI — never run trading pipeline on recommendation reads.
+  const { resolveCachedIntelligence } = await import(
+    "@/lib/market-orchestrator/dashboardContext"
+  );
+  const marketIntelligence =
+    getCachedMarketIntelligenceSnapshot() ?? resolveCachedIntelligence();
   const recommendations = selectRecommendationsWithFallback(
     state,
     toSharedSnapshot(marketIntelligence)
@@ -87,66 +102,95 @@ export function fetchRecommendationsForSymbols(
 /**
  * Opportunity Engine + shared Market Context / Regime snapshot.
  * Context is computed once via marketIntelligence — never duplicated here.
+ * Does not start an OE scan or MI pipeline.
  */
 export async function fetchOpportunityEngineBundle(): Promise<OpportunityEngineBundle> {
-  const [state, marketIntelligence] = await Promise.all([
-    ensureOpportunityEngineState(),
-    getMarketIntelligenceSnapshot(),
-  ]);
+  const state = getOpportunityState();
+  const { resolveCachedIntelligence } = await import(
+    "@/lib/market-orchestrator/dashboardContext"
+  );
+  const marketIntelligence =
+    getCachedMarketIntelligenceSnapshot() ?? resolveCachedIntelligence();
   return { state, marketIntelligence };
 }
 
 /**
  * Force scan through Trading Pipeline → Eligibility → Opportunity Score.
- * marketIntelligence is refreshed with the same shared pipeline cache.
  * Engine module is loaded on demand — keeps page compile graphs lighter.
+ * Coalesces with any in-flight scan (force does not fork a second universe run).
  */
 export async function triggerOpportunityScan(): Promise<
   ScanResult & { marketIntelligence: MarketIntelligenceSnapshot }
 > {
   const { runOpportunityScan } = await import("@/lib/opportunity-engine/engine");
   const result = await runOpportunityScan(true);
-  // Prefer engine-persisted pipeline; refresh shared snapshot without double force
-  // when the scan already warmed the trading pipeline cache.
-  const marketIntelligence = await getMarketIntelligenceSnapshot({
-    forceRefresh: false,
-  });
+  const { resolveCachedIntelligence } = await import(
+    "@/lib/market-orchestrator/dashboardContext"
+  );
+  const marketIntelligence =
+    getCachedMarketIntelligenceSnapshot() ?? resolveCachedIntelligence();
   return { ...result, marketIntelligence };
 }
 
-let freshnessScan: Promise<OpportunityEngineState> | null = null;
+let backgroundScan: Promise<OpportunityEngineState> | null = null;
+let lastBackgroundScanRequestedAt = 0;
+const BACKGROUND_SCAN_DEBOUNCE_MS = 30_000;
 
 /**
- * Ensures consumers share one fresh scan instead of launching per-surface
- * Strategy Engine executions.
- *
- * Non-blocking for Dashboard / Watchlist / Portfolio (and other read paths):
- * always return the last persisted snapshot immediately. When stale or never
- * scanned, kick off a shared background refresh — never await runOpportunityScan
- * on the render path. Manual refresh still goes through triggerOpportunityScan.
+ * Post-hydration / idle kick — never await on SSR.
+ * At most one in-flight scan; debounced across remounts and duplicate page loads.
+ * Also starts the Continuous Engine scheduler (once) so intervals run only after
+ * a client has hydrated — never from process boot.
  */
-export async function ensureOpportunityEngineState(): Promise<OpportunityEngineState> {
+export function requestBackgroundOpportunityScan(options?: {
+  /** Ignore freshness window (manual refresh). Still coalesces in-flight. */
+  force?: boolean;
+}): void {
+  // Continuous Engine: start interval ticks only after first post-hydrate request.
+  void import("@/lib/opportunity-engine/scheduler")
+    .then(({ startOpportunityScheduler, isOpportunitySchedulerStarted }) => {
+      if (!isOpportunitySchedulerStarted()) {
+        startOpportunityScheduler();
+      }
+    })
+    .catch(() => undefined);
+
+  const now = Date.now();
+  if (
+    !options?.force &&
+    now - lastBackgroundScanRequestedAt < BACKGROUND_SCAN_DEBOUNCE_MS
+  ) {
+    return;
+  }
+
   const current = getOpportunityState();
+  if (current.isScanning) return;
+
   const lastScan = current.lastScannedAt
     ? Date.parse(current.lastScannedAt)
     : Number.NaN;
   const isFresh =
-    Number.isFinite(lastScan) &&
-    Date.now() - lastScan < SCAN_INTERVAL_MS;
-  if (isFresh) {
-    return current;
+    Number.isFinite(lastScan) && now - lastScan < SCAN_INTERVAL_MS;
+  if (!options?.force && isFresh && !categoriesAreEmpty(current)) {
+    return;
   }
 
-  if (!freshnessScan) {
-    freshnessScan = triggerOpportunityScan()
-      .then((result) => result.state)
-      .finally(() => {
-        freshnessScan = null;
-      });
-  }
+  if (backgroundScan) return;
 
-  // Persisted (or empty) snapshot — never block render on a full-universe scan.
-  return current;
+  lastBackgroundScanRequestedAt = now;
+  backgroundScan = triggerOpportunityScan()
+    .then((result) => result.state)
+    .catch((error) => {
+      console.warn("[OpportunityEngine] Background scan failed:", error);
+      return getOpportunityState();
+    })
+    .finally(() => {
+      backgroundScan = null;
+    });
+}
+
+function categoriesAreEmpty(state: OpportunityEngineState): boolean {
+  return Object.values(state.categories).every((list) => list.length === 0);
 }
 
 export { getSchedulerHealth } from "@/lib/opportunity-engine/scheduler-health";

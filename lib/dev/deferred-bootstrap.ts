@@ -26,7 +26,8 @@ function platformDelayMs(): number {
 /** Delay before opportunity scheduler starts (ms). */
 function schedulerDelayMs(): number {
   if (process.env.EQUITYOS_BOOTSTRAP_IMMEDIATE === "1") return 0;
-  return isDevelopmentRuntime() ? 3_000 : 0;
+  // Well after first paint / hydration — scheduler has no boot scan anyway.
+  return isDevelopmentRuntime() ? 20_000 : 5_000;
 }
 
 function schedule(fn: () => void, delayMs: number): void {
@@ -208,19 +209,8 @@ async function registerInstitutionalPlatform(): Promise<void> {
   console.info(
     `[EquityOS bootstrap] institutional platform ready in ${Date.now() - started}ms`
   );
-
-  // Warm NSE breadth (memory + previous-session disk) off the critical path
-  // so dashboard client hydrate hits stale-while-revalidate instead of cold scan.
-  void import("@/services/researchDashboardData")
-    .then(({ fetchMarketBreadth }) => fetchMarketBreadth("nse"))
-    .then((breadth) => {
-      console.info(
-        `[EquityOS bootstrap] breadth warm total=${breadth.totalStocks} advances=${breadth.advances}`
-      );
-    })
-    .catch((error) => {
-      console.warn("[EquityOS bootstrap] breadth warm skipped:", error);
-    });
+  // Breadth warm removed — client hydrate + SWR populate widgets without
+  // contending with first dashboard paint on the Node event loop.
 }
 
 /**

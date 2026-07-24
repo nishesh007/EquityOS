@@ -197,6 +197,49 @@ function toPriceHistoryKey(timeframe: TradingViewTimeframe): ChartTimeframe {
   return timeframe;
 }
 
+const TIMEFRAME_RANK: TradingViewTimeframe[] = [
+  "1D",
+  "1W",
+  "1M",
+  "3M",
+  "6M",
+  "1Y",
+  "5Y",
+];
+
+/** Nearest populated timeframe when the active tab has no bars. */
+function findNearestPopulatedTimeframe(
+  priceHistory: Record<ChartTimeframe, OhlcBar[]> | undefined,
+  preferred: TradingViewTimeframe
+): TradingViewTimeframe | null {
+  if (!priceHistory) return null;
+  if ((priceHistory[toPriceHistoryKey(preferred)] ?? []).length > 0) {
+    return preferred;
+  }
+
+  const preferredIdx = TIMEFRAME_RANK.indexOf(preferred);
+  for (let dist = 1; dist < TIMEFRAME_RANK.length; dist++) {
+    const left = TIMEFRAME_RANK[preferredIdx - dist];
+    const right = TIMEFRAME_RANK[preferredIdx + dist];
+    if (left && (priceHistory[toPriceHistoryKey(left)] ?? []).length > 0) {
+      return left;
+    }
+    if (right && (priceHistory[toPriceHistoryKey(right)] ?? []).length > 0) {
+      return right;
+    }
+  }
+  return null;
+}
+
+function hasAnyPriceHistory(
+  priceHistory: Record<ChartTimeframe, OhlcBar[]> | undefined
+): boolean {
+  if (!priceHistory) return false;
+  return TIMEFRAME_RANK.some(
+    (tf) => (priceHistory[toPriceHistoryKey(tf)] ?? []).length > 0
+  );
+}
+
 export function TradingViewChart({
   exchangeSymbol,
   companyName,
@@ -211,7 +254,16 @@ export function TradingViewChart({
   const containerId = `tv_${rawId.replace(/[^a-zA-Z0-9]/g, "")}`;
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const fallbackPoints = priceHistory?.[toPriceHistoryKey(timeframe)] ?? [];
+  const resolvedTimeframe = useMemo(() => {
+    return (
+      findNearestPopulatedTimeframe(priceHistory, timeframe) ?? timeframe
+    );
+  }, [priceHistory, timeframe]);
+
+  const usingFallbackTimeframe = resolvedTimeframe !== timeframe;
+  const fallbackPoints =
+    priceHistory?.[toPriceHistoryKey(resolvedTimeframe)] ?? [];
+  const anyHistory = hasAnyPriceHistory(priceHistory);
 
   useEffect(() => {
     let cancelled = false;
@@ -308,7 +360,7 @@ export function TradingViewChart({
       // enabled explicitly in environments where its third-party endpoints
       // are guaranteed to be reachable.
       if (!TRADINGVIEW_ENABLED) {
-        setStatus(fallbackPoints.length ? "fallback" : "error");
+        setStatus(fallbackPoints.length || anyHistory ? "fallback" : "error");
         return;
       }
 
@@ -337,13 +389,13 @@ export function TradingViewChart({
         if (!cancelled) {
           if (containerRef.current) containerRef.current.innerHTML = "";
           setActiveSymbol(null);
-          setStatus(fallbackPoints.length ? "fallback" : "error");
+          setStatus(fallbackPoints.length || anyHistory ? "fallback" : "error");
         }
       } catch {
         if (!cancelled) {
           if (containerRef.current) containerRef.current.innerHTML = "";
           setActiveSymbol(null);
-          setStatus(fallbackPoints.length ? "fallback" : "error");
+          setStatus(fallbackPoints.length || anyHistory ? "fallback" : "error");
         }
       }
     }
@@ -354,7 +406,7 @@ export function TradingViewChart({
       cancelled = true;
       if (currentContainer) currentContainer.innerHTML = "";
     };
-  }, [timeframe, exchangeSymbol, symbol, containerId, fallbackPoints.length]);
+  }, [timeframe, exchangeSymbol, symbol, containerId, fallbackPoints.length, anyHistory]);
 
   return (
     <Card padding="lg" className="animate-fade-in-up">
@@ -368,7 +420,7 @@ export function TradingViewChart({
         }
       />
 
-      <div className="mb-4">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         <TabBar
           tabs={TIMEFRAMES.map((tf) => ({ id: tf, label: tf }))}
           activeTab={timeframe}
@@ -376,13 +428,22 @@ export function TradingViewChart({
           size="sm"
           className="flex-wrap"
         />
+        {usingFallbackTimeframe && status === "fallback" ? (
+          <span
+            className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-300"
+            title={`${timeframe} history unavailable — showing ${resolvedTimeframe}`}
+          >
+            Showing {resolvedTimeframe}
+          </span>
+        ) : null}
       </div>
 
       <div className="relative h-[440px] w-full overflow-hidden rounded-lg border border-surface-border-subtle bg-surface">
         {status === "fallback" ? (
           <CustomCandlestickChart
             candles={fallbackPoints}
-            timeframe={timeframe}
+            timeframe={resolvedTimeframe}
+            requestedTimeframe={timeframe}
             symbol={symbol}
             liveQuote={liveQuote}
           />
@@ -407,7 +468,9 @@ export function TradingViewChart({
                   Chart unavailable
                 </p>
                 <p className="mt-1 text-xs text-text-muted">
-                  Historical data unavailable
+                  {anyHistory
+                    ? "Could not render chart for this symbol."
+                    : "No historical data is available for this symbol."}
                 </p>
               </div>
             )}
@@ -417,7 +480,9 @@ export function TradingViewChart({
 
       <p className="mt-3 text-[10px] text-text-faint">
         {status === "fallback"
-          ? "TradingView did not confirm NSE/BSE availability, so EquityOS is showing provider historical candles."
+          ? usingFallbackTimeframe
+            ? `${timeframe} candles unavailable — showing nearest populated timeframe (${resolvedTimeframe}).`
+            : "TradingView did not confirm NSE/BSE availability, so EquityOS is showing provider historical candles."
           : "Interactive charting powered by TradingView. Timeframes update the visible range in real time."}
       </p>
     </Card>
@@ -427,22 +492,25 @@ export function TradingViewChart({
 function CustomCandlestickChart({
   candles: providerCandles,
   timeframe,
+  requestedTimeframe,
   symbol,
   liveQuote,
 }: {
   candles: OhlcBar[];
   timeframe: TradingViewTimeframe;
+  requestedTimeframe: TradingViewTimeframe;
   symbol: string;
   liveQuote?: EnrichedQuote;
 }) {
   const candles = useMemo(() => providerCandles, [providerCandles]);
+  const showingFallback = requestedTimeframe !== timeframe;
 
   if (candles.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center text-center">
         <p className="text-sm font-medium text-text-secondary">Chart unavailable</p>
         <p className="mt-1 text-xs text-text-muted">
-          Historical data unavailable
+          No historical data is available for this symbol.
         </p>
       </div>
     );
@@ -473,13 +541,22 @@ function CustomCandlestickChart({
 
   return (
     <div className="relative h-full w-full bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.08),transparent_35%)] p-4">
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold text-text-primary">
-            EquityOS Candles · {timeframe}
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-xs font-semibold text-text-primary">
+              EquityOS Candles · {timeframe}
+            </p>
+            {showingFallback ? (
+              <span className="rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-amber-300">
+                {requestedTimeframe} unavailable
+              </span>
+            ) : null}
+          </div>
           <p className="text-[10px] text-text-muted">
-            Provider OHLC from historical data
+            {showingFallback
+              ? `Fallback from ${requestedTimeframe} → ${timeframe}`
+              : "Provider OHLC from historical data"}
           </p>
         </div>
         <QuoteDisplay

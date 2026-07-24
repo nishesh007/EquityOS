@@ -150,6 +150,25 @@ async function enrichMetricsRows(
   return { rows: enrichedRows, candlesBySymbol };
 }
 
+/** Session (1D) bars only for scalp strategy categories — avoids doubling OHLC cost for the full shortlist. */
+async function prefetchSessionCandles(
+  symbols: readonly string[]
+): Promise<Map<string, OhlcBar[]>> {
+  const unique = [...new Set(symbols.map((symbol) => symbol.toUpperCase()).filter(Boolean))];
+  const sessionCandlesBySymbol = new Map<string, OhlcBar[]>();
+  await mapWithConcurrency(unique, METRICS_CONCURRENCY, async (symbol) => {
+    const session = await getOhlcCandles(symbol, "1D");
+    sessionCandlesBySymbol.set(symbol, session.data);
+  });
+  return sessionCandlesBySymbol;
+}
+
+const SCALP_SESSION_CATEGORIES = new Set<OpportunityCategory>([
+  "intraday",
+  "mean_reversion",
+  "relative_volume",
+]);
+
 function toOpportunityCandidate(
   candidate: CategoryScanCandidate,
   rank: number,
@@ -376,13 +395,40 @@ async function executeScan(force = false): Promise<ScanResult> {
       );
       // Rank + gate through Trading Pipeline eligibility (no bypass).
       const pipelineCandidates = enrichCandidatesWithPipeline(rawCandidates, pipeline);
+      const sessionCandlesBySymbol = SCALP_SESSION_CATEGORIES.has(category)
+        ? await prefetchSessionCandles(
+            pipelineCandidates.map((candidate) => candidate.symbol)
+          )
+        : new Map<string, OhlcBar[]>();
       const candidates = pipelineCandidates.flatMap((candidate) => {
+          const dailyCandles =
+            enrichment.candlesBySymbol.get(candidate.symbol) ?? [];
+          const sessionCandles =
+            sessionCandlesBySymbol.get(candidate.symbol) ?? dailyCandles;
           const execution = executeOpportunityStrategies(
             candidate,
             pipeline,
-            enrichment.candlesBySymbol.get(candidate.symbol) ?? []
+            dailyCandles,
+            sessionCandles
           );
-          if (!execution.primary) return [];
+          if (!execution.primary) {
+            // Restore designed OE fallback path: keep pipeline-eligible
+            // scanner setups when Strategy Engine returns IGNORE / no primary.
+            // Does not invent trade levels — candidate already passed OE + pipeline gates.
+            if (candidate.pipelineEligible) {
+              return [
+                {
+                  ...candidate,
+                  rejectedReasons: [
+                    ...(candidate.rejectedReasons ?? []),
+                    ...execution.rejectedReasons,
+                    "Strategy Engine returned no actionable signal — retained for Opportunity Engine fallback.",
+                  ],
+                },
+              ];
+            }
+            return [];
+          }
           const frameworkBoost = execution.longTermRanking?.frameworkScore;
           const consensusBoost = execution.consensus?.combinedScore;
           const executedCandidate: OpportunityCandidate = {
@@ -459,7 +505,8 @@ async function executeScan(force = false): Promise<ScanResult> {
 }
 
 export async function runOpportunityScan(force = false): Promise<ScanResult> {
-  if (scanInFlight && !force) {
+  // Always coalesce — force must not fork a second full-universe scan while one runs.
+  if (scanInFlight) {
     return scanInFlight;
   }
 

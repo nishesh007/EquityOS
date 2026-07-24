@@ -70,38 +70,9 @@ export function startOpportunityScheduler(): void {
   schedulerStarted = true;
   markSchedulerStarted();
 
-  // Cold initial scan is expensive (full-universe OE). In development, delay
-  // it so first page compile/render wins. Production keeps a short deferral
-  // so the HTTP server can accept connections first. Behavior is unchanged:
-  // a scan still runs when state has never been scanned.
-  const initialScanDelayMs =
-    process.env.EQUITYOS_BOOTSTRAP_IMMEDIATE === "1"
-      ? 0
-      : process.env.NODE_ENV === "development"
-        ? 15_000
-        : 1_000;
-
-  const runInitialScan = () => {
-    void (async () => {
-      try {
-        const state = getOpportunityState();
-        if (!state.lastScannedAt) {
-          await runOpportunityScan(true);
-          recordSchedulerSuccess();
-        }
-      } catch (error) {
-        recordSchedulerFailure(error);
-        console.error("[OpportunityEngine] Initial scan failed:", error);
-      }
-    })();
-  };
-
-  if (initialScanDelayMs <= 0) {
-    runInitialScan();
-  } else {
-    setTimeout(runInitialScan, initialScanDelayMs);
-  }
-
+  // Cold initial scan is expensive and blocks the Node event loop.
+  // Dashboard / first paint must win — only interval + post-close ticks run
+  // from the scheduler. First scan is requested post-hydration by the client.
   intervalHandle = setInterval(() => {
     void tickScan();
   }, SCAN_INTERVAL_MS);
@@ -117,7 +88,7 @@ export function startOpportunityScheduler(): void {
   }, 60_000);
 
   console.info(
-    `[OpportunityEngine] Scheduler started (pid ${process.pid}) — scanning every ${SCAN_INTERVAL_MS / 60_000} minutes during market hours`
+    `[OpportunityEngine] Scheduler started (pid ${process.pid}) — no boot scan; interval ${SCAN_INTERVAL_MS / 60_000}m during market hours`
   );
 }
 

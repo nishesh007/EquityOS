@@ -13,6 +13,10 @@ import type {
   OpportunityEngineState,
 } from "@/lib/opportunity-engine/types";
 import {
+  planInstitutionalEntry,
+  planInstitutionalEntryFromRecommendation,
+} from "@/lib/recommendations/institutional-entry";
+import {
   buildFallbackRecommendation,
   buildSharedRecommendation,
   type SharedMarketSnapshot,
@@ -103,9 +107,22 @@ export interface InstitutionalStrategyPick {
   strategyId: InstitutionalStrategyId;
   company: string;
   symbol: string;
+  /** Live market price only — never used as the recommended entry. */
   currentPrice: number | null;
+  /**
+   * Recommended execution midpoint (Ideal Entry).
+   * Kept for compatibility; prefer entryMode / entryLow / entryHigh in UI.
+   */
   entry: number;
+  /** "zone" → Entry Zone · "ideal" → Ideal Entry */
+  entryMode: "zone" | "ideal";
+  entryLow: number | null;
+  entryHigh: number | null;
+  /** True when live price sits inside the ideal / zone mid tolerance. */
+  entryAtMarket: boolean;
   primaryTarget: number;
+  /** (target − ideal entry) / ideal × 100 */
+  expectedUpsidePercent: number | null;
   conviction: number;
   lastScanTime: string;
 }
@@ -179,13 +196,30 @@ function toPick(
   candidate: OpportunityCandidate,
   lastScanTime: string
 ): InstitutionalStrategyPick {
+  const currentPrice = resolveCurrentPrice(candidate);
+  const entryPlan = planInstitutionalEntry(
+    strategyId,
+    candidate,
+    recommendation,
+    currentPrice
+  );
+  const primaryTarget =
+    recommendation.targets[0] ??
+    candidate.target1 ??
+    entryPlan.ideal;
+
   return {
     strategyId,
     company: recommendation.company,
     symbol: recommendation.symbol,
-    currentPrice: resolveCurrentPrice(candidate),
-    entry: recommendation.entry,
-    primaryTarget: recommendation.targets[0] ?? recommendation.entry,
+    currentPrice,
+    entry: entryPlan.ideal,
+    entryMode: entryPlan.mode,
+    entryLow: entryPlan.low,
+    entryHigh: entryPlan.high,
+    entryAtMarket: entryPlan.atMarket,
+    primaryTarget,
+    expectedUpsidePercent: entryPlan.expectedUpsidePercent,
     conviction: Math.round(convictionOf(recommendation)),
     lastScanTime,
   };
@@ -236,7 +270,7 @@ export function selectInstitutionalStrategyDashboard(
   state: OpportunityEngineState,
   shared?: SharedMarketSnapshot
 ): InstitutionalStrategySlot[] {
-  const key = `${state.tradingDate}:${state.scanCount}:${state.lastScannedAt}:${shared?.regime ?? ""}`;
+  const key = `v2-entry:${state.tradingDate}:${state.scanCount}:${state.lastScannedAt}:${shared?.regime ?? ""}`;
   if (key === cachedDashboardKey) return cachedDashboardSlots;
 
   const lastScanTime = state.lastScannedAt ?? new Date(0).toISOString();
@@ -299,16 +333,29 @@ export function rankInstitutionalSlotsFromRecommendations(
       emoji: meta.emoji,
       href: meta.href,
       pick: best
-        ? {
-            strategyId,
-            company: best.company,
-            symbol: best.symbol,
-            currentPrice: null,
-            entry: best.entry,
-            primaryTarget: best.targets[0] ?? best.entry,
-            conviction: Math.round(convictionOf(best)),
-            lastScanTime: best.timestamp || scanTime,
-          }
+        ? (() => {
+            const entryPlan = planInstitutionalEntryFromRecommendation(
+              strategyId,
+              best,
+              null
+            );
+            const primaryTarget = best.targets[0] ?? entryPlan.ideal;
+            return {
+              strategyId,
+              company: best.company,
+              symbol: best.symbol,
+              currentPrice: null,
+              entry: entryPlan.ideal,
+              entryMode: entryPlan.mode,
+              entryLow: entryPlan.low,
+              entryHigh: entryPlan.high,
+              entryAtMarket: entryPlan.atMarket,
+              primaryTarget,
+              expectedUpsidePercent: entryPlan.expectedUpsidePercent,
+              conviction: Math.round(convictionOf(best)),
+              lastScanTime: best.timestamp || scanTime,
+            };
+          })()
         : null,
       lastScanTime: scanTime,
     } satisfies InstitutionalStrategySlot;

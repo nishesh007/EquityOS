@@ -54,6 +54,7 @@ export const loadDashboardRecommendations = cache(
   async function loadDashboardRecommendations(): Promise<SharedRecommendation[]> {
     const intelligence =
       getCachedMarketIntelligenceSnapshot() ?? resolveCachedIntelligence();
+    // Sync store peek — never ensure()/scan.
     return selectRecommendationsWithFallback(
       getOpportunityEngineState(),
       toSharedSnapshot(intelligence)

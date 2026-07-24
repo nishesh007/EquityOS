@@ -33,18 +33,68 @@ function formatPrice(value: number | null | undefined): string {
   })}`;
 }
 
-function formatScanTime(iso: string): string {
-  if (!iso || iso.startsWith("1970")) return "—";
+function formatScanTime(timestamp: string | null | undefined): string {
+  if (!timestamp || typeof timestamp !== "string" || timestamp.startsWith("1970")) {
+    return "Last scan: --";
+  }
   try {
-    return new Date(iso).toLocaleString("en-IN", {
+    const date = new Date(timestamp);
+    if (Number.isNaN(date.getTime())) return "Last scan: --";
+    const formatted = date.toLocaleString("en-IN", {
       day: "numeric",
       month: "short",
       hour: "2-digit",
       minute: "2-digit",
     });
+    return `Last scan: ${formatted}`;
   } catch {
-    return "—";
+    return "Last scan: --";
   }
+}
+
+function formatUpside(value: number | null | undefined): string | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${value.toFixed(1)}%`;
+}
+
+function EntryDisplay({
+  pick,
+  accentClass,
+}: {
+  pick: NonNullable<InstitutionalStrategySlot["pick"]>;
+  accentClass: string;
+}) {
+  const entryLow = pick.entryLow ?? null;
+  const entryHigh = pick.entryHigh ?? null;
+  const entryIdeal =
+    typeof pick.entry === "number" && Number.isFinite(pick.entry) && pick.entry > 0
+      ? pick.entry
+      : null;
+  const isZone =
+    pick.entryMode === "zone" &&
+    entryLow != null &&
+    entryHigh != null &&
+    entryLow > 0 &&
+    entryHigh > 0;
+
+  return (
+    <div>
+      <dt className="text-white/45">
+        {isZone ? "Entry Zone" : "Ideal Entry"}
+      </dt>
+      <dd className="font-medium text-white/90">
+        {isZone
+          ? `${formatPrice(entryLow)} – ${formatPrice(entryHigh)}`
+          : formatPrice(entryIdeal)}
+      </dd>
+      {pick.entryAtMarket ? (
+        <p className={`mt-0.5 text-[10px] ${accentClass}`}>
+          Market at ideal entry
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 interface StrategyTheme {
@@ -191,10 +241,15 @@ function ConvictionRing({
   );
 }
 
+const FALLBACK_THEME: StrategyTheme = THEMES.intraday;
+
 function StrategyCard({ slot }: { slot: InstitutionalStrategySlot }) {
-  const theme = THEMES[slot.strategyId];
+  const theme = THEMES[slot.strategyId] ?? FALLBACK_THEME;
   const meta = INSTITUTIONAL_STRATEGY_META[slot.strategyId];
   const pick = slot.pick;
+  const upsideLabel = pick
+    ? formatUpside(pick.expectedUpsidePercent ?? null)
+    : null;
 
   return (
     <article
@@ -207,7 +262,7 @@ function StrategyCard({ slot }: { slot: InstitutionalStrategySlot }) {
           </span>
           <div>
             <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-white/50">
-              {meta.emoji} Strategy
+              {meta?.emoji ?? ""} Strategy
             </p>
             <h3 className="text-sm font-semibold tracking-tight text-white">
               {slot.label}
@@ -241,16 +296,18 @@ function StrategyCard({ slot }: { slot: InstitutionalStrategySlot }) {
                   {formatPrice(pick.currentPrice)}
                 </dd>
               </div>
-              <div>
-                <dt className="text-white/45">Entry</dt>
-                <dd className="font-medium text-white/90">
-                  {formatPrice(pick.entry)}
-                </dd>
-              </div>
+              <EntryDisplay pick={pick} accentClass={theme.accent} />
               <div className="col-span-2">
-                <dt className="text-white/45">Primary Target</dt>
+                <div className="flex items-baseline justify-between gap-2">
+                  <dt className="text-white/45">Primary Target</dt>
+                  {upsideLabel ? (
+                    <span className={`text-[10px] font-semibold ${theme.accent}`}>
+                      Upside {upsideLabel}
+                    </span>
+                  ) : null}
+                </div>
                 <dd className="font-medium text-white/90">
-                  {formatPrice(pick.primaryTarget)}
+                  {formatPrice(pick.primaryTarget ?? null)}
                 </dd>
               </div>
             </dl>
@@ -264,7 +321,7 @@ function StrategyCard({ slot }: { slot: InstitutionalStrategySlot }) {
         )}
 
         <p className="mt-auto text-[10px] text-white/40">
-          Last scan · {formatScanTime(slot.lastScanTime)}
+          {formatScanTime(slot.lastScanTime)}
         </p>
       </div>
 

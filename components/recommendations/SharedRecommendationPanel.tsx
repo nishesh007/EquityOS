@@ -2,6 +2,10 @@
 
 import type { SharedRecommendation } from "@/lib/recommendations";
 import { CATEGORY_LABELS } from "@/lib/opportunity-engine/types";
+import {
+  opportunityPhaseCopy,
+  type OpportunityUiPhase,
+} from "@/lib/opportunity-engine/ui-phase";
 import { Badge } from "@/components/ui/Badge";
 import { CardFooter } from "@/components/ui/Card";
 import { ConfidenceBar } from "@/components/ui/ConfidenceBar";
@@ -289,12 +293,21 @@ function OpportunityExpanded({
 export function SharedRecommendationPanel({
   recommendations,
   title = "Strategy Engine Recommendations",
+  emptyTitle = "No active opportunities",
   emptyMessage = "No active recommendations — Strategy Engine and Opportunity Engine fallback both returned none for this surface.",
+  phase,
 }: {
   recommendations: readonly SharedRecommendation[];
   title?: string;
+  emptyTitle?: string;
   emptyMessage?: string;
+  /** When set, drives empty-state title/message (dashboard OE status machine). */
+  phase?: OpportunityUiPhase;
 }) {
+  const emptyCopy =
+    phase != null
+      ? opportunityPhaseCopy(phase)
+      : { title: emptyTitle, message: emptyMessage };
   const rows = useMemo<OpportunityGridRow[]>(
     () =>
       recommendations.map((rec) => ({
@@ -342,8 +355,8 @@ export function SharedRecommendationPanel({
       {recommendations.length === 0 ? (
         <div className="mt-4">
           <EmptyStatePanel
-            title="No active opportunities"
-            message={emptyMessage}
+            title={emptyCopy.title}
+            message={emptyCopy.message}
             source="Strategy Engine · Opportunity Engine fallback"
             icon={Crosshair}
             action={

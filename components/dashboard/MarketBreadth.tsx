@@ -20,12 +20,10 @@ import {
   BreadthDonut,
   KpiCard,
   ParticipationBar,
-  SectorHeatBar,
 } from "@/components/dashboard/market-internals/visuals";
 import {
   Activity,
   BarChart3,
-  Layers3,
   TrendingDown,
   TrendingUp,
   Gauge,
@@ -36,12 +34,25 @@ import {
   fetchClientMarketBreadth,
   isUsableMarketBreadth,
 } from "@/lib/market-orchestrator/client-breadth";
+import { isParticipationCoverageSufficient } from "@/lib/market-breadth/participation";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
+/** Markets page only — kept out of the dashboard chunk until requested. */
+const SectorBreadthPanel = dynamic(
+  () =>
+    import("@/components/dashboard/SectorBreadthPanel").then(
+      (mod) => mod.SectorBreadthPanel
+    ),
+  { ssr: false }
+);
+
 interface MarketBreadthProps {
   breadth: MarketBreadthType;
+  /** Dashboard omits Sector Breadth (engine + Markets page keep it). */
+  showSectorBreadth?: boolean;
 }
 
 interface MoverListProps {
@@ -366,20 +377,30 @@ function BreadthPanel({ breadth }: MarketBreadthProps) {
 
 function ParticipationPanel({ breadth }: MarketBreadthProps) {
   const sample = breadth.technicalSampleSize ?? 0;
+  const universeSize = breadth.quotedStocks || breadth.totalStocks || 0;
+  const publishable =
+    isParticipationCoverageSufficient({
+      sampleSize: sample,
+      universeSize,
+    }) &&
+    breadth.aboveEma20 != null &&
+    breadth.aboveEma50 != null &&
+    breadth.aboveEma200 != null;
+
   return (
     <Card padding="lg" accent="emerald" className="h-full">
       <CardHeader
         title="Participation"
         subtitle={
-          sample > 0
+          publishable
             ? `EMA trend sample · ${sample.toLocaleString("en-IN")} stocks · ${(breadth.technicalCoveragePercent ?? 0).toFixed(1)}% universe coverage`
-            : "EMA trend participation"
+            : "Waiting for sufficient technical coverage"
         }
         icon={<Shield className="h-4 w-4 text-emerald-400" />}
       />
-      {breadth.aboveEma20 == null ? (
+      {!publishable ? (
         <EmptyStatePanel
-          message="EMA participation populates after OHLC technicals resolve for the volume-ranked sample."
+          message="Calculating market participation..."
           source="Market Internals · EMA 20 / 50 / 200"
           icon={Shield}
         />
@@ -469,63 +490,6 @@ function StrengthPanel({ breadth }: MarketBreadthProps) {
           metricKey="avgDailyChange"
         />
       </div>
-    </Card>
-  );
-}
-
-function SectorBreadthPanel({ breadth }: MarketBreadthProps) {
-  const sectors = [...breadth.sectors].sort(
-    (a, b) => (b.breadth ?? 0) - (a.breadth ?? 0)
-  );
-  const strongest =
-    breadth.strongestSector ?? sectors[0]?.name ?? null;
-  const weakest =
-    breadth.weakestSector ??
-    (sectors.length > 0 ? sectors[sectors.length - 1]?.name : null);
-
-  return (
-    <Card padding="lg" accent="emerald" className="h-full">
-      <CardHeader
-        title="Sector Breadth"
-        subtitle="All NSE sectors · sorted by breadth %"
-        icon={<Layers3 className="h-4 w-4 text-emerald-400" />}
-        action={<MetricExplain metricKey="sectorBreadth" />}
-      />
-      {sectors.length === 0 ? (
-        <EmptyStatePanel
-          message="Sector breadth populates once live quotes resolve for the selected universe."
-          source="Company master sectors · Market Internals"
-          icon={Layers3}
-        />
-      ) : (
-        <>
-          <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <KpiCard
-              label="Strongest Sector"
-              value={strongest ?? "—"}
-              tone="text-gain"
-              metricKey="strongestSector"
-            />
-            <KpiCard
-              label="Weakest Sector"
-              value={weakest ?? "—"}
-              tone="text-loss"
-              metricKey="weakestSector"
-            />
-          </div>
-          <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
-            {sectors.map((sector) => (
-              <SectorHeatBar
-                key={sector.name}
-                name={sector.name}
-                advances={sector.advances ?? 0}
-                declines={sector.declines ?? 0}
-                breadth={sector.breadth}
-              />
-            ))}
-          </div>
-        </>
-      )}
     </Card>
   );
 }
@@ -688,7 +652,10 @@ function WeekHighLow({ breadth }: MarketBreadthProps) {
   );
 }
 
-export function MarketBreadth({ breadth: initial }: MarketBreadthProps) {
+export function MarketBreadth({
+  breadth: initial,
+  showSectorBreadth = true,
+}: MarketBreadthProps) {
   const router = useRouter();
   const [breadth, setBreadth] = useState(initial);
   const [pending, startTransition] = useTransition();
@@ -763,9 +730,11 @@ export function MarketBreadth({ breadth: initial }: MarketBreadthProps) {
         <MarketMoodPanel breadth={breadth} />
       </div>
 
-      <div className="mb-4">
-        <SectorBreadthPanel breadth={breadth} />
-      </div>
+      {showSectorBreadth ? (
+        <div className="mb-4">
+          <SectorBreadthPanel breadth={breadth} />
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MoverList

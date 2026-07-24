@@ -77,9 +77,96 @@ function unavailableQuoteResult(symbol: string, attempted: string[] = []): Quote
   };
 }
 
-function rejectMockQuote(symbol: string, result: QuoteResult): QuoteResult {
-  if (result.source !== "mock") return result;
-  return unavailableQuoteResult(symbol, result.attempted);
+function isUsableQuoteResult(result: QuoteResult | null | undefined): boolean {
+  return Boolean(
+    result &&
+      result.source !== "mock" &&
+      result.source !== "unavailable" &&
+      Number.isFinite(result.data.ltp) &&
+      result.data.ltp > 0
+  );
+}
+
+function readStaleQuoteResult(
+  symbol: string,
+  namespaces: Array<"quote" | "market-data" | "index">
+): QuoteResult | null {
+  const normalized = normalizeSymbol(symbol);
+  for (const namespace of namespaces) {
+    const key =
+      namespace === "index"
+        ? cacheKey("index", normalized.internal)
+        : cacheKey(namespace, normalized.internal);
+
+    if (namespace === "quote" || namespace === "index") {
+      const staleQuote = getStaleCachedSync<MarketDataResult>(key);
+      if (
+        staleQuote &&
+        staleQuote.source !== "mock" &&
+        staleQuote.source !== "unavailable" &&
+        Number.isFinite(staleQuote.data.ltp) &&
+        staleQuote.data.ltp > 0
+      ) {
+        return {
+          data: {
+            ...marketDataToLiveQuote(staleQuote.data),
+            source: "cached",
+          },
+          provider: staleQuote.provider,
+          source: "cached",
+          attempted: staleQuote.attempted ?? [],
+        };
+      }
+      continue;
+    }
+
+    const staleMarket = getStaleCachedSync<MarketDataResult>(key);
+    if (
+      staleMarket &&
+      staleMarket.source !== "mock" &&
+      staleMarket.source !== "unavailable" &&
+      Number.isFinite(staleMarket.data.ltp) &&
+      staleMarket.data.ltp > 0
+    ) {
+      return {
+        data: {
+          ...marketDataToLiveQuote(staleMarket.data),
+          source: "cached",
+        },
+        provider: staleMarket.provider,
+        source: "cached",
+        attempted: staleMarket.attempted ?? [],
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * Live miss / mock → prefer last successful cached quote.
+ * Never surface mock as a live price; only fall to unavailable when cache is empty.
+ */
+function preferCachedQuote(
+  symbol: string,
+  result: QuoteResult,
+  namespaces: Array<"quote" | "market-data" | "index"> = ["quote", "market-data"]
+): QuoteResult {
+  if (isUsableQuoteResult(result)) return result;
+
+  const cached = readStaleQuoteResult(symbol, namespaces);
+  if (cached) {
+    return {
+      ...cached,
+      attempted: [...result.attempted, "cache"],
+    };
+  }
+
+  if (result.source === "mock") {
+    return unavailableQuoteResult(symbol, result.attempted);
+  }
+  return result.source === "unavailable"
+    ? result
+    : unavailableQuoteResult(symbol, result.attempted);
 }
 
 class MarketDataServiceImpl {
@@ -102,7 +189,7 @@ class MarketDataServiceImpl {
       },
       () => fetchQuoteWithFailover(normalized.internal)
     );
-    return rejectMockQuote(normalized.internal, toQuoteResult(result));
+    return preferCachedQuote(normalized.internal, toQuoteResult(result));
   }
 
   /** Enriched quote with exchange, market status, and IST timestamps */
@@ -133,7 +220,10 @@ class MarketDataServiceImpl {
       },
       () => fetchIndexWithFailover(normalized)
     );
-    return rejectMockQuote(normalized, toQuoteResult(result));
+    return preferCachedQuote(normalized, toQuoteResult(result), [
+      "index",
+      "market-data",
+    ]);
   }
 
   /** Enriched index quote */

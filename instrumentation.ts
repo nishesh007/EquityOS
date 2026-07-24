@@ -13,13 +13,15 @@ export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
 
   const started = Date.now();
-  const { queueOpportunitySchedulerBootstrap, queueInstitutionalPlatformBootstrap } =
-    await import("@/lib/dev/deferred-bootstrap");
+  // Opportunity / Continuous Engine scheduler starts post-hydration via
+  // /api/opportunities/scan?async=1 — never from instrumentation boot.
+  const { queueInstitutionalPlatformBootstrap } = await import(
+    "@/lib/dev/deferred-bootstrap"
+  );
 
-  queueOpportunitySchedulerBootstrap();
   queueInstitutionalPlatformBootstrap();
 
   console.info(
-    `[EquityOS bootstrap] instrumentation queued in ${Date.now() - started}ms (deferred)`
+    `[EquityOS bootstrap] instrumentation queued in ${Date.now() - started}ms (deferred; OE scheduler deferred to hydration)`
   );
 }

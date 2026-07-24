@@ -26,6 +26,7 @@ import type { DarvasBoxStrategyInput } from "@/src/modules/strategies/darvasBox/
 import type { EMAPullbackStrategyInput } from "@/src/modules/strategies/emaPullback/EMAPullbackTypes";
 import type { FiftyTwoWeekHighStrategyInput } from "@/src/modules/strategies/fiftyTwoWeekHigh/FiftyTwoWeekHighTypes";
 import type { FlatBaseStrategyInput } from "@/src/modules/strategies/flatBase/FlatBaseTypes";
+import type { LiquiditySweepStrategyInput } from "@/src/modules/strategies/liquiditySweep/LiquiditySweepTypes";
 import type { RelativeStrengthLeadershipStrategyInput } from "@/src/modules/strategies/relativeStrengthLeadership/RelativeStrengthLeadershipTypes";
 import type { StageAnalysisStrategyInput } from "@/src/modules/strategies/stageAnalysis/StageAnalysisTypes";
 import {
@@ -37,7 +38,10 @@ import {
   type StrategySignal,
 } from "@/src/modules/strategies";
 import type { VCPStrategyInput } from "@/src/modules/strategies/vcp/VCPTypes";
+import type { VWAPMeanReversionStrategyInput } from "@/src/modules/strategies/vwapMeanReversion/VWAPMeanReversionTypes";
 import type { TradingPipelineResult } from "@/src/modules/tradingPipeline";
+import { isValidMarketHours } from "@/src/modules/strategies/vwapMeanReversion/VWAPMeanReversionUtils";
+import { DEFAULT_VWAP_MEAN_REVERSION_CONFIG } from "@/src/modules/strategies/vwapMeanReversion/VWAPMeanReversionConstants";
 
 export interface OpportunityStrategyExecution {
   primary: OpportunityStrategySignal | null;
@@ -120,6 +124,84 @@ function weeklyCandles(candles: ReturnType<typeof datedCandles>) {
   return weeks;
 }
 
+function sessionBarsForScalp(
+  sessionCandles: readonly OhlcBar[],
+  dailyCandles: readonly OhlcBar[]
+): readonly OhlcBar[] {
+  if (sessionCandles.length >= 8) return sessionCandles;
+  // Last trading days as a sparse session sample when 1D bars are unavailable.
+  return dailyCandles.slice(-40);
+}
+
+function computeSessionVwap(bars: readonly OhlcBar[]): number {
+  let pv = 0;
+  let vol = 0;
+  for (const bar of bars) {
+    const typical = (bar.high + bar.low + bar.close) / 3;
+    const volume = Math.max(0, bar.volume);
+    pv += typical * volume;
+    vol += volume;
+  }
+  if (vol > 0) return pv / vol;
+  const last = bars[bars.length - 1];
+  return last ? last.close : 0;
+}
+
+function swingAnchors(bars: readonly OhlcBar[]): {
+  recentSwingHigh: number | null;
+  recentSwingLow: number | null;
+} {
+  if (bars.length === 0) return { recentSwingHigh: null, recentSwingLow: null };
+  const window = bars.slice(-20);
+  return {
+    recentSwingHigh: Math.max(...window.map((bar) => bar.high)),
+    recentSwingLow: Math.min(...window.map((bar) => bar.low)),
+  };
+}
+
+function buildScalpSessionPayload(
+  candidate: OpportunityCandidate,
+  sessionCandles: readonly OhlcBar[],
+  dailyCandles: readonly OhlcBar[]
+) {
+  const bars = sessionBarsForScalp(sessionCandles, dailyCandles);
+  const dated = datedCandles(bars);
+  const vwap =
+    metric(candidate, "vwap") ??
+    candidate.quote?.vwap ??
+    computeSessionVwap(bars);
+  const anchors = swingAnchors(bars);
+  return {
+    candles5m: dated,
+    vwap,
+    atr: metric(candidate, "atr"),
+    relativeVolume: metric(candidate, "volume_ratio"),
+    averageVolume: metric(candidate, "avg_volume"),
+    rsi: metric(candidate, "rsi"),
+    recentSwingHigh: anchors.recentSwingHigh,
+    recentSwingLow: anchors.recentSwingLow,
+  };
+}
+
+/**
+ * Post-close OE scans must evaluate the last session — not wall-clock night
+ * hours — otherwise VWAP / liquidity scalp validators reject every candidate.
+ */
+function resolveExecutionTimestamp(
+  pipeline: TradingPipelineResult,
+  sessionCandles: readonly OhlcBar[],
+  dailyCandles: readonly OhlcBar[]
+): Date {
+  const bars = sessionBarsForScalp(sessionCandles, dailyCandles);
+  const lastBar = bars.length > 0 ? new Date(bars[bars.length - 1].timestamp) : null;
+  if (lastBar && Number.isFinite(lastBar.getTime())) {
+    if (!isValidMarketHours(pipeline.timestamp, DEFAULT_VWAP_MEAN_REVERSION_CONFIG)) {
+      return lastBar;
+    }
+  }
+  return pipeline.timestamp;
+}
+
 function buildSwingDailyCommon(
   candidate: OpportunityCandidate,
   base: StrategyMarketInput,
@@ -149,7 +231,8 @@ function buildSwingDailyCommon(
 function buildStrategyInput(
   strategyId: string,
   candidate: OpportunityCandidate,
-  candles: readonly OhlcBar[]
+  dailyCandles: readonly OhlcBar[],
+  sessionCandles: readonly OhlcBar[] = dailyCandles
 ): StrategyMarketInput | null {
   const base = baseInput(candidate);
 
@@ -160,10 +243,36 @@ function buildStrategyInput(
     return null;
   }
 
+  if (strategyId === "vwap-mean-reversion") {
+    const scalp = buildScalpSessionPayload(
+      candidate,
+      sessionCandles,
+      dailyCandles
+    );
+    if (scalp.candles5m.length < 8 || !(scalp.vwap > 0)) return null;
+    return strategyInput({
+      ...base,
+      vwapMeanReversion: scalp,
+    } satisfies VWAPMeanReversionStrategyInput);
+  }
+
+  if (strategyId === "liquidity-sweep") {
+    const scalp = buildScalpSessionPayload(
+      candidate,
+      sessionCandles,
+      dailyCandles
+    );
+    if (scalp.candles5m.length < 8 || !(scalp.vwap > 0)) return null;
+    return strategyInput({
+      ...base,
+      liquiditySweep: scalp,
+    } satisfies LiquiditySweepStrategyInput);
+  }
+
   const { daily, closes, common } = buildSwingDailyCommon(
     candidate,
     base,
-    candles
+    dailyCandles
   );
 
   if (strategyId === "vcp") {
@@ -333,7 +442,8 @@ function resolveSuiteIds(
 export function executeOpportunityStrategies(
   candidate: OpportunityCandidate,
   pipeline: TradingPipelineResult,
-  candles: readonly OhlcBar[]
+  dailyCandles: readonly OhlcBar[],
+  sessionCandles: readonly OhlcBar[] = dailyCandles
 ): OpportunityStrategyExecution {
   const strategyIds = resolveSuiteIds(candidate, pipeline);
   if (strategyIds.length === 0) {
@@ -351,17 +461,28 @@ export function executeOpportunityStrategies(
     };
   }
 
+  const executionTimestamp = resolveExecutionTimestamp(
+    pipeline,
+    sessionCandles,
+    dailyCandles
+  );
+
   const results: StrategyEngineResult[] = [];
   for (const strategyId of strategyIds) {
     // Skip empty candle payloads for technical Swing strategies.
     if (
       isSwingStrategyId(strategyId) &&
       strategyId !== "earnings-momentum" &&
-      candles.length < 30
+      dailyCandles.length < 30
     ) {
       continue;
     }
-    const input = buildStrategyInput(strategyId, candidate, candles);
+    const input = buildStrategyInput(
+      strategyId,
+      candidate,
+      dailyCandles,
+      sessionCandles
+    );
     if (!input) continue;
     const context: StrategyExecutionContext = {
       input,
@@ -376,7 +497,7 @@ export function executeOpportunityStrategies(
         reasons: candidate.eligibleReasons ?? [],
       },
       aiConfidence: candidate.aiConvictionScore,
-      timestamp: pipeline.timestamp,
+      timestamp: executionTimestamp,
     };
     results.push(getStrategyEngine().execute(strategyId, context));
   }
