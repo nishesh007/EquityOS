@@ -1,11 +1,19 @@
 import { SharedRecommendationPanel } from "@/components/recommendations";
+import { InstitutionalOpportunityDashboard } from "@/components/dashboard/institutional-opportunity/InstitutionalOpportunityDashboard";
 import { MarketOverviewCards } from "@/components/dashboard/MarketOverviewCards";
 import { MarketPulse } from "@/components/dashboard/MarketPulse";
 import { PortfolioSummary } from "@/components/dashboard/PortfolioSummary";
 import { Watchlist } from "@/components/dashboard/Watchlist";
 import { MarketIntelligenceStrip } from "@/components/market";
 import type { MarketIntelligenceSnapshot } from "@/lib/market-intelligence";
-import type { SharedRecommendation } from "@/lib/recommendations";
+import {
+  opportunityPhaseCopy,
+  type OpportunityUiPhase,
+} from "@/lib/opportunity-engine/ui-phase";
+import type {
+  InstitutionalStrategySlot,
+  SharedRecommendation,
+} from "@/lib/recommendations";
 import type {
   MarketBreadth as MarketBreadthData,
   MarketIndex,
@@ -65,24 +73,24 @@ export function MarketPulseWidget({
 }
 
 export function AiOpportunitiesWidget({
-  recommendations,
+  slots,
+  phase = "empty",
 }: {
-  recommendations: SharedRecommendation[];
+  slots: InstitutionalStrategySlot[];
+  phase?: OpportunityUiPhase;
 }) {
-  const limited = recommendations.slice(0, 8);
-  const highConviction = limited.filter(
-    (r) => r.conviction >= 70 || r.confidence >= 70
-  ).length;
+  const filled = slots.filter((slot) => slot.pick != null).length;
+  const phaseCopy = opportunityPhaseCopy(filled > 0 ? "available" : phase);
   const opportunitiesSummary =
-    limited.length === 0
-      ? "No active Strategy Engine recommendations in the latest scan."
-      : `${limited.length} active opportunities · ${highConviction} meet high-conviction criteria (conviction or confidence ≥ 70).`;
+    filled === 0
+      ? phaseCopy.summary
+      : `${filled} of 7 strategies show a high-conviction pick from the master market scan.`;
 
   return (
     <div className="space-y-5">
       <SectionHeader
-        title="AI Opportunities"
-        subtitle="Conviction-ranked ideas from the Strategy Engine"
+        title="Institutional Opportunity Dashboard"
+        subtitle="One market scan · seven strategy rankings · Strategy Engine"
         summary={opportunitiesSummary}
         accent="blue"
         icon={<Sparkles className="h-5 w-5" />}
@@ -92,10 +100,7 @@ export function AiOpportunitiesWidget({
           </StatusBadge>
         }
       />
-      <SharedRecommendationPanel
-        recommendations={limited}
-        title="Best Opportunities · Strategy Engine"
-      />
+      <InstitutionalOpportunityDashboard slots={slots} />
     </div>
   );
 }

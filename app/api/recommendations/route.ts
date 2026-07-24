@@ -11,13 +11,16 @@ import {
   wireReplayHistory,
   wireWorkspaceHistory,
 } from "@/src/core/recommendations";
-import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
 import { getStrategyPlatformStatus } from "@/src/modules/strategies";
-import { selectRecommendationsWithFallback } from "@/lib/recommendations";
+import { selectRecommendationsWithFallback, selectInstitutionalStrategyDashboard } from "@/lib/recommendations";
 import {
-  ensureOpportunityEngineState,
+  peekOpportunityEngineState,
   toSharedSnapshot,
 } from "@/services/opportunityEngine";
+import { getCachedMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
+import {
+  resolveCachedIntelligence,
+} from "@/lib/market-orchestrator/dashboardContext";
 
 const STATUSES = new Set<RecommendationRecordStatus>([
   "ACTIVE",
@@ -38,11 +41,13 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const state = await ensureOpportunityEngineState();
-  const [recommendations, marketIntelligence] = await Promise.all([
-    Promise.resolve(listRecommendationHistory(state, requestedStatus)),
-    getMarketIntelligenceSnapshot(),
-  ]);
+  // Store + cached MI only — never await OE scan or MI pipeline on this GET.
+  const state = peekOpportunityEngineState();
+  const marketIntelligence =
+    getCachedMarketIntelligenceSnapshot() ?? resolveCachedIntelligence();
+  const recommendations = requestedStatus
+    ? listRecommendationHistory(state, requestedStatus)
+    : [];
 
   const sharedRecommendations =
     !requestedStatus || requestedStatus === "ACTIVE"
@@ -52,9 +57,18 @@ export async function GET(request: NextRequest) {
         )
       : [];
 
+  const strategyDashboard =
+    !requestedStatus || requestedStatus === "ACTIVE"
+      ? selectInstitutionalStrategyDashboard(
+          state,
+          toSharedSnapshot(marketIntelligence)
+        )
+      : [];
+
   return NextResponse.json({
     recommendations: sharedRecommendations,
-    history: recommendations,
+    strategyDashboard,
+    history: requestedStatus ? recommendations : listRecommendationHistory(state),
     marketIntelligence,
     strategyPlatform: getStrategyPlatformStatus(),
     pipeline: state.pipeline ?? null,

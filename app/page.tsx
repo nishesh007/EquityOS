@@ -103,7 +103,7 @@ export default function DashboardPage() {
 
         {/* —— AI —— */}
         <DashboardWidget id="ai-opportunities">
-          <Slot label="AI Opportunities" heightClass="h-72">
+          <Slot label="Institutional Opportunities" heightClass="min-h-72">
             <AiOpportunitiesSlot />
           </Slot>
         </DashboardWidget>

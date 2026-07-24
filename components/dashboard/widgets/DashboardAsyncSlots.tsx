@@ -27,6 +27,15 @@ import {
   loadDashboardUpcomingResults,
   loadDashboardWatchlist,
 } from "@/lib/market-orchestrator/orchestrator";
+import { selectInstitutionalStrategyDashboard } from "@/lib/recommendations";
+import {
+  resolveCachedIntelligence,
+} from "@/lib/market-orchestrator/dashboardContext";
+import { getCachedMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
+import {
+  peekOpportunityEngineState,
+  toSharedSnapshot,
+} from "@/services/opportunityEngine";
 
 /** Above-fold: indices + pulse + cached MI/breadth only. */
 export async function MarketSnapshotSlot() {
@@ -51,16 +60,29 @@ export async function MarketPulseSlot() {
 }
 
 /**
- * OE: read persisted store for SSR shell, kick background refresh,
- * client hydrates via /api/recommendations when empty.
+ * OE: persisted store read only inside Suspense.
+ * Background Opportunity / Strategy scan starts post-hydration on the client —
+ * never from SSR (avoids Node event-loop "Waiting for shell").
  */
 export async function AiOpportunitiesSlot() {
-  // Fire-and-forget freshness — returns immediately; scan stays off SSR critical path.
-  void import("@/services/opportunityEngine").then((mod) =>
-    mod.ensureOpportunityEngineState()
+  const state = peekOpportunityEngineState();
+  const marketIntelligence =
+    getCachedMarketIntelligenceSnapshot() ?? resolveCachedIntelligence();
+  const slots = selectInstitutionalStrategyDashboard(
+    state,
+    toSharedSnapshot(marketIntelligence)
   );
-  const recommendations = await loadDashboardRecommendations();
-  return <HydratedAiOpportunities initial={recommendations} />;
+  return (
+    <HydratedAiOpportunities
+      initialSlots={slots}
+      initialStatus={{
+        isScanning: state.isScanning,
+        lastScannedAt: state.lastScannedAt,
+        scanCount: state.scanCount,
+        recommendationCount: slots.filter((slot) => slot.pick != null).length,
+      }}
+    />
+  );
 }
 
 export async function PortfolioSummarySlot() {
@@ -69,6 +91,7 @@ export async function PortfolioSummarySlot() {
 }
 
 export async function WatchlistSlot() {
+  // Recommendations come from the same request-memoized store peek as AI slot.
   const [watchlist, recommendations] = await Promise.all([
     loadDashboardWatchlist(),
     loadDashboardRecommendations(),
