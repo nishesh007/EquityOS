@@ -13,8 +13,11 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
+  Children,
+  isValidElement,
   type ReactNode,
 } from "react";
 import {
@@ -30,6 +33,10 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  isDashboardWidgetElement,
+  type DashboardWidgetProps,
+} from "@/components/dashboard/workspace/DashboardWidget";
 import { ContextMenu } from "../productivity/ContextMenu";
 import { recordActivity } from "../productivity/activityFeed";
 import {
@@ -92,16 +99,38 @@ const REGION_LABELS: Readonly<Record<WorkspaceRegion, string>> = Object.freeze({
 const RESIZE_STEP_PX = 120;
 
 export interface WorkspaceDashboardProps {
-  /** Rendered widget content keyed by registered widget id. */
-  widgets: Record<string, ReactNode>;
+  /**
+   * Layout-only host. Widget bodies arrive as DashboardWidget children
+   * (Flight children), not a Record prop — keeps chrome hydration light.
+   */
+  children?: ReactNode;
 }
 
 interface DragState {
   widgetId: string;
 }
 
-export function WorkspaceDashboard({ widgets }: WorkspaceDashboardProps) {
+/** Unwrap DashboardWidget markers into the id → content map DnD expects. */
+function collectWidgetsFromChildren(
+  children: ReactNode
+): Record<string, ReactNode> {
+  const map: Record<string, ReactNode> = {};
+  for (const child of Children.toArray(children)) {
+    if (!isValidElement(child) || !isDashboardWidgetElement(child)) continue;
+    const props = child.props as DashboardWidgetProps;
+    if (typeof props.id === "string" && props.id) {
+      map[props.id] = props.children;
+    }
+  }
+  return map;
+}
+
+export function WorkspaceDashboard({ children }: WorkspaceDashboardProps) {
   const router = useRouter();
+  const widgets = useMemo(
+    () => collectWidgetsFromChildren(children),
+    [children]
+  );
   const [workspace, setWorkspace] = useState<Workspace>(getDefaultWorkspace);
   const [profiles, setProfiles] = useState<Workspace[]>([]);
   const [hydrated, setHydrated] = useState(false);
