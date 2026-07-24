@@ -70,6 +70,69 @@ export async function getCached<T>(
   return promise;
 }
 
+/**
+ * Prefer fresh cache; if expired (or only seed), return immediately and
+ * refresh in the background. Awaits the fetcher only when nothing usable
+ * is in memory yet.
+ */
+export async function getCachedStaleWhileRevalidate<T>(
+  options: CacheOptions,
+  fetcher: () => Promise<T>,
+  isUsable: (value: T) => boolean = () => true
+): Promise<T> {
+  const ttl = options.ttlMs ?? DEFAULT_TTL_MS;
+  const existing = store.get(options.key) as CacheEntry<T> | undefined;
+  const fresh =
+    existing && existing.expiresAt > Date.now() ? existing.value : null;
+  if (fresh != null && isUsable(fresh)) {
+    return fresh;
+  }
+
+  const pending = inFlight.get(options.key) as Promise<T> | undefined;
+  const stale =
+    existing && isUsable(existing.value) ? existing.value : null;
+
+  const startRefresh = (): Promise<T> => {
+    if (pending) return pending;
+    const promise = fetcher()
+      .then((value) => {
+        store.set(options.key, {
+          value,
+          expiresAt: Date.now() + ttl,
+        });
+        inFlight.delete(options.key);
+        return value;
+      })
+      .catch((error: unknown) => {
+        inFlight.delete(options.key);
+        throw error;
+      });
+    inFlight.set(options.key, promise);
+    return promise;
+  };
+
+  if (stale != null) {
+    void startRefresh().catch(() => {
+      /* keep serving stale */
+    });
+    return stale;
+  }
+
+  return startRefresh();
+}
+
+/** Seed the in-memory cache (e.g. from a previous-session disk snapshot). */
+export function seedCache<T>(
+  key: string,
+  value: T,
+  ttlMs: number = DEFAULT_TTL_MS
+): void {
+  store.set(key, {
+    value,
+    expiresAt: Date.now() + ttlMs,
+  });
+}
+
 export function getCachedSync<T>(key: string): T | null {
   const existing = store.get(key);
   if (existing && existing.expiresAt > Date.now()) {

@@ -17,6 +17,10 @@ export {
 export { runMarketBreadthEngine } from "./engine";
 export { classifyMarketMood } from "./mood";
 export {
+  readLastBreadthSnapshot,
+  writeLastBreadthSnapshot,
+} from "./last-snapshot";
+export {
   getNifty50,
   getNifty100,
   getNifty200,

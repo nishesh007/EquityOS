@@ -208,6 +208,19 @@ async function registerInstitutionalPlatform(): Promise<void> {
   console.info(
     `[EquityOS bootstrap] institutional platform ready in ${Date.now() - started}ms`
   );
+
+  // Warm NSE breadth (memory + previous-session disk) off the critical path
+  // so dashboard client hydrate hits stale-while-revalidate instead of cold scan.
+  void import("@/services/researchDashboardData")
+    .then(({ fetchMarketBreadth }) => fetchMarketBreadth("nse"))
+    .then((breadth) => {
+      console.info(
+        `[EquityOS bootstrap] breadth warm total=${breadth.totalStocks} advances=${breadth.advances}`
+      );
+    })
+    .catch((error) => {
+      console.warn("[EquityOS bootstrap] breadth warm skipped:", error);
+    });
 }
 
 /**

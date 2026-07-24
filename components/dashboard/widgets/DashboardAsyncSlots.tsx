@@ -1,22 +1,23 @@
 /**
  * Async Server Component slots for the dashboard.
- * Each slot awaits only its own slice — Suspense streams HTML around them.
+ * Each slot awaits only its own lightweight slice — Suspense streams HTML.
+ * Expensive engines hydrate on the client (breadth / MI context / OE API).
  * Never import this module from Client Components.
  */
 
 import {
-  AiOpportunitiesWidget,
   MarketPulseWidget,
-  MarketSnapshotWidget,
   PortfolioSummaryWidget,
   WatchlistWidget,
 } from "@/components/dashboard/widgets/DashboardWidgets";
 import {
-  MarketMoversWidget,
   MarketNewsWidget,
   ResultsCalendarWidget,
   EarningsIntelligenceWidget,
 } from "@/components/dashboard/widgets/DeferredDashboardWidgets";
+import { HydratedAiOpportunities } from "@/components/dashboard/widgets/HydratedAiOpportunities";
+import { HydratedMarketMovers } from "@/components/dashboard/widgets/HydratedMarketMovers";
+import { HydratedMarketSnapshot } from "@/components/dashboard/widgets/HydratedMarketSnapshot";
 import { LazyMarketBreadthWidget } from "@/components/dashboard/widgets/LazyDashboardWidgets";
 import {
   loadDashboardAboveFold,
@@ -31,7 +32,7 @@ import {
 export async function MarketSnapshotSlot() {
   const ctx = await loadDashboardAboveFold();
   return (
-    <MarketSnapshotWidget
+    <HydratedMarketSnapshot
       indices={ctx.indices}
       marketIntelligence={ctx.intelligence}
       breadth={ctx.breadth}
@@ -49,10 +50,17 @@ export async function MarketPulseSlot() {
   );
 }
 
-/** OE recommendations from persisted state — no scan / no MI await. */
+/**
+ * OE: read persisted store for SSR shell, kick background refresh,
+ * client hydrates via /api/recommendations when empty.
+ */
 export async function AiOpportunitiesSlot() {
+  // Fire-and-forget freshness — returns immediately; scan stays off SSR critical path.
+  void import("@/services/opportunityEngine").then((mod) =>
+    mod.ensureOpportunityEngineState()
+  );
   const recommendations = await loadDashboardRecommendations();
-  return <AiOpportunitiesWidget recommendations={recommendations} />;
+  return <HydratedAiOpportunities initial={recommendations} />;
 }
 
 export async function PortfolioSummarySlot() {
@@ -70,15 +78,19 @@ export async function WatchlistSlot() {
   );
 }
 
-/** Cached breadth only — client widget, never runs breadth engine on SSR. */
+/**
+ * Cached breadth for first paint; MarketBreadth client-hydrates via
+ * /api/market/breadth when the cache miss left emptyMarketBreadth.
+ */
 export async function MarketBreadthSlot() {
   const ctx = await loadDashboardAboveFold();
   return <LazyMarketBreadthWidget breadth={ctx.breadth} />;
 }
 
+/** Movers share the same client breadth coalescer as Internals. */
 export async function MarketMoversSlot() {
   const ctx = await loadDashboardAboveFold();
-  return <MarketMoversWidget breadth={ctx.breadth} />;
+  return <HydratedMarketMovers initial={ctx.breadth} />;
 }
 
 export async function MarketNewsSlot() {

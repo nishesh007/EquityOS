@@ -31,6 +31,11 @@ import {
   Gauge,
   Shield,
 } from "lucide-react";
+import { WidgetSkeleton } from "@/components/dashboard/widgets/WidgetSkeleton";
+import {
+  fetchClientMarketBreadth,
+  isUsableMarketBreadth,
+} from "@/lib/market-orchestrator/client-breadth";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
@@ -61,6 +66,47 @@ function formatTs(iso?: string): string {
   } catch {
     return iso;
   }
+}
+
+/**
+ * Prefer engine mood; when coverage is too thin for multi-factor classification
+ * but we still have live A/D participation, show a provisional Neutral/Bullish/Bearish
+ * instead of "Insufficient Data".
+ */
+function resolveDisplayMood(breadth: MarketBreadthType): string {
+  const mood = breadth.marketMood ?? "Insufficient Data";
+  if (mood !== "Insufficient Data") return mood;
+
+  const quoted =
+    breadth.quotedStocks ??
+    breadth.advances + breadth.declines + breadth.unchanged;
+  if (quoted < 30) return "Insufficient Data";
+
+  const pct =
+    breadth.breadthPercent ??
+    (quoted > 0 ? (breadth.advances / quoted) * 100 : 50);
+  const netHighs = (breadth.newHighs ?? 0) - (breadth.newLows ?? 0);
+
+  if (pct >= 62 && netHighs >= 0) return "Bullish";
+  if (pct <= 38 && netHighs <= 0) return "Bearish";
+  return "Neutral";
+}
+
+function resolveMoodGauge(breadth: MarketBreadthType): number {
+  if (
+    breadth.moodGauge != null &&
+    breadth.marketMood &&
+    breadth.marketMood !== "Insufficient Data"
+  ) {
+    return breadth.moodGauge;
+  }
+  const quoted =
+    breadth.quotedStocks ??
+    breadth.advances + breadth.declines + breadth.unchanged;
+  if (quoted <= 0) return 50;
+  return Math.round(
+    breadth.breadthPercent ?? (breadth.advances / quoted) * 100
+  );
 }
 
 function asTrend(value?: TrendDirection): TrendDirection {
@@ -171,7 +217,7 @@ function InternalsSummary({
 }) {
   const universe = (breadth.universe ?? "nse") as BreadthUniverseId;
   const total = breadth.totalStocks ?? 0;
-  const mood = breadth.marketMood ?? "Insufficient Data";
+  const mood = resolveDisplayMood(breadth);
 
   return (
     <Card padding="lg" accent="emerald" className="h-full">
@@ -485,15 +531,22 @@ function SectorBreadthPanel({ breadth }: MarketBreadthProps) {
 }
 
 function MarketMoodPanel({ breadth }: MarketBreadthProps) {
-  const mood = breadth.marketMood ?? "Insufficient Data";
-  const gauge = breadth.moodGauge ?? 50;
+  const mood = resolveDisplayMood(breadth);
+  const gauge = resolveMoodGauge(breadth);
   const factors = breadth.moodFactors ?? [];
+  const provisional =
+    (breadth.marketMood ?? "Insufficient Data") === "Insufficient Data" &&
+    mood !== "Insufficient Data";
 
   return (
     <Card padding="lg" accent="emerald" className="h-full">
       <CardHeader
         title="Market Mood"
-        subtitle="Multi-factor internals regime"
+        subtitle={
+          provisional
+            ? "Provisional from live breadth participation"
+            : "Multi-factor internals regime"
+        }
         icon={<Gauge className="h-4 w-4 text-emerald-400" />}
         badge={
           <StatusBadge tone={statusToneFromLabel(mood)} size="sm">
@@ -533,7 +586,9 @@ function MarketMoodPanel({ breadth }: MarketBreadthProps) {
         </div>
       ) : (
         <p className="mt-3 text-[11px] text-text-muted">
-          Mood requires ≥35% quote coverage and multiple internals factors — never A/D alone.
+          {provisional
+            ? "Showing breadth-derived mood while multi-factor coverage catches up."
+            : "Mood requires ≥35% quote coverage and multiple internals factors — never A/D alone."}
         </p>
       )}
 
@@ -637,20 +692,42 @@ export function MarketBreadth({ breadth: initial }: MarketBreadthProps) {
   const router = useRouter();
   const [breadth, setBreadth] = useState(initial);
   const [pending, startTransition] = useTransition();
+  const [hydrating, setHydrating] = useState(
+    () => !isUsableMarketBreadth(initial)
+  );
 
   useEffect(() => {
     setBreadth(initial);
   }, [initial]);
 
+  // Mirror heatmap: when SSR only had empty/cache-miss breadth, hydrate once.
+  useEffect(() => {
+    if (isUsableMarketBreadth(initial)) {
+      setHydrating(false);
+      return;
+    }
+
+    let cancelled = false;
+    setHydrating(true);
+    void fetchClientMarketBreadth(initial.universe ?? "nse")
+      .then((next) => {
+        if (cancelled || !next) return;
+        setBreadth(next);
+      })
+      .finally(() => {
+        if (!cancelled) setHydrating(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initial]);
+
   const onUniverseChange = (id: BreadthUniverseId) => {
     startTransition(async () => {
       try {
-        const res = await fetch(`/api/market/breadth?universe=${id}`, {
-          cache: "no-store",
-        });
-        if (!res.ok) return;
-        const json = (await res.json()) as { breadth?: MarketBreadthType };
-        if (json.breadth) setBreadth(json.breadth);
+        const next = await fetchClientMarketBreadth(id, { force: true });
+        if (next) setBreadth(next);
         router.refresh();
       } catch {
         /* keep current snapshot */
@@ -658,13 +735,21 @@ export function MarketBreadth({ breadth: initial }: MarketBreadthProps) {
     });
   };
 
+  if (hydrating && !isUsableMarketBreadth(breadth)) {
+    return <WidgetSkeleton label="Market Internals" className="h-72" />;
+  }
+
   return (
-    <div className={pending ? "opacity-70 transition-opacity" : undefined}>
+    <div
+      className={
+        pending || hydrating ? "opacity-70 transition-opacity" : undefined
+      }
+    >
       <div className="mb-4">
         <InternalsSummary
           breadth={breadth}
           onUniverseChange={onUniverseChange}
-          pending={pending}
+          pending={pending || hydrating}
         />
       </div>
 

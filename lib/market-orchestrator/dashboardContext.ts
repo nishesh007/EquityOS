@@ -5,7 +5,14 @@
  */
 
 import { cache } from "react";
-import { cacheKey, getCachedSync, getStaleCachedSync } from "@/lib/cache";
+import {
+  cacheKey,
+  getCachedSync,
+  getStaleCachedSync,
+  seedCache,
+  CACHE_TTL,
+} from "@/lib/cache";
+import { readLastBreadthSnapshot } from "@/lib/market-breadth/last-snapshot";
 import {
   serializeContextRegimeSnapshot,
   serializePipelineSnapshot,
@@ -81,15 +88,36 @@ export const resolveCachedIntelligence = cache(
   }
 );
 
+function isUsableBreadth(breadth: MarketBreadth): boolean {
+  const movers =
+    (breadth.gainers?.length ?? 0) +
+    (breadth.losers?.length ?? 0) +
+    (breadth.mostActive?.length ?? 0);
+  const participation = breadth.advances + breadth.declines + breadth.unchanged;
+  return (
+    movers > 0 ||
+    participation > 0 ||
+    (breadth.sectors?.length ?? 0) > 0 ||
+    (breadth.totalStocks > 0 && (breadth.quotedStocks ?? 0) > 0)
+  );
+}
+
 /**
- * Peek TTL / stale breadth cache only. Never calls fetchMarketBreadth().
+ * Peek TTL / stale / previous-session breadth only. Never calls fetchMarketBreadth().
  */
 function resolveCachedBreadthSummary(): MarketBreadth {
-  return (
+  const mem =
     getCachedSync<MarketBreadth>(BREADTH_CACHE_KEY) ??
-    getStaleCachedSync<MarketBreadth>(BREADTH_CACHE_KEY) ??
-    emptyMarketBreadth
-  );
+    getStaleCachedSync<MarketBreadth>(BREADTH_CACHE_KEY);
+  if (mem && isUsableBreadth(mem)) return mem;
+
+  const disk = readLastBreadthSnapshot("nse");
+  if (disk && isUsableBreadth(disk)) {
+    seedCache(BREADTH_CACHE_KEY, disk, CACHE_TTL.FIFTEEN_MINUTES);
+    return disk;
+  }
+
+  return mem ?? emptyMarketBreadth;
 }
 
 async function loadDashboardContext(): Promise<DashboardContext> {

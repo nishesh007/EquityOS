@@ -136,7 +136,11 @@ export function MarketContextCard({
         />
         <Metric
           label="Sector Breadth"
-          value={String(Math.round(context.sectorBreadth))}
+          value={
+            Math.round(context.sectorBreadth) > 0
+              ? String(Math.round(context.sectorBreadth))
+              : "—"
+          }
         />
       </div>
 

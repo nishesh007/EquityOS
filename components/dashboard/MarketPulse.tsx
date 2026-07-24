@@ -23,7 +23,17 @@ import {
   Users,
   Waves,
 } from "lucide-react";
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import type { MarketContextView } from "@/lib/market-intelligence";
+import {
+  fetchClientMarketBreadth,
+  isUsableMarketBreadth,
+} from "@/lib/market-orchestrator/client-breadth";
+import {
+  derivePulseMetricsFromBreadth,
+  enrichContextFromBreadth,
+} from "@/lib/market-orchestrator/enrich-context-from-breadth";
+import type { MarketBreadth } from "@/types";
 
 interface MarketPulseProps {
   pulse: MarketPulseType;
@@ -98,7 +108,50 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
     flow.asOf !== "Unavailable" &&
     flow.asOf !== "Coming in Sprint 10D" &&
     (flow.fii !== 0 || flow.dii !== 0);
-  const context = marketIntelligence?.context ?? null;
+
+  const [liveContext, setLiveContext] = useState<MarketContextView | null>(
+    null
+  );
+  const [breadthOverlay, setBreadthOverlay] = useState<MarketBreadth | null>(
+    null
+  );
+  const seedContext = marketIntelligence?.context ?? null;
+  const needsMetricHydrate =
+    !seedContext ||
+    (seedContext.momentum ?? 0) === 0 ||
+    (seedContext.institutionalParticipation ?? 0) === 0 ||
+    (seedContext.advanceCount ?? 0) === 0;
+
+  useEffect(() => {
+    if (!needsMetricHydrate) return;
+    let cancelled = false;
+    void Promise.all([
+      fetch("/api/market/context", { cache: "no-store" })
+        .then(async (res) => {
+          if (!res.ok) return null;
+          return (await res.json()) as { context?: MarketContextView | null };
+        })
+        .catch(() => null),
+      fetchClientMarketBreadth("nse").catch(() => null),
+    ]).then(([json, breadth]) => {
+      if (cancelled) return;
+      if (json?.context) setLiveContext(json.context);
+      if (breadth && isUsableMarketBreadth(breadth)) {
+        setBreadthOverlay(breadth);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [needsMetricHydrate]);
+
+  const context = enrichContextFromBreadth(
+    liveContext ?? seedContext,
+    breadthOverlay
+  );
+  const derived = breadthOverlay
+    ? derivePulseMetricsFromBreadth(breadthOverlay)
+    : null;
   const initialQuotes = useMemo(() => {
     const map: Record<string, EnrichedQuote> = {};
     if (pulse.vixQuote) {
@@ -127,14 +180,22 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
   const breadthScore =
     pulse.breadthScore > 0
       ? pulse.breadthScore
-      : context
+      : context && context.breadthScore > 0
         ? Math.round(context.breadthScore)
-        : 0;
-  const momentum = context ? Math.round(context.momentum) : null;
+        : derived?.breadthScore ?? 0;
+  const momentumRaw = context ? Math.round(context.momentum) : null;
+  const momentum =
+    momentumRaw != null && momentumRaw > 0
+      ? momentumRaw
+      : derived?.momentum ?? null;
   const liquidity = context ? Math.round(context.liquidity) : null;
-  const participation = context
+  const participationRaw = context
     ? Math.round(context.institutionalParticipation)
     : null;
+  const participation =
+    participationRaw != null && participationRaw > 0
+      ? participationRaw
+      : derived?.participation ?? null;
   const volatility = context?.volatilityRegime ?? null;
 
   return (

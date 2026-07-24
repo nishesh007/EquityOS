@@ -13,7 +13,18 @@ import {
   type MarketHeatmapSnapshot,
 } from "@/lib/market-heatmap";
 import { marketDataService } from "@/lib/market-data";
-import { getCached, cacheKey, CACHE_TTL } from "@/lib/cache";
+import {
+  getCached,
+  getCachedStaleWhileRevalidate,
+  getStaleCachedSync,
+  seedCache,
+  cacheKey,
+  CACHE_TTL,
+} from "@/lib/cache";
+import {
+  readLastBreadthSnapshot,
+  writeLastBreadthSnapshot,
+} from "@/lib/market-breadth/last-snapshot";
 import {
   fetchPortfolioSummary,
   fetchWatchlist,
@@ -148,6 +159,20 @@ async function buildLiveMarketPulse(): Promise<MarketPulse> {
 
 export const marketPulse = buildMarketPulse();
 
+function isUsableBreadthSnapshot(breadth: MarketBreadth): boolean {
+  const movers =
+    (breadth.gainers?.length ?? 0) +
+    (breadth.losers?.length ?? 0) +
+    (breadth.mostActive?.length ?? 0);
+  const participation = breadth.advances + breadth.declines + breadth.unchanged;
+  return (
+    movers > 0 ||
+    participation > 0 ||
+    (breadth.sectors?.length ?? 0) > 0 ||
+    (breadth.totalStocks > 0 && (breadth.quotedStocks ?? 0) > 0)
+  );
+}
+
 export async function fetchMarketBreadth(
   universe: BreadthUniverseId = "nse"
 ): Promise<MarketBreadth> {
@@ -155,10 +180,30 @@ export async function fetchMarketBreadth(
     universe === "nse" || universe === "nifty500"
       ? CACHE_TTL.FIFTEEN_MINUTES
       : CACHE_TTL.DASHBOARD;
-  return getCached(
-    { key: cacheKey("market-breadth", universe), ttlMs: ttl },
-    () => buildLiveMarketBreadth(universe)
+  const key = cacheKey("market-breadth", universe);
+
+  // Cold process: seed memory from previous-session disk snapshot so
+  // dashboard hydrate never waits on a full universe scan.
+  if (!getStaleCachedSync<MarketBreadth>(key)) {
+    const disk = readLastBreadthSnapshot(universe);
+    if (disk && isUsableBreadthSnapshot(disk)) {
+      seedCache(key, disk, ttl);
+    }
+  }
+
+  const breadth = await getCachedStaleWhileRevalidate(
+    { key, ttlMs: ttl },
+    async () => {
+      const live = await buildLiveMarketBreadth(universe);
+      if (isUsableBreadthSnapshot(live)) {
+        writeLastBreadthSnapshot(universe, live);
+      }
+      return live;
+    },
+    isUsableBreadthSnapshot
   );
+
+  return breadth;
 }
 
 export async function fetchMarketPulse(): Promise<MarketPulse> {
