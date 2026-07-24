@@ -54,7 +54,7 @@ export function StatusBar({ sidebarWidth = "240px" }: { sidebarWidth?: string })
     <footer
       role="status"
       aria-label="Application status bar"
-      className="fixed bottom-0 right-0 z-20 flex h-7 items-center justify-between gap-4 border-t border-surface-border-subtle bg-surface/90 px-4 text-[11px] text-text-muted backdrop-blur-xl transition-[left] duration-300"
+      className="fixed bottom-0 right-0 z-20 flex h-7 items-center justify-between gap-4 border-t border-surface-border-subtle bg-surface/90 px-4 text-xs font-medium text-text-secondary backdrop-blur-xl transition-[left] duration-300"
       style={{ left: sidebarWidth }}
     >
       <div className="flex min-w-0 items-center gap-4">

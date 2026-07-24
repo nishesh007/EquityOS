@@ -93,12 +93,29 @@
     @apply bg-surface-raised/80 backdrop-blur-xl border border-surface-border-subtle shadow-card rounded-xl;
   }
 
+  /* Sprint 10C — calibrated institutional typography (compact + readable). */
   .data-label {
-    @apply text-xs font-medium uppercase tracking-wider text-text-muted;
+    @apply text-xs font-semibold uppercase tracking-[0.2px] text-text-primary/80;
   }
 
   .data-value {
-    @apply font-mono text-text-primary tabular-nums;
+    @apply font-sans text-[24px] font-bold leading-none tracking-tight text-text-primary tabular-nums sm:text-[26px];
+  }
+
+  .data-value-text {
+    @apply font-sans text-[18px] font-bold leading-tight tracking-tight text-text-primary sm:text-[20px];
+  }
+
+  .data-secondary {
+    @apply text-[13px] font-medium leading-snug text-text-secondary sm:text-[14px];
+  }
+
+  .data-timestamp {
+    @apply text-xs font-medium leading-snug text-text-secondary;
+  }
+
+  .data-icon {
+    @apply opacity-90;
   }
 
   /* Sprint 10C.1 — interactive press + focus helpers */
@@ -133,7 +150,7 @@
   }
 
   .institutional-table thead th {
-    @apply sticky top-0 z-10 border-b border-surface-border bg-surface-raised px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wider text-text-muted;
+    @apply sticky top-0 z-10 border-b border-surface-border bg-surface-raised px-3 py-2 text-left text-[12px] font-semibold uppercase tracking-[0.3px] text-text-primary/80;
   }
 
   .institutional-table tbody td {

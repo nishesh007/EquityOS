@@ -52,8 +52,8 @@ export function MetricCard({
         {icon ? (
           <span
             className={cn(
-              "transition-opacity group-hover:opacity-100",
-              tokens ? tokens.text : "text-text-faint group-hover:text-accent"
+              "data-icon transition-opacity group-hover:opacity-100",
+              tokens ? tokens.text : "text-text-secondary group-hover:text-accent"
             )}
           >
             {icon}
@@ -61,15 +61,13 @@ export function MetricCard({
         ) : null}
       </div>
       <div className="mt-2 flex items-baseline gap-2">
-        <span className="font-mono text-xl font-semibold tabular-nums text-text-primary sm:text-2xl">
-          {value}
-        </span>
+        <span className="data-value">{value}</span>
         {change !== undefined && (
           <MetricBadge value={change} label={changeLabel} />
         )}
       </div>
       {hint ? (
-        <p className="mt-1 text-[10px] text-text-muted sm:text-xs">{hint}</p>
+        <p className="data-secondary mt-1">{hint}</p>
       ) : null}
     </div>
   );

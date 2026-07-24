@@ -138,22 +138,22 @@ function SectorTileButton({
       aria-label={`${tile.name}: ${change >= 0 ? "+" : ""}${change.toFixed(2)}%, breadth ${tile.breadthPercent.toFixed(0)}%`}
     >
       <div className="flex min-w-0 items-start justify-between gap-1">
-        <p className="truncate text-[10px] font-bold leading-tight tracking-tight text-text-primary">
+        <p className="truncate text-[12px] font-bold leading-tight tracking-tight text-text-primary">
           {tile.name}
         </p>
         {trendUp ? (
-          <ArrowUpRight className="h-3 w-3 shrink-0 text-gain" aria-hidden />
+          <ArrowUpRight className="data-icon h-3 w-3 shrink-0 text-gain" aria-hidden />
         ) : trendDown ? (
-          <ArrowDownRight className="h-3 w-3 shrink-0 text-loss" aria-hidden />
+          <ArrowDownRight className="data-icon h-3 w-3 shrink-0 text-loss" aria-hidden />
         ) : null}
       </div>
 
-      <p className="mt-auto font-mono text-base font-semibold leading-none tabular-nums text-text-primary sm:text-[17px]">
+      <p className="mt-auto font-mono text-[20px] font-bold leading-none tabular-nums text-text-primary sm:text-[22px]">
         {change >= 0 ? "+" : ""}
         {change.toFixed(2)}%
       </p>
 
-      <p className="mt-1 text-[9px] font-medium tabular-nums text-text-primary/75">
+      <p className="mt-1 text-xs font-medium tabular-nums text-text-primary/80">
         Breadth {tile.breadthPercent.toFixed(0)}%
       </p>
     </button>
@@ -360,7 +360,7 @@ export function MarketHeatmap({
           </div>
         )}
 
-        <CardFooter className="!mt-3 !pt-2 !text-[10px]">
+        <CardFooter className="!mt-3 !pt-2">
           <span>
             Last updated · {formatTs(snapshot?.lastUpdated)} · Source ·{" "}
             {snapshot?.dataSource ?? "Market Heatmap"}

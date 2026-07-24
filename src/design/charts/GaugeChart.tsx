@@ -91,20 +91,20 @@ export function GaugeChart({
         <circle cx={cx} cy={cy} r={3.5} fill="rgb(var(--eos-color-text-primary))" />
       </svg>
       <div className="-mt-2 text-center">
-        <p className="font-mono text-xl font-semibold tabular-nums text-text-primary">
+        <p className="font-mono text-[24px] font-bold leading-none tabular-nums text-text-primary">
           {Math.round(render.value)}
         </p>
         {showBand && (
           <p
             className={cn(
-              "text-[11px] font-medium uppercase tracking-wider",
+              "mt-1 text-xs font-semibold uppercase tracking-[0.2px]",
               TONE_TEXT_CLASS[render.band.tone],
             )}
           >
             {render.band.label}
           </p>
         )}
-        {label && <p className="mt-0.5 text-[10px] text-text-muted">{label}</p>}
+        {label && <p className="data-secondary mt-1">{label}</p>}
       </div>
     </div>
   );

@@ -63,14 +63,14 @@ function PulseMetric({ label, children, detail, icon, tint }: PulseMetricProps) 
     >
       <div className="flex items-center justify-between">
         <p className="data-label">{label}</p>
-        <div className="opacity-70 transition-opacity group-hover:opacity-100">
+        <div className="data-icon transition-opacity group-hover:opacity-100">
           {icon}
         </div>
       </div>
-      <div className="mt-2.5 text-text-primary [&_.data-value]:text-2xl [&_.data-value]:font-semibold [&_.data-value]:tracking-tight">
+      <div className="mt-2.5 text-text-primary [&_.data-value]:text-[24px] [&_.data-value]:font-bold [&_.data-value]:leading-none [&_.data-value]:tracking-tight sm:[&_.data-value]:text-[26px]">
         {children}
       </div>
-      <div className="mt-1.5 text-[10px] leading-relaxed text-text-muted">
+      <div className="data-secondary mt-1.5 leading-relaxed">
         {detail}
       </div>
     </div>
@@ -206,7 +206,7 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
         subtitle="Live risk, positioning and participation snapshot"
         icon={<Activity className="h-4 w-4 text-emerald-400" />}
         badge={
-          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-400">
             {sessionLabel}
           </span>
         }
@@ -234,7 +234,7 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
           <div className="flex items-end gap-2">
             {vixAvailable ? (
               <>
-                <p className="data-value text-xl font-semibold font-mono tabular-nums">
+                <p className="data-value">
                   {vixQuote.price!.toFixed(2)}
                 </p>
                 <ChangeIndicator value={vixQuote.changePercent ?? 0} size="sm" />
@@ -283,7 +283,7 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
               : "Coming in Sprint 10D · data source pending"
           }
         >
-          <p className="data-value text-xl font-semibold">
+          <p className="data-value">
             {pulse.putCallRatio > 0
               ? pulse.putCallRatio
               : "Coming in Sprint 10D"}
@@ -316,7 +316,7 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
           }
         >
           <div className="flex items-center gap-3">
-            <p className="data-value text-xl font-semibold">
+            <p className="data-value">
               {breadthScore > 0 ? breadthScore : "Coming in Sprint 10D"}
             </p>
             {breadthScore > 0 ? (
@@ -340,7 +340,7 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
               : "Coming in Sprint 10D · data source pending"
           }
         >
-          <p className="data-value text-xl font-semibold">
+          <p className="data-value">
             {momentum != null ? momentum : "Coming in Sprint 10D"}
           </p>
         </PulseMetric>
@@ -370,7 +370,7 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
               : "Coming in Sprint 10D · data source pending"
           }
         >
-          <p className="data-value text-xl font-semibold">
+          <p className="data-value">
             {liquidity != null ? liquidity : "Coming in Sprint 10D"}
           </p>
         </PulseMetric>
@@ -385,7 +385,7 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
               : "Coming in Sprint 10D · data source pending"
           }
         >
-          <p className="data-value text-xl font-semibold">
+          <p className="data-value">
             {participation != null
               ? `${participation}%`
               : "Coming in Sprint 10D"}

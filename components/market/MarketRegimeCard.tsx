@@ -114,6 +114,12 @@ function confidenceTone(
   };
 }
 
+function isMostlyNumericValue(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  return /^[+\-−]?\d/.test(trimmed) && /[\d%]/.test(trimmed);
+}
+
 function MetricTile({
   label,
   value,
@@ -127,6 +133,7 @@ function MetricTile({
   icon: LucideIcon;
   tone: MetricTone;
 }) {
+  const numeric = isMostlyNumericValue(value);
   return (
     <div
       className={cn(
@@ -135,17 +142,24 @@ function MetricTile({
       )}
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-text-faint">
-          {label}
-        </p>
-        <Icon className={cn("h-3.5 w-3.5 shrink-0", tone.icon)} aria-hidden />
+        <p className="data-label">{label}</p>
+        <Icon
+          className={cn("data-icon h-3.5 w-3.5 shrink-0", tone.icon)}
+          aria-hidden
+        />
       </div>
-      <p className={cn("mt-1.5 text-sm font-semibold tracking-tight", tone.value)}>
+      <p
+        className={cn(
+          "mt-1.5 font-bold tracking-tight",
+          numeric
+            ? "text-[24px] leading-none sm:text-[26px]"
+            : "text-[18px] leading-tight sm:text-[20px]",
+          tone.value
+        )}
+      >
         {value}
       </p>
-      {detail ? (
-        <p className="mt-0.5 text-[10px] text-text-muted">{detail}</p>
-      ) : null}
+      {detail ? <p className="data-secondary mt-1">{detail}</p> : null}
     </div>
   );
 }
@@ -196,7 +210,7 @@ export function MarketRegimeCard({
         <StatusBadge tone={statusToneFromLabel(regime.regime)}>
           {regime.regime}
         </StatusBadge>
-        <p className="text-[10px] text-text-muted">
+        <p className="data-secondary">
           Confidence {Math.round(regime.confidence)} · {regime.confidenceGrade}
         </p>
       </div>
@@ -246,16 +260,16 @@ export function MarketRegimeCard({
           {visibleReasons.slice(0, 3).map((reason) => (
             <li
               key={reason}
-              className="flex items-start gap-1.5 text-[10px] text-text-muted"
+              className="data-secondary flex items-start gap-1.5"
             >
-              <Shield className="mt-0.5 h-3 w-3 shrink-0 text-accent" />
+              <Shield className="data-icon mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" />
               <span>{reason}</span>
             </li>
           ))}
         </ul>
       ) : null}
 
-      <p className="mt-2 text-[10px] text-text-faint">
+      <p className="data-timestamp mt-2">
         Last updated {formatUpdated(regime.timestamp)} IST
       </p>
     </Card>

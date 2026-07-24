@@ -54,7 +54,7 @@ export function MarketSessionIndicator({
     <div className={cn("flex flex-col items-end gap-0.5 text-right", className)}>
       <div
         className={cn(
-          "flex items-center gap-2 text-[10px] font-medium uppercase tracking-wider",
+          "flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3px]",
           tone.text
         )}
       >
@@ -71,7 +71,7 @@ export function MarketSessionIndicator({
         </span>
         {label}
       </div>
-      <p className="font-mono text-[10px] text-text-muted tabular-nums">
+      <p className="data-timestamp font-mono tabular-nums">
         {istTime ?? "—"}
       </p>
     </div>

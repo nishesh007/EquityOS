@@ -559,20 +559,20 @@ function MarketMoodPanel({ breadth }: MarketBreadthProps) {
       {(breadth.breadthTrend5d?.length || breadth.breadthTrend20d?.length) ? (
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           <div className="rounded-lg border border-surface-border-subtle px-3 py-2">
-            <p className="text-[10px] uppercase tracking-wider text-text-faint">
+            <p className="data-label">
               5-Day Breadth Trend
             </p>
-            <p className="mt-1 font-mono text-xs tabular-nums text-text-secondary">
+            <p className="data-secondary mt-1 font-mono tabular-nums">
               {(breadth.breadthTrend5d ?? [])
                 .map((p) => `${p.breadthPercent.toFixed(0)}%`)
                 .join(" → ") || "—"}
             </p>
           </div>
           <div className="rounded-lg border border-surface-border-subtle px-3 py-2">
-            <p className="text-[10px] uppercase tracking-wider text-text-faint">
+            <p className="data-label">
               20-Day Breadth Trend
             </p>
-            <p className="mt-1 font-mono text-xs tabular-nums text-text-secondary">
+            <p className="data-secondary mt-1 font-mono tabular-nums">
               {(breadth.breadthTrend20d ?? [])
                 .map((p) => `${p.breadthPercent.toFixed(0)}%`)
                 .join(" → ") || "Building…"}
@@ -609,7 +609,7 @@ function WeekHighLow({ breadth }: MarketBreadthProps) {
       ) : (
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-gain">
+            <p className="data-label mb-2 text-gain">
               Near 52W high
             </p>
             <div className="space-y-2">
@@ -628,7 +628,7 @@ function WeekHighLow({ breadth }: MarketBreadthProps) {
             </div>
           </div>
           <div className="border-l border-surface-border-subtle pl-4">
-            <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-loss">
+            <p className="data-label mb-2 text-loss">
               Near 52W low
             </p>
             <div className="space-y-2">

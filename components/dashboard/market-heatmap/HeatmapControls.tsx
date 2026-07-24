@@ -24,12 +24,12 @@ export function HeatmapControls({
 }: HeatmapControlsProps) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <label className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-text-faint">
+      <label className="data-label flex items-center gap-1.5">
         Universe
         <select
           aria-label="Heatmap universe"
           disabled={pending}
-          className="rounded-md border border-surface-border bg-surface-overlay px-1.5 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="rounded-md border border-surface-border bg-surface-overlay px-2 py-1 text-xs font-semibold normal-case tracking-normal text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           value={universe}
           onChange={(event) =>
             onUniverseChange(event.target.value as HeatmapUniverseId)
@@ -42,11 +42,11 @@ export function HeatmapControls({
           ))}
         </select>
       </label>
-      <label className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-text-faint">
+      <label className="data-label flex items-center gap-1.5">
         Color by
         <select
           aria-label="Heatmap color metric"
-          className="rounded-md border border-surface-border bg-surface-overlay px-1.5 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="rounded-md border border-surface-border bg-surface-overlay px-2 py-1 text-xs font-semibold normal-case tracking-normal text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           value={colorMetric}
           onChange={(event) =>
             onColorMetricChange(event.target.value as HeatmapColorMetric)

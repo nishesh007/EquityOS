@@ -51,7 +51,7 @@ export function StatusIndicator({
       {label && (
         <span
           className={cn(
-            "text-[10px] font-medium uppercase tracking-wider",
+            "text-xs font-semibold uppercase tracking-[0.3px]",
             STATE_TEXT[state],
           )}
         >

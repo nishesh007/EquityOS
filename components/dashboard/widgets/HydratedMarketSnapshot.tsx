@@ -11,7 +11,7 @@ import {
   fetchClientMarketBreadth,
   isUsableMarketBreadth,
 } from "@/lib/market-orchestrator/client-breadth";
-import { enrichContextFromBreadth } from "@/lib/market-orchestrator/enrich-context-from-breadth";
+import { enrichSnapshotFromBreadth } from "@/lib/market-orchestrator/enrich-context-from-breadth";
 import type { MarketBreadth, MarketIndex } from "@/types";
 import { useEffect, useMemo, useState } from "react";
 
@@ -43,17 +43,7 @@ export function HydratedMarketSnapshot({
   }, [initialBreadth]);
 
   const snapshot = useMemo((): MarketIntelligenceSnapshot => {
-    const enriched = enrichContextFromBreadth(
-      marketIntelligence.context,
-      breadth
-    );
-    if (!enriched || enriched === marketIntelligence.context) {
-      return marketIntelligence;
-    }
-    return {
-      ...marketIntelligence,
-      context: enriched,
-    };
+    return enrichSnapshotFromBreadth(marketIntelligence, breadth);
   }, [marketIntelligence, breadth]);
 
   return (

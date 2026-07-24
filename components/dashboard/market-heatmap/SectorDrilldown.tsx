@@ -41,11 +41,9 @@ function Stat({
 }) {
   return (
     <div className="rounded-lg border border-surface-border-subtle px-3 py-2">
-      <p className="text-[9px] uppercase tracking-wider text-text-faint">
-        {label}
-      </p>
+      <p className="data-label">{label}</p>
       <p
-        className={`mt-1 font-mono text-sm font-semibold tabular-nums ${tone ?? "text-text-primary"}`}
+        className={`mt-1 font-mono text-[15px] font-semibold tabular-nums ${tone ?? "text-text-primary"}`}
       >
         {value}
       </p>
@@ -64,17 +62,17 @@ function MoverColumn({
 }) {
   return (
     <div>
-      <p className={`mb-2 text-[10px] font-semibold uppercase tracking-wider ${tone}`}>
+      <p className={`data-label mb-2 ${tone}`}>
         {title}
       </p>
       {items.length === 0 ? (
-        <p className="text-[11px] text-text-muted">—</p>
+        <p className="data-secondary">—</p>
       ) : (
         <ul className="space-y-1.5">
           {items.map((item) => (
             <li
               key={item.symbol}
-              className="flex items-center justify-between text-[11px]"
+              className="data-secondary flex items-center justify-between"
             >
               <span className="font-semibold text-text-primary">
                 {item.symbol}

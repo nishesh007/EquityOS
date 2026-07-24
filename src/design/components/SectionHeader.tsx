@@ -51,7 +51,7 @@ export function SectionHeader({
                 "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
                 tokens
                   ? cn(tokens.chipBg, tokens.text)
-                  : "bg-surface-overlay text-text-muted"
+                  : "data-icon bg-surface-overlay text-text-secondary"
               )}
             >
               {icon}
@@ -60,17 +60,19 @@ export function SectionHeader({
           <div className="min-w-0">
             <h2
               className={cn(
-                "text-lg font-semibold tracking-tight",
+                "text-[26px] font-bold leading-tight tracking-tight",
                 tokens ? tokens.text : "text-text-primary"
               )}
             >
               {title}
             </h2>
             {subtitle && (
-              <p className="mt-0.5 text-sm text-text-secondary">{subtitle}</p>
+              <p className="mt-0.5 text-sm font-medium text-text-secondary">
+                {subtitle}
+              </p>
             )}
             {summary ? (
-              <p className="mt-1.5 max-w-2xl text-xs leading-relaxed text-text-muted">
+              <p className="data-secondary mt-1.5 max-w-2xl leading-relaxed">
                 {summary}
               </p>
             ) : null}

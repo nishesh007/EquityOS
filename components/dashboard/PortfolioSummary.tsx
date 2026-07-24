@@ -163,7 +163,7 @@ export function PortfolioSummary({
                       <p className="text-sm font-medium text-text-primary">
                         {holding.symbol}
                       </p>
-                      <p className="text-[10px] text-text-muted">{holding.name}</p>
+                      <p className="data-secondary">{holding.name}</p>
                     </div>
                   </div>
                   <QuoteDisplayCompact quote={quote} className="text-right" />

@@ -67,9 +67,9 @@ export const TYPE_SCALE: Readonly<Record<TypeVariant, TypographyStyle>> =
     label: TYPOGRAPHY_SCALE.label,
     metric: {
       fontFamily: FONT_FAMILIES.sans,
-      fontSize: "1.375rem",
+      fontSize: "1.5rem",
       lineHeight: "1.2",
-      fontWeight: 600,
+      fontWeight: 700,
       letterSpacing: "-0.01em",
       tabularNums: true,
     },
@@ -89,11 +89,11 @@ export const TYPE_CLASSES: Readonly<Record<TypeVariant, string>> =
     h3: "font-sans text-xl font-semibold leading-snug text-text-primary",
     body: "font-sans text-sm leading-relaxed text-text-secondary",
     bodySmall: "font-sans text-[13px] leading-normal text-text-secondary",
-    caption: "font-sans text-xs leading-snug text-text-muted",
+    caption: "font-sans text-xs font-medium leading-snug text-text-secondary",
     label:
-      "font-sans text-[11px] font-medium uppercase tracking-wider text-text-muted",
+      "font-sans text-xs font-semibold uppercase tracking-[0.2px] text-text-primary/80",
     metric:
-      "font-sans text-[22px] font-semibold tracking-tight tabular-nums text-text-primary",
+      "font-sans text-[24px] font-bold leading-none tracking-tight tabular-nums text-text-primary",
     numeric: "font-mono text-sm font-medium tabular-nums text-text-primary",
     mono: "font-mono text-[13px] text-text-secondary",
   });

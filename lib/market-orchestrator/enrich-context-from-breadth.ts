@@ -1,9 +1,15 @@
 /**
- * Overlay Market Context / Pulse metrics from usable breadth when MI
+ * Overlay Market Context / Regime / Pulse metrics from usable breadth when MI
  * fallback left zeros (A/D 0/0, momentum 0, participation 0%).
+ *
+ * Presentation consistency only — does not re-run institutional engines.
  */
 
-import type { MarketContextView } from "@/lib/market-intelligence";
+import type {
+  MarketContextView,
+  MarketIntelligenceSnapshot,
+  MarketRegimeView,
+} from "@/lib/market-intelligence";
 import type { MarketBreadth } from "@/types";
 import { isUsableMarketBreadth } from "./client-breadth";
 
@@ -12,6 +18,18 @@ function quotedCount(breadth: MarketBreadth): number {
     breadth.quotedStocks ??
     breadth.advances + breadth.declines + breadth.unchanged
   );
+}
+
+/**
+ * Mover participation = (advances + declines) / total quoted.
+ * Prefer this over quoteCoveragePercent, which can be ~1% while markets
+ * still have nearly full A/D participation among printed quotes.
+ */
+function moverParticipationPercent(breadth: MarketBreadth): number | null {
+  const total =
+    breadth.advances + breadth.declines + (breadth.unchanged ?? 0);
+  if (total <= 0) return null;
+  return Math.round(((breadth.advances + breadth.declines) / total) * 100);
 }
 
 export function derivePulseMetricsFromBreadth(breadth: MarketBreadth): {
@@ -41,14 +59,22 @@ export function derivePulseMetricsFromBreadth(breadth: MarketBreadth): {
         )
       : breadthScore;
 
+  /**
+   * Participation priority:
+   * 1) Engine participationPercent when it reflects movers (typically high)
+   * 2) Computed (A+D)/total from counts
+   * 3) Never prefer raw quoteCoverage alone when A/D counts exist
+   *
+   * Old: fell through to quoteCoveragePercent → ~1% mislabeled as participation.
+   */
+  const fromCounts = moverParticipationPercent(breadth);
+  const engineParticipation = breadth.participationPercent;
   const participation =
-    breadth.participationPercent != null
-      ? Math.round(breadth.participationPercent)
-      : breadth.quoteCoveragePercent != null
-        ? Math.round(breadth.quoteCoveragePercent)
-        : quoted > 0 && breadth.totalStocks > 0
-          ? Math.round((quoted / breadth.totalStocks) * 100)
-          : Math.max(breadthScore, 1);
+    fromCounts != null
+      ? fromCounts
+      : engineParticipation != null && engineParticipation > 5
+        ? Math.round(engineParticipation)
+        : breadthScore;
 
   const sectorRows = breadth.sectors ?? [];
   const sectorBreadth =
@@ -69,9 +95,9 @@ export function derivePulseMetricsFromBreadth(breadth: MarketBreadth): {
         : null;
 
   return {
-    breadthScore: Math.max(breadthScore, 1),
-    momentum: Math.max(momentum, 1),
-    participation: Math.max(participation, 1),
+    breadthScore,
+    momentum,
+    participation,
     liquidity: null,
     sectorBreadth,
   };
@@ -92,8 +118,10 @@ export function enrichContextFromBreadth(
   const needsMomentum = (context.momentum ?? 0) === 0;
   const needsParticipation = (context.institutionalParticipation ?? 0) === 0;
   // Neutral fallback pipeline seeds breadthScore/sectorBreadth at 50 with empty A/D.
-  const needsBreadth = needsAd && (context.breadthScore === 0 || context.breadthScore === 50);
-  const needsSector = needsAd && (context.sectorBreadth === 0 || context.sectorBreadth === 50);
+  const needsBreadth =
+    needsAd && (context.breadthScore === 0 || context.breadthScore === 50);
+  const needsSector =
+    needsAd && (context.sectorBreadth === 0 || context.sectorBreadth === 50);
 
   return {
     ...context,
@@ -128,5 +156,62 @@ export function enrichContextFromBreadth(
       context.weakSectors.length === 0 && breadth.weakestSector
         ? [breadth.weakestSector]
         : context.weakSectors,
+  };
+}
+
+/**
+ * Keep Regime component tiles aligned with Context after breadth hydrate.
+ * Old: only Context was enriched → Breadth 48 vs Regime Breadth 50 split.
+ */
+export function enrichRegimeFromContext(
+  regime: MarketRegimeView | null | undefined,
+  context: MarketContextView | null | undefined
+): MarketRegimeView | null {
+  if (!regime) return null;
+  if (!context) return regime;
+
+  const components = regime.components;
+  const fallbackBreadth =
+    components.breadth === 0 || components.breadth === 50;
+  const fallbackMomentum =
+    components.momentum === 0 || components.momentum === 50;
+  const contextHasAd =
+    (context.advanceCount ?? 0) > 0 || (context.declineCount ?? 0) > 0;
+
+  if (!contextHasAd && !fallbackBreadth && !fallbackMomentum) {
+    return regime;
+  }
+
+  return {
+    ...regime,
+    components: {
+      ...components,
+      breadth: fallbackBreadth ? context.breadthScore : components.breadth,
+      momentum: fallbackMomentum ? context.momentum : components.momentum,
+      trendStrength:
+        components.trendStrength === 50
+          ? context.marketStrength
+          : components.trendStrength,
+      risk:
+        components.risk === "Neutral" && context.riskMode
+          ? context.riskMode
+          : components.risk,
+    },
+  };
+}
+
+export function enrichSnapshotFromBreadth(
+  snapshot: MarketIntelligenceSnapshot,
+  breadth: MarketBreadth | null | undefined
+): MarketIntelligenceSnapshot {
+  const enrichedContext = enrichContextFromBreadth(snapshot.context, breadth);
+  if (!enrichedContext || enrichedContext === snapshot.context) {
+    return snapshot;
+  }
+  const enrichedRegime = enrichRegimeFromContext(snapshot.regime, enrichedContext);
+  return {
+    ...snapshot,
+    context: enrichedContext,
+    regime: enrichedRegime ?? snapshot.regime,
   };
 }

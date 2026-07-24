@@ -59,22 +59,22 @@ export function LatestMarketNews({ news }: LatestMarketNewsProps) {
                   >
                     {item.sentiment}
                   </Badge>
-                  <span className="text-[10px] text-text-faint">
+                  <span className="data-timestamp">
                     {item.timestamp}
                   </span>
                 </div>
                 <h3 className="text-sm font-medium text-text-primary leading-snug group-hover:text-accent transition-colors">
                   {item.title}
                 </h3>
-                <p className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-medium text-text-muted">
-                  <ShieldCheck className="h-3 w-3 text-gain" />
+                <p className="data-secondary mt-1.5 inline-flex items-center gap-1">
+                  <ShieldCheck className="data-icon h-3.5 w-3.5 text-gain" />
                   {item.source}
                 </p>
-                <span className="mt-2 block text-[10px] font-semibold uppercase tracking-wider text-accent">
+                <span className="mt-2 block text-xs font-semibold uppercase tracking-[0.3px] text-accent">
                   Open Article
                 </span>
               </div>
-              <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-text-faint opacity-0 transition-opacity group-hover:opacity-100" />
+              <ExternalLink className="data-icon h-3.5 w-3.5 flex-shrink-0 text-text-secondary opacity-0 transition-opacity group-hover:opacity-100" />
             </a>
             {index < news.length - 1 && (
               <div className="mt-3 h-px bg-surface-border-subtle" />

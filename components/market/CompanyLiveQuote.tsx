@@ -49,14 +49,14 @@ export function CompanyLiveQuote({
       />
       <div className={cn("mt-0.5 flex flex-col gap-1", alignClass)}>
         <div>
-          <p className="text-[10px] text-text-faint">Last traded</p>
-          <p className="whitespace-pre-line text-[10px] font-mono text-text-muted">
+          <p className="data-label">Last traded</p>
+          <p className="data-timestamp whitespace-pre-line font-mono">
             {quote.lastTradeTimeIST ?? "—"}
           </p>
         </div>
         <div>
-          <p className="text-[10px] text-text-faint">Updated</p>
-          <p className="whitespace-pre-line text-[10px] font-mono text-text-muted">
+          <p className="data-label">Updated</p>
+          <p className="data-timestamp whitespace-pre-line font-mono">
             {quote.lastUpdatedIST ?? "—"}
           </p>
         </div>

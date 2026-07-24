@@ -36,8 +36,8 @@ const OUTLINE: Record<StatusTone, string> = {
 };
 
 const SIZE: Record<"sm" | "md", string> = {
-  sm: "px-2 py-0.5 text-[10px]",
-  md: "px-2.5 py-0.5 text-[11px]",
+  sm: "px-2 py-0.5 text-[11px] font-semibold",
+  md: "px-2.5 py-0.5 text-xs font-semibold",
 };
 
 /**

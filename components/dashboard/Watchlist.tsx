@@ -137,10 +137,10 @@ export function Watchlist({
           renderExpandedRow={(row) => (
             <div className="grid gap-2 sm:grid-cols-2">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-text-faint">
+                <p className="data-label">
                   Strategy Details
                 </p>
-                <p className="mt-1 text-xs">
+                <p className="data-secondary mt-1">
                   {row.action} · {row.strategy}
                   {row.confidence != null
                     ? ` · Confidence ${row.confidence.toFixed(1)}%`
@@ -148,10 +148,10 @@ export function Watchlist({
                 </p>
               </div>
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-text-faint">
+                <p className="data-label">
                   Notes
                 </p>
-                <p className="mt-1 text-xs">
+                <p className="data-secondary mt-1">
                   {row.sector} · Updated {row.updated} · Vol {row.volume}
                 </p>
               </div>

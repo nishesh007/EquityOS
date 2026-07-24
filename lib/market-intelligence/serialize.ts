@@ -1,6 +1,6 @@
 /**
  * Serialize Sprint 11B engine outputs into JSON-safe DTOs.
- * Never recalculates scores — presentation mapping only.
+ * Presentation mapping only — does not re-run institutional engines.
  */
 
 import type { InstitutionalMarketContext } from "@/src/modules/marketContext";
@@ -33,6 +33,15 @@ function avgSectorScore(
   return Math.round(sum / sectors.length);
 }
 
+/**
+ * Map breadth momentum Δpp → 0–100 score (same transform as AggregatorUtils).
+ * Old display used raw Δpp (often 0 = missing history), which Context UI
+ * treated as a 0–100 oscillator → false "Bearish".
+ */
+function mapBreadthMomentumToScore(delta: number): number {
+  return Math.max(0, Math.min(100, Math.round(50 + delta * 2.5)));
+}
+
 export function serializeMarketContext(
   context: InstitutionalMarketContext
 ): MarketContextView {
@@ -41,11 +50,21 @@ export function serializeMarketContext(
   const participation = Number.isFinite(breadth.participationPercent)
     ? breadth.participationPercent
     : breadth.score;
+  // Prefer mapped oscillator so Context / Regime / Pulse share one 0–100 scale.
   const momentum = Number.isFinite(breadth.breadthMomentum)
-    ? breadth.breadthMomentum
+    ? mapBreadthMomentumToScore(breadth.breadthMomentum)
     : context.marketStrength;
+  /**
+   * Liquidity display score from relative volatility (realized/historical).
+   * Old: `100 - |relativeVolatility|` → ~99 whenever ratio ≈ 1 (always "High").
+   * New: `100 - |relativeVolatility - 1| * 100` → 100 at parity, decays as vol
+   * diverges from historical — still a vol-stability proxy, not turnover.
+   */
   const liquidity = Number.isFinite(vol.relativeVolatility)
-    ? Math.max(0, Math.min(100, 100 - Math.abs(vol.relativeVolatility)))
+    ? Math.max(
+        0,
+        Math.min(100, Math.round(100 - Math.abs(vol.relativeVolatility - 1) * 100))
+      )
     : breadth.score;
   const sectorBreadth = avgSectorScore(context.sectorStrength);
   const leading = context.sectorRotation?.leaders?.length
@@ -108,9 +127,12 @@ function buildRegimeComponents(
   context: InstitutionalMarketContext | null,
   confidence: RegimeConfidenceAnalysis
 ): RegimeComponentBreakdown {
+  const momentumDelta = context?.marketBreadth?.breadthMomentum;
   return {
     trendStrength: context?.marketStrength ?? 50,
-    momentum: context?.marketBreadth?.breadthMomentum ?? 0,
+    momentum: Number.isFinite(momentumDelta)
+      ? mapBreadthMomentumToScore(momentumDelta as number)
+      : 50,
     volatility: context?.volatility?.score ?? 50,
     breadth: context?.marketBreadth?.score ?? 50,
     risk: context?.riskMode ?? "Neutral",

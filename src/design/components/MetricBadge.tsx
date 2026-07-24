@@ -17,10 +17,10 @@ export function MetricBadge({ value, label, className }: MetricBadgeProps) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-md px-1.5 py-0.5 font-mono text-xs tabular-nums",
+        "inline-flex items-center rounded-md px-2 py-0.5 font-mono text-xs font-semibold tabular-nums",
         direction === "up" && "bg-gain/10 text-gain",
         direction === "down" && "bg-loss/10 text-loss",
-        direction === "flat" && "bg-surface-hover text-text-muted",
+        direction === "flat" && "bg-surface-hover text-text-secondary",
         className,
       )}
     >

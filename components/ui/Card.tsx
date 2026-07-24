@@ -92,24 +92,22 @@ export function CardHeader({
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           {icon ? (
-            <span className="text-text-muted" aria-hidden>
+            <span className="data-icon text-text-secondary" aria-hidden>
               {icon}
             </span>
           ) : null}
-          <h2 className="text-base font-semibold tracking-tight text-text-primary sm:text-lg">
+          <h2 className="text-[26px] font-bold leading-tight tracking-tight text-text-primary">
             {title}
           </h2>
           {badge}
         </div>
         {subtitle && (
-          <p className="mt-1 text-xs leading-relaxed text-text-muted">
+          <p className="mt-1 text-sm font-medium leading-relaxed text-text-secondary">
             {subtitle}
           </p>
         )}
         {timestamp ? (
-          <p className="mt-1.5 text-[10px] uppercase tracking-wider text-text-faint">
-            {timestamp}
-          </p>
+          <p className="data-timestamp mt-1.5">{timestamp}</p>
         ) : null}
       </div>
       {action && <div className="flex shrink-0 items-center gap-2">{action}</div>}
@@ -127,7 +125,7 @@ export function CardFooter({ children, className }: CardFooterProps) {
   return (
     <div
       className={cn(
-        "mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-surface-border-subtle pt-3 text-[10px] text-text-faint",
+        "data-timestamp mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-surface-border-subtle pt-3",
         className
       )}
     >

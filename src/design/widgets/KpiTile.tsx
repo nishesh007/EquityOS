@@ -44,12 +44,12 @@ export function KpiTile({
         {status && <StatusBadge tone={statusTone}>{status}</StatusBadge>}
       </div>
       <div className="mt-1 flex items-baseline gap-2">
-        <p className="data-value text-lg font-semibold">{value}</p>
+        <p className="data-value">{value}</p>
         {delta !== undefined && <MetricBadge value={delta} label={deltaLabel} />}
       </div>
       <div className="mt-1 flex items-end justify-between gap-2">
         {secondary ? (
-          <p className="text-[11px] text-text-muted">{secondary}</p>
+          <p className="data-secondary">{secondary}</p>
         ) : (
           <span />
         )}

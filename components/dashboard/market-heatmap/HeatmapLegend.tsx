@@ -29,7 +29,7 @@ export function HeatmapLegend() {
             style={{ backgroundColor: BAND_BG[band] }}
             aria-hidden
           />
-          <span className="text-[9px] font-medium text-text-muted">
+          <span className="text-[11px] font-medium text-text-secondary">
             {BAND_LABEL[band]}
           </span>
         </div>

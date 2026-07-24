@@ -133,10 +133,10 @@ export function PortfolioHoldingsTable({
         renderExpandedRow={(row) => (
           <div className="grid gap-2 sm:grid-cols-3">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-text-faint">
+              <p className="data-label">
                 Strategy Details
               </p>
-              <p className="mt-1 text-xs">
+              <p className="data-secondary mt-1">
                 {row.signal} · {row.strategy}
                 {row.holdingConfidence != null
                   ? ` · Confidence ${row.holdingConfidence.toFixed(1)}%`
@@ -144,18 +144,18 @@ export function PortfolioHoldingsTable({
               </p>
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-text-faint">
+              <p className="data-label">
                 Risks
               </p>
-              <p className="mt-1 text-xs">
+              <p className="data-secondary mt-1">
                 Risk {row.risk ?? "—"} · Regime {row.regime}
               </p>
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-text-faint">
+              <p className="data-label">
                 Notes
               </p>
-              <p className="mt-1 text-xs">
+              <p className="data-secondary mt-1">
                 {row.name} · Opportunity {row.opportunityChange}
               </p>
             </div>

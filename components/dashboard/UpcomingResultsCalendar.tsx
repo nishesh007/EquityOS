@@ -60,7 +60,7 @@ export function UpcomingResultsCalendar({
                   <span className="text-sm font-bold text-text-primary leading-none">
                     {day}
                   </span>
-                  <span className="text-[9px] font-medium text-text-muted">
+                  <span className="text-[11px] font-medium text-text-secondary">
                     {month}
                   </span>
                 </div>
@@ -79,7 +79,7 @@ export function UpcomingResultsCalendar({
                       </Badge>
                     ) : null}
                   </div>
-                  <div className="mt-0.5 flex items-center gap-2 text-[10px] text-text-muted">
+                  <div className="data-secondary mt-0.5 flex items-center gap-2">
                     <span>{result.quarter}</span>
                     <span>·</span>
                     <span>{result.sector}</span>
@@ -88,7 +88,7 @@ export function UpcomingResultsCalendar({
                   </div>
                 </div>
 
-                <ChevronRight className="h-4 w-4 flex-shrink-0 text-text-faint opacity-0 transition-opacity group-hover:opacity-100" />
+                <ChevronRight className="data-icon h-4 w-4 flex-shrink-0 text-text-secondary opacity-0 transition-opacity group-hover:opacity-100" />
               </div>
             );
           })

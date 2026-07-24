@@ -39,10 +39,12 @@ type MetricTone = {
 };
 
 function riskTone(risk: string): { label: string; tone: MetricTone } {
-  const normalized = risk.toLowerCase();
+  const normalized = risk.trim().toLowerCase();
+  // Exact / phrase match — avoid "Risk On".includes("on") → Low bug.
   if (
-    normalized.includes("off") ||
-    normalized.includes("high") ||
+    normalized === "risk off" ||
+    normalized.includes("risk off") ||
+    normalized === "high" ||
     normalized.includes("elevated")
   ) {
     return {
@@ -55,8 +57,9 @@ function riskTone(risk: string): { label: string; tone: MetricTone } {
     };
   }
   if (
-    normalized.includes("on") ||
-    normalized.includes("low") ||
+    normalized === "risk on" ||
+    normalized.includes("risk on") ||
+    normalized === "low" ||
     normalized.includes("calm")
   ) {
     return {
@@ -251,7 +254,7 @@ function participationTone(
 function sectorBreadthTone(
   value: number
 ): { label: string; tone: MetricTone } {
-  if (!Number.isFinite(value) || value === 0) {
+  if (!Number.isFinite(value)) {
     return {
       label: "—",
       tone: {
@@ -261,9 +264,11 @@ function sectorBreadthTone(
       },
     };
   }
-  if (value > 0) {
+  const rounded = Math.round(value);
+  // Sector breadth is a 0–100 average sector score (not signed).
+  if (rounded >= 55) {
     return {
-      label: String(Math.round(value)),
+      label: String(rounded),
       tone: {
         shell: "border-emerald-500/35 bg-gradient-to-br from-emerald-500/15 via-emerald-400/10 to-transparent shadow-[0_0_20px_-12px_rgba(16,185,129,0.55)]",
         icon: "text-emerald-400",
@@ -271,14 +276,30 @@ function sectorBreadthTone(
       },
     };
   }
+  if (rounded <= 45) {
+    return {
+      label: String(rounded),
+      tone: {
+        shell: "border-red-500/35 bg-gradient-to-br from-red-500/15 via-red-400/10 to-transparent shadow-[0_0_20px_-12px_rgba(239,68,68,0.55)]",
+        icon: "text-red-400",
+        value: "text-red-300",
+      },
+    };
+  }
   return {
-    label: String(Math.round(value)),
+    label: String(rounded),
     tone: {
-      shell: "border-red-500/35 bg-gradient-to-br from-red-500/15 via-red-400/10 to-transparent shadow-[0_0_20px_-12px_rgba(239,68,68,0.55)]",
-      icon: "text-red-400",
-      value: "text-red-300",
+      shell: "border-slate-500/35 bg-gradient-to-br from-slate-500/15 via-slate-400/10 to-transparent shadow-[0_0_20px_-12px_rgba(100,116,139,0.5)]",
+      icon: "text-slate-400",
+      value: "text-slate-300",
     },
   };
+}
+
+function isMostlyNumericValue(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  return /^[+\-−]?\d/.test(trimmed) && /[\d%]/.test(trimmed);
 }
 
 function MetricTile({
@@ -294,6 +315,7 @@ function MetricTile({
   icon: LucideIcon;
   tone: MetricTone;
 }) {
+  const numeric = isMostlyNumericValue(value);
   return (
     <div
       className={cn(
@@ -302,17 +324,24 @@ function MetricTile({
       )}
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-text-faint">
-          {label}
-        </p>
-        <Icon className={cn("h-3.5 w-3.5 shrink-0", tone.icon)} aria-hidden />
+        <p className="data-label">{label}</p>
+        <Icon
+          className={cn("data-icon h-3.5 w-3.5 shrink-0", tone.icon)}
+          aria-hidden
+        />
       </div>
-      <p className={cn("mt-1.5 text-sm font-semibold tracking-tight", tone.value)}>
+      <p
+        className={cn(
+          "mt-1.5 font-bold tracking-tight",
+          numeric
+            ? "text-[24px] leading-none sm:text-[26px]"
+            : "text-[18px] leading-tight sm:text-[20px]",
+          tone.value
+        )}
+      >
         {value}
       </p>
-      {detail ? (
-        <p className="mt-0.5 text-[10px] text-text-muted">{detail}</p>
-      ) : null}
+      {detail ? <p className="data-secondary mt-1">{detail}</p> : null}
     </div>
   );
 }
@@ -364,7 +393,7 @@ export function MarketContextCard({
         <StatusBadge tone={statusToneFromLabel(context.riskMode)} size="sm">
           {context.riskMode}
         </StatusBadge>
-        <p className="text-[10px] text-text-muted">
+        <p className="data-secondary">
           Score {Math.round(context.contextScore)} · Strength{" "}
           {Math.round(context.marketStrength)}
         </p>
@@ -401,21 +430,23 @@ export function MarketContextCard({
         <MetricTile
           label="Liquidity"
           value={liquidity.label}
-          detail={`${Math.round(context.liquidity)}`}
+          detail={`Vol stability ${Math.round(context.liquidity)}`}
           icon={Droplets}
           tone={liquidity.tone}
         />
         <MetricTile
           label="Participation"
           value={participation.label}
-          detail={`${Math.round(context.institutionalParticipation)}%`}
+          detail={`Movers ${Math.round(context.institutionalParticipation)}%`}
           icon={Users}
           tone={participation.tone}
         />
         <MetricTile
           label="Sector Breadth"
           value={sectorBreadth.label}
-          icon={sectorBreadth.label.startsWith("-") ? TrendingDown : Waves}
+          icon={
+            Number(sectorBreadth.label) <= 45 ? TrendingDown : Waves
+          }
           tone={sectorBreadth.tone}
         />
         <MetricTile
@@ -431,24 +462,24 @@ export function MarketContextCard({
       </div>
 
       {(context.leadingSectors.length > 0 || context.weakSectors.length > 0) && (
-        <div className="mt-3 flex flex-wrap gap-3 text-[10px] text-text-muted">
+        <div className="data-secondary mt-3 flex flex-wrap gap-3">
           {context.leadingSectors.length > 0 && (
             <span className="inline-flex items-center gap-1">
-              <Activity className="h-3 w-3 text-gain" />
+              <Activity className="data-icon h-3.5 w-3.5 text-gain" />
               Lead: {context.leadingSectors.slice(0, 3).join(", ")}
             </span>
           )}
           {context.weakSectors.length > 0 && (
             <span className="inline-flex items-center gap-1">
-              <Waves className="h-3 w-3 text-loss" />
+              <Waves className="data-icon h-3.5 w-3.5 text-loss" />
               Weak: {context.weakSectors.slice(0, 3).join(", ")}
             </span>
           )}
         </div>
       )}
 
-      <p className="mt-2 flex items-center gap-1 text-[10px] text-text-faint">
-        <Gauge className="h-3 w-3" />
+      <p className="data-timestamp mt-2 flex items-center gap-1">
+        <Gauge className="data-icon h-3.5 w-3.5" />
         Last updated {formatUpdated(context.timestamp)} IST
       </p>
     </Card>

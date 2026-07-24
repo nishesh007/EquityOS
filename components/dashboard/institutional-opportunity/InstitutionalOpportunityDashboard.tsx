@@ -89,7 +89,7 @@ function EntryDisplay({
           : formatPrice(entryIdeal)}
       </dd>
       {pick.entryAtMarket ? (
-        <p className={`mt-0.5 text-[10px] ${accentClass}`}>
+        <p className={`mt-0.5 text-xs font-medium ${accentClass}`}>
           Market at ideal entry
         </p>
       ) : null}
@@ -261,10 +261,10 @@ function StrategyCard({ slot }: { slot: InstitutionalStrategySlot }) {
             {theme.icon}
           </span>
           <div>
-            <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-white/50">
+            <p className="text-xs font-semibold uppercase tracking-[0.3px] text-white/80">
               {meta?.emoji ?? ""} Strategy
             </p>
-            <h3 className="text-sm font-semibold tracking-tight text-white">
+            <h3 className="text-[15px] font-bold tracking-tight text-white">
               {slot.label}
             </h3>
           </div>
@@ -289,9 +289,9 @@ function StrategyCard({ slot }: { slot: InstitutionalStrategySlot }) {
                 {pick.symbol}
               </p>
             </div>
-            <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-[11px]">
+            <dl className="data-secondary grid grid-cols-2 gap-x-3 gap-y-2">
               <div>
-                <dt className="text-white/45">Current</dt>
+                <dt className="text-white/70">Current</dt>
                 <dd className="font-medium text-white/90">
                   {formatPrice(pick.currentPrice)}
                 </dd>
@@ -299,9 +299,9 @@ function StrategyCard({ slot }: { slot: InstitutionalStrategySlot }) {
               <EntryDisplay pick={pick} accentClass={theme.accent} />
               <div className="col-span-2">
                 <div className="flex items-baseline justify-between gap-2">
-                  <dt className="text-white/45">Primary Target</dt>
+                  <dt className="text-white/70">Primary Target</dt>
                   {upsideLabel ? (
-                    <span className={`text-[10px] font-semibold ${theme.accent}`}>
+                    <span className={`text-xs font-semibold ${theme.accent}`}>
                       Upside {upsideLabel}
                     </span>
                   ) : null}
@@ -314,13 +314,13 @@ function StrategyCard({ slot }: { slot: InstitutionalStrategySlot }) {
           </>
         ) : (
           <div className="flex flex-1 items-center">
-            <p className="text-xs leading-relaxed text-white/55">
+            <p className="text-[14px] font-medium leading-relaxed text-white/70">
               {NO_HIGH_CONVICTION_MESSAGE}
             </p>
           </div>
         )}
 
-        <p className="mt-auto text-[10px] text-white/40">
+        <p className="mt-auto text-xs font-medium text-white/70">
           {formatScanTime(slot.lastScanTime)}
         </p>
       </div>
