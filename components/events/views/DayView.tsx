@@ -24,7 +24,7 @@ export function DayView({
         <h2 className="text-sm font-semibold text-text-primary">
           {formatDisplayDate(date)}
         </h2>
-        <p className="text-xs text-text-muted">
+        <p className="text-xs text-text-secondary">
           {events.length === 1
             ? "1 event scheduled"
             : `${events.length} events scheduled`}

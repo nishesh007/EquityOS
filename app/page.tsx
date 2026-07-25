@@ -22,6 +22,7 @@ import {
   LazyResearchSummaryCard,
   LazyValidationCenterCard,
 } from "@/components/dashboard/widgets/LazyDashboardWidgets";
+import { EventIntelligenceDashboardWidget } from "@/components/dashboard/EventIntelligenceDashboardWidget";
 import { WidgetSkeleton } from "@/components/dashboard/widgets/WidgetSkeleton";
 import { PageContainer } from "@/src/design/components/PageContainer";
 import { Suspense, type ReactNode } from "react";
@@ -125,7 +126,7 @@ export default function DashboardPage() {
           <LazyResearchSummaryCard />
         </DashboardWidget>
         <DashboardWidget id="economic-calendar">
-          <LazyComingSoonWidget title="Economic Calendar" />
+          <EventIntelligenceDashboardWidget />
         </DashboardWidget>
         <DashboardWidget id="results-calendar">
           <Slot label="Results Calendar" heightClass="h-48">

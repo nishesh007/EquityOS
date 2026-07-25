@@ -48,7 +48,7 @@ export const EventHero = memo(function EventHero({
           <h1 className="text-[22px] font-semibold leading-tight tracking-tight text-text-primary sm:text-2xl">
             Economic Calendar & Event Intelligence
           </h1>
-          <p className="mt-1 max-w-3xl text-[14px] leading-relaxed text-text-muted sm:text-[15px]">
+          <p className="mt-1 max-w-3xl text-[14px] leading-relaxed text-text-secondary sm:text-[15px]">
             Track earnings, corporate actions, macro events and market-moving
             catalysts that can impact your portfolio.
           </p>
@@ -61,14 +61,14 @@ export const EventHero = memo(function EventHero({
       />
 
       <div>
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-text-faint">
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-text-primary">
           Quick Statistics
         </p>
         <EventStatsStrip events={events} today={today} />
       </div>
 
       <div>
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-text-faint">
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-text-primary">
           Macro Economic Intelligence
         </p>
         <MacroDashboardStrip events={events} today={today} />

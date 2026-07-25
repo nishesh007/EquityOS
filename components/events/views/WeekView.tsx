@@ -45,7 +45,7 @@ export function WeekView({
         <h2 className="text-sm font-semibold text-text-primary">
           Week of {formatShortDate(weekStart)}
         </h2>
-        <p className="text-xs text-text-muted">
+        <p className="text-xs text-text-secondary">
           {total === 1 ? "1 event this week" : `${total} events this week`}
         </p>
       </header>
@@ -78,7 +78,7 @@ export function WeekView({
                   aria-label={`Select ${formatShortDate(day)}`}
                 >
                   <span>
-                    <span className="block text-[10px] font-semibold uppercase tracking-wider text-text-faint">
+                    <span className="block text-[10px] font-semibold uppercase tracking-wider text-text-secondary">
                       {formatWeekday(day)}
                     </span>
                     <span
@@ -104,12 +104,12 @@ export function WeekView({
                     />
                   ))}
                   {dayEvents.length > 3 ? (
-                    <p className="px-1 text-[10px] text-text-faint">
+                    <p className="px-1 text-[10px] text-text-muted">
                       +{dayEvents.length - 3} more
                     </p>
                   ) : null}
                   {dayEvents.length === 0 ? (
-                    <p className="px-1 py-4 text-center text-[10px] text-text-faint">
+                    <p className="px-1 py-4 text-center text-[10px] text-text-muted">
                       —
                     </p>
                   ) : null}

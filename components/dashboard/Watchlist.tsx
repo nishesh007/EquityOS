@@ -2,6 +2,8 @@
 
 import { Card, CardHeader } from "@/components/ui/Card";
 import { EmptyStatePanel } from "@/components/ui/EmptyStatePanel";
+import { EventAwarenessBadgeRow } from "@/components/events/EventAwarenessBadges";
+import { useOptionalGlobalEventDrawer } from "@/components/events/GlobalEventDrawerProvider";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { useMarketQuotes } from "@/hooks/useMarketQuotes";
 import { createUnavailableQuote } from "@/lib/market-data/enriched-quote";
@@ -9,6 +11,8 @@ import { getCompanyRoute } from "@/lib/routes";
 import { buildInitialQuotesMap } from "@/lib/market-data/enriched-quote";
 import type { WatchlistItem } from "@/types";
 import type { SharedRecommendation } from "@/lib/recommendations";
+import { buildWatchlistEventInsights } from "@/src/core/events/integration";
+import { buildEventSeedCatalog, toDateKey } from "@/src/core/events";
 import { useRouter } from "next/navigation";
 import { Star, X } from "lucide-react";
 import { useMemo } from "react";
@@ -66,6 +70,18 @@ export function Watchlist({
 }: WatchlistProps) {
   const { items, removeItem } = useWatchlist({ initialItems });
   const router = useRouter();
+  const drawer = useOptionalGlobalEventDrawer();
+  const today = useMemo(() => toDateKey(new Date()), []);
+  const catalog = useMemo(() => buildEventSeedCatalog(today), [today]);
+  const eventInsights = useMemo(() => {
+    const list = buildWatchlistEventInsights(
+      catalog,
+      items.map((item) => ({ symbol: item.symbol, sector: item.sector })),
+      today
+    );
+    return new Map(list.map((insight) => [insight.symbol, insight]));
+  }, [catalog, items, today]);
+
   const symbols = items.map((item) => item.symbol);
   const { quotes } = useMarketQuotes(symbols, {
     initialQuotes: buildInitialQuotesMap(items),
@@ -127,7 +143,28 @@ export function Watchlist({
           icon={Star}
         />
       ) : (
-        <div className="min-h-0 flex-1">
+        <div className="min-h-0 flex-1 space-y-2">
+          {Array.from(eventInsights.values())
+            .filter((insight) => insight.badgeKind != null && insight.primary != null)
+            .slice(0, 6)
+            .map((insight) => (
+              <button
+                key={insight.symbol}
+                type="button"
+                onClick={() =>
+                  insight.primary && drawer?.openEvent(insight.primary.event)
+                }
+                className="flex w-full items-center justify-between gap-2 rounded-md border border-surface-border-subtle/70 bg-surface/25 px-2 py-1.5 text-left hover:bg-surface-hover/40"
+              >
+                <span className="text-[11px] font-semibold text-text-primary">
+                  {insight.symbol}
+                </span>
+                <EventAwarenessBadgeRow
+                  kinds={insight.primary!.awareness}
+                  max={2}
+                />
+              </button>
+            ))}
           <ResearchDataGrid
             table={WATCHLIST_TABLE}
             rows={rows}
@@ -135,29 +172,56 @@ export function Watchlist({
             bulkActions={bulkActions}
             maxHeight={280}
             onRowClick={(row) => router.push(getCompanyRoute(row.symbol))}
-            renderExpandedRow={(row) => (
-              <div className="grid gap-2 sm:grid-cols-2">
-                <div>
-                  <p className="data-label">
-                    Strategy Details
-                  </p>
-                  <p className="data-secondary mt-1">
-                    {row.action} · {row.strategy}
-                    {row.confidence != null
-                      ? ` · Confidence ${row.confidence.toFixed(1)}%`
-                      : ""}
-                  </p>
+            renderExpandedRow={(row) => {
+              const insight = eventInsights.get(row.symbol.toUpperCase());
+              const primary = insight?.primary ?? null;
+              return (
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <div>
+                    <p className="data-label">Strategy Details</p>
+                    <p className="data-secondary mt-1">
+                      {row.action} · {row.strategy}
+                      {row.confidence != null
+                        ? ` · Confidence ${row.confidence.toFixed(1)}%`
+                        : ""}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="data-label">Notes</p>
+                    <p className="data-secondary mt-1">
+                      {row.sector} · Updated {row.updated} · Vol {row.volume}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="data-label">Upcoming Catalysts</p>
+                    {primary ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          drawer?.openEvent(primary.event);
+                        }}
+                        className="mt-1 w-full text-left"
+                      >
+                        <p className="data-secondary">
+                          {primary.event.title} · {primary.countdown.label}
+                          {primary.impactScore != null
+                            ? ` · Impact ${primary.impactScore}`
+                            : ""}
+                        </p>
+                        <EventAwarenessBadgeRow
+                          kinds={primary.awareness}
+                          max={3}
+                          className="mt-1.5"
+                        />
+                      </button>
+                    ) : (
+                      <p className="data-secondary mt-1">No upcoming events.</p>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <p className="data-label">
-                    Notes
-                  </p>
-                  <p className="data-secondary mt-1">
-                    {row.sector} · Updated {row.updated} · Vol {row.volume}
-                  </p>
-                </div>
-              </div>
-            )}
+              );
+            }}
           />
         </div>
       )}

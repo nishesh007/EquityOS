@@ -63,7 +63,7 @@ function FilterGroup({
         </span>
         <ChevronDown
           className={cn(
-            "h-3.5 w-3.5 text-text-faint transition-transform duration-150",
+            "h-3.5 w-3.5 text-text-muted transition-transform duration-150",
             open && "rotate-180"
           )}
           aria-hidden
@@ -80,7 +80,7 @@ function FilterGroup({
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-text-faint">
+    <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-text-secondary">
       {children}
     </p>
   );
@@ -123,7 +123,7 @@ function toggleValue<T>(list: T[], value: T): T[] {
 }
 
 const inputClass = cn(
-  "h-8 w-full rounded-md border border-surface-border-subtle bg-surface-overlay/45 px-2 text-xs text-text-primary placeholder:text-text-faint",
+  "h-8 w-full rounded-md border border-surface-border-subtle bg-surface-overlay/45 px-2 text-xs text-text-primary placeholder:text-text-muted",
   "transition-[border-color] duration-150 hover:border-surface-border",
   FOCUS_RING_CLASS
 );
@@ -170,7 +170,7 @@ export const EventFilters = memo(function EventFilters({
       <div className="flex items-center justify-between gap-2 border-b border-surface-border-subtle px-3 py-2.5">
         <div className="min-w-0">
           <p className="text-[14px] font-semibold text-text-primary">Filters</p>
-          <p className="text-[10px] text-text-faint">Refine the calendar</p>
+          <p className="text-[10px] text-text-muted">Refine the calendar</p>
         </div>
         <div className="flex items-center gap-0.5">
           <button
@@ -191,7 +191,7 @@ export const EventFilters = memo(function EventFilters({
               onClick={onClose}
               aria-label="Close filters"
               className={cn(
-                "rounded-md p-1 text-text-faint transition-colors hover:bg-surface-hover hover:text-text-secondary lg:hidden",
+                "rounded-md p-1 text-text-muted transition-colors hover:bg-surface-hover hover:text-text-secondary lg:hidden",
                 FOCUS_RING_CLASS
               )}
             >
@@ -204,7 +204,7 @@ export const EventFilters = memo(function EventFilters({
       <div className="border-b border-surface-border-subtle px-3 py-2.5">
         <div className="relative">
           <Search
-            className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-faint"
+            className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-muted"
             aria-hidden
           />
           <input
@@ -500,7 +500,7 @@ export const EventFilters = memo(function EventFilters({
                 />
               ))}
               {filteredSectors.length === 0 ? (
-                <p className="text-[11px] text-text-faint">No sectors match</p>
+                <p className="text-[11px] text-text-muted">No sectors match</p>
               ) : null}
             </div>
           </div>

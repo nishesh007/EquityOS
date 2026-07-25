@@ -40,7 +40,7 @@ export function AgendaView({
               <h2 className="text-sm font-semibold text-text-primary">
                 {formatDisplayDate(date)}
               </h2>
-              <span className="text-[11px] text-text-faint">
+              <span className="text-[11px] text-text-secondary">
                 {dayEvents.length === 1
                   ? "1 item"
                   : `${dayEvents.length} items`}

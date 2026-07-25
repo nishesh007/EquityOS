@@ -81,6 +81,7 @@ function intelligencePreview(event: EventIntelligenceEvent): string | null {
     const m = event.macroDetail;
     const ind = m.indicator;
     const parts = [
+      event.impactScore != null ? `Impact ${event.impactScore}` : null,
       m.authority,
       ind.actual != null
         ? `Act ${ind.actual}${ind.unit ? ` ${ind.unit}` : ""}`
@@ -89,6 +90,13 @@ function intelligencePreview(event: EventIntelligenceEvent): string | null {
           : null,
       m.marketImpact.direction,
       `Vol ${m.marketImpact.volatility}`,
+    ].filter(Boolean);
+    return parts.join(" · ");
+  }
+  if (event.impactScore != null) {
+    const parts = [
+      `Impact ${event.impactScore}`,
+      event.confidence != null ? `Conf ${event.confidence}` : null,
     ].filter(Boolean);
     return parts.join(" · ");
   }
@@ -145,25 +153,25 @@ export function EventCard({
               <h3 className="truncate text-sm font-semibold text-text-primary">
                 {event.title}
               </h3>
-              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-text-muted">
+              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-text-secondary">
                 {event.company ? (
                   <span className="inline-flex items-center gap-1">
                     <Building2 className="h-3 w-3" aria-hidden />
                     <span className="truncate">{event.company}</span>
                   </span>
                 ) : (
-                  <span className="text-text-faint">Macro / Market</span>
+                  <span className="text-text-secondary">Macro / Market</span>
                 )}
                 {event.ticker ? (
-                  <span className="font-mono text-[11px] font-semibold text-text-secondary">
+                  <span className="font-mono text-[11px] font-semibold text-text-primary">
                     {event.ticker}
                   </span>
                 ) : null}
                 {event.sector ? (
-                  <span className="text-[11px] text-text-faint">{event.sector}</span>
+                  <span className="text-[11px] text-text-secondary">{event.sector}</span>
                 ) : null}
                 {event.marketCap !== "unknown" ? (
-                  <span className="text-[11px] capitalize text-text-faint">
+                  <span className="text-[11px] capitalize text-text-muted">
                     {event.marketCap} cap
                   </span>
                 ) : null}
@@ -190,17 +198,17 @@ export function EventCard({
               {getEventTypeLabel(event.eventType)}
             </span>
             <EventBadges badges={badges} />
-            <span className="inline-flex items-center gap-1 text-[11px] text-text-muted">
+            <span className="inline-flex items-center gap-1 text-[11px] text-text-secondary">
               <CalendarDays className="h-3 w-3" aria-hidden />
               {formatShortDate(event.date)}
             </span>
             {event.time ? (
-              <span className="inline-flex items-center gap-1 text-[11px] text-text-muted">
+              <span className="inline-flex items-center gap-1 text-[11px] text-text-secondary">
                 <Clock3 className="h-3 w-3" aria-hidden />
                 {event.time} IST
               </span>
             ) : (
-              <span className="text-[11px] text-text-faint">All day</span>
+              <span className="text-[11px] text-text-secondary">All day</span>
             )}
           </div>
 
@@ -211,7 +219,7 @@ export function EventCard({
           ) : null}
 
           {!compact && !preview && event.description ? (
-            <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-text-muted">
+            <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-text-primary">
               {event.description}
             </p>
           ) : null}

@@ -12,11 +12,14 @@ import { EventSkeleton } from "@/components/events/EventSkeleton";
 import { QUICK_ACTION_PRESETS } from "@/components/events/EventStatsStrip";
 import { EventTimeline } from "@/components/events/EventTimeline";
 import { EventToolbar } from "@/components/events/EventToolbar";
+import { MyEventsPanel } from "@/components/events/MyEventsPanel";
+import { useOptionalGlobalEventDrawer } from "@/components/events/GlobalEventDrawerProvider";
 import { useEventFilters } from "@/hooks/useEventFilters";
 import { useEventSearch } from "@/hooks/useEventSearch";
 import { createEmptyEventFilters } from "@/src/core/events";
 import type { EventIntelligenceEvent } from "@/types/event";
-import { useCallback, useState, useTransition } from "react";
+import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useState, useTransition } from "react";
 
 interface EventIntelligenceProps {
   events: EventIntelligenceEvent[];
@@ -24,6 +27,8 @@ interface EventIntelligenceProps {
 }
 
 export function EventIntelligence({ events, asOf }: EventIntelligenceProps) {
+  const searchParams = useSearchParams();
+  const globalDrawer = useOptionalGlobalEventDrawer();
   const { query, debouncedQuery, setQuery } = useEventSearch();
   const {
     today,
@@ -59,13 +64,27 @@ export function EventIntelligence({ events, asOf }: EventIntelligenceProps) {
     handleRefresh();
   }, [handleRefresh]);
 
-  const handleViewDetails = useCallback((event: EventIntelligenceEvent) => {
-    setSelectedEventId(event.id);
-  }, []);
+  const handleViewDetails = useCallback(
+    (event: EventIntelligenceEvent) => {
+      if (globalDrawer) {
+        globalDrawer.openEvent(event);
+        return;
+      }
+      setSelectedEventId(event.id);
+    },
+    [globalDrawer]
+  );
 
   const handleCloseDrawer = useCallback(() => {
     setSelectedEventId(null);
   }, []);
+
+  useEffect(() => {
+    const eventId = searchParams.get("event");
+    if (!eventId) return;
+    const match = events.find((event) => event.id === eventId);
+    if (match) handleViewDetails(match);
+  }, [searchParams, events, handleViewDetails]);
 
   const applyQuickPreset = useCallback(
     (eventTypes: typeof QUICK_ACTION_PRESETS.earnings) => {
@@ -110,6 +129,12 @@ export function EventIntelligence({ events, asOf }: EventIntelligenceProps) {
         onApplyEconomic={handleApplyEconomic}
       />
 
+      <MyEventsPanel
+        catalog={events}
+        today={today}
+        onOpenEvent={handleViewDetails}
+      />
+
       <EventToolbar
         searchQuery={query}
         onSearchChange={setQuery}
@@ -139,7 +164,7 @@ export function EventIntelligence({ events, asOf }: EventIntelligenceProps) {
         />
 
         <div className="min-w-0 flex-1 space-y-2.5">
-          <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-text-faint">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-text-muted">
             <p>
               Showing{" "}
               <span className="font-semibold text-text-secondary">
@@ -210,13 +235,15 @@ export function EventIntelligence({ events, asOf }: EventIntelligenceProps) {
         </div>
       </div>
 
-      <EventDetailDrawer
-        event={selectedEvent}
-        today={today}
-        open={selectedEvent != null}
-        onClose={handleCloseDrawer}
-        relatedEvents={events}
-      />
+      {!globalDrawer ? (
+        <EventDetailDrawer
+          event={selectedEvent}
+          today={today}
+          open={selectedEvent != null}
+          onClose={handleCloseDrawer}
+          relatedEvents={events}
+        />
+      ) : null}
     </div>
   );
 }

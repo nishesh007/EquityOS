@@ -17,6 +17,8 @@ import {
   MACRO_REGION_LABELS,
   MACRO_THEME_LABELS,
 } from "@/types/macro";
+import type { EventIntelligence } from "@/types/eventIntelligence";
+import { analyzeEventIntelligence } from "@/src/core/events/intelligence/eventIntelligenceEngine";
 
 export type EventBadgeKind =
   | "upcoming"
@@ -80,6 +82,8 @@ export interface EventDrawerView {
     result: string;
   }>;
   macro: MacroDrawerView | null;
+  /** Deterministic intelligence payload (Sprint 10D.4). */
+  intelligence: EventIntelligence;
   relatedNewsPlaceholder: string;
   aiPreviewPlaceholder: string;
 }
@@ -420,6 +424,8 @@ export function toEventDrawerView(
     );
   }
 
+  const intelligence = analyzeEventIntelligence(event, event.updatedAt);
+
   return {
     event,
     title: getEventTypeLabel(event.eventType),
@@ -453,9 +459,9 @@ export function toEventDrawerView(
         result: q.result,
       })) ?? [],
     macro: macro ? toMacroDrawerView(macro) : null,
+    intelligence,
     relatedNewsPlaceholder:
       "Related news feed will appear here in a later sprint.",
-    aiPreviewPlaceholder:
-      "AI impact summary and preparation checklist arrive in later sub-sprints.",
+    aiPreviewPlaceholder: intelligence.executiveSummary.narrative,
   };
 }

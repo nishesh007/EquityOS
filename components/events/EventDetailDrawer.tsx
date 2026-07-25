@@ -1,6 +1,8 @@
 "use client";
 
 import { EventBadges } from "@/components/events/EventBadges";
+import { EventIntelligencePanel } from "@/components/events/EventIntelligencePanel";
+import { EventStarButton } from "@/components/events/EventStarButton";
 import { toEventDrawerView } from "@/src/core/events/EventDrawerPresenter";
 import { cn } from "@/lib/utils";
 import type { EventIntelligenceEvent } from "@/types/event";
@@ -24,7 +26,7 @@ function Section({
 }) {
   return (
     <section className="space-y-2">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-faint">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-primary">
         {title}
       </p>
       <div>{children}</div>
@@ -39,7 +41,7 @@ function MetricGrid({
 }) {
   if (rows.length === 0) {
     return (
-      <p className="text-[11px] text-text-muted">No data available for this event.</p>
+      <p className="text-[11px] text-text-secondary">No data available for this event.</p>
     );
   }
   return (
@@ -49,8 +51,8 @@ function MetricGrid({
           key={`${row.label}-${row.value}`}
           className="rounded-lg border border-surface-border-subtle/80 bg-surface/40 px-2.5 py-2"
         >
-          <dt className="text-[10px] text-text-faint">{row.label}</dt>
-          <dd className="mt-0.5 text-xs font-medium text-text-secondary">
+          <dt className="text-[10px] text-text-muted">{row.label}</dt>
+          <dd className="mt-0.5 text-xs font-medium text-text-primary">
             {row.value}
           </dd>
         </div>
@@ -67,13 +69,13 @@ function ChipRow({
   tone: "positive" | "negative" | "neutral";
 }) {
   if (items.length === 0) {
-    return <p className="text-[11px] text-text-muted">None listed.</p>;
+    return <p className="text-[11px] text-text-secondary">None listed.</p>;
   }
   const toneClass =
     tone === "positive"
-      ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-400"
+      ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300"
       : tone === "negative"
-        ? "border-red-500/25 bg-red-500/10 text-red-400"
+        ? "border-red-500/25 bg-red-500/10 text-red-300"
         : "border-surface-border-subtle bg-surface/40 text-text-secondary";
   return (
     <div className="flex flex-wrap gap-1.5">
@@ -108,7 +110,7 @@ function ComparisonBars({
   );
   if (values.length === 0) {
     return (
-      <p className="text-[11px] text-text-muted">Awaiting print / consensus.</p>
+      <p className="text-[11px] text-text-secondary">Awaiting print / consensus.</p>
     );
   }
   const max = Math.max(...values.map(Math.abs), 0.01);
@@ -127,7 +129,7 @@ function ComparisonBars({
         return (
           <div key={row.label} className="space-y-1">
             <div className="flex items-center justify-between text-[10px]">
-              <span className="text-text-faint">{row.label}</span>
+              <span className="text-text-secondary">{row.label}</span>
               <span className="font-mono text-text-secondary">
                 {row.value == null
                   ? "—"
@@ -163,7 +165,7 @@ function ReadingsTrend({
 }) {
   if (readings.length === 0) {
     return (
-      <p className="text-[11px] text-text-muted">No historical readings.</p>
+      <p className="text-[11px] text-text-secondary">No historical readings.</p>
     );
   }
   const values = readings.map((r) => r.actual);
@@ -189,7 +191,7 @@ function ReadingsTrend({
           );
         })}
       </div>
-      <div className="flex justify-between text-[9px] text-text-faint">
+      <div className="flex justify-between text-[9px] text-text-muted">
         <span>{readings[0]?.date}</span>
         <span>{readings[readings.length - 1]?.date}</span>
       </div>
@@ -264,31 +266,36 @@ export function EventDetailDrawer({
       <aside className="flex h-full w-full max-w-xl flex-col border-l border-surface-border bg-surface-raised shadow-card animate-slide-in">
         <div className="flex items-start justify-between gap-3 border-b border-surface-border-subtle px-4 py-3">
           <div className="min-w-0">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-text-faint">
+            <p className="text-[10px] font-medium uppercase tracking-wider text-text-secondary">
               {view.title}
             </p>
             <h2 className="truncate text-sm font-semibold text-text-primary">
               {view.event.title}
             </h2>
-            <p className="mt-0.5 text-[11px] text-text-muted">{view.subtitle}</p>
+            <p className="mt-0.5 text-[11px] text-text-secondary">{view.subtitle}</p>
             <EventBadges badges={view.badges} className="mt-2" />
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close drawer"
-            className="rounded p-1 text-text-faint transition-colors hover:bg-surface-hover hover:text-text-secondary"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex shrink-0 items-center gap-1">
+            <EventStarButton eventId={view.event.id} />
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close drawer"
+              className="rounded p-1 text-text-muted transition-colors hover:bg-surface-hover hover:text-text-secondary"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 space-y-5 overflow-y-auto px-4 py-4">
           <Section title="Event Summary">
-            <p className="text-xs leading-relaxed text-text-secondary">
+            <p className="text-xs leading-relaxed text-text-primary">
               {view.summary}
             </p>
           </Section>
+
+          <EventIntelligencePanel intelligence={view.intelligence} />
 
           <Section title="Timeline">
             <MetricGrid rows={view.timeline} />
@@ -313,7 +320,7 @@ export function EventDetailDrawer({
               <Section title="Economic Data">
                 <MetricGrid rows={macro.economicData} />
                 <div className="mt-3 rounded-lg border border-surface-border-subtle/80 bg-surface/30 p-3">
-                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-text-faint">
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-text-secondary">
                     Forecast vs Actual
                   </p>
                   <ComparisonBars {...macro.forecastVsActual} />
@@ -324,7 +331,7 @@ export function EventDetailDrawer({
                 <ReadingsTrend readings={macro.historicalReadings} />
                 <div className="mt-3 overflow-x-auto rounded-lg border border-surface-border-subtle">
                   <table className="w-full min-w-[320px] text-left text-[11px]">
-                    <thead className="bg-surface-overlay/50 text-text-faint">
+                    <thead className="bg-surface-overlay/70 text-text-secondary">
                       <tr>
                         <th className="px-2 py-1.5 font-semibold">Label</th>
                         <th className="px-2 py-1.5 font-semibold">Date</th>
@@ -336,7 +343,7 @@ export function EventDetailDrawer({
                       {macro.historicalReadings.map((row) => (
                         <tr
                           key={`${row.date}-${row.label}`}
-                          className="border-t border-surface-border-subtle/70 text-text-secondary"
+                          className="border-t border-surface-border-subtle/80 text-text-primary transition-colors hover:bg-surface-hover/40"
                         >
                           <td className="px-2 py-1.5">{row.label}</td>
                           <td className="px-2 py-1.5">{row.date}</td>
@@ -352,16 +359,16 @@ export function EventDetailDrawer({
               </Section>
 
               <Section title="Sector Impact">
-                <p className="mb-1 text-[10px] text-text-faint">
+                <p className="mb-1 text-[10px] text-text-muted">
                   Likely Beneficiaries
                 </p>
                 <ChipRow items={macro.sectorPositive} tone="positive" />
-                <p className="mb-1 mt-3 text-[10px] text-text-faint">
+                <p className="mb-1 mt-3 text-[10px] text-text-muted">
                   Likely Negatively Impacted
                 </p>
                 <ChipRow items={macro.sectorNegative} tone="negative" />
                 {macro.sectorNote ? (
-                  <p className="mt-2 text-[11px] leading-relaxed text-text-muted">
+                  <p className="mt-2 text-[11px] leading-relaxed text-text-secondary">
                     {macro.sectorNote}
                   </p>
                 ) : null}
@@ -373,15 +380,15 @@ export function EventDetailDrawer({
                     className={cn(
                       "inline-flex rounded-md border px-2 py-0.5 text-[10px] font-semibold capitalize",
                       macro.direction === "bullish"
-                        ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-400"
+                        ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300"
                         : macro.direction === "bearish"
-                          ? "border-red-500/25 bg-red-500/10 text-red-400"
-                          : "border-slate-500/25 bg-slate-500/10 text-slate-400"
+                          ? "border-red-500/25 bg-red-500/10 text-red-300"
+                          : "border-zinc-400/40 bg-zinc-500/20 text-zinc-200"
                     )}
                   >
                     {macro.direction}
                   </span>
-                  <span className="inline-flex rounded-md border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold capitalize text-amber-400">
+                  <span className="inline-flex rounded-md border border-amber-400/45 bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold capitalize text-amber-200">
                     Vol: {macro.volatility}
                   </span>
                   <ChipRow items={macro.affectedIndices} tone="neutral" />
@@ -397,7 +404,7 @@ export function EventDetailDrawer({
                   <MetricGrid rows={macro.reactionAverages} />
                   <div className="mt-3 overflow-x-auto rounded-lg border border-surface-border-subtle">
                     <table className="w-full min-w-[400px] text-left text-[11px]">
-                      <thead className="bg-surface-overlay/50 text-text-faint">
+                      <thead className="bg-surface-overlay/70 text-text-secondary">
                         <tr>
                           <th className="px-2 py-1.5 font-semibold">Meeting</th>
                           <th className="px-2 py-1.5 font-semibold">NIFTY</th>
@@ -410,7 +417,7 @@ export function EventDetailDrawer({
                         {macro.historicalReaction.meetings.map((m) => (
                           <tr
                             key={`${m.date}-${m.label}`}
-                            className="border-t border-surface-border-subtle/70 font-mono text-text-secondary"
+                            className="border-t border-surface-border-subtle/80 font-mono text-text-primary transition-colors hover:bg-surface-hover/40"
                           >
                             <td className="px-2 py-1.5 font-sans">{m.label}</td>
                             <td className="px-2 py-1.5">
@@ -443,7 +450,7 @@ export function EventDetailDrawer({
 
               <Section title="Related Macro Events">
                 {relatedMacro.length === 0 ? (
-                  <p className="text-[11px] text-text-muted">
+                  <p className="text-[11px] text-text-secondary">
                     No related macro events in the current catalog window.
                   </p>
                 ) : (
@@ -454,7 +461,7 @@ export function EventDetailDrawer({
                         className="rounded-md border border-surface-border-subtle/80 px-2.5 py-2 text-xs text-text-secondary"
                       >
                         {item.title}
-                        <span className="mt-0.5 block text-[10px] text-text-faint">
+                        <span className="mt-0.5 block text-[10px] text-text-muted">
                           {item.date}
                           {item.time ? ` · ${item.time}` : ""}
                           {item.macroDetail
@@ -485,10 +492,10 @@ export function EventDetailDrawer({
                       key={label}
                       className="rounded-lg border border-dashed border-surface-border-subtle px-3 py-3"
                     >
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-text-faint">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-text-secondary">
                         {label}
                       </p>
-                      <p className="mt-1 text-[11px] leading-relaxed text-text-muted">
+                      <p className="mt-1 text-[11px] leading-relaxed text-text-secondary">
                         {body ?? "Placeholder pending AI module."}
                       </p>
                     </div>
@@ -496,10 +503,10 @@ export function EventDetailDrawer({
                 </div>
                 {macro.aiPlaceholder?.keyRisks?.length ? (
                   <div className="mt-2 rounded-lg border border-dashed border-surface-border-subtle px-3 py-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-text-faint">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-text-secondary">
                       Key Risks
                     </p>
-                    <ul className="mt-1 list-inside list-disc space-y-0.5 text-[11px] text-text-muted">
+                    <ul className="mt-1 list-inside list-disc space-y-0.5 text-[11px] text-text-secondary">
                       {macro.aiPlaceholder.keyRisks.map((risk) => (
                         <li key={risk}>{risk}</li>
                       ))}
@@ -528,7 +535,7 @@ export function EventDetailDrawer({
               {view.historicalQuarters.length > 0 ? (
                 <div className="mt-3 overflow-x-auto rounded-lg border border-surface-border-subtle">
                   <table className="w-full min-w-[360px] text-left text-[11px]">
-                    <thead className="bg-surface-overlay/50 text-text-faint">
+                    <thead className="bg-surface-overlay/70 text-text-secondary">
                       <tr>
                         <th className="px-2 py-1.5 font-semibold">Quarter</th>
                         <th className="px-2 py-1.5 font-semibold">Revenue</th>
@@ -540,7 +547,7 @@ export function EventDetailDrawer({
                       {view.historicalQuarters.map((row) => (
                         <tr
                           key={row.label}
-                          className="border-t border-surface-border-subtle/70 text-text-secondary"
+                          className="border-t border-surface-border-subtle/80 text-text-primary transition-colors hover:bg-surface-hover/40"
                         >
                           <td className="px-2 py-1.5">{row.label}</td>
                           <td className="px-2 py-1.5 font-mono">{row.revenue}</td>
@@ -558,7 +565,7 @@ export function EventDetailDrawer({
           {!macro ? (
             <Section title="Historical Events">
               {historicalPeers.length === 0 ? (
-                <p className="text-[11px] text-text-muted">
+                <p className="text-[11px] text-text-secondary">
                   No additional linked events for this ticker in the catalog.
                 </p>
               ) : (
@@ -569,7 +576,7 @@ export function EventDetailDrawer({
                       className="rounded-md border border-surface-border-subtle/80 px-2.5 py-2 text-xs text-text-secondary"
                     >
                       {item.title}
-                      <span className="mt-0.5 block text-[10px] text-text-faint">
+                      <span className="mt-0.5 block text-[10px] text-text-muted">
                         {item.date}
                         {item.time ? ` · ${item.time}` : ""}
                       </span>
@@ -581,14 +588,14 @@ export function EventDetailDrawer({
           ) : null}
 
           <Section title="Related News">
-            <p className="rounded-lg border border-dashed border-surface-border-subtle px-3 py-4 text-[11px] text-text-muted">
+            <p className="rounded-lg border border-dashed border-surface-border-subtle px-3 py-4 text-[11px] text-text-secondary">
               {view.relatedNewsPlaceholder}
             </p>
           </Section>
 
           {!macro ? (
             <Section title="AI Preview">
-              <p className="rounded-lg border border-dashed border-surface-border-subtle px-3 py-4 text-[11px] text-text-muted">
+              <p className="rounded-lg border border-dashed border-surface-border-subtle px-3 py-4 text-[11px] text-text-secondary">
                 {view.aiPreviewPlaceholder}
               </p>
             </Section>

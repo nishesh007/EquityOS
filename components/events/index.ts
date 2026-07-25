@@ -6,6 +6,7 @@ export { EventErrorState } from "@/components/events/EventErrorState";
 export { EventFilters } from "@/components/events/EventFilters";
 export { EventHero } from "@/components/events/EventHero";
 export { EventIntelligence } from "@/components/events/EventIntelligence";
+export { EventIntelligencePanel } from "@/components/events/EventIntelligencePanel";
 export { EventSearch } from "@/components/events/EventSearch";
 export { EventSkeleton } from "@/components/events/EventSkeleton";
 export {
@@ -20,3 +21,15 @@ export { AgendaView } from "@/components/events/views/AgendaView";
 export { DayView } from "@/components/events/views/DayView";
 export { MonthView } from "@/components/events/views/MonthView";
 export { WeekView } from "@/components/events/views/WeekView";
+export {
+  EventAwarenessBadge,
+  EventAwarenessBadgeRow,
+} from "@/components/events/EventAwarenessBadges";
+export { EventStarButton } from "@/components/events/EventStarButton";
+export {
+  GlobalEventDrawerProvider,
+  useGlobalEventDrawer,
+  useOptionalGlobalEventDrawer,
+} from "@/components/events/GlobalEventDrawerProvider";
+export { MyEventsPanel } from "@/components/events/MyEventsPanel";
+export { RecommendationEventWarningBadge } from "@/components/events/RecommendationEventWarningBadge";

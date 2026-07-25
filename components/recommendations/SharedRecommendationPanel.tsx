@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useMemo } from "react";
+import { RecommendationEventWarningBadge } from "@/components/events/RecommendationEventWarningBadge";
 
 function price(value: number): string {
   return `₹${value.toLocaleString("en-IN", {
@@ -170,6 +171,10 @@ function OpportunityCard({
             {recommendation.symbol}
           </p>
           <p className="text-[11px] text-text-muted">{recommendation.company}</p>
+          <RecommendationEventWarningBadge
+            symbol={recommendation.symbol}
+            className="mt-1.5"
+          />
         </div>
         <ActionBadge action={display} />
       </div>
@@ -285,6 +290,14 @@ function OpportunityExpanded({
             ? ` · ${recommendation.evidence.slice(0, 2).join(" · ")}`
             : ""}
         </p>
+      </div>
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-text-faint">
+          Upcoming Events
+        </p>
+        <div className="mt-1">
+          <RecommendationEventWarningBadge symbol={recommendation.symbol} />
+        </div>
       </div>
     </div>
   );

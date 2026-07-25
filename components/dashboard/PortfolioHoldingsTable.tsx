@@ -3,6 +3,8 @@
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { EventAwarenessBadgeRow } from "@/components/events/EventAwarenessBadges";
+import { useOptionalGlobalEventDrawer } from "@/components/events/GlobalEventDrawerProvider";
 import { useMarketQuotes } from "@/hooks/useMarketQuotes";
 import { createUnavailableQuote } from "@/lib/market-data/enriched-quote";
 import { getCompanyRoute } from "@/lib/routes";
@@ -11,6 +13,8 @@ import type { PortfolioHolding } from "@/types";
 import { createInstitutionalTable, ResearchDataGrid } from "@/src/design";
 import { Briefcase } from "lucide-react";
 import type { SharedRecommendation } from "@/lib/recommendations";
+import { buildPortfolioEventInsights } from "@/src/core/events/integration";
+import { buildEventSeedCatalog, toDateKey } from "@/src/core/events";
 
 interface PortfolioHoldingsTableProps {
   holdings: PortfolioHolding[];
@@ -63,6 +67,18 @@ export function PortfolioHoldingsTable({
   recommendations = {},
 }: PortfolioHoldingsTableProps) {
   const router = useRouter();
+  const drawer = useOptionalGlobalEventDrawer();
+  const today = useMemo(() => toDateKey(new Date()), []);
+  const catalog = useMemo(() => buildEventSeedCatalog(today), [today]);
+  const eventInsights = useMemo(() => {
+    const list = buildPortfolioEventInsights(
+      catalog,
+      holdings.map((h) => ({ symbol: h.symbol, name: h.name })),
+      today
+    );
+    return new Map(list.map((insight) => [insight.symbol, insight]));
+  }, [catalog, holdings, today]);
+
   const symbols = holdings.map((h) => h.symbol);
   const { quotes } = useMarketQuotes(symbols, {
     initialQuotes: buildInitialQuotesMap(holdings),
@@ -130,37 +146,64 @@ export function PortfolioHoldingsTable({
         emptyTitle="No Holdings"
         emptyDescription="Add positions to your portfolio to see them here."
         onRowClick={(row) => router.push(getCompanyRoute(row.symbol))}
-        renderExpandedRow={(row) => (
-          <div className="grid gap-2 sm:grid-cols-3">
-            <div>
-              <p className="data-label">
-                Strategy Details
-              </p>
-              <p className="data-secondary mt-1">
-                {row.signal} · {row.strategy}
-                {row.holdingConfidence != null
-                  ? ` · Confidence ${row.holdingConfidence.toFixed(1)}%`
-                  : ""}
-              </p>
+        renderExpandedRow={(row) => {
+          const insight = eventInsights.get(row.symbol.toUpperCase());
+          const primary = insight?.primary ?? null;
+          return (
+            <div className="grid gap-2 sm:grid-cols-4">
+              <div>
+                <p className="data-label">Strategy Details</p>
+                <p className="data-secondary mt-1">
+                  {row.signal} · {row.strategy}
+                  {row.holdingConfidence != null
+                    ? ` · Confidence ${row.holdingConfidence.toFixed(1)}%`
+                    : ""}
+                </p>
+              </div>
+              <div>
+                <p className="data-label">Risks</p>
+                <p className="data-secondary mt-1">
+                  Risk {row.risk ?? "—"} · Regime {row.regime}
+                </p>
+              </div>
+              <div>
+                <p className="data-label">Notes</p>
+                <p className="data-secondary mt-1">
+                  {row.name} · Opportunity {row.opportunityChange}
+                </p>
+              </div>
+              <div>
+                <p className="data-label">Upcoming Event</p>
+                {primary ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      drawer?.openEvent(primary.event);
+                    }}
+                    className="mt-1 w-full text-left"
+                  >
+                    <p className="data-secondary">
+                      {primary.event.title} · {primary.countdown.label}
+                      {primary.riskLabel === "risk"
+                        ? " · Risk"
+                        : primary.riskLabel === "opportunity"
+                          ? " · Opportunity"
+                          : ""}
+                    </p>
+                    <EventAwarenessBadgeRow
+                      kinds={primary.awareness}
+                      max={2}
+                      className="mt-1.5"
+                    />
+                  </button>
+                ) : (
+                  <p className="data-secondary mt-1">No upcoming events.</p>
+                )}
+              </div>
             </div>
-            <div>
-              <p className="data-label">
-                Risks
-              </p>
-              <p className="data-secondary mt-1">
-                Risk {row.risk ?? "—"} · Regime {row.regime}
-              </p>
-            </div>
-            <div>
-              <p className="data-label">
-                Notes
-              </p>
-              <p className="data-secondary mt-1">
-                {row.name} · Opportunity {row.opportunityChange}
-              </p>
-            </div>
-          </div>
-        )}
+          );
+        }}
       />
     </Card>
   );

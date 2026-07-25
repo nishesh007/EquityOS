@@ -174,7 +174,7 @@ const StatCard = memo(function StatCard({ metric }: { metric: EventStatMetric })
         <Icon className="h-3.5 w-3.5" />
       </span>
       <div className="min-w-0">
-        <p className="text-[11px] font-medium leading-none text-text-muted">
+        <p className="text-[11px] font-medium leading-none text-text-secondary">
           {metric.label}
         </p>
         <p
@@ -185,7 +185,7 @@ const StatCard = memo(function StatCard({ metric }: { metric: EventStatMetric })
         >
           {metric.value}
         </p>
-        <p className="mt-1 truncate text-[10px] text-text-faint">
+        <p className="mt-1 truncate text-[10px] text-text-muted">
           {metric.subtitle}
         </p>
       </div>
@@ -440,7 +440,7 @@ export const EventQuickActions = memo(function EventQuickActions({
 
   return (
     <div data-testid="event-quick-actions">
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-text-faint">
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-text-primary">
         Quick Actions
       </p>
       <div className="flex flex-wrap gap-2">
@@ -461,7 +461,7 @@ export const EventQuickActions = memo(function EventQuickActions({
               className={cn(
                 "inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-[11px] font-semibold transition-[border-color,background-color,color,transform] duration-150",
                 action.disabled
-                  ? "cursor-not-allowed border-surface-border-subtle bg-surface-overlay/30 text-text-faint"
+                  ? "cursor-not-allowed border-surface-border-subtle bg-surface-overlay/30 text-text-muted"
                   : cn(
                       "border-surface-border-subtle bg-surface-raised/50 text-text-secondary",
                       "hover:border-opacity-40 hover:bg-surface-hover hover:text-text-primary active:scale-[0.98]",
@@ -472,13 +472,13 @@ export const EventQuickActions = memo(function EventQuickActions({
               <Icon
                 className={cn(
                   "h-3.5 w-3.5",
-                  action.disabled ? "text-text-faint" : colors.text
+                  action.disabled ? "text-text-muted" : colors.text
                 )}
                 aria-hidden
               />
               {action.label}
               {action.disabled ? (
-                <span className="rounded border border-surface-border-subtle px-1 py-px text-[9px] font-medium uppercase tracking-wide text-text-faint">
+                <span className="rounded border border-surface-border-subtle px-1 py-px text-[9px] font-medium uppercase tracking-wide text-text-muted">
                   Soon
                 </span>
               ) : null}

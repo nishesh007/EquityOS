@@ -62,7 +62,7 @@ export const EventToolbar = memo(function EventToolbar({
           <label className="relative inline-flex h-9 items-center">
             <span className="sr-only">Select date</span>
             <CalendarDays
-              className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-text-faint"
+              className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-text-muted"
               aria-hidden
             />
             <input
@@ -122,7 +122,7 @@ export const EventToolbar = memo(function EventToolbar({
         </div>
       </div>
 
-      <p className="mt-2 text-[11px] text-text-faint">
+      <p className="mt-2 text-[11px] text-text-muted">
         Focus · {formatDisplayDate(selectedDate)}
       </p>
     </div>

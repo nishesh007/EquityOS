@@ -64,7 +64,7 @@ export function EventTimeline({
         <section key={bucket} aria-labelledby={`timeline-${bucket}`}>
           <h2
             id={`timeline-${bucket}`}
-            className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-text-faint"
+            className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-text-primary"
           >
             {BUCKET_LABELS[bucket]}
           </h2>
@@ -101,7 +101,7 @@ export function EventTimeline({
                       <p className="text-sm font-semibold text-text-primary">
                         {formatDisplayDate(date)}
                       </p>
-                      <p className="text-[11px] text-text-faint">
+                      <p className="text-[11px] text-text-secondary">
                         {dayEvents.length === 1
                           ? "1 event"
                           : `${dayEvents.length} events`}
@@ -109,7 +109,7 @@ export function EventTimeline({
                     </div>
                     <ChevronDown
                       className={cn(
-                        "h-4 w-4 text-text-faint transition-transform",
+                        "h-4 w-4 text-text-muted transition-transform",
                         isOpen && "rotate-180"
                       )}
                       aria-hidden

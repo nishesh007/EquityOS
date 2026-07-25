@@ -19,13 +19,13 @@ export function EventErrorState({
       role="alert"
       data-testid="event-error-state"
     >
-      <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-red-500/10 text-red-400 ring-1 ring-red-500/20">
+      <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-red-500/10 text-red-300 ring-1 ring-red-500/20">
         <AlertTriangle className="h-5 w-5" aria-hidden />
       </div>
       <p className="text-sm font-semibold text-text-secondary">
         Something went wrong
       </p>
-      <p className="mt-1.5 max-w-sm text-xs leading-relaxed text-text-muted">
+      <p className="mt-1.5 max-w-sm text-xs leading-relaxed text-text-primary">
         {message}
       </p>
       {onRetry ? (

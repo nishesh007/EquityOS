@@ -67,7 +67,7 @@ export function MonthView({
     <section aria-label="Month view">
       <header className="mb-4">
         <h2 className="text-sm font-semibold text-text-primary">{monthLabel}</h2>
-        <p className="text-xs text-text-muted">
+        <p className="text-xs text-text-secondary">
           {monthEventCount === 1
             ? "1 event this month"
             : `${monthEventCount} events this month`}
@@ -83,7 +83,7 @@ export function MonthView({
               {WEEKDAYS.map((day) => (
                 <div
                   key={day}
-                  className="px-2 py-2 text-center text-[10px] font-semibold uppercase tracking-wider text-text-faint"
+                  className="px-2 py-2 text-center text-[10px] font-semibold uppercase tracking-wider text-text-secondary"
                 >
                   {day}
                 </div>
@@ -136,7 +136,7 @@ export function MonthView({
                         );
                       })}
                       {dayEvents.length > 3 ? (
-                        <span className="text-[9px] text-text-faint">
+                        <span className="text-[9px] text-text-muted">
                           +{dayEvents.length - 3}
                         </span>
                       ) : null}
@@ -148,11 +148,11 @@ export function MonthView({
           </div>
 
           <div>
-            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-faint">
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-text-secondary">
               {formatDisplayDate(selectedDate)}
             </h3>
             {selectedDayEvents.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-surface-border-subtle px-4 py-6 text-center text-xs text-text-muted">
+              <p className="rounded-lg border border-dashed border-surface-border-subtle px-4 py-6 text-center text-xs text-text-secondary">
                 No events on the selected day.
               </p>
             ) : (

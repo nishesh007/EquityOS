@@ -1,5 +1,6 @@
 import { PortfolioSummary } from "@/components/dashboard/PortfolioSummary";
 import { PortfolioHoldingsTable } from "@/components/dashboard/PortfolioHoldingsTable";
+import { PortfolioEventImpactPanel } from "@/components/dashboard/PortfolioEventImpactPanel";
 import { Watchlist } from "@/components/dashboard/Watchlist";
 import { PortfolioEarningsPanel } from "@/components/dashboard/earnings";
 import { PortfolioDoctor } from "@/components/portfolio/PortfolioDoctor";
@@ -100,6 +101,7 @@ export default async function PortfolioPage() {
                   )}
                 />
               </div>
+              <PortfolioEventImpactPanel holdings={portfolio.holdings} />
               {doctorAnalysis ? (
                 <PortfolioDoctor analysis={doctorAnalysis} />
               ) : null}
