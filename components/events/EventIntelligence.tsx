@@ -4,6 +4,7 @@ import { DayView } from "@/components/events/views/DayView";
 import { WeekView } from "@/components/events/views/WeekView";
 import { MonthView } from "@/components/events/views/MonthView";
 import { AgendaView } from "@/components/events/views/AgendaView";
+import { EventDetailDrawer } from "@/components/events/EventDetailDrawer";
 import { EventErrorState } from "@/components/events/EventErrorState";
 import { EventFilters } from "@/components/events/EventFilters";
 import { EventHero } from "@/components/events/EventHero";
@@ -62,6 +63,10 @@ export function EventIntelligence({ events, asOf }: EventIntelligenceProps) {
     setSelectedEventId(event.id);
   }, []);
 
+  const handleCloseDrawer = useCallback(() => {
+    setSelectedEventId(null);
+  }, []);
+
   const applyQuickPreset = useCallback(
     (eventTypes: typeof QUICK_ACTION_PRESETS.earnings) => {
       setFilters({
@@ -75,8 +80,12 @@ export function EventIntelligence({ events, asOf }: EventIntelligenceProps) {
   );
 
   const handleApplyEarnings = useCallback(() => {
-    applyQuickPreset(QUICK_ACTION_PRESETS.earnings);
-  }, [applyQuickPreset]);
+    setFilters({
+      ...createEmptyEventFilters(),
+      quickRanges: ["upcoming_earnings"],
+    });
+    setFiltersOpen(true);
+  }, [setFilters, setFiltersOpen]);
 
   const handleApplyCorporate = useCallback(() => {
     applyQuickPreset(QUICK_ACTION_PRESETS.corporate);
@@ -142,14 +151,6 @@ export function EventIntelligence({ events, asOf }: EventIntelligenceProps) {
               </span>{" "}
               filtered · {events.length} catalog · as of {asOf}
             </p>
-            {selectedEvent ? (
-              <p className="text-text-muted">
-                Focus ·{" "}
-                <span className="font-medium text-text-secondary">
-                  {selectedEvent.title}
-                </span>
-              </p>
-            ) : null}
           </div>
 
           {error ? (
@@ -208,6 +209,14 @@ export function EventIntelligence({ events, asOf }: EventIntelligenceProps) {
           )}
         </div>
       </div>
+
+      <EventDetailDrawer
+        event={selectedEvent}
+        today={today}
+        open={selectedEvent != null}
+        onClose={handleCloseDrawer}
+        relatedEvents={events}
+      />
     </div>
   );
 }

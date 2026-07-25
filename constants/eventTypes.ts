@@ -107,6 +107,27 @@ export const EVENT_TYPE_DEFINITIONS: readonly EventTypeDefinition[] =
       description: "Exchange delisting",
     },
     {
+      id: "merger",
+      label: "Merger",
+      shortLabel: "Merger",
+      category: "corporate_actions",
+      description: "Corporate merger transaction",
+    },
+    {
+      id: "demerger",
+      label: "Demerger",
+      shortLabel: "Demerger",
+      category: "corporate_actions",
+      description: "Corporate demerger / spin-off",
+    },
+    {
+      id: "open_offer",
+      label: "Open Offer",
+      shortLabel: "Offer",
+      category: "corporate_actions",
+      description: "Open offer to public shareholders",
+    },
+    {
       id: "rbi_policy",
       label: "RBI Policy",
       shortLabel: "RBI",
@@ -224,6 +245,8 @@ export const EVENT_IMPORTANCE_LABELS = Object.freeze({
 export const EVENT_STATUS_LABELS = Object.freeze({
   upcoming: "Upcoming",
   today: "Today",
+  tomorrow: "Tomorrow",
+  live: "Live",
   completed: "Completed",
   cancelled: "Cancelled",
 } as const);
@@ -237,10 +260,18 @@ export const EVENT_VIEW_OPTIONS = Object.freeze([
 ]);
 
 export const MARKET_CAP_OPTIONS = Object.freeze([
+  { id: "mega" as const, label: "Mega Cap" },
   { id: "large" as const, label: "Large Cap" },
   { id: "mid" as const, label: "Mid Cap" },
   { id: "small" as const, label: "Small Cap" },
   { id: "micro" as const, label: "Micro Cap" },
+]);
+
+export const QUARTER_OPTIONS = Object.freeze([
+  { id: "Q1" as const, label: "Q1" },
+  { id: "Q2" as const, label: "Q2" },
+  { id: "Q3" as const, label: "Q3" },
+  { id: "Q4" as const, label: "Q4" },
 ]);
 
 export const QUICK_RANGE_OPTIONS = Object.freeze([
@@ -249,6 +280,18 @@ export const QUICK_RANGE_OPTIONS = Object.freeze([
   { id: "today" as const, label: "Today" },
   { id: "this_week" as const, label: "This Week" },
   { id: "this_month" as const, label: "This Month" },
+  { id: "upcoming_earnings" as const, label: "Upcoming Earnings" },
+  { id: "completed_earnings" as const, label: "Completed Earnings" },
+  { id: "conference_calls" as const, label: "Conference Calls" },
+  { id: "high_dividend" as const, label: "High Dividend" },
+]);
+
+export const INTELLIGENCE_TYPE_CHIPS = Object.freeze([
+  { id: "dividend" as const, label: "Dividend" },
+  { id: "bonus" as const, label: "Bonus" },
+  { id: "stock_split" as const, label: "Split" },
+  { id: "buyback" as const, label: "Buyback" },
+  { id: "rights_issue" as const, label: "Rights" },
 ]);
 
 export const DEFAULT_EVENT_TIMEZONE = "Asia/Kolkata";

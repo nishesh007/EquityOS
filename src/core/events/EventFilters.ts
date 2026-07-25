@@ -23,6 +23,8 @@ export function createEmptyEventFilters(): EventFilterState {
     company: "",
     ticker: "",
     filterSearch: "",
+    quarters: [],
+    highDividendOnly: false,
   };
 }
 
@@ -97,6 +99,10 @@ function matchesQuickRange(
   const weekEnd = addDays(weekStart, 6);
   const monthStart = startOfMonth(today);
   const monthEnd = endOfMonth(today);
+  const category = getEventCategory(event.eventType);
+  const isEarnings =
+    event.eventType === "quarterly_results" ||
+    event.eventType === "annual_results";
 
   switch (range) {
     case "upcoming":
@@ -109,6 +115,23 @@ function matchesQuickRange(
       return event.date >= weekStart && event.date <= weekEnd;
     case "this_month":
       return event.date >= monthStart && event.date <= monthEnd;
+    case "upcoming_earnings":
+      return (
+        (isEarnings || category === "results") &&
+        event.date >= today &&
+        event.status !== "completed"
+      );
+    case "completed_earnings":
+      return isEarnings && (event.status === "completed" || event.date < today);
+    case "conference_calls":
+      return event.eventType === "conference_call";
+    case "high_dividend":
+      return (
+        event.eventType === "dividend" &&
+        (event.corporateActionDetail?.kind === "dividend"
+          ? (event.corporateActionDetail.yieldPct ?? 0) >= 2
+          : event.importance === "high" || event.importance === "critical")
+      );
     default:
       return true;
   }
@@ -211,6 +234,13 @@ export function filterEvents(
         .toLowerCase();
       if (!panelHay.includes(panelQ)) return false;
     }
+    if (filters.quarters.length > 0) {
+      const quarter = event.earningsDetail?.quarter;
+      if (!quarter || !filters.quarters.includes(quarter)) return false;
+    }
+    if (filters.highDividendOnly) {
+      if (!matchesQuickRange(event, "high_dividend", today)) return false;
+    }
     if (!matchesSearchQuery(event, searchQuery)) return false;
     return true;
   });
@@ -273,6 +303,8 @@ export function countActiveFilters(filters: EventFilterState): number {
   if (filters.company.trim()) count += 1;
   if (filters.ticker.trim()) count += 1;
   if (filters.filterSearch.trim()) count += 1;
+  if (filters.quarters.length) count += 1;
+  if (filters.highDividendOnly) count += 1;
   return count;
 }
 

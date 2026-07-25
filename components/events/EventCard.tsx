@@ -1,8 +1,8 @@
 "use client";
 
+import { EventBadges } from "@/components/events/EventBadges";
 import {
   EVENT_IMPORTANCE_LABELS,
-  EVENT_STATUS_LABELS,
   getEventCategory,
   getEventTypeLabel,
 } from "@/constants/eventTypes";
@@ -10,7 +10,8 @@ import {
   getEventTypeColors,
   getImportanceColors,
 } from "@/constants/eventColors";
-import { formatShortDate } from "@/src/core/events";
+import { deriveEventBadges } from "@/src/core/events/EventDrawerPresenter";
+import { formatShortDate, toDateKey } from "@/src/core/events";
 import { cn } from "@/lib/utils";
 import { FOCUS_RING_CLASS } from "@/src/design/motion/motionPresets";
 import type { EventIntelligenceEvent } from "@/types/event";
@@ -27,6 +28,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { useMemo } from "react";
 
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
   results: LineChart,
@@ -44,6 +46,40 @@ interface EventCardProps {
   onViewDetails?: (event: EventIntelligenceEvent) => void;
 }
 
+function intelligencePreview(event: EventIntelligenceEvent): string | null {
+  if (event.earningsDetail) {
+    const e = event.earningsDetail.estimates;
+    const parts = [
+      event.earningsDetail.quarter,
+      event.earningsDetail.financialYear,
+      e.expectedRevenueCr != null
+        ? `Rev ₹${e.expectedRevenueCr.toLocaleString("en-IN")} Cr`
+        : null,
+      e.expectedEps != null ? `EPS ${e.expectedEps.toFixed(2)}` : null,
+    ].filter(Boolean);
+    return parts.join(" · ");
+  }
+  if (event.corporateActionDetail?.kind === "dividend") {
+    const d = event.corporateActionDetail;
+    return `₹${d.amountPerShare.toFixed(2)} · Yield ${d.yieldPct?.toFixed(2) ?? "—"}% · Ex ${formatShortDate(d.exDate)}`;
+  }
+  if (event.corporateActionDetail?.kind === "buyback") {
+    const d = event.corporateActionDetail;
+    return `₹${d.pricePerShare.toLocaleString("en-IN")} · ₹${d.offerSizeCr.toLocaleString("en-IN")} Cr`;
+  }
+  if (event.corporateActionDetail?.kind === "bonus") {
+    return `Bonus ${event.corporateActionDetail.ratio}`;
+  }
+  if (event.corporateActionDetail?.kind === "stock_split") {
+    return `Split ${event.corporateActionDetail.ratio}`;
+  }
+  if (event.corporateActionDetail?.kind === "rights_issue") {
+    const d = event.corporateActionDetail;
+    return `Rights ${d.ratio} @ ₹${d.issuePrice}`;
+  }
+  return null;
+}
+
 export function EventCard({
   event,
   compact = false,
@@ -53,6 +89,12 @@ export function EventCard({
   const colors = getEventTypeColors(event.eventType);
   const importanceColors = getImportanceColors(event.importance);
   const Icon = CATEGORY_ICONS[category] ?? Sparkles;
+  const today = useMemo(() => toDateKey(new Date()), []);
+  const badges = useMemo(
+    () => deriveEventBadges(event, today),
+    [event, today]
+  );
+  const preview = intelligencePreview(event);
 
   return (
     <article
@@ -69,7 +111,7 @@ export function EventCard({
         className={cn("absolute inset-y-0 left-0 w-1", colors.strip)}
       />
 
-      <div className={cn("flex gap-3", compact ? "items-start" : "items-start")}>
+      <div className="flex items-start gap-3">
         <span
           aria-hidden
           className={cn(
@@ -102,6 +144,14 @@ export function EventCard({
                     {event.ticker}
                   </span>
                 ) : null}
+                {event.sector ? (
+                  <span className="text-[11px] text-text-faint">{event.sector}</span>
+                ) : null}
+                {event.marketCap !== "unknown" ? (
+                  <span className="text-[11px] capitalize text-text-faint">
+                    {event.marketCap} cap
+                  </span>
+                ) : null}
               </div>
             </div>
 
@@ -115,7 +165,7 @@ export function EventCard({
             </span>
           </div>
 
-          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             <span
               className={cn(
                 "inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold",
@@ -124,9 +174,7 @@ export function EventCard({
             >
               {getEventTypeLabel(event.eventType)}
             </span>
-            <span className="inline-flex items-center rounded-md border border-surface-border-subtle bg-surface-overlay/50 px-2 py-0.5 text-[10px] font-medium text-text-secondary">
-              {EVENT_STATUS_LABELS[event.status]}
-            </span>
+            <EventBadges badges={badges} />
             <span className="inline-flex items-center gap-1 text-[11px] text-text-muted">
               <CalendarDays className="h-3 w-3" aria-hidden />
               {formatShortDate(event.date)}
@@ -134,14 +182,20 @@ export function EventCard({
             {event.time ? (
               <span className="inline-flex items-center gap-1 text-[11px] text-text-muted">
                 <Clock3 className="h-3 w-3" aria-hidden />
-                {event.time} {event.timezone === "Asia/Kolkata" ? "IST" : ""}
+                {event.time} IST
               </span>
             ) : (
               <span className="text-[11px] text-text-faint">All day</span>
             )}
           </div>
 
-          {!compact && event.description ? (
+          {!compact && preview ? (
+            <p className="mt-2 line-clamp-1 font-mono text-[11px] text-text-secondary">
+              {preview}
+            </p>
+          ) : null}
+
+          {!compact && !preview && event.description ? (
             <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-text-muted">
               {event.description}
             </p>

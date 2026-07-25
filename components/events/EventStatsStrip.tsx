@@ -63,21 +63,35 @@ export function computeEventStats(
   let todayCount = 0;
   let weekCount = 0;
   let criticalCount = 0;
-  let upcomingEarnings = 0;
-  let corporateCount = 0;
-  let economicCount = 0;
+
+  const upcomingEarningsEvents: EventIntelligenceEvent[] = [];
+  const corporateEvents: EventIntelligenceEvent[] = [];
+  const economicEvents: EventIntelligenceEvent[] = [];
 
   for (const event of events) {
     const category = getEventCategory(event.eventType);
     if (event.date === today) todayCount += 1;
     if (event.date >= weekStart && event.date <= weekEnd) weekCount += 1;
     if (event.importance === "critical") criticalCount += 1;
-    if (category === "results" && event.date >= today) upcomingEarnings += 1;
-    if (category === "corporate_actions") corporateCount += 1;
+    if (category === "results" && event.date >= today) {
+      upcomingEarningsEvents.push(event);
+    }
+    if (category === "corporate_actions" || category === "ipo") {
+      corporateEvents.push(event);
+    }
     if (category === "economic" || category === "central_bank") {
-      economicCount += 1;
+      economicEvents.push(event);
     }
   }
+
+  upcomingEarningsEvents.sort((a, b) => a.date.localeCompare(b.date));
+  corporateEvents.sort((a, b) => a.date.localeCompare(b.date));
+  const nextEarn = upcomingEarningsEvents[0];
+  const nextCorp = corporateEvents.find((e) => e.date >= today) ?? corporateEvents[0];
+  const topEconomic = [...economicEvents].sort((a, b) => {
+    const rank = { critical: 0, high: 1, medium: 2, low: 3 } as const;
+    return rank[a.importance] - rank[b.importance];
+  })[0];
 
   return [
     {
@@ -107,24 +121,30 @@ export function computeEventStats(
     {
       id: "earnings",
       label: "Upcoming Earnings",
-      value: upcomingEarnings,
-      subtitle: "Results ahead",
+      value: upcomingEarningsEvents.length,
+      subtitle: nextEarn
+        ? `${nextEarn.ticker ?? nextEarn.company ?? "Next"} · ${nextEarn.date}`
+        : "No upcoming prints",
       icon: LineChart,
       tone: "results",
     },
     {
       id: "corporate",
       label: "Corporate Actions",
-      value: corporateCount,
-      subtitle: "In catalog",
+      value: corporateEvents.length,
+      subtitle: nextCorp
+        ? `${nextCorp.ticker ?? nextCorp.title} · ${nextCorp.date}`
+        : "No actions queued",
       icon: Scale,
       tone: "corporate_actions",
     },
     {
       id: "economic",
       label: "Economic Events",
-      value: economicCount,
-      subtitle: "Macro & policy",
+      value: economicEvents.length,
+      subtitle: topEconomic
+        ? `${topEconomic.importance} · ${topEconomic.title}`
+        : "No macro events",
       icon: Landmark,
       tone: "economic",
     },
@@ -220,6 +240,12 @@ export const QUICK_ACTION_PRESETS = {
     "buyback",
     "agm",
     "egm",
+    "listing",
+    "delisting",
+    "ipo",
+    "merger",
+    "demerger",
+    "open_offer",
   ] as EventType[],
   economic: [
     "rbi_policy",

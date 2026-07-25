@@ -71,4 +71,29 @@ describe("EventFilters", () => {
       })
     ).toBe(2);
   });
+
+  it("filters upcoming earnings via quick range", () => {
+    const filters = {
+      ...createEmptyEventFilters(),
+      quickRanges: ["upcoming_earnings" as const],
+    };
+    const result = filterEvents(events, filters, "", today);
+    expect(result.length).toBeGreaterThan(0);
+    expect(
+      result.every(
+        (e) =>
+          (e.eventType === "quarterly_results" ||
+            e.eventType === "annual_results" ||
+            e.eventType === "conference_call") &&
+          e.date >= today
+      )
+    ).toBe(true);
+  });
+
+  it("attaches earnings preview payloads to result events", () => {
+    const earnings = events.filter((e) => e.eventType === "quarterly_results");
+    expect(earnings.length).toBeGreaterThan(0);
+    expect(earnings.every((e) => e.earningsDetail != null)).toBe(true);
+    expect(earnings[0]?.earningsDetail?.historical.quarters.length).toBe(8);
+  });
 });

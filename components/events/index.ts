@@ -1,4 +1,6 @@
+export { EventBadges } from "@/components/events/EventBadges";
 export { EventCard } from "@/components/events/EventCard";
+export { EventDetailDrawer } from "@/components/events/EventDetailDrawer";
 export { EventEmptyState } from "@/components/events/EventEmptyState";
 export { EventErrorState } from "@/components/events/EventErrorState";
 export { EventFilters } from "@/components/events/EventFilters";

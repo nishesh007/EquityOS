@@ -1,8 +1,11 @@
 /**
- * Event Intelligence Platform — domain contracts (Sprint 10D.1).
+ * Event Intelligence Platform — domain contracts (Sprint 10D.1 / 10D.2).
  * Foundation model for corporate actions, earnings, macro and catalysts.
- * Future AI / alerts / impact fields are reserved but unused this sprint.
+ * Earnings & corporate action payloads added in 10D.2.
  */
+
+import type { ConferenceCallDetail, EarningsDetail } from "@/types/earnings";
+import type { CorporateActionDetails } from "@/types/corporateActions";
 
 export type EventType =
   | "quarterly_results"
@@ -18,6 +21,9 @@ export type EventType =
   | "ipo"
   | "listing"
   | "delisting"
+  | "merger"
+  | "demerger"
+  | "open_offer"
   | "rbi_policy"
   | "fed_meeting"
   | "gdp"
@@ -44,6 +50,8 @@ export type EventCategory =
 export type EventStatus =
   | "upcoming"
   | "today"
+  | "tomorrow"
+  | "live"
   | "completed"
   | "cancelled";
 
@@ -57,6 +65,7 @@ export type MarketDirection =
   | "unknown";
 
 export type MarketCapBucket =
+  | "mega"
   | "large"
   | "mid"
   | "small"
@@ -78,7 +87,11 @@ export type EventQuickRange =
   | "completed"
   | "today"
   | "this_week"
-  | "this_month";
+  | "this_month"
+  | "upcoming_earnings"
+  | "completed_earnings"
+  | "conference_calls"
+  | "high_dividend";
 
 export interface EventIntelligenceEvent {
   id: string;
@@ -107,7 +120,12 @@ export interface EventIntelligenceEvent {
   createdAt: string;
   updatedAt: string;
 
-  /* ── Reserved for later sub-sprints (do not populate in 10D.1) ── */
+  /* ── Sprint 10D.2 enrichment (optional by event kind) ── */
+  earningsDetail?: EarningsDetail | null;
+  conferenceCallDetail?: ConferenceCallDetail | null;
+  corporateActionDetail?: CorporateActionDetails | null;
+
+  /* ── Reserved for later sub-sprints ── */
   aiSummary?: string | null;
   confidence?: number | null;
   historicalAnalysis?: string | null;
@@ -133,6 +151,9 @@ export interface EventFilterState {
   ticker: string;
   /** Free-text search scoped inside the filter panel. */
   filterSearch: string;
+  /** Financial quarter labels e.g. Q1, Q2. */
+  quarters: string[];
+  highDividendOnly: boolean;
 }
 
 export interface EventSearchState {

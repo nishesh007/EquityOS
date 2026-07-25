@@ -3,7 +3,9 @@
 import {
   EVENT_IMPORTANCE_LABELS,
   EVENT_TYPE_DEFINITIONS,
+  INTELLIGENCE_TYPE_CHIPS,
   MARKET_CAP_OPTIONS,
+  QUARTER_OPTIONS,
   QUICK_RANGE_OPTIONS,
 } from "@/constants/eventTypes";
 import { getEventTypeColors } from "@/constants/eventColors";
@@ -392,6 +394,50 @@ export const EventFilters = memo(function EventFilters({
         </FilterGroup>
 
         <FilterGroup title="Advanced">
+          <div>
+            <FieldLabel>Quarter</FieldLabel>
+            <div className="flex flex-wrap gap-1.5">
+              {QUARTER_OPTIONS.map((option) => (
+                <Chip
+                  key={option.id}
+                  label={option.label}
+                  selected={filters.quarters.includes(option.id)}
+                  onClick={() =>
+                    onChange({
+                      quarters: toggleValue(filters.quarters, option.id),
+                    })
+                  }
+                />
+              ))}
+            </div>
+          </div>
+          <div>
+            <FieldLabel>Action Shortcuts</FieldLabel>
+            <div className="flex flex-wrap gap-1.5">
+              {INTELLIGENCE_TYPE_CHIPS.map((option) => (
+                <Chip
+                  key={option.id}
+                  label={option.label}
+                  selected={filters.eventTypes.includes(option.id)}
+                  onClick={() =>
+                    onChange({
+                      eventTypes: toggleValue<EventType>(
+                        filters.eventTypes,
+                        option.id
+                      ),
+                    })
+                  }
+                />
+              ))}
+              <Chip
+                label="High Dividend"
+                selected={filters.highDividendOnly}
+                onClick={() =>
+                  onChange({ highDividendOnly: !filters.highDividendOnly })
+                }
+              />
+            </div>
+          </div>
           <div>
             <FieldLabel>Sector</FieldLabel>
             <div className="flex max-h-28 flex-wrap gap-1.5 overflow-y-auto">
