@@ -93,3 +93,17 @@ export type {
   IntegrityAuditReport,
   IntegrityFailure,
 } from "./trade-integrity";
+export {
+  buildExecutiveDecisionView,
+  convictionBandFromScore,
+  toDecisionAction,
+} from "./executive-decision-presenter";
+export type {
+  AiConvictionView,
+  CommitteeVerdictView,
+  DecisionAction,
+  ExecutiveDecisionInput,
+  ExecutiveDecisionView,
+  ExecutiveSummaryView,
+  TradePlanView,
+} from "./executive-decision-presenter";

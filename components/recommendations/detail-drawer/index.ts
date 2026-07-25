@@ -5,8 +5,18 @@ export {
   useRecommendationDetailDrawer,
 } from "./RecommendationDetailDrawerProvider";
 export { RecommendationDrawerHeader } from "./RecommendationDrawerHeader";
-export { RecommendationDrawerSections, RECOMMENDATION_DRAWER_SECTIONS } from "./RecommendationDrawerSections";
+export {
+  RecommendationDrawerSections,
+  RECOMMENDATION_DRAWER_SECTIONS,
+  RECOMMENDATION_DRAWER_PLACEHOLDER_SECTIONS,
+} from "./RecommendationDrawerSections";
 export { RecommendationDrawerSidebar } from "./RecommendationDrawerSidebar";
+export {
+  buildExecutiveDecisionView,
+  convictionBandFromScore,
+  toDecisionAction,
+  type ExecutiveDecisionView,
+} from "@/lib/recommendations/executive-decision-presenter";
 export {
   fromSharedRecommendation,
   fromStrategyPick,

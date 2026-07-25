@@ -1,5 +1,14 @@
+"use client";
+
 import { Skeleton, SkeletonText } from "@/components/ui/Skeleton";
-import { InstitutionalCard } from "@/src/design";
+import { useMemo } from "react";
+import { buildExecutiveDecisionView } from "@/lib/recommendations/executive-decision-presenter";
+import { AiConvictionSection } from "./AiConvictionSection";
+import { CommitteeVerdictSection } from "./CommitteeVerdictSection";
+import { ExecutiveSummarySection } from "./ExecutiveSummarySection";
+import { SectionShell } from "./SectionChrome";
+import { TradePlanSection } from "./TradePlanSection";
+import type { RecommendationDetailContext } from "./types";
 
 export interface RecommendationSectionMeta {
   id: string;
@@ -7,33 +16,9 @@ export interface RecommendationSectionMeta {
   description: string;
 }
 
-/** Sprint 11A.1 placeholder sections — filled in Sprint 11A.2. */
-export const RECOMMENDATION_DRAWER_SECTIONS: readonly RecommendationSectionMeta[] =
+/** Remaining placeholder sections — Sprint 11A.3+. */
+export const RECOMMENDATION_DRAWER_PLACEHOLDER_SECTIONS: readonly RecommendationSectionMeta[] =
   [
-    {
-      id: "executive-summary",
-      title: "Executive Summary",
-      description:
-        "Concise investment thesis and decision snapshot from the research engines.",
-    },
-    {
-      id: "investment-committee-verdict",
-      title: "Investment Committee Verdict",
-      description:
-        "Committee-style consensus, agreement, and publication gate outcome.",
-    },
-    {
-      id: "trade-plan",
-      title: "Trade Plan",
-      description:
-        "Entry, stop, targets, holding period, and risk/reward construction.",
-    },
-    {
-      id: "ai-conviction",
-      title: "AI Conviction",
-      description:
-        "Model conviction, opportunity score, and supporting evidence factors.",
-    },
     {
       id: "technical-summary",
       title: "Technical Summary",
@@ -43,8 +28,7 @@ export const RECOMMENDATION_DRAWER_SECTIONS: readonly RecommendationSectionMeta[
     {
       id: "fundamental-summary",
       title: "Fundamental Summary",
-      description:
-        "Quality, growth, and fundamental framework highlights.",
+      description: "Quality, growth, and fundamental framework highlights.",
     },
     {
       id: "valuation-summary",
@@ -78,42 +62,91 @@ export const RECOMMENDATION_DRAWER_SECTIONS: readonly RecommendationSectionMeta[
     },
   ] as const;
 
-export function RecommendationDrawerSections() {
+/** @deprecated Prefer RECOMMENDATION_DRAWER_PLACEHOLDER_SECTIONS + live sections. */
+export const RECOMMENDATION_DRAWER_SECTIONS = [
+  {
+    id: "executive-summary",
+    title: "Executive Summary",
+    description:
+      "Concise investment thesis and decision snapshot from the research engines.",
+  },
+  {
+    id: "investment-committee-verdict",
+    title: "Investment Committee Verdict",
+    description:
+      "Committee-style consensus, agreement, and publication gate outcome.",
+  },
+  {
+    id: "trade-plan",
+    title: "Trade Plan",
+    description:
+      "Entry, stop, targets, holding period, and risk/reward construction.",
+  },
+  {
+    id: "ai-conviction",
+    title: "AI Conviction",
+    description:
+      "Model conviction, opportunity score, and supporting evidence factors.",
+  },
+  ...RECOMMENDATION_DRAWER_PLACEHOLDER_SECTIONS,
+] as const;
+
+function PlaceholderSection({
+  section,
+  index,
+}: {
+  section: RecommendationSectionMeta;
+  index: number;
+}) {
+  return (
+    <SectionShell
+      index={index}
+      title={section.title}
+      description={section.description}
+      badge="Later"
+    >
+      <div
+        className="rounded-lg border border-dashed border-surface-border-subtle/80 bg-surface/30 p-3"
+        role="status"
+        aria-label={`${section.title} loading placeholder`}
+      >
+        <Skeleton className="mb-2 h-3 w-1/3" />
+        <SkeletonText lines={3} />
+      </div>
+    </SectionShell>
+  );
+}
+
+export function RecommendationDrawerSections({
+  context,
+}: {
+  context: RecommendationDetailContext;
+}) {
+  const decision = useMemo(
+    () =>
+      buildExecutiveDecisionView({
+        action: context.action,
+        confidence: context.confidence,
+        currentPrice: context.currentPrice,
+        tradeHints: context.tradeHints,
+        source: context.source,
+      }),
+    [context]
+  );
+
   return (
     <div className="space-y-3 p-4 md:p-5">
-      {RECOMMENDATION_DRAWER_SECTIONS.map((section, index) => (
-        <InstitutionalCard
+      <ExecutiveSummarySection view={decision.executiveSummary} />
+      <CommitteeVerdictSection view={decision.committee} />
+      <TradePlanSection view={decision.tradePlan} />
+      <AiConvictionSection view={decision.aiConviction} />
+
+      {RECOMMENDATION_DRAWER_PLACEHOLDER_SECTIONS.map((section, index) => (
+        <PlaceholderSection
           key={section.id}
-          padding="sm"
-          className="animate-fade-in"
-        >
-          <div className="space-y-2.5">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-faint">
-                  Section {String(index + 1).padStart(2, "0")}
-                </p>
-                <h3 className="mt-0.5 text-sm font-semibold tracking-tight text-text-primary">
-                  {section.title}
-                </h3>
-                <p className="mt-1 text-[11px] leading-relaxed text-text-muted">
-                  {section.description}
-                </p>
-              </div>
-              <span className="shrink-0 rounded-md border border-surface-border-subtle bg-surface/50 px-2 py-0.5 text-[9px] font-medium uppercase tracking-wide text-text-faint">
-                Sprint 11A.2
-              </span>
-            </div>
-            <div
-              className="rounded-lg border border-dashed border-surface-border-subtle/80 bg-surface/30 p-3"
-              role="status"
-              aria-label={`${section.title} loading placeholder`}
-            >
-              <Skeleton className="mb-2 h-3 w-1/3" />
-              <SkeletonText lines={3} />
-            </div>
-          </div>
-        </InstitutionalCard>
+          section={section}
+          index={index + 5}
+        />
       ))}
     </div>
   );

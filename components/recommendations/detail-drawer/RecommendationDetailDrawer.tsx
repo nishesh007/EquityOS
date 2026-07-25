@@ -16,7 +16,7 @@ interface RecommendationDetailDrawerProps {
 }
 
 /**
- * Institutional Recommendation Detail Drawer — Sprint 11A.1 framework.
+ * Institutional Recommendation Detail Drawer — Sprint 11A.2 Executive Decision Layer.
  * Slides in from the right at 90% width / 100% height. Does not replace
  * the Company Details page; decision workspace only.
  */
@@ -108,7 +108,7 @@ export function RecommendationDetailDrawer({
 
         <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
           <div className="order-2 min-h-0 flex-1 overflow-y-auto lg:order-1 lg:w-[70%]">
-            <RecommendationDrawerSections />
+            <RecommendationDrawerSections context={enriched} />
           </div>
           <div className="order-1 max-h-[40vh] shrink-0 overflow-y-auto border-b border-surface-border-subtle lg:order-2 lg:max-h-none lg:w-[30%] lg:border-b-0 lg:border-l lg:border-surface-border-subtle">
             <RecommendationDrawerSidebar context={enriched} />

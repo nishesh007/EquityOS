@@ -8,6 +8,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -36,6 +37,23 @@ interface RecommendationDetailDrawerContextValue {
 
 const RecommendationDetailDrawerContext =
   createContext<RecommendationDetailDrawerContextValue | null>(null);
+
+async function fetchRecommendationBySymbol(
+  symbol: string
+): Promise<SharedRecommendation | null> {
+  try {
+    const response = await fetch("/api/recommendations", { cache: "no-store" });
+    if (!response.ok) return null;
+    const json = (await response.json()) as {
+      recommendations?: SharedRecommendation[];
+    };
+    const list = json.recommendations ?? [];
+    const upper = symbol.toUpperCase();
+    return list.find((item) => item.symbol.toUpperCase() === upper) ?? null;
+  } catch {
+    return null;
+  }
+}
 
 export function RecommendationDetailDrawerProvider({
   children,
@@ -73,6 +91,36 @@ export function RecommendationDetailDrawerProvider({
   const closeRecommendationDrawer = useCallback(() => {
     setContext(null);
   }, []);
+
+  // Hydrate dashboard / partial opens with the published SharedRecommendation
+  // for the same symbol — read-only reuse of the existing recommendations API.
+  useEffect(() => {
+    if (!context || context.source) return;
+    const symbol = context.symbol;
+    let cancelled = false;
+
+    void fetchRecommendationBySymbol(symbol).then((recommendation) => {
+      if (cancelled || !recommendation) return;
+      setContext((current) => {
+        if (!current || current.symbol.toUpperCase() !== symbol.toUpperCase()) {
+          return current;
+        }
+        if (current.source) return current;
+        return {
+          ...fromSharedRecommendation(recommendation, current.openedFrom),
+          currentPrice: current.currentPrice ?? null,
+          changePercent: current.changePercent,
+          changeAbsolute: current.changeAbsolute,
+          marketCap: current.marketCap,
+          tradeHints: current.tradeHints,
+        };
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [context?.id, context?.symbol, context?.source]);
 
   const value = useMemo(
     () => ({

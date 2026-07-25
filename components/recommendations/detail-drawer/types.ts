@@ -1,15 +1,16 @@
+import type { InstitutionalStrategyPick } from "@/lib/recommendations/institutional-strategy-dashboard";
 import type {
-  InstitutionalStrategyPick,
   RecommendationAction,
   SharedRecommendation,
-} from "@/lib/recommendations";
+} from "@/lib/recommendations/shared-recommendation";
+import { toDecisionAction } from "@/lib/recommendations/executive-decision-presenter";
 
 /** Drawer action badge — HOLD presents engine WATCHLIST for institutional UI. */
 export type RecommendationDrawerAction = "BUY" | "SELL" | "HOLD";
 
 /**
  * Presentation context for the Recommendation Detail Drawer.
- * Sprint 11A.1 — framework only; market enrichment is optional until 11A.2.
+ * Sprint 11A.2 — Executive Decision Layer consumes `source` when present.
  */
 export interface RecommendationDetailContext {
   id: string;
@@ -27,6 +28,13 @@ export interface RecommendationDetailContext {
   marketStatus: string | null;
   /** Full SharedRecommendation when opened from a recommendation surface. */
   source: SharedRecommendation | null;
+  /** Partial trade levels when opened from a dashboard horizon pick. */
+  tradeHints?: {
+    entry: number | null;
+    entryLow: number | null;
+    entryHigh: number | null;
+    primaryTarget: number | null;
+  };
   /** Origin surface for analytics / future wiring. */
   openedFrom?: RecommendationDrawerSource;
 }
@@ -45,9 +53,7 @@ export type RecommendationDrawerSource =
 export function toDrawerAction(
   action: RecommendationAction
 ): RecommendationDrawerAction {
-  if (action === "SELL") return "SELL";
-  if (action === "WATCHLIST") return "HOLD";
-  return "BUY";
+  return toDecisionAction(action);
 }
 
 export function fromSharedRecommendation(
@@ -61,7 +67,7 @@ export function fromSharedRecommendation(
     action: toDrawerAction(recommendation.action),
     confidence: recommendation.confidence,
     recommendationDate: recommendation.timestamp,
-    /** Live quote enrichment lands in Sprint 11A.2 — do not invent from entry. */
+    /** Live quote enrichment is applied in the drawer via useMarketQuotes. */
     currentPrice: null,
     changePercent: null,
     changeAbsolute: null,
@@ -74,7 +80,7 @@ export function fromSharedRecommendation(
   };
 }
 
-/** Dashboard horizon pick — minimal context until full rec is resolved in 11A.2. */
+/** Dashboard horizon pick — hydrated to full SharedRecommendation when available. */
 export function fromStrategyPick(
   pick: InstitutionalStrategyPick,
   openedFrom: RecommendationDrawerSource = "dashboard"
@@ -99,6 +105,12 @@ export function fromStrategyPick(
     industry: null,
     marketStatus: null,
     source: null,
+    tradeHints: {
+      entry: pick.entry > 0 ? pick.entry : null,
+      entryLow: pick.entryLow,
+      entryHigh: pick.entryHigh,
+      primaryTarget: pick.primaryTarget > 0 ? pick.primaryTarget : null,
+    },
     openedFrom,
   };
 }

@@ -12,6 +12,8 @@ export {
   fromStrategyPick,
   toDrawerAction,
   RECOMMENDATION_DRAWER_SECTIONS,
+  RECOMMENDATION_DRAWER_PLACEHOLDER_SECTIONS,
+  buildExecutiveDecisionView,
   type RecommendationDetailContext,
   type RecommendationDrawerAction,
   type RecommendationDrawerSource,
