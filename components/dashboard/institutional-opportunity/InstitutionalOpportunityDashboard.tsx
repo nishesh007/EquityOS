@@ -5,6 +5,7 @@
  * Presentation only — no recommendation logic or calculation changes.
  */
 
+import { useOptionalRecommendationDetailDrawer } from "@/components/recommendations/detail-drawer";
 import {
   NO_RECOMMENDATION_AVAILABLE_MESSAGE,
   type InstitutionalStrategyId,
@@ -188,12 +189,18 @@ function CardRefreshScan({ hex, rgb }: { hex: string; rgb: string }) {
 function StrategyCard({ slot }: { slot: InstitutionalStrategySlot }) {
   const colors = HORIZON_COLORS[slot.strategyId] ?? HORIZON_COLORS.intraday;
   const pick = slot.pick;
+  const drawer = useOptionalRecommendationDetailDrawer();
   const hasRecommendations =
     (slot.recommendationCount ?? 0) > 0 || pick != null;
   const upsideLabel = pick
     ? formatUpside(pick.expectedUpsidePercent ?? null)
     : null;
   const icon = HORIZON_ICONS[slot.strategyId] ?? HORIZON_ICONS.intraday;
+
+  function openPickDrawer(): void {
+    if (!pick || !drawer) return;
+    drawer.openFromStrategyPick(pick, "dashboard");
+  }
 
   return (
     <article
@@ -251,7 +258,12 @@ function StrategyCard({ slot }: { slot: InstitutionalStrategySlot }) {
       <div className="relative flex flex-1 flex-col gap-2 px-3.5 py-2.5">
         {pick ? (
           <>
-            <div className="min-w-0">
+            <button
+              type="button"
+              onClick={openPickDrawer}
+              className="min-w-0 rounded-md text-left transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+              aria-label={`Open recommendation details for ${pick.company}`}
+            >
               <p className="line-clamp-2 text-[15px] font-bold leading-snug text-white">
                 {pick.company}
               </p>
@@ -261,7 +273,7 @@ function StrategyCard({ slot }: { slot: InstitutionalStrategySlot }) {
               >
                 {pick.symbol}
               </p>
-            </div>
+            </button>
 
             {upsideLabel ? (
               <div>

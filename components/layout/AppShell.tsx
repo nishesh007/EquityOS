@@ -3,6 +3,7 @@
 import { AIWorkspaceProvider } from "@/components/ai/AskAIButton";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { GlobalEventDrawerProvider } from "@/components/events/GlobalEventDrawerProvider";
+import { RecommendationDetailDrawerProvider } from "@/components/recommendations/detail-drawer";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TopNav } from "@/components/layout/TopNav";
 import { onUiEvent } from "@/src/design/command/uiBus";
@@ -93,18 +94,20 @@ export function AppShell({ children }: AppShellProps) {
       />
       <AIWorkspaceProvider sidebarOffset={sidebarWidth}>
         <GlobalEventDrawerProvider>
-          <TopNav sidebarWidth={sidebarWidth} />
-          <main
-            className="relative z-0 mt-14 min-h-[calc(100vh-3.5rem)] pb-8 transition-[margin-left] duration-300"
-            style={{ marginLeft: sidebarWidth }}
-          >
-            <Breadcrumbs />
-            <ErrorBoundary title="Application section failed">
-              <PageTransition>{children}</PageTransition>
-            </ErrorBoundary>
-          </main>
-          {terminalReady ? <TerminalExperience /> : null}
-          <StatusBar sidebarWidth={sidebarWidth} />
+          <RecommendationDetailDrawerProvider>
+            <TopNav sidebarWidth={sidebarWidth} />
+            <main
+              className="relative z-0 mt-14 min-h-[calc(100vh-3.5rem)] pb-8 transition-[margin-left] duration-300"
+              style={{ marginLeft: sidebarWidth }}
+            >
+              <Breadcrumbs />
+              <ErrorBoundary title="Application section failed">
+                <PageTransition>{children}</PageTransition>
+              </ErrorBoundary>
+            </main>
+            {terminalReady ? <TerminalExperience /> : null}
+            <StatusBar sidebarWidth={sidebarWidth} />
+          </RecommendationDetailDrawerProvider>
         </GlobalEventDrawerProvider>
       </AIWorkspaceProvider>
     </div>

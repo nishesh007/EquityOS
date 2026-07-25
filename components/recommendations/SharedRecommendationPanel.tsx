@@ -11,6 +11,10 @@ import { CardFooter } from "@/components/ui/Card";
 import { ConfidenceBar } from "@/components/ui/ConfidenceBar";
 import { EmptyStatePanel } from "@/components/ui/EmptyStatePanel";
 import {
+  useOptionalRecommendationDetailDrawer,
+  type RecommendationDrawerSource,
+} from "@/components/recommendations/detail-drawer";
+import {
   StatusBadge,
   statusToneFromLabel,
   createInstitutionalTable,
@@ -25,6 +29,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useMemo } from "react";
 import { RecommendationEventWarningBadge } from "@/components/events/RecommendationEventWarningBadge";
 
@@ -109,6 +114,22 @@ function formatTs(iso: string): string {
   }
 }
 
+function drawerSourceFromPath(
+  pathname: string | null
+): RecommendationDrawerSource {
+  if (!pathname) return "other";
+  if (pathname === "/") return "dashboard";
+  if (pathname.startsWith("/watchlist")) return "watchlist";
+  if (pathname.startsWith("/portfolio")) return "portfolio";
+  if (pathname.startsWith("/ai/screener") || pathname.startsWith("/screener"))
+    return "ai-screener";
+  if (pathname.startsWith("/opportunities")) return "opportunities";
+  if (pathname.startsWith("/research") || pathname.startsWith("/ai/research"))
+    return "research";
+  if (pathname.startsWith("/validation")) return "validation";
+  return "strategy-engine";
+}
+
 interface OpportunityGridRow {
   id: string;
   symbol: string;
@@ -154,8 +175,10 @@ const OPPORTUNITIES_TABLE = createInstitutionalTable<OpportunityGridRow>({
 /** Mobile card row — collapses table gracefully. */
 function OpportunityCard({
   recommendation,
+  onOpen,
 }: {
   recommendation: SharedRecommendation;
+  onOpen?: (recommendation: SharedRecommendation) => void;
 }) {
   const display = toDisplayAction(recommendation);
   const style = ACTION_STYLES[display];
@@ -163,7 +186,24 @@ function OpportunityCard({
 
   return (
     <article
-      className={`rounded-lg border border-surface-border-subtle border-l-4 bg-surface-overlay/40 p-4 transition-colors duration-200 ${style.border} ${style.hover}`}
+      role={onOpen ? "button" : undefined}
+      tabIndex={onOpen ? 0 : undefined}
+      onClick={onOpen ? () => onOpen(recommendation) : undefined}
+      onKeyDown={
+        onOpen
+          ? (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onOpen(recommendation);
+              }
+            }
+          : undefined
+      }
+      className={`rounded-lg border border-surface-border-subtle border-l-4 bg-surface-overlay/40 p-4 transition-colors duration-200 ${style.border} ${style.hover} ${
+        onOpen
+          ? "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          : ""
+      }`}
     >
       <div className="flex items-start justify-between gap-2">
         <div>
@@ -317,6 +357,8 @@ export function SharedRecommendationPanel({
   /** When set, drives empty-state title/message (dashboard OE status machine). */
   phase?: OpportunityUiPhase;
 }) {
+  const pathname = usePathname();
+  const drawer = useOptionalRecommendationDetailDrawer();
   const emptyCopy =
     phase != null
       ? opportunityPhaseCopy(phase)
@@ -343,6 +385,13 @@ export function SharedRecommendationPanel({
       })),
     [recommendations]
   );
+
+  function openDrawer(recommendation: SharedRecommendation): void {
+    drawer?.openRecommendation(
+      recommendation,
+      drawerSourceFromPath(pathname)
+    );
+  }
 
   return (
     <section className="relative overflow-hidden rounded-xl border border-surface-border-subtle bg-surface-card p-5 shadow-[var(--eos-shadow-card)] transition-[box-shadow,transform] duration-300 hover:-translate-y-0.5 hover:shadow-[var(--eos-shadow-floating)] sm:p-6">
@@ -398,6 +447,7 @@ export function SharedRecommendationPanel({
               <OpportunityCard
                 key={recommendation.id}
                 recommendation={recommendation}
+                onOpen={drawer ? openDrawer : undefined}
               />
             ))}
           </div>
@@ -409,6 +459,9 @@ export function SharedRecommendationPanel({
               getRowId={(row) => row.id}
               maxHeight={520}
               emptyTitle="No opportunities"
+              onRowClick={
+                drawer ? (row) => openDrawer(row.source) : undefined
+              }
               renderExpandedRow={(row) => (
                 <OpportunityExpanded recommendation={row.source} />
               )}
@@ -435,6 +488,9 @@ export function RecommendationValidationPanel({
 }: {
   recommendations: readonly SharedRecommendation[];
 }) {
+  const pathname = usePathname();
+  const drawer = useOptionalRecommendationDetailDrawer();
+
   return (
     <section className="relative overflow-hidden rounded-xl border border-surface-border-subtle bg-surface-card p-5 shadow-[var(--eos-shadow-card)] transition-[box-shadow,transform] duration-300 hover:shadow-[var(--eos-shadow-floating)] sm:p-6">
       <span
@@ -450,9 +506,16 @@ export function RecommendationValidationPanel({
       </p>
       <div className="mt-4 grid gap-3 md:grid-cols-3 xl:grid-cols-4">
         {recommendations.map((recommendation) => (
-          <div
+          <button
             key={recommendation.id}
-            className="rounded-lg border border-surface-border-subtle p-3 transition-colors duration-200 hover:bg-surface-hover/40"
+            type="button"
+            onClick={() =>
+              drawer?.openRecommendation(
+                recommendation,
+                drawerSourceFromPath(pathname)
+              )
+            }
+            className="rounded-lg border border-surface-border-subtle p-3 text-left transition-colors duration-200 hover:bg-surface-hover/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <p className="text-xs font-semibold text-text-primary">
               {recommendation.symbol} ·{" "}
@@ -468,7 +531,7 @@ export function RecommendationValidationPanel({
                 size="sm"
               />
             </div>
-          </div>
+          </button>
         ))}
       </div>
     </section>
