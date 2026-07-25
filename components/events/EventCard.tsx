@@ -77,6 +77,21 @@ function intelligencePreview(event: EventIntelligenceEvent): string | null {
     const d = event.corporateActionDetail;
     return `Rights ${d.ratio} @ ₹${d.issuePrice}`;
   }
+  if (event.macroDetail) {
+    const m = event.macroDetail;
+    const ind = m.indicator;
+    const parts = [
+      m.authority,
+      ind.actual != null
+        ? `Act ${ind.actual}${ind.unit ? ` ${ind.unit}` : ""}`
+        : ind.forecast != null
+          ? `Fcst ${ind.forecast}${ind.unit ? ` ${ind.unit}` : ""}`
+          : null,
+      m.marketImpact.direction,
+      `Vol ${m.marketImpact.volatility}`,
+    ].filter(Boolean);
+    return parts.join(" · ");
+  }
   return null;
 }
 

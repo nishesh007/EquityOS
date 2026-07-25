@@ -1,5 +1,5 @@
 /**
- * Event detail drawer presenter (Sprint 10D.2).
+ * Event detail drawer presenter (Sprint 10D.2 / 10D.3).
  * Pure view-model mapping — no UI.
  */
 
@@ -7,6 +7,16 @@ import { getEventCategory, getEventTypeLabel } from "@/constants/eventTypes";
 import { addDays, formatDisplayDate, formatShortDate } from "@/src/core/events/EventFilters";
 import type { EventIntelligenceEvent } from "@/types/event";
 import type { CorporateActionDetails } from "@/types/corporateActions";
+import type {
+  MacroAiPlaceholder,
+  MacroDetail,
+  MacroHistoricalReaction,
+  HistoricalReading,
+} from "@/types/macro";
+import {
+  MACRO_REGION_LABELS,
+  MACRO_THEME_LABELS,
+} from "@/types/macro";
 
 export type EventBadgeKind =
   | "upcoming"
@@ -18,11 +28,37 @@ export type EventBadgeKind =
   | "dividend"
   | "bonus"
   | "split"
-  | "buyback";
+  | "buyback"
+  | "central_bank"
+  | "macro";
 
 export interface EventDrawerMetric {
   label: string;
   value: string;
+}
+
+export interface MacroDrawerView {
+  overview: EventDrawerMetric[];
+  economicData: EventDrawerMetric[];
+  historicalReadings: HistoricalReading[];
+  forecastVsActual: {
+    forecast: number | null;
+    actual: number | null;
+    previous: number | null;
+    unit: string;
+  };
+  sectorPositive: string[];
+  sectorNegative: string[];
+  sectorNote: string | null;
+  marketImpact: EventDrawerMetric[];
+  direction: string;
+  volatility: string;
+  affectedIndices: string[];
+  historicalReaction: MacroHistoricalReaction | null;
+  reactionAverages: EventDrawerMetric[];
+  aiPlaceholder: MacroAiPlaceholder | null;
+  themeLabel: string;
+  regionLabel: string;
 }
 
 export interface EventDrawerView {
@@ -43,6 +79,7 @@ export interface EventDrawerView {
     eps: string;
     result: string;
   }>;
+  macro: MacroDrawerView | null;
   relatedNewsPlaceholder: string;
   aiPreviewPlaceholder: string;
 }
@@ -61,6 +98,16 @@ function pct(value: number | null | undefined): string {
 function num(value: number | null | undefined, digits = 2): string {
   if (value == null || !Number.isFinite(value)) return "—";
   return value.toFixed(digits);
+}
+
+function formatIndicator(
+  value: number | null | undefined,
+  unit: string
+): string {
+  if (value == null || !Number.isFinite(value)) return "—";
+  return `${value.toLocaleString("en-IN", {
+    maximumFractionDigits: 2,
+  })} ${unit}`.trim();
 }
 
 export function deriveEventBadges(
@@ -86,6 +133,10 @@ export function deriveEventBadges(
   if (event.eventType === "bonus") badges.push("bonus");
   if (event.eventType === "stock_split") badges.push("split");
   if (event.eventType === "buyback") badges.push("buyback");
+
+  const category = getEventCategory(event.eventType);
+  if (category === "central_bank") badges.push("central_bank");
+  else if (event.macroDetail) badges.push("macro");
 
   return badges;
 }
@@ -178,6 +229,89 @@ function corporateActionRows(
   }
 }
 
+function toMacroDrawerView(detail: MacroDetail): MacroDrawerView {
+  const ind = detail.indicator;
+  const reaction = detail.historicalReaction;
+  return {
+    overview: [
+      { label: "Country", value: detail.country },
+      { label: "Authority", value: detail.authority },
+      { label: "Theme", value: MACRO_THEME_LABELS[detail.theme] },
+      { label: "Region", value: MACRO_REGION_LABELS[detail.region] },
+      { label: "Frequency", value: detail.frequency },
+      { label: "Data Source", value: ind.dataSource },
+    ],
+    economicData: [
+      { label: "Actual", value: formatIndicator(ind.actual, ind.unit) },
+      { label: "Forecast", value: formatIndicator(ind.forecast, ind.unit) },
+      { label: "Consensus", value: formatIndicator(ind.consensus, ind.unit) },
+      { label: "Previous", value: formatIndicator(ind.previous, ind.unit) },
+      { label: "Revision", value: formatIndicator(ind.revision, ind.unit) },
+      {
+        label: "Historical Avg",
+        value: formatIndicator(ind.historicalAverage, ind.unit),
+      },
+      {
+        label: "Historical High",
+        value: formatIndicator(ind.historicalHigh, ind.unit),
+      },
+      {
+        label: "Historical Low",
+        value: formatIndicator(ind.historicalLow, ind.unit),
+      },
+    ],
+    historicalReadings: detail.historicalReadings,
+    forecastVsActual: {
+      forecast: ind.forecast,
+      actual: ind.actual,
+      previous: ind.previous,
+      unit: ind.unit,
+    },
+    sectorPositive: detail.sectorImpact.positive,
+    sectorNegative: detail.sectorImpact.negative,
+    sectorNote: detail.sectorImpact.sensitivityNote,
+    marketImpact: [
+      { label: "Expected Direction", value: detail.marketImpact.direction },
+      { label: "Expected Volatility", value: detail.marketImpact.volatility },
+      {
+        label: "Affected Indices",
+        value: detail.marketImpact.affectedIndices.join(", ") || "—",
+      },
+      { label: "Narrative", value: detail.marketImpact.narrative },
+    ],
+    direction: detail.marketImpact.direction,
+    volatility: detail.marketImpact.volatility,
+    affectedIndices: detail.marketImpact.affectedIndices,
+    historicalReaction: reaction,
+    reactionAverages: reaction
+      ? [
+          {
+            label: "Avg NIFTY Move",
+            value: pct(reaction.averages.niftyMovePct),
+          },
+          {
+            label: "Avg BANKNIFTY Move",
+            value: pct(reaction.averages.bankNiftyMovePct),
+          },
+          {
+            label: "Avg INR Move",
+            value: pct(reaction.averages.inrMovePct),
+          },
+          {
+            label: "Avg Bond Yield",
+            value:
+              reaction.averages.bondYieldMoveBps != null
+                ? `${reaction.averages.bondYieldMoveBps > 0 ? "+" : ""}${reaction.averages.bondYieldMoveBps.toFixed(1)} bps`
+                : "—",
+          },
+        ]
+      : [],
+    aiPlaceholder: detail.aiPlaceholder,
+    themeLabel: MACRO_THEME_LABELS[detail.theme],
+    regionLabel: MACRO_REGION_LABELS[detail.region],
+  };
+}
+
 export function toEventDrawerView(
   event: EventIntelligenceEvent,
   today: string
@@ -185,6 +319,7 @@ export function toEventDrawerView(
   const earnings = event.earningsDetail ?? null;
   const call = event.conferenceCallDetail ?? null;
   const action = event.corporateActionDetail ?? null;
+  const macro = event.macroDetail ?? null;
   const category = getEventCategory(event.eventType);
 
   const financialSummary: EventDrawerMetric[] = [];
@@ -241,6 +376,12 @@ export function toEventDrawerView(
       value: event.time ? `${event.time} IST` : "All day / TBA",
     },
   ];
+  if (macro) {
+    upcomingDates.push(
+      { label: "Timezone", value: event.timezone },
+      { label: "Release Status", value: event.status }
+    );
+  }
   if (earnings?.conferenceCallId) {
     upcomingDates.push({
       label: "Conference Call",
@@ -260,11 +401,30 @@ export function toEventDrawerView(
     );
   }
 
+  const timeline: EventDrawerMetric[] = [
+    { label: "Category", value: category.replace(/_/g, " ") },
+    { label: "Status", value: event.status },
+    { label: "Importance", value: event.importance },
+  ];
+  if (earnings) {
+    timeline.push({
+      label: "Quarter",
+      value: `${earnings.quarter} ${earnings.financialYear}`,
+    });
+  }
+  if (macro) {
+    timeline.push(
+      { label: "Theme", value: MACRO_THEME_LABELS[macro.theme] },
+      { label: "Region", value: MACRO_REGION_LABELS[macro.region] },
+      { label: "Frequency", value: macro.frequency }
+    );
+  }
+
   return {
     event,
     title: getEventTypeLabel(event.eventType),
     subtitle: [
-      event.company ?? "Macro / Market",
+      event.company ?? macro?.authority ?? "Macro / Market",
       event.ticker,
       event.exchange,
     ]
@@ -272,15 +432,7 @@ export function toEventDrawerView(
       .join(" · "),
     badges: deriveEventBadges(event, today),
     summary: event.description,
-    timeline: [
-      { label: "Category", value: category.replace(/_/g, " ") },
-      { label: "Status", value: event.status },
-      { label: "Importance", value: event.importance },
-      {
-        label: "Quarter",
-        value: earnings ? `${earnings.quarter} ${earnings.financialYear}` : "—",
-      },
-    ],
+    timeline,
     companySnapshot: [
       { label: "Company", value: event.company ?? "—" },
       { label: "Ticker", value: event.ticker ?? "—" },
@@ -300,6 +452,7 @@ export function toEventDrawerView(
         eps: num(q.eps),
         result: q.result,
       })) ?? [],
+    macro: macro ? toMacroDrawerView(macro) : null,
     relatedNewsPlaceholder:
       "Related news feed will appear here in a later sprint.",
     aiPreviewPlaceholder:

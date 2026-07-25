@@ -4,6 +4,8 @@ import {
   EVENT_IMPORTANCE_LABELS,
   EVENT_TYPE_DEFINITIONS,
   INTELLIGENCE_TYPE_CHIPS,
+  MACRO_REGION_OPTIONS,
+  MACRO_THEME_OPTIONS,
   MARKET_CAP_OPTIONS,
   QUARTER_OPTIONS,
   QUICK_RANGE_OPTIONS,
@@ -19,6 +21,7 @@ import type {
   EventType,
   MarketCapBucket,
 } from "@/types/event";
+import type { MacroRegion, MacroTheme } from "@/types/macro";
 import { ChevronDown, RotateCcw, Search, X } from "lucide-react";
 import { memo, useMemo, useState } from "react";
 
@@ -391,6 +394,49 @@ export const EventFilters = memo(function EventFilters({
               className={cn(inputClass, "font-mono uppercase")}
             />
           </label>
+        </FilterGroup>
+
+        <FilterGroup title="Macro" defaultOpen>
+          <div>
+            <FieldLabel>Theme</FieldLabel>
+            <div className="flex flex-wrap gap-1.5">
+              {MACRO_THEME_OPTIONS.map((option) => (
+                <Chip
+                  key={option.id}
+                  label={option.label}
+                  selected={filters.macroThemes.includes(option.id)}
+                  onClick={() =>
+                    onChange({
+                      macroThemes: toggleValue<MacroTheme>(
+                        filters.macroThemes,
+                        option.id
+                      ),
+                    })
+                  }
+                />
+              ))}
+            </div>
+          </div>
+          <div>
+            <FieldLabel>Region</FieldLabel>
+            <div className="flex flex-wrap gap-1.5">
+              {MACRO_REGION_OPTIONS.map((option) => (
+                <Chip
+                  key={option.id}
+                  label={option.label}
+                  selected={filters.macroRegions.includes(option.id)}
+                  onClick={() =>
+                    onChange({
+                      macroRegions: toggleValue<MacroRegion>(
+                        filters.macroRegions,
+                        option.id
+                      ),
+                    })
+                  }
+                />
+              ))}
+            </div>
+          </div>
         </FilterGroup>
 
         <FilterGroup title="Advanced">

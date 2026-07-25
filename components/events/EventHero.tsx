@@ -3,6 +3,7 @@
 import {
   EventQuickActions,
   EventStatsStrip,
+  MacroDashboardStrip,
 } from "@/components/events/EventStatsStrip";
 import { SECTION_ACCENTS } from "@/lib/ui/section-accents";
 import { cn } from "@/lib/utils";
@@ -64,6 +65,13 @@ export const EventHero = memo(function EventHero({
           Quick Statistics
         </p>
         <EventStatsStrip events={events} today={today} />
+      </div>
+
+      <div>
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-text-faint">
+          Macro Economic Intelligence
+        </p>
+        <MacroDashboardStrip events={events} today={today} />
       </div>
 
       <EventQuickActions

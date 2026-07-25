@@ -1,5 +1,5 @@
 /**
- * Event Intelligence domain barrel (Sprint 10D.1 / 10D.2).
+ * Event Intelligence domain barrel (Sprint 10D.1 / 10D.2 / 10D.3).
  */
 
 export {
@@ -32,8 +32,15 @@ export {
 export type {
   EventBadgeKind,
   EventDrawerView,
+  MacroDrawerView,
 } from "@/src/core/events/EventDrawerPresenter";
 
 export { earningsRepository } from "@/src/core/events/repositories/earningsRepository";
 export { corporateActionRepository } from "@/src/core/events/repositories/corporateActionRepository";
-export { economicEventRepository } from "@/src/core/events/repositories/eventRepository";
+export {
+  economicEventRepository,
+  listMacroEvents,
+  macroEventRepository,
+} from "@/src/core/events/repositories/macroEventRepository";
+export { economicIndicatorRepository } from "@/src/core/events/repositories/economicIndicatorRepository";
+export { historicalMacroRepository } from "@/src/core/events/repositories/historicalMacroRepository";

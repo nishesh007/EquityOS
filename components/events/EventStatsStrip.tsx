@@ -225,6 +225,114 @@ export const EventStatsStrip = memo(function EventStatsStrip({
   );
 });
 
+export function computeMacroDashboardStats(
+  events: readonly EventIntelligenceEvent[],
+  today: string = toDateKey(new Date())
+): EventStatMetric[] {
+  const macro = events.filter((e) => e.macroDetail != null);
+  const upcoming = macro.filter(
+    (e) => e.date >= today && e.status !== "completed"
+  );
+  const todays = macro.filter((e) => e.date === today);
+  const critical = macro.filter(
+    (e) => e.importance === "critical" || e.importance === "high"
+  );
+  const centralBanks = macro.filter(
+    (e) => e.macroDetail?.theme === "central_bank"
+  );
+  const inflation = macro.filter((e) => e.macroDetail?.theme === "inflation");
+  const growth = macro.filter((e) => e.macroDetail?.theme === "growth");
+
+  const nextCritical = [...critical]
+    .filter((e) => e.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date))[0];
+
+  return [
+    {
+      id: "macro-upcoming",
+      label: "Upcoming Macro",
+      value: upcoming.length,
+      subtitle: "Scheduled releases",
+      icon: CalendarDays,
+      tone: "economic",
+    },
+    {
+      id: "macro-today",
+      label: "Today's Macro",
+      value: todays.length,
+      subtitle: "Releases today",
+      icon: Landmark,
+      tone: "accent",
+    },
+    {
+      id: "macro-critical",
+      label: "Highest Importance",
+      value: critical.length,
+      subtitle: nextCritical
+        ? `${nextCritical.title.slice(0, 28)}`
+        : "No critical macro",
+      icon: AlertTriangle,
+      tone: "critical",
+    },
+    {
+      id: "macro-cb",
+      label: "Central Bank Events",
+      value: centralBanks.length,
+      subtitle: "RBI · Fed · ECB · BOJ",
+      icon: Building2,
+      tone: "central_bank",
+    },
+    {
+      id: "macro-inflation",
+      label: "Inflation Events",
+      value: inflation.length,
+      subtitle: "CPI · Core · WPI · PPI",
+      icon: LineChart,
+      tone: "amber",
+    },
+    {
+      id: "macro-growth",
+      label: "Growth Events",
+      value: growth.length,
+      subtitle: "GDP · IIP · PMI",
+      icon: Scale,
+      tone: "results",
+    },
+  ];
+}
+
+interface MacroDashboardStripProps {
+  events: readonly EventIntelligenceEvent[];
+  today: string;
+  className?: string;
+}
+
+export const MacroDashboardStrip = memo(function MacroDashboardStrip({
+  events,
+  today,
+  className,
+}: MacroDashboardStripProps) {
+  const metrics = useMemo(
+    () => computeMacroDashboardStats(events, today),
+    [events, today]
+  );
+
+  return (
+    <div
+      className={cn(
+        "grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6",
+        className
+      )}
+      data-testid="macro-dashboard-strip"
+      aria-label="Macro economic dashboard"
+    >
+      {metrics.map((metric) => (
+        <StatCard key={metric.id} metric={metric} />
+      ))}
+    </div>
+  );
+});
+
 /** Event type IDs for quick-action presets (presentation only). */
 export const QUICK_ACTION_PRESETS = {
   earnings: [
@@ -249,14 +357,37 @@ export const QUICK_ACTION_PRESETS = {
   ] as EventType[],
   economic: [
     "rbi_policy",
+    "rbi_minutes",
+    "rbi_governor_speech",
     "fed_meeting",
+    "fomc_minutes",
+    "ecb_policy",
+    "boj_policy",
     "gdp",
+    "quarterly_gdp",
     "cpi",
+    "core_cpi",
     "wpi",
+    "ppi",
     "pmi",
+    "pmi_services",
     "iip",
+    "nfp",
+    "unemployment_rate",
     "trade_balance",
+    "current_account",
     "forex_reserves",
+    "repo_rate",
+    "reverse_repo",
+    "crr",
+    "slr",
+    "fiscal_budget",
+    "gst_collection",
+    "government_borrowing",
+    "oil_inventory",
+    "crude_prices",
+    "msci_review",
+    "ftse_review",
     "generic_economic",
   ] as EventType[],
 } as const;

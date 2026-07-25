@@ -8,6 +8,7 @@ import {
   createEmptyEventFilters,
   eventsForView,
   filterEvents,
+  getEventCategory,
   startOfWeek,
   timelineBucket,
 } from "@/src/core/events/EventFilters";
@@ -95,5 +96,46 @@ describe("EventFilters", () => {
     expect(earnings.length).toBeGreaterThan(0);
     expect(earnings.every((e) => e.earningsDetail != null)).toBe(true);
     expect(earnings[0]?.earningsDetail?.historical.quarters.length).toBe(8);
+  });
+
+  it("attaches macro detail payloads to economic events", () => {
+    const macro = events.filter((e) => e.macroDetail != null);
+    expect(macro.length).toBeGreaterThan(10);
+    expect(macro.every((e) => e.macroDetail?.indicator != null)).toBe(true);
+    expect(macro.every((e) => e.macroDetail?.sectorImpact != null)).toBe(true);
+    expect(macro.every((e) => e.macroDetail?.aiPlaceholder != null)).toBe(true);
+  });
+
+  it("filters central bank macro events via quick range", () => {
+    const filters = {
+      ...createEmptyEventFilters(),
+      quickRanges: ["central_banks" as const],
+    };
+    const result = filterEvents(events, filters, "", today);
+    expect(result.length).toBeGreaterThan(0);
+    expect(
+      result.every(
+        (e) =>
+          e.macroDetail?.theme === "central_bank" ||
+          getEventCategory(e.eventType) === "central_bank"
+      )
+    ).toBe(true);
+  });
+
+  it("filters by macro theme and region", () => {
+    const filters = {
+      ...createEmptyEventFilters(),
+      macroThemes: ["inflation" as const],
+      macroRegions: ["india" as const],
+    };
+    const result = filterEvents(events, filters, "", today);
+    expect(result.length).toBeGreaterThan(0);
+    expect(
+      result.every(
+        (e) =>
+          e.macroDetail?.theme === "inflation" &&
+          e.macroDetail?.region === "india"
+      )
+    ).toBe(true);
   });
 });

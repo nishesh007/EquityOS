@@ -16,6 +16,8 @@ const BADGE_LABELS: Record<EventBadgeKind, string> = {
   bonus: "Bonus",
   split: "Split",
   buyback: "Buyback",
+  central_bank: "Central Bank",
+  macro: "Macro",
 };
 
 const BADGE_CLASS: Record<EventBadgeKind, string> = {
@@ -29,6 +31,8 @@ const BADGE_CLASS: Record<EventBadgeKind, string> = {
   bonus: "border-emerald-500/25 bg-emerald-500/10 text-emerald-400",
   split: "border-emerald-500/25 bg-emerald-500/10 text-emerald-400",
   buyback: "border-emerald-500/25 bg-emerald-500/10 text-emerald-400",
+  central_bank: "border-purple-500/25 bg-purple-500/10 text-purple-400",
+  macro: "border-orange-500/25 bg-orange-500/10 text-orange-400",
 };
 
 interface EventBadgesProps {

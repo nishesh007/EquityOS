@@ -25,6 +25,8 @@ export function createEmptyEventFilters(): EventFilterState {
     filterSearch: "",
     quarters: [],
     highDividendOnly: false,
+    macroThemes: [],
+    macroRegions: [],
   };
 }
 
@@ -132,6 +134,38 @@ function matchesQuickRange(
           ? (event.corporateActionDetail.yieldPct ?? 0) >= 2
           : event.importance === "high" || event.importance === "critical")
       );
+    case "central_banks":
+      return (
+        category === "central_bank" ||
+        event.macroDetail?.theme === "central_bank"
+      );
+    case "inflation":
+      return event.macroDetail?.theme === "inflation";
+    case "growth":
+      return event.macroDetail?.theme === "growth";
+    case "employment":
+      return event.macroDetail?.theme === "employment";
+    case "trade":
+      return event.macroDetail?.theme === "trade";
+    case "liquidity":
+      return event.macroDetail?.theme === "liquidity";
+    case "india":
+      return event.macroDetail?.region === "india";
+    case "us":
+      return event.macroDetail?.region === "us";
+    case "global":
+      return (
+        event.macroDetail?.region === "global" ||
+        event.macroDetail?.region === "eurozone" ||
+        event.macroDetail?.region === "japan"
+      );
+    case "critical_macro":
+      return (
+        Boolean(event.macroDetail) &&
+        (event.importance === "critical" || event.importance === "high")
+      );
+    case "todays_releases":
+      return Boolean(event.macroDetail) && event.date === today;
     default:
       return true;
   }
@@ -241,6 +275,14 @@ export function filterEvents(
     if (filters.highDividendOnly) {
       if (!matchesQuickRange(event, "high_dividend", today)) return false;
     }
+    if (filters.macroThemes.length > 0) {
+      const theme = event.macroDetail?.theme;
+      if (!theme || !filters.macroThemes.includes(theme)) return false;
+    }
+    if (filters.macroRegions.length > 0) {
+      const region = event.macroDetail?.region;
+      if (!region || !filters.macroRegions.includes(region)) return false;
+    }
     if (!matchesSearchQuery(event, searchQuery)) return false;
     return true;
   });
@@ -305,6 +347,8 @@ export function countActiveFilters(filters: EventFilterState): number {
   if (filters.filterSearch.trim()) count += 1;
   if (filters.quarters.length) count += 1;
   if (filters.highDividendOnly) count += 1;
+  if (filters.macroThemes.length) count += 1;
+  if (filters.macroRegions.length) count += 1;
   return count;
 }
 

@@ -11,6 +11,7 @@ export { EventSkeleton } from "@/components/events/EventSkeleton";
 export {
   EventQuickActions,
   EventStatsStrip,
+  MacroDashboardStrip,
 } from "@/components/events/EventStatsStrip";
 export { EventTimeline } from "@/components/events/EventTimeline";
 export { EventToolbar } from "@/components/events/EventToolbar";

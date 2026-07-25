@@ -6,6 +6,7 @@
 
 import type { ConferenceCallDetail, EarningsDetail } from "@/types/earnings";
 import type { CorporateActionDetails } from "@/types/corporateActions";
+import type { MacroDetail, MacroRegion, MacroTheme } from "@/types/macro";
 
 export type EventType =
   | "quarterly_results"
@@ -25,14 +26,35 @@ export type EventType =
   | "demerger"
   | "open_offer"
   | "rbi_policy"
+  | "rbi_minutes"
+  | "rbi_governor_speech"
   | "fed_meeting"
+  | "fomc_minutes"
+  | "ecb_policy"
+  | "boj_policy"
   | "gdp"
+  | "quarterly_gdp"
   | "cpi"
+  | "core_cpi"
   | "wpi"
+  | "ppi"
   | "pmi"
+  | "pmi_services"
   | "iip"
+  | "nfp"
+  | "unemployment_rate"
   | "trade_balance"
+  | "current_account"
   | "forex_reserves"
+  | "repo_rate"
+  | "reverse_repo"
+  | "crr"
+  | "slr"
+  | "fiscal_budget"
+  | "gst_collection"
+  | "government_borrowing"
+  | "oil_inventory"
+  | "crude_prices"
   | "msci_review"
   | "ftse_review"
   | "generic_economic";
@@ -91,7 +113,18 @@ export type EventQuickRange =
   | "upcoming_earnings"
   | "completed_earnings"
   | "conference_calls"
-  | "high_dividend";
+  | "high_dividend"
+  | "central_banks"
+  | "inflation"
+  | "growth"
+  | "employment"
+  | "trade"
+  | "liquidity"
+  | "india"
+  | "us"
+  | "global"
+  | "critical_macro"
+  | "todays_releases";
 
 export interface EventIntelligenceEvent {
   id: string;
@@ -125,6 +158,9 @@ export interface EventIntelligenceEvent {
   conferenceCallDetail?: ConferenceCallDetail | null;
   corporateActionDetail?: CorporateActionDetails | null;
 
+  /* ── Sprint 10D.3 macro enrichment ── */
+  macroDetail?: MacroDetail | null;
+
   /* ── Reserved for later sub-sprints ── */
   aiSummary?: string | null;
   confidence?: number | null;
@@ -154,6 +190,8 @@ export interface EventFilterState {
   /** Financial quarter labels e.g. Q1, Q2. */
   quarters: string[];
   highDividendOnly: boolean;
+  macroThemes: MacroTheme[];
+  macroRegions: MacroRegion[];
 }
 
 export interface EventSearchState {

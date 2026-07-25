@@ -1,12 +1,12 @@
 /**
- * Event catalog composer (Sprint 10D.2).
+ * Event catalog composer (Sprint 10D.2 / 10D.3).
  * Aggregates earnings, corporate action and macro repositories.
  */
 
 import { toDateKey } from "@/src/core/events/EventFilters";
 import { listCorporateActionEvents } from "@/src/core/events/repositories/corporateActionRepository";
 import { listEarningsEvents } from "@/src/core/events/repositories/earningsRepository";
-import { listEconomicEvents } from "@/src/core/events/repositories/eventRepository";
+import { listMacroEvents } from "@/src/core/events/repositories/macroEventRepository";
 import type { EventIntelligenceEvent } from "@/types/event";
 
 /** Build a fresh catalog anchored to the local calendar day. */
@@ -16,7 +16,7 @@ export function buildEventSeedCatalog(
   const events = [
     ...listEarningsEvents(today),
     ...listCorporateActionEvents(today),
-    ...listEconomicEvents(today),
+    ...listMacroEvents(today),
   ];
 
   return events.sort((a, b) => {
