@@ -20,6 +20,7 @@ const SEGMENT_LABELS: Readonly<Record<string, string>> = Object.freeze({
   watchlist: "Watchlist",
   news: "News",
   results: "Results Calendar",
+  events: "Event Intelligence",
   opportunities: "AI Insights",
   screener: "Screener",
   validation: "Research Confidence",
@@ -28,7 +29,6 @@ const SEGMENT_LABELS: Readonly<Record<string, string>> = Object.freeze({
   alerts: "Alerts",
   reports: "Reports",
 });
-
 function labelFor(segment: string): string {
   const known = SEGMENT_LABELS[segment.toLowerCase()];
   if (known) return known;

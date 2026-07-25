@@ -2,10 +2,11 @@
 
 /**
  * Sprint 10C.1 — floating quick action menu (FAB).
+ * Hidden on informational modules (e.g. Event Intelligence) where it has no workflow.
  */
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Briefcase,
   Download,
@@ -98,11 +99,15 @@ const ACTIONS: readonly FabAction[] = [
 
 export function FloatingActionMenu() {
   const router = useRouter();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
+  const hidden =
+    pathname === "/events" || pathname.startsWith("/events/");
+
   useEffect(() => {
-    if (!open) return;
+    if (!open || hidden) return;
     const onPointerDown = (event: PointerEvent) => {
       if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
         setOpen(false);
@@ -117,7 +122,9 @@ export function FloatingActionMenu() {
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [open]);
+  }, [open, hidden]);
+
+  if (hidden) return null;
 
   return (
     <div

@@ -9,6 +9,7 @@ import {
   Star,
   Newspaper,
   Calendar,
+  CalendarRange,
   Settings,
   TrendingUp,
   Bot,
@@ -31,9 +32,9 @@ const navItems = [
   { label: "Watchlist", href: "/watchlist", icon: Star },
   { label: "News", href: "/news", icon: Newspaper },
   { label: "Earnings", href: "/results", icon: Calendar },
+  { label: "Event Intelligence", href: "/events", icon: CalendarRange },
   { label: "AI Insights", href: "/ai", icon: Bot, badge: "New" },
 ];
-
 const bottomNavItems = [
   { label: "Screener", href: "/screener", icon: TrendingUp },
   { label: "Research Confidence", href: "/validation", icon: ShieldCheck },

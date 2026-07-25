@@ -132,6 +132,19 @@ const PAGE_COMMANDS: readonly CommandItem[] = Object.freeze([
     keywords: ["earnings", "calendar", "results"],
   },
   {
+    id: "page-events",
+    title: "Event Intelligence",
+    category: "calendar",
+    href: "/events",
+    keywords: [
+      "economic calendar",
+      "events",
+      "macro",
+      "corporate actions",
+      "catalysts",
+    ],
+  },
+  {
     id: "page-opportunities",
     title: "AI Opportunities",
     category: "opportunity",
