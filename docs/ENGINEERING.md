@@ -432,4 +432,10 @@ lib/fundamentals/
 
 ---
 
+## Related documentation
+
+- [Event Intelligence Platform](./EVENT_INTELLIGENCE.md) — Sprint 10D architecture, repositories, scoring, integrations (production RC)
+
+---
+
 *Last updated: Sprint 7B — Fundamentals Engine*

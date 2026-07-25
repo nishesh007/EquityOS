@@ -23,6 +23,7 @@ import {
   LazyValidationCenterCard,
 } from "@/components/dashboard/widgets/LazyDashboardWidgets";
 import { EventIntelligenceDashboardWidget } from "@/components/dashboard/EventIntelligenceDashboardWidget";
+import { MarketEventAlertRibbon } from "@/components/dashboard/MarketEventAlertRibbon";
 import { WidgetSkeleton } from "@/components/dashboard/widgets/WidgetSkeleton";
 import { PageContainer } from "@/src/design/components/PageContainer";
 import { Suspense, type ReactNode } from "react";
@@ -50,13 +51,17 @@ function Slot({
 
 export default function DashboardPage() {
   const executive = (
-    <Suspense
-      fallback={
-        <WidgetSkeleton label="Executive Intelligence" className="mb-3 h-28" />
-      }
-    >
-      <ExecutiveIntelligenceLayer />
-    </Suspense>
+    <>
+      {/* Sprint 10D.5.2 — always-visible Market Event Alert under workspace header */}
+      <MarketEventAlertRibbon />
+      <Suspense
+        fallback={
+          <WidgetSkeleton label="Executive Intelligence" className="mb-3 h-28" />
+        }
+      >
+        <ExecutiveIntelligenceLayer />
+      </Suspense>
+    </>
   );
 
   return (

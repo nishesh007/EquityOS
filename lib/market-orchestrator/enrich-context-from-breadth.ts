@@ -81,12 +81,19 @@ export function derivePulseMetricsFromBreadth(breadth: MarketBreadth): {
     sectorRows.length > 0
       ? Math.round(
           sectorRows.reduce(
-            (sum, row) =>
-              sum +
-              (row.breadthPercent ??
-                (row.advances + row.declines > 0
-                  ? (row.advances / (row.advances + row.declines)) * 100
-                  : 50)),
+            (sum, row) => {
+              const advances = row.advances ?? 0;
+              const declines = row.declines ?? 0;
+              const breadthPercent =
+                "breadthPercent" in row &&
+                typeof (row as { breadthPercent?: number }).breadthPercent ===
+                  "number"
+                  ? (row as { breadthPercent: number }).breadthPercent
+                  : advances + declines > 0
+                    ? (advances / (advances + declines)) * 100
+                    : 50;
+              return sum + breadthPercent;
+            },
             0
           ) / sectorRows.length
         )

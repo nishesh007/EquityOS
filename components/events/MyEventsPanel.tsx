@@ -63,7 +63,10 @@ export function MyEventsPanel({
   const upcoming = rows.filter((r) => r.countdown.days >= 0);
 
   const open = (event: EventIntelligenceEvent) => {
-    onOpenEvent?.(event);
+    if (onOpenEvent) {
+      onOpenEvent(event);
+      return;
+    }
     drawer?.openEvent(event);
   };
 
@@ -97,6 +100,7 @@ export function MyEventsPanel({
               <button
                 type="button"
                 onClick={() => open(event)}
+                aria-label={`Open saved event ${event.title}`}
                 className="min-w-0 flex-1 text-left transition-opacity hover:opacity-90"
               >
                 <p className="truncate text-[12px] font-semibold text-text-primary">

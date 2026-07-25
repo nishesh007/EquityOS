@@ -216,7 +216,9 @@ export function Watchlist({
                         />
                       </button>
                     ) : (
-                      <p className="data-secondary mt-1">No upcoming events.</p>
+                      <p className="data-secondary mt-1">
+                        No upcoming catalysts for this symbol.
+                      </p>
                     )}
                   </div>
                 </div>

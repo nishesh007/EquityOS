@@ -73,6 +73,7 @@ export function PortfolioEventImpactPanel({
                   <button
                     type="button"
                     onClick={() => drawer?.openEvent(primary.event)}
+                    aria-label={`Open event details for ${insight.symbol}`}
                     className="flex w-full items-start justify-between gap-2 rounded-md border border-surface-border-subtle/80 bg-surface/30 px-2.5 py-2 text-left transition-colors hover:bg-surface-hover/50"
                   >
                     <div className="min-w-0">
@@ -114,7 +115,9 @@ export function PortfolioEventImpactPanel({
               Potential Risks
             </p>
             {risks.length === 0 ? (
-              <p className="mt-1 text-[11px] text-text-secondary">None flagged.</p>
+              <p className="mt-1 text-[11px] text-text-secondary">
+                No risk catalysts mapped to holdings.
+              </p>
             ) : (
               <ul className="mt-1 space-y-1">
                 {risks.slice(0, 4).map(({ insight, match }) => (
@@ -137,7 +140,9 @@ export function PortfolioEventImpactPanel({
               Potential Opportunities
             </p>
             {opportunities.length === 0 ? (
-              <p className="mt-1 text-[11px] text-text-secondary">None flagged.</p>
+              <p className="mt-1 text-[11px] text-text-secondary">
+                No opportunity catalysts mapped to holdings.
+              </p>
             ) : (
               <ul className="mt-1 space-y-1">
                 {opportunities.slice(0, 4).map(({ insight, match }) => (

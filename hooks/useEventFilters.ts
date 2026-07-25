@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   countActiveFilters,
   createEmptyEventFilters,
@@ -26,7 +26,15 @@ export function useEventFilters(
   );
   const [view, setView] = useState<EventViewMode>(initialView);
   const [selectedDate, setSelectedDate] = useState(today);
-  const [filtersOpen, setFiltersOpen] = useState(true);
+  /** Closed by default to avoid crowding mobile; opened on large screens after mount. */
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.matchMedia("(min-width: 1024px)").matches) {
+      setFiltersOpen(true);
+    }
+  }, []);
 
   const filtered = useMemo(
     () => filterEvents(events, filters, searchQuery, today),

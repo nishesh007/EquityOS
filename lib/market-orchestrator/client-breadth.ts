@@ -20,7 +20,7 @@ export function isUsableMarketBreadth(breadth: MarketBreadth | null | undefined)
     movers > 0 ||
     participation > 0 ||
     sectors > 0 ||
-    (breadth.totalStocks > 0 && (breadth.quotedStocks ?? 0) > 0)
+    ((breadth.totalStocks ?? 0) > 0 && (breadth.quotedStocks ?? 0) > 0)
   );
 }
 

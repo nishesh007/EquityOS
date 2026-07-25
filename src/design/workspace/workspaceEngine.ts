@@ -34,8 +34,13 @@ export interface Workspace {
 }
 
 export interface WorkspaceStore {
-  /** v2: hide market-breadth. v3–v5: executive polish. v6: drop large Market Pulse panel. */
-  version: 1 | 2 | 3 | 4 | 5 | 6;
+  /**
+   * v2: hide market-breadth.
+   * v3–v5: executive polish.
+   * v6: drop large Market Pulse panel.
+   * v7: reveal Event Intelligence (`economic-calendar`) on the dashboard.
+   */
+  version: 1 | 2 | 3 | 4 | 5 | 6 | 7;
   activeId: string;
   workspaces: Workspace[];
 }
@@ -80,7 +85,7 @@ function defaultWorkspace(): Workspace {
 
 function defaultStore(): WorkspaceStore {
   const workspace = defaultWorkspace();
-  return { version: 6, activeId: workspace.id, workspaces: [workspace] };
+  return { version: 7, activeId: workspace.id, workspaces: [workspace] };
 }
 
 /** Hide detailed Market Internals from the executive dashboard layout. */
@@ -202,9 +207,18 @@ function refineFinalExecutiveLayout(workspace: Workspace): Workspace {
     }
     if (
       placement.widgetId === "economic-calendar" &&
-      placement.order !== 7
+      (!placement.visible ||
+        placement.order !== 7 ||
+        placement.size === "small" ||
+        placement.size === "medium")
     ) {
-      next = { ...next, order: 7, visible: false };
+      next = {
+        ...next,
+        order: 7,
+        region: "main",
+        size: "full",
+        visible: true,
+      };
       changed = true;
     }
     return next;
@@ -212,6 +226,55 @@ function refineFinalExecutiveLayout(workspace: Workspace): Workspace {
   return changed
     ? polishExecutiveDashboardLayout({ ...workspace, placements })
     : polishExecutiveDashboardLayout(workspace);
+}
+
+/** Sprint 10D.5 / bugfix — surface Event Intelligence on existing dashboards. */
+function revealEventIntelligenceWidget(workspace: Workspace): Workspace {
+  const hasWidget = workspace.placements.some(
+    (placement) => placement.widgetId === "economic-calendar"
+  );
+  if (!hasWidget) {
+    return {
+      ...workspace,
+      placements: [
+        ...workspace.placements,
+        {
+          widgetId: "economic-calendar",
+          region: "main",
+          order: 7,
+          size: "full",
+          visible: true,
+          pinned: false,
+          collapsed: false,
+        },
+      ],
+    };
+  }
+
+  let changed = false;
+  const placements = workspace.placements.map((placement) => {
+    if (placement.widgetId !== "economic-calendar") return placement;
+    if (
+      placement.visible &&
+      placement.region === "main" &&
+      (placement.size === "full" ||
+        placement.size === "large" ||
+        placement.size === "xl")
+    ) {
+      return placement;
+    }
+    changed = true;
+    return {
+      ...placement,
+      visible: true,
+      region: "main" as const,
+      size:
+        placement.size === "small" || placement.size === "medium"
+          ? ("full" as const)
+          : placement.size,
+    };
+  });
+  return changed ? { ...workspace, placements } : workspace;
 }
 
 function migrateWorkspaceStore(store: WorkspaceStore): WorkspaceStore {
@@ -260,6 +323,13 @@ function migrateWorkspaceStore(store: WorkspaceStore): WorkspaceStore {
         );
         return { ...workspace, placements };
       }),
+    };
+  }
+  if (next.version < 7) {
+    next = {
+      version: 7,
+      activeId: next.activeId,
+      workspaces: next.workspaces.map(revealEventIntelligenceWidget),
     };
   }
   return next;
@@ -330,7 +400,8 @@ export function loadWorkspaceStore(
         parsed.version !== 3 &&
         parsed.version !== 4 &&
         parsed.version !== 5 &&
-        parsed.version !== 6) ||
+        parsed.version !== 6 &&
+        parsed.version !== 7) ||
       !Array.isArray(parsed.workspaces)
     ) {
       return defaultStore();

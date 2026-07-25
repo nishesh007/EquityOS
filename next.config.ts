@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -9,6 +10,34 @@ const nextConfig: NextConfig = {
   // Tree-shake heavy icon / UI packages during DEV compile.
   experimental: {
     optimizePackageImports: ["lucide-react"],
+  },
+  webpack: (config, { nextRuntime, webpack }) => {
+    // Instrumentation Edge compile must not resolve Node-only bootstrap /
+    // opportunity persistence (node:fs / node:path).
+    if (nextRuntime === "edge") {
+      config.plugins.push(
+        new webpack.IgnorePlugin({
+          checkResource(resource: string, context: string) {
+            if (
+              resource.includes("instrumentation.node") ||
+              resource.includes("deferred-bootstrap") ||
+              resource.includes("opportunity-engine/persistence") ||
+              resource.includes("opportunity-engine/scheduler")
+            ) {
+              return true;
+            }
+            if (
+              context.includes(`${path.sep}instrumentation`) &&
+              (resource === "node:fs" || resource === "node:path")
+            ) {
+              return true;
+            }
+            return false;
+          },
+        })
+      );
+    }
+    return config;
   },
 };
 

@@ -96,7 +96,7 @@ const BUILT_IN_WIDGETS: readonly WidgetDefinition[] = Object.freeze([
   { id: "portfolio-health", label: "Portfolio Health", description: "Doctor analysis and diversification", category: "portfolio", defaultRegion: "main", defaultSize: "large" },
   { id: "research-summary", label: "Research Summary", description: "Research confidence and workspace shortcuts — available from Widgets", category: "research", defaultRegion: "main", defaultSize: "medium" },
   { id: "ai-brief", label: "AI Market Brief", description: "AI-generated market summary", category: "ai", defaultRegion: "main", defaultSize: "small" },
-  { id: "economic-calendar", label: "Economic Calendar", description: "Critical events, earnings, corporate actions & macro — Event Intelligence", category: "calendar", defaultRegion: "main", defaultSize: "medium" },
+  { id: "economic-calendar", label: "Event Intelligence", description: "Critical events, earnings, corporate actions & macro — Event Intelligence", category: "calendar", defaultRegion: "main", defaultSize: "full" },
   { id: "results-calendar", label: "Results Calendar", description: "Upcoming earnings and events", category: "calendar", defaultRegion: "main", defaultSize: "medium" },
   { id: "market-news", label: "News", description: "Verified market headlines ticker", category: "news", defaultRegion: "main", defaultSize: "medium" },
   { id: "earnings-intelligence", label: "Earnings Intelligence", description: "Ranked earnings dashboard, alerts and history", category: "tables", defaultRegion: "bottom", defaultSize: "full" },

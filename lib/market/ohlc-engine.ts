@@ -183,6 +183,7 @@ export async function getOhlcCandles(
   }
 
   const result = await fetchHistoricalCandles(normalized, timeframe, key);
+  const attemptedProviders = result.attempted;
 
   if (isUsableResult(result)) {
     // Only persist non-empty series so blank misses cannot clobber good history.
@@ -195,7 +196,7 @@ export async function getOhlcCandles(
       data: stale.data,
       provider: "cache",
       source: "cached",
-      attempted: result.attempted,
+      attempted: attemptedProviders,
     };
   }
 

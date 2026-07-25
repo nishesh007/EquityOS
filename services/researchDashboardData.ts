@@ -147,7 +147,7 @@ function isUsableBreadthSnapshot(breadth: MarketBreadth): boolean {
     movers > 0 ||
     participation > 0 ||
     (breadth.sectors?.length ?? 0) > 0 ||
-    (breadth.totalStocks > 0 && (breadth.quotedStocks ?? 0) > 0)
+    ((breadth.totalStocks ?? 0) > 0 && (breadth.quotedStocks ?? 0) > 0)
   );
 }
 

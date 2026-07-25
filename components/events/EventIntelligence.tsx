@@ -18,15 +18,22 @@ import { useEventFilters } from "@/hooks/useEventFilters";
 import { useEventSearch } from "@/hooks/useEventSearch";
 import { createEmptyEventFilters } from "@/src/core/events";
 import type { EventIntelligenceEvent } from "@/types/event";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState, useTransition } from "react";
 
 interface EventIntelligenceProps {
   events: EventIntelligenceEvent[];
   asOf: string;
+  /** SSR / repository failure message — shown with retry. */
+  initialError?: string | null;
 }
 
-export function EventIntelligence({ events, asOf }: EventIntelligenceProps) {
+export function EventIntelligence({
+  events,
+  asOf,
+  initialError = null,
+}: EventIntelligenceProps) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const globalDrawer = useOptionalGlobalEventDrawer();
   const { query, debouncedQuery, setQuery } = useEventSearch();
@@ -49,18 +56,22 @@ export function EventIntelligence({ events, asOf }: EventIntelligenceProps) {
     activeFilterCount,
   } = useEventFilters(events, debouncedQuery, "timeline");
 
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(initialError);
   const [isPending, startTransition] = useTransition();
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setError(initialError);
+  }, [initialError]);
 
   const handleRefresh = useCallback(() => {
     startTransition(() => {
       setError(null);
+      router.refresh();
     });
-  }, []);
+  }, [router]);
 
   const handleRetry = useCallback(() => {
-    setError(null);
     handleRefresh();
   }, [handleRefresh]);
 
@@ -184,6 +195,11 @@ export function EventIntelligence({ events, asOf }: EventIntelligenceProps) {
             <EventSkeleton
               variant={view === "month" ? "calendar" : "list"}
               count={view === "day" ? 4 : 6}
+            />
+          ) : events.length === 0 ? (
+            <EventErrorState
+              message="No events could be loaded. Retry refresh or check repository connectivity."
+              onRetry={handleRetry}
             />
           ) : (
             <>

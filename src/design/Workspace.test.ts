@@ -309,11 +309,59 @@ describe("Sprint 10C.R6 — visibility, pin, collapse", () => {
       })
     );
     const store = loadWorkspaceStore(storage);
-    expect(store.version).toBe(6);
+    expect(store.version).toBe(7);
     expect(
       store.workspaces[0].placements.find((p) => p.widgetId === "market-breadth")
         ?.visible
     ).toBe(false);
+  });
+
+  it("migrates persisted stores to reveal Event Intelligence on the dashboard", () => {
+    const storage = memoryStorage();
+    storage.setItem(
+      "equityos.workspace.store",
+      JSON.stringify({
+        version: 6,
+        activeId: "default",
+        workspaces: [
+          {
+            id: "default",
+            name: "My Workspace",
+            templateId: "institutional",
+            placements: [
+              {
+                widgetId: "market-snapshot",
+                region: "snapshot",
+                order: 0,
+                size: "full",
+                visible: true,
+                pinned: true,
+                collapsed: false,
+              },
+              {
+                widgetId: "economic-calendar",
+                region: "main",
+                order: 7,
+                size: "medium",
+                visible: false,
+                pinned: false,
+                collapsed: false,
+              },
+            ],
+            createdAt: 1,
+            updatedAt: 1,
+          },
+        ],
+      })
+    );
+    const store = loadWorkspaceStore(storage);
+    expect(store.version).toBe(7);
+    const eventWidget = store.workspaces[0].placements.find(
+      (p) => p.widgetId === "economic-calendar"
+    );
+    expect(eventWidget?.visible).toBe(true);
+    expect(eventWidget?.size).toBe("full");
+    expect(eventWidget?.region).toBe("main");
   });
 
   it("migrates persisted v2 stores for executive dashboard polish", () => {
@@ -409,7 +457,7 @@ describe("Sprint 10C.R6 — visibility, pin, collapse", () => {
       })
     );
     const store = loadWorkspaceStore(storage);
-    expect(store.version).toBe(6);
+    expect(store.version).toBe(7);
     const placements = store.workspaces[0].placements;
     expect(placements.find((p) => p.widgetId === "market-movers")?.size).toBe(
       "full"

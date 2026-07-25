@@ -6,8 +6,9 @@ import { EventStarButton } from "@/components/events/EventStarButton";
 import { toEventDrawerView } from "@/src/core/events/EventDrawerPresenter";
 import { cn } from "@/lib/utils";
 import type { EventIntelligenceEvent } from "@/types/event";
+import { FOCUS_RING_CLASS } from "@/src/design/motion/motionPresets";
 import { X } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 interface EventDetailDrawerProps {
   event: EventIntelligenceEvent | null;
@@ -206,46 +207,88 @@ export function EventDetailDrawer({
   onClose,
   relatedEvents = [],
 }: EventDetailDrawerProps) {
+  const panelRef = useRef<HTMLElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
   const view = useMemo(
     () => (event ? toEventDrawerView(event, today) : null),
     [event, today]
   );
 
+  const historicalPeers = useMemo(() => {
+    if (!view) return [];
+    return relatedEvents
+      .filter(
+        (item) =>
+          item.id !== view.event.id &&
+          item.ticker &&
+          item.ticker === view.event.ticker
+      )
+      .slice(0, 4);
+  }, [relatedEvents, view]);
+
+  const relatedMacro = useMemo(() => {
+    if (!view) return [];
+    return relatedEvents
+      .filter(
+        (item) =>
+          item.id !== view.event.id &&
+          item.macroDetail &&
+          view.event.macroDetail &&
+          (item.macroDetail.theme === view.event.macroDetail.theme ||
+            item.macroDetail.region === view.event.macroDetail.region)
+      )
+      .slice(0, 5);
+  }, [relatedEvents, view]);
+
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
+
+    previousFocusRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+
+    const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+
+    const focusTimer = window.setTimeout(() => {
+      closeButtonRef.current?.focus();
+    }, 0);
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab" || !panelRef.current) return;
+      const focusable = panelRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0]!;
+      const last = focusable[focusable.length - 1]!;
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", onKey);
     return () => {
+      window.clearTimeout(focusTimer);
       document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
+      document.body.style.overflow = prevOverflow;
+      previousFocusRef.current?.focus();
     };
   }, [open, onClose]);
 
   if (!open || !view) return null;
-
-  const historicalPeers = relatedEvents
-    .filter(
-      (item) =>
-        item.id !== view.event.id &&
-        item.ticker &&
-        item.ticker === view.event.ticker
-    )
-    .slice(0, 4);
-
-  const relatedMacro = relatedEvents
-    .filter(
-      (item) =>
-        item.id !== view.event.id &&
-        item.macroDetail &&
-        view.event.macroDetail &&
-        (item.macroDetail.theme === view.event.macroDetail.theme ||
-          item.macroDetail.region === view.event.macroDetail.region)
-    )
-    .slice(0, 5);
 
   const macro = view.macro;
 
@@ -262,8 +305,12 @@ export function EventDetailDrawer({
         aria-label="Close event details"
         className="h-full flex-1 cursor-default"
         onClick={onClose}
+        tabIndex={-1}
       />
-      <aside className="flex h-full w-full max-w-xl flex-col border-l border-surface-border bg-surface-raised shadow-card animate-slide-in">
+      <aside
+        ref={panelRef}
+        className="flex h-full w-full max-w-xl flex-col border-l border-surface-border bg-surface-raised shadow-card animate-slide-in"
+      >
         <div className="flex items-start justify-between gap-3 border-b border-surface-border-subtle px-4 py-3">
           <div className="min-w-0">
             <p className="text-[10px] font-medium uppercase tracking-wider text-text-secondary">
@@ -278,12 +325,16 @@ export function EventDetailDrawer({
           <div className="flex shrink-0 items-center gap-1">
             <EventStarButton eventId={view.event.id} />
             <button
+              ref={closeButtonRef}
               type="button"
               onClick={onClose}
               aria-label="Close drawer"
-              className="rounded p-1 text-text-muted transition-colors hover:bg-surface-hover hover:text-text-secondary"
+              className={cn(
+                "rounded p-1 text-text-muted transition-colors hover:bg-surface-hover hover:text-text-secondary",
+                FOCUS_RING_CLASS
+              )}
             >
-              <X className="h-4 w-4" />
+              <X className="h-4 w-4" aria-hidden />
             </button>
           </div>
         </div>

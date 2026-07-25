@@ -335,7 +335,7 @@ export function verifyRecommendationIntegrity(
   const rec = row.recommendation;
   const trade = row.trade;
   const action = rec.action === "SELL" ? "SELL" : "BUY";
-  const module = row.horizonId;
+  const moduleId = row.horizonId;
 
   const sealed = sealTradeMetrics({
     action,
@@ -349,7 +349,7 @@ export function verifyRecommendationIntegrity(
   if (!sealed) {
     failures.push({
       symbol: row.selection.symbol,
-      module,
+      module: moduleId,
       field: "geometry",
       expectedValue: "valid SL/Entry/Targets ladder",
       displayedValue: "invalid",
@@ -373,7 +373,7 @@ export function verifyRecommendationIntegrity(
     if (diff > tol) {
       failures.push({
         symbol: row.selection.symbol,
-        module,
+        module: moduleId,
         field,
         expectedValue: expected,
         displayedValue: displayed,
@@ -431,7 +431,7 @@ export function verifyRecommendationIntegrity(
   if (mid < env.daysMin * 0.85 || mid > env.daysMax * 1.15) {
     failures.push({
       symbol: row.selection.symbol,
-      module,
+      module: moduleId,
       field: "holdingPeriod",
       expectedValue: env.label,
       displayedValue: trade.holdingPeriod,
