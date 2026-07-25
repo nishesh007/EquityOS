@@ -48,20 +48,20 @@ export function DashboardResultsSnapshot({
   ];
 
   return (
-    <div className="grid gap-4 md:grid-cols-3">
+    <div className="grid h-full gap-3 md:grid-cols-3">
       {cards.map((card) => (
-        <Link key={card.label} href="/results" className="group">
-          <Card hover padding="md" className="h-full">
+        <Link key={card.label} href="/results" className="group h-full">
+          <Card hover padding="md" className="flex h-full flex-col">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="data-label">{card.label}</p>
-                <p className="mt-2 font-mono text-3xl font-semibold text-text-primary tabular-nums">
+                <p className="mt-1.5 font-mono text-2xl font-semibold text-text-primary tabular-nums">
                   {card.items.length}
                 </p>
               </div>
               <CalendarDays className="h-4 w-4 text-accent" />
             </div>
-            <p className="mt-3 truncate text-xs text-text-muted">
+            <p className="mt-2 truncate text-xs text-text-muted">
               {card.items.length > 0
                 ? card.items
                     .slice(0, 3)
@@ -69,7 +69,7 @@ export function DashboardResultsSnapshot({
                     .join(" · ")
                 : "No scheduled results"}
             </p>
-            <span className="mt-3 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-accent">
+            <span className="mt-auto pt-2 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-accent">
               Open Earnings
               <ChevronRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
             </span>

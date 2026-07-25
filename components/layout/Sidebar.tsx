@@ -18,12 +18,14 @@ import {
   ArrowLeft,
   BookOpen,
   ShieldCheck,
+  Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard, exact: true },
-  { label: "Research", href: "/research", icon: BookOpen },
+  { label: "Research", href: "/research", icon: BookOpen, exact: true },
+  { label: "Market Internals", href: "/research/market-internals", icon: Activity },
   { label: "Markets", href: "/markets", icon: LineChart },
   { label: "Portfolio", href: "/portfolio", icon: Briefcase },
   { label: "Watchlist", href: "/watchlist", icon: Star },

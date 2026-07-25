@@ -63,6 +63,7 @@ function snapshotToMarketBreadth(
     aboveEma50Trend: snapshot.aboveEma50Trend,
     aboveEma200Trend: snapshot.aboveEma200Trend,
     technicalSampleSize: snapshot.technicalSampleSize,
+    participationPartial: snapshot.participationPartial,
     averageRsi: snapshot.averageRsi,
     averageDailyReturn: snapshot.averageDailyReturn,
     strongestSector: snapshot.strongestSector,

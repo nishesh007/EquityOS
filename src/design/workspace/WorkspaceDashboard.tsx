@@ -349,7 +349,7 @@ export function WorkspaceDashboard({ children }: WorkspaceDashboardProps) {
         role="group"
         aria-label={`${label} widget`}
         className={cn(
-          "group/widget relative min-w-0 transition-all duration-300",
+          "group/widget relative flex h-full min-w-0 flex-col transition-all duration-300",
           SPAN_CLASSES[span],
           editMode &&
             "rounded-xl border border-dashed border-accent/35 bg-accent/[0.03] p-2 shadow-[inset_0_0_0_1px_rgba(99,102,241,0.08)]",
@@ -487,6 +487,7 @@ export function WorkspaceDashboard({ children }: WorkspaceDashboardProps) {
         </div>
 
         <ContextMenu
+          className="flex h-full min-h-0 flex-col"
           items={[
             {
               id: "refresh",
@@ -591,7 +592,7 @@ export function WorkspaceDashboard({ children }: WorkspaceDashboardProps) {
               </span>
             </div>
           ) : (
-            <div className="min-w-0">{content}</div>
+            <div className="min-h-0 min-w-0 flex-1">{content}</div>
           )}
         </ContextMenu>
 
@@ -610,7 +611,7 @@ export function WorkspaceDashboard({ children }: WorkspaceDashboardProps) {
   };
 
   return (
-    <div className={cn("space-y-5", !hydrated && "pointer-events-none")}>
+    <div className={cn("space-y-4", !hydrated && "pointer-events-none")}>
       <WorkspaceToolbar
         workspace={workspace}
         workspaces={profiles.length > 0 ? profiles : [workspace]}
@@ -705,7 +706,7 @@ export function WorkspaceDashboard({ children }: WorkspaceDashboardProps) {
             key={region}
             aria-label={REGION_LABELS[region]}
             className={cn(
-              "grid grid-cols-12 gap-5 transition-all duration-300",
+              "grid grid-cols-12 items-stretch gap-4 transition-all duration-300",
               editMode &&
                 "min-h-[4.5rem] rounded-xl border border-dashed border-surface-border bg-surface-overlay/40 p-3"
             )}

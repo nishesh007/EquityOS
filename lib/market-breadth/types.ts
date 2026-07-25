@@ -86,6 +86,8 @@ export interface MarketBreadthSnapshot {
   aboveEma50Trend: TrendDirection;
   aboveEma200Trend: TrendDirection;
   technicalSampleSize: number;
+  /** True when EMA sample exists but is below the full publish gate. */
+  participationPartial: boolean;
   averageRsi: number | null;
   averageDailyReturn: number | null;
   sectorBreadth: SectorBreadthRow[];

@@ -266,6 +266,7 @@ function InternalsSummary({
           label="Universe"
           value={breadth.universeLabel ?? "Entire NSE"}
           metricKey="universe"
+          tone="indigo"
         />
         <KpiCard
           label="Total Stocks"
@@ -276,22 +277,26 @@ function InternalsSummary({
               : undefined
           }
           metricKey="totalStocks"
+          tone="accent"
         />
         <KpiCard
           label="Last Updated"
           value={formatTs(breadth.lastUpdated)}
           metricKey="lastUpdated"
+          tone="neutral"
         />
         <KpiCard
           label="Market Status"
           value={breadth.marketStatusLabel ?? "—"}
           metricKey="marketStatus"
+          tone="amber"
         />
         <KpiCard
           label="Data Source"
           value="Live quotes"
           hint={breadth.dataSource}
           metricKey="dataSource"
+          tone="neutral"
         />
       </div>
     </Card>
@@ -315,11 +320,11 @@ function BreadthPanel({ breadth }: MarketBreadthProps) {
   const net = breadth.netAdvances ?? breadth.advances - breadth.declines;
 
   return (
-    <Card padding="lg" accent="emerald" className="h-full">
+    <Card padding="lg" accent="indigo" className="h-full">
       <CardHeader
         title="Breadth"
         subtitle="Advance / decline participation"
-        icon={<BarChart3 className="h-4 w-4 text-emerald-400" />}
+        icon={<BarChart3 className="h-4 w-4 text-indigo-400" />}
       />
       {quoted <= 0 ? (
         <EmptyStatePanel
@@ -338,34 +343,39 @@ function BreadthPanel({ breadth }: MarketBreadthProps) {
             <KpiCard
               label="Advances"
               value={breadth.advances.toLocaleString("en-IN")}
-              tone="text-gain"
+              tone="gain"
               metricKey="advances"
+              icon={TrendingUp}
             />
             <KpiCard
               label="Declines"
               value={breadth.declines.toLocaleString("en-IN")}
-              tone="text-loss"
+              tone="loss"
               metricKey="declines"
+              icon={TrendingDown}
             />
             <KpiCard
               label="Unchanged"
               value={String(breadth.unchanged)}
+              tone="neutral"
               metricKey="unchanged"
             />
             <KpiCard
               label="A/D Ratio"
               value={ratio.toFixed(2)}
+              tone="indigo"
               metricKey="adRatio"
             />
             <KpiCard
               label="Breadth %"
               value={`${breadthPct.toFixed(1)}%`}
+              tone={breadthPct >= 55 ? "gain" : breadthPct <= 45 ? "loss" : "accent"}
               metricKey="breadthPct"
             />
             <KpiCard
               label="Net Advances"
               value={`${net >= 0 ? "+" : ""}${net}`}
-              tone={net >= 0 ? "text-gain" : "text-loss"}
+              tone={net >= 0 ? "gain" : "loss"}
               metricKey="netAdvances"
             />
           </div>
@@ -378,34 +388,58 @@ function BreadthPanel({ breadth }: MarketBreadthProps) {
 function ParticipationPanel({ breadth }: MarketBreadthProps) {
   const sample = breadth.technicalSampleSize ?? 0;
   const universeSize = breadth.quotedStocks || breadth.totalStocks || 0;
-  const publishable =
-    isParticipationCoverageSufficient({
-      sampleSize: sample,
-      universeSize,
-    }) &&
+  const fullCoverage = isParticipationCoverageSufficient({
+    sampleSize: sample,
+    universeSize,
+  });
+  const hasEma =
+    sample > 0 &&
     breadth.aboveEma20 != null &&
     breadth.aboveEma50 != null &&
     breadth.aboveEma200 != null;
+  const partial =
+    hasEma && (breadth.participationPartial === true || !fullCoverage);
+  const publishable = hasEma;
+
+  const attempted = Math.min(120, Math.max(0, universeSize));
+  const coverageHint = fullCoverage
+    ? `EMA trend sample · ${sample.toLocaleString("en-IN")} stocks · ${(breadth.technicalCoveragePercent ?? 0).toFixed(1)}% of attempted`
+    : partial
+      ? `Provisional · ${sample}/${attempted || "—"} OHLC · full gate needs ≥${Math.ceil((attempted || 120) * 0.5)}`
+      : "Waiting for OHLC technical sample";
 
   return (
-    <Card padding="lg" accent="emerald" className="h-full">
+    <Card padding="lg" accent="cyan" className="h-full">
       <CardHeader
         title="Participation"
-        subtitle={
-          publishable
-            ? `EMA trend sample · ${sample.toLocaleString("en-IN")} stocks · ${(breadth.technicalCoveragePercent ?? 0).toFixed(1)}% universe coverage`
-            : "Waiting for sufficient technical coverage"
+        subtitle={coverageHint}
+        icon={<Shield className="h-4 w-4 text-cyan-400" />}
+        badge={
+          partial ? (
+            <StatusBadge tone="warning" size="sm">
+              Partial
+            </StatusBadge>
+          ) : fullCoverage && publishable ? (
+            <StatusBadge tone="success" size="sm">
+              Full sample
+            </StatusBadge>
+          ) : undefined
         }
-        icon={<Shield className="h-4 w-4 text-emerald-400" />}
       />
       {!publishable ? (
         <EmptyStatePanel
-          message="Calculating market participation..."
+          message="Calculating market participation from available OHLC history…"
           source="Market Internals · EMA 20 / 50 / 200"
           icon={Shield}
         />
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-2.5">
+          {partial ? (
+            <p className="data-secondary">
+              Showing available symbols now — mood weighting waits for full
+              technical coverage.
+            </p>
+          ) : null}
           <ParticipationBar
             label="Above 20 EMA"
             count={breadth.aboveEma20 ?? null}
@@ -439,30 +473,40 @@ function StrengthPanel({ breadth }: MarketBreadthProps) {
     (breadth.newLows > 0
       ? breadth.newHighs / breadth.newLows
       : breadth.newHighs);
+  const hasExtremes = breadth.newHighs > 0 || breadth.newLows > 0;
 
   return (
-    <Card padding="lg" accent="emerald" className="h-full">
+    <Card padding="lg" accent="amber" className="h-full">
       <CardHeader
         title="Strength"
-        subtitle="52-week extremes · RSI · daily change"
-        icon={<TrendingUp className="h-4 w-4 text-emerald-400" />}
+        subtitle={
+          hasExtremes
+            ? "52-week extremes · RSI · daily change"
+            : "52W extremes use quote fields or OHLC ranges when available"
+        }
+        icon={<TrendingUp className="h-4 w-4 text-amber-400" />}
       />
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         <KpiCard
           label="52W Highs"
           value={breadth.newHighs.toLocaleString("en-IN")}
-          tone="text-gain"
+          tone="gain"
           metricKey="newHighs"
+          hint="Within 1% of 52W high"
+          icon={TrendingUp}
         />
         <KpiCard
           label="52W Lows"
           value={breadth.newLows.toLocaleString("en-IN")}
-          tone="text-loss"
+          tone="loss"
           metricKey="newLows"
+          hint="Within 1% of 52W low"
+          icon={TrendingDown}
         />
         <KpiCard
           label="High/Low Ratio"
           value={hl.toFixed(2)}
+          tone={hl >= 1.5 ? "gain" : hl > 0 && hl < 0.75 ? "loss" : "amber"}
           metricKey="highLowRatio"
         />
         <KpiCard
@@ -470,6 +514,7 @@ function StrengthPanel({ breadth }: MarketBreadthProps) {
           value={
             breadth.averageRsi != null ? breadth.averageRsi.toFixed(1) : "—"
           }
+          tone="accent"
           metricKey="averageRsi"
         />
         <KpiCard
@@ -482,10 +527,10 @@ function StrengthPanel({ breadth }: MarketBreadthProps) {
           tone={
             breadth.averageDailyReturn != null &&
             breadth.averageDailyReturn >= 0
-              ? "text-gain"
+              ? "gain"
               : breadth.averageDailyReturn != null
-                ? "text-loss"
-                : undefined
+                ? "loss"
+                : "neutral"
           }
           metricKey="avgDailyChange"
         />
@@ -503,7 +548,7 @@ function MarketMoodPanel({ breadth }: MarketBreadthProps) {
     mood !== "Insufficient Data";
 
   return (
-    <Card padding="lg" accent="emerald" className="h-full">
+    <Card padding="lg" accent="violet" className="h-full">
       <CardHeader
         title="Market Mood"
         subtitle={
@@ -511,7 +556,7 @@ function MarketMoodPanel({ breadth }: MarketBreadthProps) {
             ? "Provisional from live breadth participation"
             : "Multi-factor internals regime"
         }
-        icon={<Gauge className="h-4 w-4 text-emerald-400" />}
+        icon={<Gauge className="h-4 w-4 text-violet-400" />}
         badge={
           <StatusBadge tone={statusToneFromLabel(mood)} size="sm">
             {mood}
@@ -530,26 +575,23 @@ function MarketMoodPanel({ breadth }: MarketBreadthProps) {
           {factors.map((factor) => {
             const tone =
               factor.score >= 1
-                ? "text-gain"
+                ? "gain"
                 : factor.score <= -1
-                  ? "text-loss"
-                  : "text-text-secondary";
+                  ? "loss"
+                  : "neutral";
             return (
-              <div
+              <KpiCard
                 key={factor.id}
-                className="flex items-center justify-between rounded-lg border border-surface-border-subtle px-3 py-2"
-              >
-                <span className="text-[11px] text-text-muted">{factor.label}</span>
-                <span className={`font-mono text-xs font-semibold tabular-nums ${tone}`}>
-                  {factor.score > 0 ? "+" : ""}
-                  {factor.score.toFixed(0)}
-                </span>
-              </div>
+                label={factor.label}
+                value={`${factor.score > 0 ? "+" : ""}${factor.score.toFixed(0)}`}
+                tone={tone}
+                hint="Factor score −2 … +2"
+              />
             );
           })}
         </div>
       ) : (
-        <p className="mt-3 text-[11px] text-text-muted">
+        <p className="data-secondary mt-3">
           {provisional
             ? "Showing breadth-derived mood while multi-factor coverage catches up."
             : "Mood requires ≥35% quote coverage and multiple internals factors — never A/D alone."}
@@ -558,20 +600,16 @@ function MarketMoodPanel({ breadth }: MarketBreadthProps) {
 
       {(breadth.breadthTrend5d?.length || breadth.breadthTrend20d?.length) ? (
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
-          <div className="rounded-lg border border-surface-border-subtle px-3 py-2">
-            <p className="data-label">
-              5-Day Breadth Trend
-            </p>
+          <div className="rounded-xl border border-cyan-500/30 bg-gradient-to-br from-cyan-500/10 via-cyan-400/5 to-transparent px-3 py-2">
+            <p className="data-label">5-Day Breadth Trend</p>
             <p className="data-secondary mt-1 font-mono tabular-nums">
               {(breadth.breadthTrend5d ?? [])
                 .map((p) => `${p.breadthPercent.toFixed(0)}%`)
                 .join(" → ") || "—"}
             </p>
           </div>
-          <div className="rounded-lg border border-surface-border-subtle px-3 py-2">
-            <p className="data-label">
-              20-Day Breadth Trend
-            </p>
+          <div className="rounded-xl border border-indigo-500/30 bg-gradient-to-br from-indigo-500/10 via-indigo-400/5 to-transparent px-3 py-2">
+            <p className="data-label">20-Day Breadth Trend</p>
             <p className="data-secondary mt-1 font-mono tabular-nums">
               {(breadth.breadthTrend20d ?? [])
                 .map((p) => `${p.breadthPercent.toFixed(0)}%`)
@@ -583,9 +621,7 @@ function MarketMoodPanel({ breadth }: MarketBreadthProps) {
 
       <CardFooter>
         <span>Source · {breadth.dataSource ?? "Market Internals Engine"}</span>
-        <span>
-          Factors · Breadth · EMA · H/L · Sectors · RSI
-        </span>
+        <span>Factors · Breadth · EMA · H/L · Sectors · RSI</span>
       </CardFooter>
     </Card>
   );

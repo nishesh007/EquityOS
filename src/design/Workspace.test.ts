@@ -260,6 +260,180 @@ describe("Sprint 10C.R6 — resize & snap to grid", () => {
 });
 
 describe("Sprint 10C.R6 — visibility, pin, collapse", () => {
+  it("hides Market Internals from the executive dashboard by default", () => {
+    const workspace = getDefaultWorkspace();
+    expect(
+      workspace.placements.find((p) => p.widgetId === "market-breadth")?.visible
+    ).toBe(false);
+    expect(hiddenWidgets(workspace).map((p) => p.widgetId)).toContain(
+      "market-breadth"
+    );
+  });
+
+  it("migrates persisted v1 stores to hide market-breadth", () => {
+    const storage = memoryStorage();
+    storage.setItem(
+      "equityos.workspace.store",
+      JSON.stringify({
+        version: 1,
+        activeId: "default",
+        workspaces: [
+          {
+            id: "default",
+            name: "My Workspace",
+            templateId: "institutional",
+            placements: [
+              {
+                widgetId: "market-snapshot",
+                region: "snapshot",
+                order: 0,
+                size: "full",
+                visible: true,
+                pinned: true,
+                collapsed: false,
+              },
+              {
+                widgetId: "market-breadth",
+                region: "snapshot",
+                order: 1,
+                size: "full",
+                visible: true,
+                pinned: false,
+                collapsed: false,
+              },
+            ],
+            createdAt: 1,
+            updatedAt: 1,
+          },
+        ],
+      })
+    );
+    const store = loadWorkspaceStore(storage);
+    expect(store.version).toBe(4);
+    expect(
+      store.workspaces[0].placements.find((p) => p.widgetId === "market-breadth")
+        ?.visible
+    ).toBe(false);
+  });
+
+  it("migrates persisted v2 stores for executive dashboard polish", () => {
+    const storage = memoryStorage();
+    storage.setItem(
+      "equityos.workspace.store",
+      JSON.stringify({
+        version: 2,
+        activeId: "default",
+        workspaces: [
+          {
+            id: "default",
+            name: "My Workspace",
+            templateId: "institutional",
+            placements: [
+              {
+                widgetId: "market-snapshot",
+                region: "snapshot",
+                order: 0,
+                size: "full",
+                visible: true,
+                pinned: true,
+                collapsed: false,
+              },
+              {
+                widgetId: "market-movers",
+                region: "snapshot",
+                order: 1,
+                size: "large",
+                visible: true,
+                pinned: false,
+                collapsed: false,
+              },
+              {
+                widgetId: "portfolio-summary",
+                region: "main",
+                order: 0,
+                size: "large",
+                visible: true,
+                pinned: false,
+                collapsed: false,
+              },
+              {
+                widgetId: "watchlist",
+                region: "main",
+                order: 1,
+                size: "small",
+                visible: true,
+                pinned: false,
+                collapsed: false,
+              },
+              {
+                widgetId: "ai-alerts",
+                region: "main",
+                order: 2,
+                size: "medium",
+                visible: true,
+                pinned: false,
+                collapsed: false,
+              },
+              {
+                widgetId: "research-summary",
+                region: "main",
+                order: 3,
+                size: "medium",
+                visible: true,
+                pinned: false,
+                collapsed: false,
+              },
+              {
+                widgetId: "results-calendar",
+                region: "main",
+                order: 4,
+                size: "small",
+                visible: true,
+                pinned: false,
+                collapsed: false,
+              },
+              {
+                widgetId: "market-news",
+                region: "main",
+                order: 5,
+                size: "small",
+                visible: true,
+                pinned: false,
+                collapsed: false,
+              },
+            ],
+            createdAt: 1,
+            updatedAt: 1,
+          },
+        ],
+      })
+    );
+    const store = loadWorkspaceStore(storage);
+    expect(store.version).toBe(4);
+    const placements = store.workspaces[0].placements;
+    expect(placements.find((p) => p.widgetId === "market-movers")?.size).toBe(
+      "full"
+    );
+    expect(
+      placements.find((p) => p.widgetId === "portfolio-summary")?.size
+    ).toBe("medium");
+    expect(placements.find((p) => p.widgetId === "watchlist")?.size).toBe(
+      "medium"
+    );
+    expect(placements.find((p) => p.widgetId === "ai-alerts")?.visible).toBe(
+      false
+    );
+    expect(
+      placements.find((p) => p.widgetId === "research-summary")?.visible
+    ).toBe(false);
+    expect(
+      placements.find((p) => p.widgetId === "results-calendar")?.size
+    ).toBe("medium");
+    expect(placements.find((p) => p.widgetId === "market-news")?.size).toBe(
+      "medium"
+    );
+  });
+
   it("hides, lists and restores hidden widgets", () => {
     let workspace = getDefaultWorkspace();
     const baselineHidden = new Set(

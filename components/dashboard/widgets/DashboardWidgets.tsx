@@ -23,7 +23,7 @@ import type {
 } from "@/types";
 import { SectionHeader } from "@/src/design/components/SectionHeader";
 import { StatusBadge } from "@/src/design/components/StatusBadge";
-import { Activity, Briefcase, Sparkles, Star } from "lucide-react";
+import { Activity, Sparkles } from "lucide-react";
 
 /** Indices + intelligence strip — presentation only. Eager (above-fold). */
 export function MarketSnapshotWidget({
@@ -89,8 +89,8 @@ export function AiOpportunitiesWidget({
   return (
     <div className="space-y-5">
       <SectionHeader
-        title="Institutional Opportunity Dashboard"
-        subtitle="One market scan · seven strategy rankings · Strategy Engine"
+        title="EquityOS Opportunity Dashboard"
+        subtitle="One Market Scan • Seven Strategy Rankings • AI Strategy Engine"
         summary={opportunitiesSummary}
         accent="blue"
         icon={<Sparkles className="h-5 w-5" />}
@@ -110,19 +110,8 @@ export function PortfolioSummaryWidget({
 }: {
   portfolio: PortfolioSummaryData;
 }) {
-  const dayPct = portfolio.dayChangePercent;
-  const daySign = dayPct > 0 ? "+" : "";
-  const portfolioSummary = `Portfolio day change ${daySign}${dayPct.toFixed(1)}% · total return ${portfolio.totalGainPercent >= 0 ? "+" : ""}${portfolio.totalGainPercent.toFixed(1)}% across ${portfolio.holdings.length} holdings.`;
-
   return (
-    <div className="space-y-5">
-      <SectionHeader
-        title="Portfolio"
-        subtitle="Holdings, allocation and P&amp;L snapshot"
-        summary={portfolioSummary}
-        accent="amber"
-        icon={<Briefcase className="h-5 w-5" />}
-      />
+    <div className="h-full">
       <PortfolioSummary portfolio={portfolio} />
     </div>
   );
@@ -148,11 +137,7 @@ export function WatchlistWidget({
   );
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2 text-cyan-400">
-        <Star className="h-4 w-4" />
-        <span className="text-xs font-semibold">Watchlist</span>
-      </div>
+    <div className="h-full">
       <Watchlist
         initialItems={watchlist}
         recommendations={watchlistRecommendations}

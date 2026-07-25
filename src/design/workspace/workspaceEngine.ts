@@ -34,7 +34,8 @@ export interface Workspace {
 }
 
 export interface WorkspaceStore {
-  version: 1;
+  /** v2: hide market-breadth. v3–v4: executive dashboard polish (Sprint 10C). */
+  version: 1 | 2 | 3 | 4;
   activeId: string;
   workspaces: Workspace[];
 }
@@ -79,7 +80,129 @@ function defaultWorkspace(): Workspace {
 
 function defaultStore(): WorkspaceStore {
   const workspace = defaultWorkspace();
-  return { version: 1, activeId: workspace.id, workspaces: [workspace] };
+  return { version: 4, activeId: workspace.id, workspaces: [workspace] };
+}
+
+/** Hide detailed Market Internals from the executive dashboard layout. */
+function hideMarketBreadthOnDashboard(
+  workspace: Workspace
+): Workspace {
+  let changed = false;
+  const placements = workspace.placements.map((placement) => {
+    if (placement.widgetId !== "market-breadth" || !placement.visible) {
+      return placement;
+    }
+    changed = true;
+    return { ...placement, visible: false };
+  });
+  return changed ? { ...workspace, placements } : workspace;
+}
+
+/** Sprint 10C executive polish — layout sizes + hide nav-shortcut widgets. */
+function polishExecutiveDashboardLayout(
+  workspace: Workspace
+): Workspace {
+  let changed = false;
+  const placements = workspace.placements.map((placement) => {
+    let next = placement;
+    if (
+      (placement.widgetId === "ai-alerts" ||
+        placement.widgetId === "research-summary" ||
+        placement.widgetId === "earnings-intelligence") &&
+      placement.visible
+    ) {
+      next = { ...next, visible: false };
+      changed = true;
+    }
+    if (placement.widgetId === "market-movers" && placement.size !== "full") {
+      next = { ...next, size: "full" };
+      changed = true;
+    }
+    if (
+      placement.widgetId === "portfolio-summary" &&
+      placement.size === "large"
+    ) {
+      next = { ...next, size: "medium" };
+      changed = true;
+    }
+    if (placement.widgetId === "watchlist" && placement.size === "small") {
+      next = { ...next, size: "medium" };
+      changed = true;
+    }
+    if (
+      (placement.widgetId === "results-calendar" ||
+        placement.widgetId === "market-news") &&
+      placement.size === "small"
+    ) {
+      next = { ...next, size: "medium" };
+      changed = true;
+    }
+    return next;
+  });
+  return changed ? { ...workspace, placements } : workspace;
+}
+
+/** Ensure Market Movers / Heatmap remain on the executive layout when missing. */
+function ensureExecutiveMarketWidgets(
+  workspace: Workspace
+): Workspace {
+  const ids = new Set(workspace.placements.map((p) => p.widgetId));
+  const additions: WidgetPlacement[] = [];
+  if (!ids.has("market-heatmap")) {
+    additions.push({
+      widgetId: "market-heatmap",
+      region: "snapshot",
+      order: 2,
+      size: "full",
+      visible: true,
+      pinned: false,
+      collapsed: false,
+    });
+  }
+  if (!ids.has("market-movers")) {
+    additions.push({
+      widgetId: "market-movers",
+      region: "snapshot",
+      order: 4,
+      size: "full",
+      visible: true,
+      pinned: false,
+      collapsed: false,
+    });
+  }
+  if (additions.length === 0) return workspace;
+  return {
+    ...workspace,
+    placements: [...workspace.placements, ...additions],
+  };
+}
+
+function migrateWorkspaceStore(store: WorkspaceStore): WorkspaceStore {
+  let next = store;
+  if (next.version < 2) {
+    next = {
+      version: 2,
+      activeId: next.activeId,
+      workspaces: next.workspaces.map(hideMarketBreadthOnDashboard),
+    };
+  }
+  if (next.version < 3) {
+    next = {
+      version: 3,
+      activeId: next.activeId,
+      workspaces: next.workspaces.map(polishExecutiveDashboardLayout),
+    };
+  }
+  if (next.version < 4) {
+    next = {
+      version: 4,
+      activeId: next.activeId,
+      workspaces: next.workspaces.map((workspace) =>
+        polishExecutiveDashboardLayout(ensureExecutiveMarketWidgets(workspace))
+      ),
+    };
+  }
+  return next;
 }
 
 // ---------------------------------------------------------------------------
@@ -140,7 +263,14 @@ export function loadWorkspaceStore(
     const raw = storage.getItem(STORAGE_KEY);
     if (!raw) return defaultStore();
     const parsed = JSON.parse(raw) as WorkspaceStore;
-    if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.workspaces)) {
+    if (
+      !parsed ||
+      (parsed.version !== 1 &&
+        parsed.version !== 2 &&
+        parsed.version !== 3 &&
+        parsed.version !== 4) ||
+      !Array.isArray(parsed.workspaces)
+    ) {
       return defaultStore();
     }
     const workspaces = parsed.workspaces
@@ -150,7 +280,15 @@ export function loadWorkspaceStore(
     const activeId = workspaces.some((w) => w.id === parsed.activeId)
       ? parsed.activeId
       : workspaces[0].id;
-    return { version: 1, activeId, workspaces };
+    const migrated = migrateWorkspaceStore({
+      version: parsed.version,
+      activeId,
+      workspaces,
+    });
+    if (migrated.version !== parsed.version) {
+      saveWorkspaceStore(migrated, storage);
+    }
+    return migrated;
   } catch {
     return defaultStore();
   }

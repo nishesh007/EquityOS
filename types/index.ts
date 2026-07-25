@@ -133,6 +133,8 @@ export interface MarketBreadth {
   aboveEma50Trend?: "up" | "down" | "flat" | "unknown";
   aboveEma200Trend?: "up" | "down" | "flat" | "unknown";
   technicalSampleSize?: number;
+  /** True when EMA bars are shown from a partial technical sample. */
+  participationPartial?: boolean;
   averageRsi?: number | null;
   averageDailyReturn?: number | null;
   strongestSector?: string | null;

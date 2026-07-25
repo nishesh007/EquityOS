@@ -6,7 +6,6 @@ import type { LiveQuote } from "@/lib/providers/types";
 import { getNseSymbolMeta } from "@/lib/fundamentals/nse-registry";
 import { normalizeSymbol } from "@/lib/market-data/symbols";
 import type { MarketData, DataSource } from "@/lib/market-data/types";
-import { createRng, hashSeed } from "@/lib/random";
 
 function round(value: number, decimals = 2): number {
   const factor = 10 ** decimals;
@@ -17,12 +16,20 @@ function round(value: number, decimals = 2): number {
 export function liveQuoteToMarketData(quote: LiveQuote): MarketData {
   const normalized = normalizeSymbol(quote.symbol);
   const meta = getNseSymbolMeta(normalized.internal);
-  const rng = createRng(hashSeed(`md-${normalized.internal}`));
 
+  // Prefer provider 52W fields; never invent synthetic ranges.
   const weekHigh52 =
-    quote.ltp > 0 ? round(quote.ltp * (1.12 + rng() * 0.25)) : undefined;
+    quote.weekHigh52 != null &&
+    Number.isFinite(quote.weekHigh52) &&
+    quote.weekHigh52 > 0
+      ? round(quote.weekHigh52)
+      : undefined;
   const weekLow52 =
-    quote.ltp > 0 ? round(quote.ltp * (0.65 + rng() * 0.15)) : undefined;
+    quote.weekLow52 != null &&
+    Number.isFinite(quote.weekLow52) &&
+    quote.weekLow52 > 0
+      ? round(quote.weekLow52)
+      : undefined;
 
   return {
     symbol: normalized.internal,

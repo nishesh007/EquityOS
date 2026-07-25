@@ -216,7 +216,10 @@ async function computeTechnicals(symbols: string[]): Promise<{
   averageRsi: number | null;
   sampleSize: number;
   coveragePercent: number;
+  /** Real 52W high/low derived from OHLC when quote fields are missing. */
+  weekRanges: Map<string, { high: number; low: number }>;
 }> {
+  const weekRanges = new Map<string, { high: number; low: number }>();
   if (symbols.length === 0) {
     return {
       aboveEma20: null,
@@ -225,10 +228,12 @@ async function computeTechnicals(symbols: string[]): Promise<{
       averageRsi: null,
       sampleSize: 0,
       coveragePercent: 0,
+      weekRanges,
     };
   }
 
-  const sample = symbols.slice(0, MAX_TECHNICAL_FETCHES);
+  const attempted = Math.min(MAX_TECHNICAL_FETCHES, symbols.length);
+  const sample = symbols.slice(0, attempted);
   let above20 = 0;
   let above50 = 0;
   let above200 = 0;
@@ -255,6 +260,16 @@ async function computeTechnicals(symbols: string[]): Promise<{
         rsiSum += r;
         rsiCount += 1;
       }
+
+      let hi = Number.NEGATIVE_INFINITY;
+      let lo = Number.POSITIVE_INFINITY;
+      for (const bar of candles) {
+        if (Number.isFinite(bar.high) && bar.high > 0) hi = Math.max(hi, bar.high);
+        if (Number.isFinite(bar.low) && bar.low > 0) lo = Math.min(lo, bar.low);
+      }
+      if (Number.isFinite(hi) && Number.isFinite(lo) && hi > lo) {
+        weekRanges.set(symbol, { high: hi, low: lo });
+      }
     } catch {
       /* skip symbol */
     }
@@ -268,6 +283,7 @@ async function computeTechnicals(symbols: string[]): Promise<{
       averageRsi: null,
       sampleSize: 0,
       coveragePercent: 0,
+      weekRanges,
     };
   }
 
@@ -278,7 +294,9 @@ async function computeTechnicals(symbols: string[]): Promise<{
     averageRsi:
       rsiCount > 0 ? Math.round((rsiSum / rsiCount) * 10) / 10 : null,
     sampleSize: ok,
-    coveragePercent: Math.round((ok / symbols.length) * 1000) / 10,
+    // Coverage vs attempted technical sample (not full NSE universe).
+    coveragePercent: Math.round((ok / attempted) * 1000) / 10,
+    weekRanges,
   };
 }
 
@@ -379,25 +397,18 @@ export async function runMarketBreadthEngine(
     sampleSize: technicalsRaw.sampleSize,
     universeSize: technicalSymbols.length,
   });
-  // Never publish EMA participation from a partial technical scan.
-  const technicals = participationReady
-    ? technicalsRaw
-    : {
-        ...technicalsRaw,
-        aboveEma20: null,
-        aboveEma50: null,
-        aboveEma200: null,
-        averageRsi: null,
-      };
-  const aboveEma20Pct = participationReady
-    ? pctOf(technicals.aboveEma20, technicals.sampleSize)
-    : null;
-  const aboveEma50Pct = participationReady
-    ? pctOf(technicals.aboveEma50, technicals.sampleSize)
-    : null;
-  const aboveEma200Pct = participationReady
-    ? pctOf(technicals.aboveEma200, technicals.sampleSize)
-    : null;
+  const participationPartial =
+    technicalsRaw.sampleSize > 0 && !participationReady;
+
+  /**
+   * Graceful degradation: publish real EMA counts whenever any OHLC sample
+   * succeeded. Full gate still controls mood EMA/RSI weighting and trend history.
+   * Old: nulling EMAs below gate left UI waiting forever on partial coverage.
+   */
+  const technicals = technicalsRaw;
+  const aboveEma20Pct = pctOf(technicals.aboveEma20, technicals.sampleSize);
+  const aboveEma50Pct = pctOf(technicals.aboveEma50, technicals.sampleSize);
+  const aboveEma200Pct = pctOf(technicals.aboveEma200, technicals.sampleSize);
 
   const emaParts = [aboveEma20Pct, aboveEma50Pct, aboveEma200Pct].filter(
     (v): v is number => v != null
@@ -408,6 +419,15 @@ export async function runMarketBreadthEngine(
           (emaParts.reduce((s, v) => s + v, 0) / emaParts.length) * 10
         ) / 10
       : null;
+
+  // Fill missing quote 52W fields from OHLC ranges (real candle data only).
+  for (const row of rows) {
+    if (row.weekHigh52 != null && row.weekLow52 != null) continue;
+    const range = technicalsRaw.weekRanges.get(row.symbol);
+    if (!range) continue;
+    if (row.weekHigh52 == null) row.weekHigh52 = range.high;
+    if (row.weekLow52 == null) row.weekLow52 = range.low;
+  }
 
   const weekHighs = select52wExtremes(rows, "high");
   const weekLows = select52wExtremes(rows, "low");
@@ -430,14 +450,17 @@ export async function runMarketBreadthEngine(
         ) / 10
       : null;
 
+  // Mood uses EMA/RSI only when the technical sample meets the full gate.
   const moodResult = classifyMarketMood({
     breadthPercent,
     quoteCoverage: quoteCoveragePercent / 100,
-    emaParticipationPercent,
+    emaParticipationPercent: participationReady
+      ? emaParticipationPercent
+      : null,
     newHighs52w,
     newLows52w,
     sectorAdvanceSharePercent,
-    averageRsi: technicals.averageRsi,
+    averageRsi: participationReady ? technicals.averageRsi : null,
   });
 
   const { trend5d, trend20d } = recordBreadthTrend(
@@ -461,6 +484,11 @@ export async function runMarketBreadthEngine(
       ? sectorBreadth[sectorBreadth.length - 1]?.name ?? null
       : null;
 
+  const moverParticipation =
+    quotedStocks > 0
+      ? Math.round(((advances + declines) / quotedStocks) * 1000) / 10
+      : 0;
+
   return {
     universe: universeId,
     universeLabel: resolved.label,
@@ -475,7 +503,10 @@ export async function runMarketBreadthEngine(
     marketMood: moodResult.mood,
     moodGauge: moodResult.gaugeValue,
     moodFactors: moodResult.factors,
-    participationPercent: emaParticipationPercent ?? quoteCoveragePercent,
+    // Prefer EMA mean when ready; else mover A/D participation (not quote coverage).
+    participationPercent: participationReady
+      ? (emaParticipationPercent ?? moverParticipation)
+      : moverParticipation,
     highLowRatio,
     newHighs52w,
     newLows52w,
@@ -489,6 +520,7 @@ export async function runMarketBreadthEngine(
     aboveEma50Trend: participationTrends.aboveEma50Trend,
     aboveEma200Trend: participationTrends.aboveEma200Trend,
     technicalSampleSize: technicals.sampleSize,
+    participationPartial,
     averageRsi: technicals.averageRsi,
     averageDailyReturn: avgReturn,
     sectorBreadth,

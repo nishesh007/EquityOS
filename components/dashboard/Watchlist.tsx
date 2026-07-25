@@ -113,7 +113,7 @@ export function Watchlist({
   );
 
   return (
-    <Card padding="lg" accent="cyan" className="h-full">
+    <Card padding="lg" accent="cyan" className="flex h-full flex-col">
       <CardHeader
         title="Watchlist"
         subtitle={`${items.length} stocks tracked · live signals`}
@@ -127,37 +127,39 @@ export function Watchlist({
           icon={Star}
         />
       ) : (
-        <ResearchDataGrid
-          table={WATCHLIST_TABLE}
-          rows={rows}
-          getRowId={(row) => row.id}
-          bulkActions={bulkActions}
-          maxHeight={420}
-          onRowClick={(row) => router.push(getCompanyRoute(row.symbol))}
-          renderExpandedRow={(row) => (
-            <div className="grid gap-2 sm:grid-cols-2">
-              <div>
-                <p className="data-label">
-                  Strategy Details
-                </p>
-                <p className="data-secondary mt-1">
-                  {row.action} · {row.strategy}
-                  {row.confidence != null
-                    ? ` · Confidence ${row.confidence.toFixed(1)}%`
-                    : ""}
-                </p>
+        <div className="min-h-0 flex-1">
+          <ResearchDataGrid
+            table={WATCHLIST_TABLE}
+            rows={rows}
+            getRowId={(row) => row.id}
+            bulkActions={bulkActions}
+            maxHeight={280}
+            onRowClick={(row) => router.push(getCompanyRoute(row.symbol))}
+            renderExpandedRow={(row) => (
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div>
+                  <p className="data-label">
+                    Strategy Details
+                  </p>
+                  <p className="data-secondary mt-1">
+                    {row.action} · {row.strategy}
+                    {row.confidence != null
+                      ? ` · Confidence ${row.confidence.toFixed(1)}%`
+                      : ""}
+                  </p>
+                </div>
+                <div>
+                  <p className="data-label">
+                    Notes
+                  </p>
+                  <p className="data-secondary mt-1">
+                    {row.sector} · Updated {row.updated} · Vol {row.volume}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="data-label">
-                  Notes
-                </p>
-                <p className="data-secondary mt-1">
-                  {row.sector} · Updated {row.updated} · Vol {row.volume}
-                </p>
-              </div>
-            </div>
-          )}
-        />
+            )}
+          />
+        </div>
       )}
     </Card>
   );

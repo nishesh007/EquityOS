@@ -85,6 +85,7 @@ export default async function PortfolioPage() {
                 portfolio={portfolio}
                 showTopHoldings={false}
                 showViewAllLink={false}
+                currencyStyle="exact"
               />
               <SharedRecommendationPanel
                 recommendations={holdingRecommendations}

@@ -28,6 +28,13 @@ describe("participation coverage gate", () => {
       isParticipationCoverageSufficient({ sampleSize: 20, universeSize: 40 })
     ).toBe(true);
   });
+
+  it("treats mid-sample as incomplete for the full gate (UI may still show provisional)", () => {
+    expect(
+      isParticipationCoverageSufficient({ sampleSize: 24, universeSize: 2000 })
+    ).toBe(false);
+    expect(minParticipationSampleSize(2000)).toBe(60);
+  });
 });
 
 describe("opportunity UI phase", () => {

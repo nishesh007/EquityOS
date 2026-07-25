@@ -159,6 +159,26 @@ export default async function ResearchPage() {
       <div className="mb-6">
         <MarketIntelligenceStrip snapshot={marketIntelligence} />
       </div>
+
+      <div className="mb-6 rounded-xl border border-surface-border-subtle bg-surface-elevated/40 px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-text-primary">
+              Market Internals
+            </p>
+            <p className="mt-0.5 text-xs text-text-muted">
+              Breadth, participation, strength and mood — deep market analysis
+            </p>
+          </div>
+          <Link
+            href="/research/market-internals"
+            className="text-[11px] font-semibold text-accent hover:underline"
+          >
+            Open Market Internals →
+          </Link>
+        </div>
+      </div>
+
       <div className="mb-6">
         <SharedRecommendationPanel
           recommendations={strategyRecommendations}
