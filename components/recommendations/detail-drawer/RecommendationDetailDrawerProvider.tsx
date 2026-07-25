@@ -4,6 +4,7 @@ import type {
   InstitutionalStrategyPick,
   SharedRecommendation,
 } from "@/lib/recommendations";
+import { onUiEvent } from "@/src/design/command/uiBus";
 import {
   createContext,
   useCallback,
@@ -17,6 +18,7 @@ import { RecommendationDetailDrawer } from "./RecommendationDetailDrawer";
 import {
   fromSharedRecommendation,
   fromStrategyPick,
+  fromUnavailableSymbol,
   type RecommendationDetailContext,
   type RecommendationDrawerSource,
 } from "./types";
@@ -31,6 +33,12 @@ interface RecommendationDetailDrawerContextValue {
     source?: RecommendationDrawerSource
   ) => void;
   openContext: (context: RecommendationDetailContext) => void;
+  /** Fetch published package by symbol; opens empty status when unavailable. */
+  openBySymbol: (
+    symbol: string,
+    company?: string,
+    source?: RecommendationDrawerSource
+  ) => Promise<void>;
   closeRecommendationDrawer: () => void;
   isOpen: boolean;
 }
@@ -63,15 +71,21 @@ export function RecommendationDetailDrawerProvider({
   const [context, setContext] = useState<RecommendationDetailContext | null>(
     null
   );
+  const [open, setOpen] = useState(false);
+
+  const reveal = useCallback((next: RecommendationDetailContext) => {
+    setContext(next);
+    setOpen(true);
+  }, []);
 
   const openRecommendation = useCallback(
     (
       recommendation: SharedRecommendation,
       source?: RecommendationDrawerSource
     ) => {
-      setContext(fromSharedRecommendation(recommendation, source));
+      reveal(fromSharedRecommendation(recommendation, source));
     },
-    []
+    [reveal]
   );
 
   const openFromStrategyPick = useCallback(
@@ -79,23 +93,58 @@ export function RecommendationDetailDrawerProvider({
       pick: InstitutionalStrategyPick,
       source: RecommendationDrawerSource = "dashboard"
     ) => {
-      setContext(fromStrategyPick(pick, source));
+      reveal(fromStrategyPick(pick, source));
     },
-    []
+    [reveal]
   );
 
-  const openContext = useCallback((next: RecommendationDetailContext) => {
-    setContext(next);
-  }, []);
+  const openContext = useCallback(
+    (next: RecommendationDetailContext) => {
+      reveal(next);
+    },
+    [reveal]
+  );
+
+  const openBySymbol = useCallback(
+    async (
+      symbol: string,
+      company?: string,
+      source: RecommendationDrawerSource = "company"
+    ) => {
+      const recommendation = await fetchRecommendationBySymbol(symbol);
+      if (recommendation) {
+        reveal(fromSharedRecommendation(recommendation, source));
+        return;
+      }
+      reveal(fromUnavailableSymbol(symbol, company ?? symbol, source));
+    },
+    [reveal]
+  );
 
   const closeRecommendationDrawer = useCallback(() => {
+    setOpen(false);
+  }, []);
+
+  const handleExited = useCallback(() => {
     setContext(null);
   }, []);
+
+  // Search / command palette — open whenever a recommendation package exists.
+  useEffect(() => {
+    return onUiEvent("open-recommendation", (detail) => {
+      const payload = detail as
+        | { symbol?: string; company?: string }
+        | undefined;
+      if (!payload?.symbol) return;
+      void openBySymbol(payload.symbol, payload.company, "search");
+    });
+  }, [openBySymbol]);
 
   // Hydrate dashboard / partial opens with the published SharedRecommendation
   // for the same symbol — read-only reuse of the existing recommendations API.
   useEffect(() => {
-    if (!context || context.source) return;
+    if (!open || !context || context.source) return;
+    if (context.statusMessage) return;
     const symbol = context.symbol;
     let cancelled = false;
 
@@ -120,21 +169,24 @@ export function RecommendationDetailDrawerProvider({
     return () => {
       cancelled = true;
     };
-  }, [context?.id, context?.symbol, context?.source]);
+  }, [open, context?.id, context?.symbol, context?.source, context?.statusMessage]);
 
   const value = useMemo(
     () => ({
       openRecommendation,
       openFromStrategyPick,
       openContext,
+      openBySymbol,
       closeRecommendationDrawer,
-      isOpen: context != null,
+      isOpen: open && context != null,
     }),
     [
       openRecommendation,
       openFromStrategyPick,
       openContext,
+      openBySymbol,
       closeRecommendationDrawer,
+      open,
       context,
     ]
   );
@@ -144,8 +196,9 @@ export function RecommendationDetailDrawerProvider({
       {children}
       <RecommendationDetailDrawer
         context={context}
-        open={context != null}
+        open={open}
         onClose={closeRecommendationDrawer}
+        onExited={handleExited}
       />
     </RecommendationDetailDrawerContext.Provider>
   );

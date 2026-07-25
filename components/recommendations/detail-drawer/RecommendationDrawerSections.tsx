@@ -1,14 +1,25 @@
 "use client";
 
-import { Skeleton, SkeletonText } from "@/components/ui/Skeleton";
-import { useMemo } from "react";
 import { buildExecutiveDecisionView } from "@/lib/recommendations/executive-decision-presenter";
+import dynamic from "next/dynamic";
+import { useMemo } from "react";
 import { AiConvictionSection } from "./AiConvictionSection";
 import { CommitteeVerdictSection } from "./CommitteeVerdictSection";
+import { DrawerBodySkeleton, DrawerEmptyState } from "./DrawerStates";
 import { ExecutiveSummarySection } from "./ExecutiveSummarySection";
-import { SectionShell } from "./SectionChrome";
 import { TradePlanSection } from "./TradePlanSection";
 import type { RecommendationDetailContext } from "./types";
+
+const DeferredResearchAndTrust = dynamic(
+  () =>
+    import("./DeferredResearchAndTrust").then(
+      (mod) => mod.DeferredResearchAndTrust
+    ),
+  {
+    ssr: false,
+    loading: () => <DrawerBodySkeleton />,
+  }
+);
 
 export interface RecommendationSectionMeta {
   id: string;
@@ -16,53 +27,7 @@ export interface RecommendationSectionMeta {
   description: string;
 }
 
-/** Remaining placeholder sections — Sprint 11A.3+. */
-export const RECOMMENDATION_DRAWER_PLACEHOLDER_SECTIONS: readonly RecommendationSectionMeta[] =
-  [
-    {
-      id: "technical-summary",
-      title: "Technical Summary",
-      description:
-        "Price structure, momentum, and technical framework alignment.",
-    },
-    {
-      id: "fundamental-summary",
-      title: "Fundamental Summary",
-      description: "Quality, growth, and fundamental framework highlights.",
-    },
-    {
-      id: "valuation-summary",
-      title: "Valuation Summary",
-      description:
-        "Relative and absolute valuation context versus peers and history.",
-    },
-    {
-      id: "risk-analysis",
-      title: "Risk Analysis",
-      description:
-        "Downside scenarios, risk mode, and invalidation conditions.",
-    },
-    {
-      id: "catalysts",
-      title: "Catalysts",
-      description:
-        "Near-term and structural catalysts that could reprice the name.",
-    },
-    {
-      id: "historical-validation",
-      title: "Historical Validation",
-      description:
-        "Backtest and historical signal quality for this recommendation style.",
-    },
-    {
-      id: "recommendation-timeline",
-      title: "Recommendation Timeline",
-      description:
-        "Chronology of prior calls, revisions, and outcome tracking.",
-    },
-  ] as const;
-
-/** @deprecated Prefer RECOMMENDATION_DRAWER_PLACEHOLDER_SECTIONS + live sections. */
+/** Full drawer section catalog (Sprint 11A.1–11A.4). */
 export const RECOMMENDATION_DRAWER_SECTIONS = [
   {
     id: "executive-summary",
@@ -88,34 +53,81 @@ export const RECOMMENDATION_DRAWER_SECTIONS = [
     description:
       "Model conviction, opportunity score, and supporting evidence factors.",
   },
-  ...RECOMMENDATION_DRAWER_PLACEHOLDER_SECTIONS,
+  {
+    id: "technical-summary",
+    title: "Technical Summary",
+    description:
+      "Price structure, momentum, and technical framework alignment.",
+  },
+  {
+    id: "fundamental-summary",
+    title: "Fundamental Summary",
+    description: "Quality, growth, and fundamental framework highlights.",
+  },
+  {
+    id: "valuation-summary",
+    title: "Valuation Summary",
+    description:
+      "Relative and absolute valuation context versus peers and history.",
+  },
+  {
+    id: "risk-analysis",
+    title: "Risk Analysis",
+    description:
+      "Downside scenarios, risk mode, and invalidation conditions.",
+  },
+  {
+    id: "catalysts",
+    title: "Events & Catalysts",
+    description:
+      "Near-term and structural catalysts that could reprice the name.",
+  },
+  {
+    id: "financial-quality",
+    title: "Financial Quality Snapshot",
+    description: "Compact financial quality score cards.",
+  },
+  {
+    id: "related-research",
+    title: "Related Research",
+    description: "Navigation into existing EquityOS research surfaces.",
+  },
+  {
+    id: "similar-historical-setups",
+    title: "Similar Historical Setups",
+    description: "Comparable historical recommendation outcomes.",
+  },
+  {
+    id: "recommendation-performance",
+    title: "Recommendation Performance",
+    description: "Win rate and outcome statistics.",
+  },
+  {
+    id: "confidence-evolution",
+    title: "Confidence Evolution",
+    description: "How confidence changed versus prior packages.",
+  },
+  {
+    id: "recommendation-timeline",
+    title: "Recommendation Timeline",
+    description: "Audit chronology of generation and validation.",
+  },
+  {
+    id: "audit-trail",
+    title: "Audit Trail",
+    description: "Publication-gate verification checklist.",
+  },
+  {
+    id: "data-quality",
+    title: "Data Quality & Source Confidence",
+    description: "Freshness and confidence of research inputs.",
+  },
+  {
+    id: "investment-suitability",
+    title: "Disclaimer & Investment Suitability",
+    description: "Horizon, risk category, and professional disclaimer.",
+  },
 ] as const;
-
-function PlaceholderSection({
-  section,
-  index,
-}: {
-  section: RecommendationSectionMeta;
-  index: number;
-}) {
-  return (
-    <SectionShell
-      index={index}
-      title={section.title}
-      description={section.description}
-      badge="Later"
-    >
-      <div
-        className="rounded-lg border border-dashed border-surface-border-subtle/80 bg-surface/30 p-3"
-        role="status"
-        aria-label={`${section.title} loading placeholder`}
-      >
-        <Skeleton className="mb-2 h-3 w-1/3" />
-        <SkeletonText lines={3} />
-      </div>
-    </SectionShell>
-  );
-}
 
 export function RecommendationDrawerSections({
   context,
@@ -131,23 +143,32 @@ export function RecommendationDrawerSections({
         tradeHints: context.tradeHints,
         source: context.source,
       }),
-    [context]
+    [
+      context.action,
+      context.confidence,
+      context.currentPrice,
+      context.tradeHints,
+      context.source,
+    ]
   );
+
+  const unavailable = Boolean(context.statusMessage) && !context.source;
 
   return (
     <div className="space-y-3 p-4 md:p-5">
+      {unavailable ? (
+        <DrawerEmptyState
+          title="No recommendation"
+          message="There is no active published recommendation for this company right now."
+        />
+      ) : null}
+
       <ExecutiveSummarySection view={decision.executiveSummary} />
       <CommitteeVerdictSection view={decision.committee} />
       <TradePlanSection view={decision.tradePlan} />
       <AiConvictionSection view={decision.aiConviction} />
 
-      {RECOMMENDATION_DRAWER_PLACEHOLDER_SECTIONS.map((section, index) => (
-        <PlaceholderSection
-          key={section.id}
-          section={section}
-          index={index + 5}
-        />
-      ))}
+      <DeferredResearchAndTrust context={context} />
     </div>
   );
 }

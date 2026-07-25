@@ -146,7 +146,7 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
           quickVerdict={intelligence?.summary.verdict ?? null}
         />
         <div className="sticky top-0 z-30 -mx-1 border-b border-surface-border-subtle/50 bg-surface/90 px-1 py-1.5 backdrop-blur-md">
-          <ActionButtons symbol={company.symbol} />
+          <ActionButtons symbol={company.symbol} companyName={company.name} />
         </div>
 
         <ResearchTerminal

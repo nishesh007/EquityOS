@@ -1,9 +1,12 @@
 "use client";
 
 import { ConfidenceBar } from "@/components/ui/ConfidenceBar";
+import { RecommendationEventWarningBadge } from "@/components/events/RecommendationEventWarningBadge";
 import { getCompanyRoute } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import { FOCUS_RING_CLASS } from "@/src/design/motion/motionPresets";
+import { buildEventSeedCatalog, toDateKey } from "@/src/core/events";
+import { linkEventsToSymbol } from "@/src/core/events/integration";
 import {
   Briefcase,
   Building2,
@@ -12,7 +15,7 @@ import {
   Star,
 } from "lucide-react";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { RecommendationDetailContext } from "./types";
 
 function formatPrice(value: number | null): string {
@@ -85,6 +88,14 @@ export function RecommendationDrawerSidebar({
 }) {
   const [watchlistAdded, setWatchlistAdded] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const upcoming = useMemo(() => {
+    const today = toDateKey(new Date());
+    const catalog = buildEventSeedCatalog(today);
+    return linkEventsToSymbol(catalog, context.symbol, {
+      today,
+      upcomingOnly: true,
+    }).slice(0, 3);
+  }, [context.symbol]);
 
   function addToWatchlist(): void {
     if (timer.current) clearTimeout(timer.current);
@@ -124,11 +135,45 @@ export function RecommendationDrawerSidebar({
           <CalendarClock className="h-3 w-3" aria-hidden />
           Upcoming Events
         </p>
-        <div className="rounded-lg border border-dashed border-surface-border-subtle/80 bg-surface/30 px-2.5 py-3">
-          <p className="text-[11px] text-text-muted">
-            Event intelligence placeholder — Sprint 11A.2
-          </p>
-        </div>
+        <RecommendationEventWarningBadge symbol={context.symbol} />
+        {upcoming.length > 0 ? (
+          <ul className="space-y-1.5">
+            {upcoming.map((item) => (
+              <li
+                key={item.event.id}
+                className="rounded-lg border border-surface-border-subtle/80 bg-surface/40 px-2.5 py-2"
+              >
+                <p className="text-[11px] font-medium text-text-primary">
+                  {item.event.title}
+                </p>
+                <p className="text-[10px] text-text-muted">
+                  {item.countdown.label} · {item.event.date}
+                </p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div
+            className="rounded-lg border border-dashed border-surface-border-subtle/80 bg-surface/30 px-2.5 py-2"
+            role="status"
+          >
+            <p className="text-[11px] font-semibold text-text-primary">
+              No events
+            </p>
+            <p className="mt-0.5 text-[11px] text-text-muted">
+              No linked upcoming events in the catalog for this symbol.
+            </p>
+          </div>
+        )}
+        <Link
+          href="/events"
+          className={cn(
+            "inline-flex text-[11px] font-semibold text-accent hover:text-accent/80",
+            FOCUS_RING_CLASS
+          )}
+        >
+          Open Event Calendar →
+        </Link>
       </section>
 
       <section className="space-y-2">

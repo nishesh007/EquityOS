@@ -37,6 +37,8 @@ export interface RecommendationDetailContext {
   };
   /** Origin surface for analytics / future wiring. */
   openedFrom?: RecommendationDrawerSource;
+  /** Soft status banner (e.g. no active recommendation on company page). */
+  statusMessage?: string | null;
 }
 
 export type RecommendationDrawerSource =
@@ -48,6 +50,8 @@ export type RecommendationDrawerSource =
   | "research"
   | "validation"
   | "opportunities"
+  | "company"
+  | "search"
   | "other";
 
 export function toDrawerAction(
@@ -77,6 +81,33 @@ export function fromSharedRecommendation(
     marketStatus: recommendation.marketRegime || null,
     source: recommendation,
     openedFrom,
+    statusMessage: null,
+  };
+}
+
+/** Empty company/search open when no active recommendation is published. */
+export function fromUnavailableSymbol(
+  symbol: string,
+  company = symbol,
+  openedFrom: RecommendationDrawerSource = "company"
+): RecommendationDetailContext {
+  return {
+    id: `unavailable:${symbol.toUpperCase()}`,
+    symbol: symbol.toUpperCase(),
+    company,
+    action: "HOLD",
+    confidence: 0,
+    recommendationDate: new Date().toISOString(),
+    currentPrice: null,
+    changePercent: null,
+    changeAbsolute: null,
+    marketCap: null,
+    sector: null,
+    industry: null,
+    marketStatus: null,
+    source: null,
+    openedFrom,
+    statusMessage: "No active recommendation available.",
   };
 }
 
@@ -112,5 +143,6 @@ export function fromStrategyPick(
       primaryTarget: pick.primaryTarget > 0 ? pick.primaryTarget : null,
     },
     openedFrom,
+    statusMessage: null,
   };
 }

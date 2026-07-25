@@ -76,6 +76,7 @@ const config: Config = {
         "fade-in": "fadeIn 0.2s ease-out both",
         "scale-in": "scaleIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) both",
         "slide-in": "slideIn 0.32s cubic-bezier(0, 0, 0.2, 1) both",
+        "slide-out": "slideOut 0.24s cubic-bezier(0.4, 0, 1, 1) both",
         "terminal-scan": "terminalScan 4s ease-in-out infinite",
         "confidence-fill": "confidenceFill 0.8s ease-out both",
         shimmer: "shimmer 1.8s linear infinite",
@@ -96,6 +97,10 @@ const config: Config = {
         slideIn: {
           "0%": { opacity: "0", transform: "translateX(16px)" },
           "100%": { opacity: "1", transform: "translateX(0)" },
+        },
+        slideOut: {
+          "0%": { opacity: "1", transform: "translateX(0)" },
+          "100%": { opacity: "0", transform: "translateX(24px)" },
         },
         terminalScan: {
           "0%, 100%": { opacity: "0", transform: "translateX(-35%)" },

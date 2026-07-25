@@ -154,7 +154,10 @@ export function RecommendationDrawerHeader({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="truncate text-base font-semibold tracking-tight text-text-primary md:text-lg">
+            <h2
+              id="recommendation-drawer-title"
+              className="truncate text-base font-semibold tracking-tight text-text-primary md:text-lg"
+            >
               {context.company}
             </h2>
             <span

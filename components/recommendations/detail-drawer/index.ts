@@ -8,7 +8,6 @@ export { RecommendationDrawerHeader } from "./RecommendationDrawerHeader";
 export {
   RecommendationDrawerSections,
   RECOMMENDATION_DRAWER_SECTIONS,
-  RECOMMENDATION_DRAWER_PLACEHOLDER_SECTIONS,
 } from "./RecommendationDrawerSections";
 export { RecommendationDrawerSidebar } from "./RecommendationDrawerSidebar";
 export {
@@ -20,9 +19,22 @@ export {
 export {
   fromSharedRecommendation,
   fromStrategyPick,
+  fromUnavailableSymbol,
   toDrawerAction,
   type RecommendationDetailContext,
   type RecommendationDrawerAction,
   type RecommendationDrawerSource,
 } from "./types";
 export { useEnrichedRecommendationContext } from "./useEnrichedRecommendationContext";
+export { useResearchIntelligence } from "./useResearchIntelligence";
+export { useInstitutionalTrust } from "./useInstitutionalTrust";
+export {
+  buildResearchIntelligenceView,
+  buildEmptyResearchIntelligenceView,
+  type ResearchIntelligenceView,
+} from "@/lib/recommendations/research-intelligence-presenter";
+export {
+  buildInstitutionalTrustView,
+  buildEmptyInstitutionalTrustView,
+  type InstitutionalTrustView,
+} from "@/lib/recommendations/institutional-trust-presenter";

@@ -31,9 +31,11 @@ export {
   emitUiEvent,
   onUiEvent,
   openCommandPalette,
+  openRecommendationDrawer,
   showNotificationCenter,
   showShortcutHelp,
   showHelpCenter,
+  type OpenRecommendationDetail,
   type UiEventName,
 } from "./uiBus";
 export { CommandPalette } from "./CommandPalette";

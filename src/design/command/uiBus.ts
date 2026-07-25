@@ -17,7 +17,13 @@ export type UiEventName =
   | "create-workspace"
   | "create-research-note"
   | "open-company"
+  | "open-recommendation"
   | "export-report";
+
+export type OpenRecommendationDetail = {
+  symbol: string;
+  company?: string;
+};
 
 const EVENT_PREFIX = "equityos:";
 
@@ -55,4 +61,14 @@ export function showShortcutHelp(): void {
 /** Public API — open the built-in help center. */
 export function showHelpCenter(): void {
   emitUiEvent("show-help-center");
+}
+
+/**
+ * Sprint 11A.5 — future-ready search / command entry.
+ * Opens the Recommendation Detail Drawer for a symbol when a package exists.
+ */
+export function openRecommendationDrawer(
+  detail: OpenRecommendationDetail
+): void {
+  emitUiEvent("open-recommendation", detail);
 }

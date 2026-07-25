@@ -107,3 +107,13 @@ export type {
   ExecutiveSummaryView,
   TradePlanView,
 } from "./executive-decision-presenter";
+export {
+  buildResearchIntelligenceView,
+  buildEmptyResearchIntelligenceView,
+} from "./research-intelligence-presenter";
+export type { ResearchIntelligenceView } from "./research-intelligence-presenter";
+export {
+  buildInstitutionalTrustView,
+  buildEmptyInstitutionalTrustView,
+} from "./institutional-trust-presenter";
+export type { InstitutionalTrustView } from "./institutional-trust-presenter";

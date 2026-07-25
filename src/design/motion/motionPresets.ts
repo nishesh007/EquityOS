@@ -10,6 +10,7 @@ export type MotionPresetName =
   | "fade"
   | "scale"
   | "slide"
+  | "slideOut"
   | "reveal"
   | "cardHover"
   | "press"
@@ -26,6 +27,7 @@ export const MOTION_CLASSES: Readonly<Record<MotionPresetName, string>> =
     fade: "animate-fade-in",
     scale: "animate-scale-in",
     slide: "animate-slide-in",
+    slideOut: "animate-slide-out",
     reveal: "animate-fade-in-up",
     cardHover:
       "transition-[box-shadow,border-color,transform] duration-200 hover:-translate-y-0.5 hover:shadow-floating",
