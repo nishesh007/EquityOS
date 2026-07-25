@@ -97,6 +97,8 @@ export class NSEAdapter extends BaseDataAdapter<NSEQuoteParams, NSEQuoteResult> 
     const change = priceInfo.change ?? 0;
     const changePercent = priceInfo.pChange ?? 0;
 
+    // Delivery % lives on trade_info — populated by delivery-enrichment for
+    // movers. Keep undefined here so quote polling stays one lightweight call.
     return {
       symbol: canonical,
       price,

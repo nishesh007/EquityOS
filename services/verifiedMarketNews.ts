@@ -1,4 +1,9 @@
 import type { MarketNews } from "@/types";
+import {
+  decodeHtmlEntities,
+  sanitizeNewsText,
+  stripDuplicatedPublisher,
+} from "@/lib/news/sanitizeNewsText";
 
 const SUPPORTED_SOURCES = new Map<string, string>([
   ["reuters", "Reuters"],
@@ -14,28 +19,11 @@ const SUPPORTED_SOURCES = new Map<string, string>([
 const NEWS_FEED_URL =
   "https://news.google.com/rss/search?q=India%20(stock%20market%20OR%20economy%20OR%20RBI%20OR%20SEBI)%20when%3A1d&hl=en-IN&gl=IN&ceid=IN%3Aen";
 
-function decodeXml(value: string): string {
-  return value
-    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;|&apos;/g, "'")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .trim();
-}
-
 function element(xml: string, name: string): string {
-  const match = xml.match(new RegExp(`<${name}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${name}>`, "i"));
-  return match ? decodeXml(match[1]) : "";
-}
-
-function stripHtml(value: string): string {
-  return decodeXml(value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " "));
-}
-
-function supportedSource(rawSource: string): string | null {
-  return SUPPORTED_SOURCES.get(rawSource.trim().toLowerCase()) ?? null;
+  const match = xml.match(
+    new RegExp(`<${name}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${name}>`, "i")
+  );
+  return match ? decodeHtmlEntities(match[1]) : "";
 }
 
 function categoryFor(title: string): MarketNews["category"] {
@@ -90,14 +78,24 @@ export function parseVerifiedNewsFeed(xml: string): MarketNews[] {
       const publishedAt = element(item, "pubDate");
       if (!source || !rawTitle || !url || !publishedAt) return null;
 
-      const sourceSuffix = new RegExp(`\\s+-\\s+${rawSource.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i");
-      const title = rawTitle.replace(sourceSuffix, "").trim();
+      const title = stripDuplicatedPublisher(
+        sanitizeNewsText(rawTitle),
+        source,
+        rawSource
+      );
       if (!title || seen.has(title.toLowerCase())) return null;
       seen.add(title.toLowerCase());
 
-      const description = stripHtml(element(item, "description"));
+      const description = stripDuplicatedPublisher(
+        sanitizeNewsText(element(item, "description")),
+        source,
+        rawSource
+      );
+
       return {
-        id: `${source}-${publishedAt}-${title}`.toLowerCase().replace(/\W+/g, "-"),
+        id: `${source}-${publishedAt}-${title}`
+          .toLowerCase()
+          .replace(/\W+/g, "-"),
         title,
         source,
         timestamp: relativeTime(publishedAt),
@@ -116,11 +114,18 @@ export function parseVerifiedNewsFeed(xml: string): MarketNews[] {
     .slice(0, 8);
 }
 
+function supportedSource(rawSource: string): string | null {
+  return SUPPORTED_SOURCES.get(rawSource.trim().toLowerCase()) ?? null;
+}
+
 export async function fetchVerifiedMarketNews(): Promise<MarketNews[]> {
   try {
     const response = await fetch(NEWS_FEED_URL, {
-      headers: { Accept: "application/rss+xml, application/xml;q=0.9" },
-      next: { revalidate: 900 },
+      headers: {
+        "User-Agent": "EquityOS/1.0",
+        Accept: "application/rss+xml, application/xml, text/xml",
+      },
+      next: { revalidate: 300 },
     });
     if (!response.ok) return [];
     return parseVerifiedNewsFeed(await response.text());

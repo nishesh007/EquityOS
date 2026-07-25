@@ -125,7 +125,7 @@ export function PortfolioSummary({
         icon={<Wallet className="h-4 w-4 text-amber-400" />}
       />
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         <KpiTile
           label="Total Value"
           value={formatMoney(liveMetrics.totalValue)}
@@ -147,13 +147,13 @@ export function PortfolioSummary({
       </div>
 
       {portfolio.holdings.length > 0 ? (
-        <div className="mt-4 grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="mt-3 grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-2">
           <div className="min-w-0">
-            <p className="mb-2 text-xs font-medium text-text-muted">
+            <p className="mb-1.5 text-xs font-medium text-text-muted">
               Capital Allocation
             </p>
             <AllocationRing
-              size={96}
+              size={88}
               legend
               centerLabel={formatMoney(liveMetrics.totalValue)}
               centerCaption="Deployed"
@@ -169,16 +169,16 @@ export function PortfolioSummary({
 
           {showTopHoldings ? (
             <div className="min-w-0">
-              <p className="mb-2 text-xs font-medium text-text-muted">
+              <p className="mb-1.5 text-xs font-medium text-text-muted">
                 Top Holdings
               </p>
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 {liveMetrics.holdingsWithValue.slice(0, 4).map(
                   ({ holding, quote, value }) => (
                     <StockLink
                       key={holding.id}
                       symbol={holding.symbol}
-                      className="flex items-center justify-between gap-2 rounded-lg border border-surface-border-subtle bg-surface/50 px-2.5 py-2 transition-colors hover:border-accent/20 hover:bg-surface-hover/50"
+                      className="flex items-center justify-between gap-2 rounded-lg border border-surface-border-subtle bg-surface/50 px-2 py-1.5 transition-colors hover:border-accent/20 hover:bg-surface-hover/50"
                     >
                       <div className="min-w-0">
                         <p className="truncate text-[12px] font-semibold text-text-primary">

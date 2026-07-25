@@ -79,7 +79,9 @@ export async function AiOpportunitiesSlot() {
         isScanning: state.isScanning,
         lastScannedAt: state.lastScannedAt,
         scanCount: state.scanCount,
-        recommendationCount: slots.filter((slot) => slot.pick != null).length,
+        recommendationCount: slots.filter(
+          (slot) => (slot.recommendationCount ?? 0) > 0 || slot.pick != null
+        ).length,
       }}
     />
   );

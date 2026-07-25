@@ -396,7 +396,7 @@ describe("Sprint 10C.R7 — accessibility & regression", () => {
   });
 
   it("design system and workspace engine remain intact", () => {
-    expect(getDesignSystem().themes).toHaveLength(8);
+    expect(getDesignSystem().themes).toHaveLength(12);
     expect(getDefaultWorkspace().placements.length).toBeGreaterThan(0);
   });
 });

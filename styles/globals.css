@@ -191,6 +191,211 @@
   .institutional-table tbody tr:hover td.institutional-table-sticky-col {
     @apply bg-surface-hover;
   }
+
+  .strategy-summary-card:hover {
+    box-shadow:
+      0 0 0 1px rgba(var(--strategy-rgb), 0.2) inset,
+      0 18px 48px -16px rgba(var(--strategy-rgb), 0.45),
+      0 14px 32px -14px rgba(0, 0, 0, 0.6) !important;
+  }
+
+  .strategy-summary-card:hover .strategy-card-ring {
+    filter: drop-shadow(0 0 12px rgba(var(--strategy-rgb), 0.65)) !important;
+  }
+
+  .strategy-summary-card:hover .strategy-card-cta {
+    filter: brightness(1.06);
+    box-shadow: 0 12px 28px -10px rgba(var(--strategy-rgb), 0.7) !important;
+  }
+
+  /*
+   * Sprint 10C.4 — strategy-accented recommendation tables.
+   * Host MUST set --strategy-accent / --strategy-rgb (via horizonSectionSurfaceStyle).
+   * Do not assign defaults here — nested .strategy-accent-table was resetting every
+   * table to Dodger Blue and breaking Swing/BTST/etc identity.
+   * Odd 3% · Even 5% · Hover 10% · Selected 14% · Grid lines 15%.
+   */
+  .strategy-accent-table .institutional-table-container {
+    border-color: rgba(var(--strategy-rgb), 0.28);
+    border-top-width: 2px;
+    border-top-color: var(--strategy-accent);
+    border-left-width: 3px;
+    border-left-color: var(--strategy-accent);
+    background: linear-gradient(
+      180deg,
+      rgba(var(--strategy-rgb), 0.1) 0%,
+      rgba(var(--strategy-rgb), 0.03) 72px,
+      transparent 100%
+    );
+  }
+
+  .strategy-accent-table .institutional-table-container::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .strategy-accent-table .institutional-table-container::-webkit-scrollbar-track {
+    background: rgba(var(--strategy-rgb), 0.04);
+  }
+
+  .strategy-accent-table .institutional-table-container::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(var(--strategy-rgb), 0.35);
+  }
+
+  .strategy-accent-table
+    .institutional-table-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(var(--strategy-rgb), 0.5);
+  }
+
+  .strategy-accent-table .institutional-table thead th {
+    background: linear-gradient(
+      180deg,
+      rgba(var(--strategy-rgb), 0.16) 0%,
+      rgba(var(--strategy-rgb), 0.06) 100%
+    ) !important;
+    border-bottom: 2px solid rgba(var(--strategy-rgb), 0.45);
+    border-right: 1px solid rgba(var(--strategy-rgb), 0.15);
+    color: color-mix(in srgb, var(--strategy-accent) 72%, white);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+
+  .strategy-accent-table .institutional-table tbody td {
+    border-bottom-color: rgba(var(--strategy-rgb), 0.15);
+    border-right: 1px solid rgba(var(--strategy-rgb), 0.15);
+    font-size: 15px !important;
+    font-weight: 600;
+    color: rgb(226, 232, 240);
+  }
+
+  .strategy-accent-table .institutional-table {
+    font-size: 15px;
+  }
+
+  .strategy-accent-table .institutional-table tbody tr {
+    position: relative;
+    cursor: pointer;
+    transition:
+      background-color 160ms ease,
+      box-shadow 160ms ease,
+      color 160ms ease;
+  }
+
+  .strategy-accent-table .institutional-table tbody tr:nth-child(odd) {
+    background-color: rgba(var(--strategy-rgb), 0.03);
+  }
+
+  .strategy-accent-table .institutional-table tbody tr:nth-child(even) {
+    background-color: rgba(var(--strategy-rgb), 0.05);
+  }
+
+  .strategy-accent-table .institutional-table tbody tr:hover {
+    background-color: rgba(var(--strategy-rgb), 0.1);
+    box-shadow:
+      inset 3px 0 0 var(--strategy-accent),
+      0 8px 20px -12px rgba(var(--strategy-rgb), 0.45);
+    color: rgb(248, 250, 252);
+  }
+
+  .strategy-accent-table .institutional-table tbody tr:hover td {
+    color: rgb(248, 250, 252);
+  }
+
+  .strategy-accent-table
+    .institutional-table
+    tbody
+    tr:hover
+    td.institutional-table-sticky-col {
+    background-color: rgba(var(--strategy-rgb), 0.12);
+  }
+
+  .strategy-accent-table .institutional-table-highlight {
+    background-color: rgba(var(--strategy-rgb), 0.14) !important;
+    box-shadow: inset 3px 0 0 var(--strategy-accent);
+  }
+
+  .strategy-accent-table
+    .institutional-table-highlight
+    td.institutional-table-sticky-col {
+    background-color: rgba(var(--strategy-rgb), 0.15);
+  }
+
+  .strategy-accent-table .strategy-expanded-panel {
+    border: 1px solid rgba(var(--strategy-rgb), 0.32);
+    background: linear-gradient(
+      180deg,
+      rgba(var(--strategy-rgb), 0.1) 0%,
+      rgba(var(--strategy-rgb), 0.04) 100%
+    );
+  }
+
+  .strategy-accent-table .institutional-table td.institutional-table-sticky-col,
+  .strategy-accent-table .institutional-table th.institutional-table-sticky-col {
+    background-color: color-mix(
+      in srgb,
+      rgba(var(--strategy-rgb), 0.08) 55%,
+      rgb(10, 14, 22)
+    );
+  }
+
+  .strategy-accent-table .institutional-table tbody td:first-child,
+  .strategy-accent-table
+    .institutional-table
+    tbody
+    td.institutional-table-sticky-col {
+    font-size: 15px;
+    font-weight: 700;
+    color: rgb(248, 250, 252);
+  }
+
+  .strategy-accent-table .strategy-chrome-btn,
+  .strategy-accent-table button.inline-flex.h-7 {
+    border-color: rgba(var(--strategy-rgb), 0.38);
+    color: color-mix(in srgb, var(--strategy-accent) 65%, white);
+  }
+
+  .strategy-accent-table .strategy-chrome-btn:hover,
+  .strategy-accent-table button.inline-flex.h-7:hover {
+    background-color: rgba(var(--strategy-rgb), 0.1);
+    border-color: rgba(var(--strategy-rgb), 0.55);
+    color: color-mix(in srgb, var(--strategy-accent) 80%, white);
+    box-shadow: 0 0 14px -6px rgba(var(--strategy-rgb), 0.45);
+  }
+
+  .strategy-accent-table input[type="search"],
+  .strategy-accent-table input[type="text"] {
+    border-color: rgba(var(--strategy-rgb), 0.32);
+  }
+
+  .strategy-accent-table input[type="search"]:focus,
+  .strategy-accent-table input[type="text"]:focus {
+    border-color: var(--strategy-accent);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(var(--strategy-rgb), 0.22);
+  }
+
+  .strategy-accent-table input[type="checkbox"] {
+    accent-color: var(--strategy-accent);
+  }
+
+  .strategy-accent-table .institutional-table tbody tr:focus-within {
+    outline: 1px solid rgba(var(--strategy-rgb), 0.45);
+    outline-offset: -1px;
+  }
+
+  .strategy-accent-table button[aria-label="Previous page"],
+  .strategy-accent-table button[aria-label="Next page"] {
+    border-color: rgba(var(--strategy-rgb), 0.38);
+    color: color-mix(in srgb, var(--strategy-accent) 70%, white);
+  }
+
+  .strategy-accent-table button[aria-label="Previous page"]:hover,
+  .strategy-accent-table button[aria-label="Next page"]:hover {
+    background-color: rgba(var(--strategy-rgb), 0.1);
+    box-shadow: 0 0 12px -6px rgba(var(--strategy-rgb), 0.4);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

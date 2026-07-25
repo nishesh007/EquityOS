@@ -31,7 +31,11 @@ export type BuiltInThemeId =
   | "graphite"
   | "emerald"
   | "trading-desk"
-  | "carbon-black";
+  | "carbon-black"
+  | "paper-research"
+  | "sepia-research"
+  | "nord"
+  | "cyber-neon";
 
 export const DEFAULT_THEME_ID: BuiltInThemeId = "institutional-dark";
 

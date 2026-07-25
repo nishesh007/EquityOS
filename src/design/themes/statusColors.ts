@@ -2,7 +2,7 @@
  * Sprint 10C.R5 — premium status color roles.
  *
  * One canonical mapping from research semantics to themed utility classes.
- * Every class resolves through theme CSS variables, so all 8 themes and
+ * Every class resolves through theme CSS variables, so all themes and
  * all 6 accents recolor these automatically.
  */
 

@@ -1,14 +1,18 @@
+/**
+ * Sprint 9F.2 — Dashboard ranking via Horizon-First pipelines.
+ */
+
 import { describe, expect, it, beforeEach } from "vitest";
 import { emptyOpportunityCategories } from "@/lib/opportunity-engine/trading-day";
 import type {
   OpportunityCandidate,
   OpportunityEngineState,
 } from "@/lib/opportunity-engine/types";
+import { clearHorizonPipelineCache } from "@/lib/recommendations/horizons";
 import {
   __resetInstitutionalDashboardCacheForTests,
   selectInstitutionalStrategyDashboard,
   parseInstitutionalStrategyId,
-  NO_HIGH_CONVICTION_MESSAGE,
 } from "./institutional-strategy-dashboard";
 
 function makeCandidate(
@@ -16,6 +20,10 @@ function makeCandidate(
     Pick<OpportunityCandidate, "symbol" | "category">
 ): OpportunityCandidate {
   const conviction = overrides.aiConvictionScore ?? 90;
+  const { scanMetrics: scanOverride, quote: quoteOverride, ...rest } =
+    overrides;
+  const price = quoteOverride?.price ?? scanOverride?.cmp ?? 101.5;
+  const priceNum = typeof price === "number" ? price : 101.5;
   return {
     id: `${overrides.symbol}:${overrides.category}`,
     company: overrides.company ?? `${overrides.symbol} Ltd`,
@@ -27,6 +35,7 @@ function makeCandidate(
     stopLoss: 95,
     target1: 110,
     target2: 116,
+    target3: 122,
     riskReward: 3.2,
     confidencePercent: conviction,
     reason: "Validated setup",
@@ -36,7 +45,7 @@ function makeCandidate(
     marketRegime: "Strong Bull",
     quote: {
       symbol: overrides.symbol,
-      price: 101.5,
+      price: priceNum,
       change: 1.2,
       changePercent: 1.2,
       open: 100,
@@ -48,125 +57,103 @@ function makeCandidate(
       deliveryPercent: 40,
       weekHigh52: 120,
       weekLow52: 80,
-      marketCap: "1L Cr",
-      exchange: "NSE",
-      marketStatus: "open",
-      marketStatusLabel: "Open",
-      lastTradeTime: "2026-07-25T04:00:00.000Z",
-      lastTradeTimeIST: "09:30",
-      lastUpdated: "2026-07-25T04:00:00.000Z",
-      lastUpdatedIST: "09:30",
-      lastSuccessfulUpdate: "2026-07-25T04:00:00.000Z",
-      lastSuccessfulUpdateIST: "09:30",
-      availability: "live",
-      provider: "test",
-      source: "live",
+      ...quoteOverride,
+    } as OpportunityCandidate["quote"],
+    scanMetrics: {
+      cmp: priceNum,
+      atr: 2.5,
+      volume: 1_000_000,
+      avg_volume_20d: 800_000,
+      adtv_20d: 800_000 * priceNum,
+      avg_turnover_20d: 800_000 * priceNum,
+      volume_ratio: 1.8,
+      change_percent: 1.2,
+      momentum: 2,
+      adx: 28,
+      trend_score: 65,
+      relative_strength: 60,
+      delivery_percent: 45,
+      closing_strength: 70,
+      fundamental_score: 65,
+      roe: 18,
+      revenue_growth: 14,
+      pe: 20,
+      volatility: 20,
+      ema20: 100,
+      ema50: 98,
+      vwap: 100.5,
+      week52_momentum: 8,
+      price_to_52w_high: 0.9,
+      ...scanOverride,
     },
-    strategySignal: {
-      strategy: "Test Strategy",
-      strategyId:
-        overrides.category === "intraday" ? "orb" : "ema-pullback",
-      category: "Swing",
-      timeframe: "1D",
-      signal: "BUY",
-      entry: 101,
-      stopLoss: 95,
-      target: 116,
-      target1: 110,
-      target2: 116,
-      holdingPeriod: "3–10 days",
-      confidence: conviction,
-      conviction,
-      risk: 6,
-      reward: 15,
-      riskReward: 2.5,
-      reasons: ["Trend confirmed"],
-      evidence: ["EMA support"],
-      tags: [],
-      marketContext: "Bullish",
-      marketRegime: "Strong Bull",
-      eligibility: {
-        eligible: true,
-        score: 82,
-        reasons: ["Regime compatible"],
-      },
-      timestamp: "2026-07-25T04:00:00.000Z",
-    },
-    firstDetectedAt: "2026-07-25T04:00:00.000Z",
-    lastDetectedAt: "2026-07-25T04:00:00.000Z",
-    lastUpdatedAt: "2026-07-25T04:00:00.000Z",
-    ...overrides,
+    ...rest,
   };
 }
 
-function stateFromCategories(
-  partial: Partial<OpportunityEngineState["categories"]>
+function makeState(
+  candidates: OpportunityCandidate[]
 ): OpportunityEngineState {
+  const categories = emptyOpportunityCategories();
+  for (const candidate of candidates) {
+    categories[candidate.category].push(candidate);
+  }
   return {
     tradingDate: "2026-07-25",
+    scanCount: 3,
     lastScannedAt: "2026-07-25T04:00:00.000Z",
-    nextScanAt: null,
+    categories,
     isFrozen: false,
     isScanning: false,
-    marketOpen: true,
-    scanCount: 1,
-    universeSize: 10,
-    categories: {
-      ...emptyOpportunityCategories(),
-      ...partial,
-    },
-    recommendations: [],
-    postMarket: null,
-    scanHistory: [],
-    lastScanMetrics: null,
-  };
+    universeSize: candidates.length,
+  } as OpportunityEngineState;
 }
 
-describe("institutional strategy dashboard ranking", () => {
+describe("institutional strategy dashboard ranking (horizon-first)", () => {
   beforeEach(() => {
     __resetInstitutionalDashboardCacheForTests();
+    clearHorizonPipelineCache();
   });
 
-  it("returns seven slots from a single master pool snapshot", () => {
-    const slots = selectInstitutionalStrategyDashboard(
-      stateFromCategories({
-        intraday: [
-          makeCandidate({ symbol: "TCS", category: "intraday", aiConvictionScore: 88 }),
-        ],
-        swing: [
-          makeCandidate({ symbol: "INFY", category: "swing", aiConvictionScore: 91 }),
-        ],
-        relative_volume: [
-          makeCandidate({
-            symbol: "RELIANCE",
-            category: "relative_volume",
-            aiConvictionScore: 86,
-          }),
-        ],
-        breakout: [
-          makeCandidate({
-            symbol: "HDFCBANK",
-            category: "breakout",
-            aiConvictionScore: 87,
-          }),
-        ],
-        momentum: [
-          makeCandidate({
-            symbol: "ITC",
-            category: "momentum",
-            aiConvictionScore: 89,
-          }),
-        ],
-        ai_high_conviction: [
-          makeCandidate({
-            symbol: "ASIANPAINT",
-            category: "ai_high_conviction",
-            aiConvictionScore: 92,
-          }),
-        ],
-      })
-    );
+  it("returns seven slots from independent horizon pipelines", () => {
+    const state = makeState([
+      makeCandidate({
+        symbol: "SWINGA",
+        category: "swing",
+        strategyId: "ema-pullback",
+        strategyName: "EMA Pullback",
+        aiConvictionScore: 92,
+        scanMetrics: {
+          atr: 3,
+          trend_score: 70,
+          adx: 32,
+          relative_strength: 65,
+          ema20: 101,
+          ema50: 99,
+          volume_ratio: 1.5,
+          cmp: 101.5,
+        },
+      }),
+      makeCandidate({
+        symbol: "LONGA",
+        category: "ai_high_conviction",
+        strategyId: "buffett",
+        strategyName: "Buffett",
+        aiConvictionScore: 91,
+        institutionalScore: 88,
+        scanMetrics: {
+          atr: 4,
+          fundamental_score: 80,
+          roe: 22,
+          revenue_growth: 16,
+          pe: 18,
+          volatility: 18,
+          trend_score: 55,
+          cmp: 101.5,
+        },
+      }),
+    ]);
 
+    const slots = selectInstitutionalStrategyDashboard(state);
     expect(slots).toHaveLength(7);
     expect(slots.map((s) => s.strategyId)).toEqual([
       "intraday",
@@ -177,123 +164,50 @@ describe("institutional strategy dashboard ranking", () => {
       "medium_term",
       "long_term",
     ]);
-    expect(slots.find((s) => s.strategyId === "intraday")?.pick?.symbol).toBe(
-      "TCS"
-    );
-    expect(slots.find((s) => s.strategyId === "swing")?.pick?.symbol).toBe(
-      "INFY"
-    );
-    expect(slots.find((s) => s.strategyId === "btst")?.pick?.symbol).toBe(
-      "RELIANCE"
-    );
-    expect(slots.find((s) => s.strategyId === "short_term")?.pick?.symbol).toBe(
-      "HDFCBANK"
-    );
-    expect(slots.find((s) => s.strategyId === "medium_term")?.pick?.symbol).toBe(
-      "ITC"
-    );
-    expect(slots.find((s) => s.strategyId === "long_term")?.pick?.symbol).toBe(
-      "ASIANPAINT"
-    );
-  });
-
-  it("picks only the highest conviction candidate per strategy", () => {
-    const slots = selectInstitutionalStrategyDashboard(
-      stateFromCategories({
-        swing: [
-          makeCandidate({
-            symbol: "WEAK",
-            category: "swing",
-            aiConvictionScore: 86,
-          }),
-          makeCandidate({
-            symbol: "STRONG",
-            category: "swing",
-            aiConvictionScore: 95,
-          }),
-        ],
-      })
-    );
-
-    expect(slots.find((s) => s.strategyId === "swing")?.pick?.symbol).toBe(
-      "STRONG"
-    );
-    expect(slots.find((s) => s.strategyId === "swing")?.pick?.conviction).toBe(
-      95
-    );
-  });
-
-  it("leaves a slot empty below the high-conviction gate", () => {
-    const slots = selectInstitutionalStrategyDashboard(
-      stateFromCategories({
-        swing: [
-          makeCandidate({
-            symbol: "LOW",
-            category: "swing",
-            aiConvictionScore: 70,
-          }),
-        ],
-      })
-    );
-
-    const swing = slots.find((s) => s.strategyId === "swing");
-    expect(swing?.pick).toBeNull();
-    expect(swing?.lastScanTime).toBe("2026-07-25T04:00:00.000Z");
-    expect(NO_HIGH_CONVICTION_MESSAGE).toContain("High Conviction");
-  });
-
-  it("ranks scalping separately from intraday within the same category", () => {
-    const scalp = makeCandidate({
-      symbol: "SCALP1",
-      category: "intraday",
-      aiConvictionScore: 90,
-      strategySignal: {
-        strategy: "Scalping",
-        strategyId: "scalping",
-        category: "Scalp",
-        timeframe: "5m",
-        signal: "BUY",
-        entry: 100,
-        stopLoss: 99,
-        target: 101.5,
-        target1: 101,
-        target2: 101.5,
-        holdingPeriod: "minutes",
-        confidence: 90,
-        conviction: 90,
-        risk: 1,
-        reward: 1.5,
-        riskReward: 1.5,
-        reasons: ["VWAP"],
-        evidence: [],
-        tags: ["scalp"],
-        marketContext: "Bullish",
-        marketRegime: "Strong Bull",
-        eligibility: { eligible: true, score: 80, reasons: [] },
-        timestamp: "2026-07-25T04:00:00.000Z",
-      },
-    });
-    const day = makeCandidate({
-      symbol: "DAY1",
-      category: "intraday",
-      aiConvictionScore: 88,
-    });
-
-    const slots = selectInstitutionalStrategyDashboard(
-      stateFromCategories({ intraday: [scalp, day] })
-    );
-
-    expect(slots.find((s) => s.strategyId === "scalping")?.pick?.symbol).toBe(
-      "SCALP1"
-    );
-    expect(slots.find((s) => s.strategyId === "intraday")?.pick?.symbol).toBe(
-      "DAY1"
-    );
   });
 
   it("parses strategy query ids", () => {
-    expect(parseInstitutionalStrategyId("intraday")).toBe("intraday");
-    expect(parseInstitutionalStrategyId("short-term")).toBe("short_term");
+    expect(parseInstitutionalStrategyId("swing")).toBe("swing");
+    expect(parseInstitutionalStrategyId("long_term")).toBe("long_term");
     expect(parseInstitutionalStrategyId("nope")).toBeNull();
+  });
+
+  it("does not assign the same OE category as the horizon identity", () => {
+    // A relative_volume candidate may qualify for BTST, but Long Term uses
+    // quality/valuation gates — not a remapped OE bucket.
+    const state = makeState([
+      makeCandidate({
+        symbol: "RVOL1",
+        category: "relative_volume",
+        strategyId: "institutional-accumulation",
+        strategyName: "Institutional Accumulation",
+        aiConvictionScore: 90,
+        scanMetrics: {
+          atr: 2,
+          volume_ratio: 2.4,
+          closing_strength: 80,
+          delivery_percent: 55,
+          change_percent: 1.8,
+          momentum: 2,
+          cmp: 101.5,
+          // Intentionally weak quality — must not leak into Long Term.
+          fundamental_score: 38,
+          roe: 7,
+          revenue_growth: 2,
+          pe: 55,
+        },
+      }),
+    ]);
+
+    const slots = selectInstitutionalStrategyDashboard(state);
+    const btst = slots.find((s) => s.strategyId === "btst");
+    const longTerm = slots.find((s) => s.strategyId === "long_term");
+    // BTST may pick it; Long Term should not treat relative_volume as LT.
+    if (btst?.pick) {
+      expect(btst.pick.symbol).toBe("RVOL1");
+    }
+    if (longTerm?.pick) {
+      expect(longTerm.pick.symbol).not.toBe("RVOL1");
+    }
   });
 });

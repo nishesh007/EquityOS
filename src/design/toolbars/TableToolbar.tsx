@@ -25,7 +25,7 @@ import {
 } from "@/src/design/tables/tableEngine";
 
 const BUTTON_CLASS =
-  "inline-flex h-7 items-center gap-1.5 rounded-md border border-surface-border bg-surface-raised px-2 text-[11px] font-medium text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary";
+  "strategy-chrome-btn inline-flex h-7 items-center gap-1.5 rounded-md border border-surface-border bg-surface-raised px-2 text-[11px] font-medium text-text-secondary transition-colors duration-200 hover:bg-surface-hover hover:text-text-primary";
 
 interface TableToolbarProps {
   title?: string;
@@ -123,7 +123,7 @@ export function TableToolbar({
             onChange={(event) => onSearchChange(event.target.value)}
             placeholder="Search…"
             aria-label="Search table"
-            className="h-7 w-36 rounded-md border border-surface-border bg-surface-raised pl-7 pr-2 text-[11px] text-text-primary placeholder:text-text-faint focus:border-accent focus:outline-none sm:w-44"
+            className="h-7 w-36 rounded-md border border-surface-border bg-surface-raised pl-7 pr-2 text-[11px] text-text-primary placeholder:text-text-faint focus:border-[var(--strategy-accent,#38bdf8)] focus:outline-none focus:shadow-[0_0_0_2px_rgba(var(--strategy-rgb,56,189,248),0.22)] sm:w-44"
           />
         </label>
 
@@ -173,7 +173,7 @@ export function TableToolbar({
                         type="checkbox"
                         checked={visible}
                         onChange={() => onToggleColumn(column.id)}
-                        className="h-3.5 w-3.5 accent-[rgb(var(--eos-color-accent))]"
+                        className="h-3.5 w-3.5 accent-[var(--strategy-accent,rgb(var(--eos-color-accent)))]"
                       />
                       <label
                         htmlFor={`col-toggle-${column.id}`}

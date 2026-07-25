@@ -1,21 +1,22 @@
 import { PageHeader } from "@/components/layout/PageHeader";
-import { MarketIntelligenceStrip } from "@/components/market";
-import { SharedRecommendationPanel } from "@/components/recommendations";
+import { ScrollToStrategyResearch } from "@/components/ai/insights/ScrollToStrategyResearch";
+import { StrategyResearchSection } from "@/components/ai/insights/StrategyResearchSection";
 import { InstitutionalOpportunityDashboard } from "@/components/dashboard/institutional-opportunity/InstitutionalOpportunityDashboard";
-import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
 import {
-  peekOpportunityEngineState,
-  toSharedSnapshot,
-  fetchSharedRecommendationsFresh,
-} from "@/services/opportunityEngine";
+  selectInsightsResearchTerminal,
+} from "@/lib/ai/insights-research";
+import { STRATEGY_RECOMMENDATION_TITLES } from "@/lib/recommendations/institutional-horizons";
 import {
   INSTITUTIONAL_STRATEGY_IDS,
   INSTITUTIONAL_STRATEGY_META,
   parseInstitutionalStrategyId,
   selectInstitutionalStrategyDashboard,
-  type InstitutionalStrategyId,
-  type SharedRecommendation,
 } from "@/lib/recommendations";
+import {
+  peekOpportunityEngineState,
+  toSharedSnapshot,
+} from "@/services/opportunityEngine";
+import { getCachedMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
 import { Bot } from "lucide-react";
 import Link from "next/link";
 
@@ -49,21 +50,6 @@ const aiTools = [
   },
 ] as const;
 
-const STRATEGY_FILTER: Record<
-  InstitutionalStrategyId,
-  (recommendation: SharedRecommendation) => boolean
-> = {
-  intraday: (r) =>
-    r.category === "intraday" && r.primaryStrategyId !== "scalping",
-  swing: (r) => r.category === "swing",
-  btst: (r) => r.category === "relative_volume",
-  scalping: (r) => r.primaryStrategyId === "scalping",
-  short_term: (r) =>
-    r.category === "breakout" || r.category === "mean_reversion",
-  medium_term: (r) => r.category === "momentum",
-  long_term: (r) => r.category === "ai_high_conviction",
-};
-
 export default async function AIInsightsPage({
   searchParams,
 }: {
@@ -72,38 +58,21 @@ export default async function AIInsightsPage({
   const resolved = (await searchParams) ?? {};
   const selectedStrategy = parseInstitutionalStrategyId(resolved.strategy);
 
-  const [marketIntelligence, recommendations] = await Promise.all([
-    getMarketIntelligenceSnapshot(),
-    fetchSharedRecommendationsFresh(12),
-  ]);
-
   const state = peekOpportunityEngineState();
-  const strategyDashboard = selectInstitutionalStrategyDashboard(
-    state,
-    toSharedSnapshot(marketIntelligence)
-  );
-
-  const intraday = recommendations.filter(
-    (recommendation) => recommendation.category === "intraday"
-  );
-  const swing = recommendations.filter((recommendation) =>
-    ["swing", "breakout", "momentum"].includes(recommendation.category)
-  );
-
-  const selectedRecommendations = selectedStrategy
-    ? recommendations.filter(STRATEGY_FILTER[selectedStrategy])
-    : null;
-  const selectedMeta = selectedStrategy
-    ? INSTITUTIONAL_STRATEGY_META[selectedStrategy]
-    : null;
+  // Cache-only MI for shared snapshot fallback — never runs trading pipeline.
+  const marketIntelligence = getCachedMarketIntelligenceSnapshot();
+  const shared = toSharedSnapshot(marketIntelligence);
+  const strategyDashboard = selectInstitutionalStrategyDashboard(state, shared);
+  const researchTerminal = selectInsightsResearchTerminal(state, shared);
 
   return (
     <div className="space-y-6 p-6">
+      <ScrollToStrategyResearch strategyId={selectedStrategy} />
       <PageHeader
         accent="purple"
         icon={<Bot className="h-5 w-5" />}
         title="AI Insights"
-        subtitle="Investment intelligence and AI research workspace"
+        subtitle="Institutional strategy recommendations — complete workspace for every horizon"
       />
 
       <div className="grid gap-4 md:grid-cols-4">
@@ -121,24 +90,19 @@ export default async function AIInsightsPage({
         ))}
       </div>
 
-      <section>
-        <MarketIntelligenceStrip snapshot={marketIntelligence} />
-      </section>
-
       <section className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-text-primary">
-              Institutional Strategies
+              EquityOS Recommendations
             </h2>
             <p className="text-sm text-text-muted">
-              Rankings from the master market scan — select a horizon to focus
-              research.
+              AI-powered recommendations across every investment horizon.
             </p>
           </div>
           <nav
             className="flex flex-wrap gap-2"
-            aria-label="Strategy filters"
+            aria-label="Strategy research anchors"
           >
             <Link
               href="/ai"
@@ -172,30 +136,34 @@ export default async function AIInsightsPage({
         <InstitutionalOpportunityDashboard slots={strategyDashboard} />
       </section>
 
-      {selectedStrategy && selectedMeta ? (
-        <section>
-          <SharedRecommendationPanel
-            recommendations={selectedRecommendations ?? []}
-            title={`${selectedMeta.emoji} ${selectedMeta.label} · Strategy Engine`}
-          />
-        </section>
-      ) : (
-        <>
-          <section>
-            <SharedRecommendationPanel
-              recommendations={intraday}
-              title="AI Intraday Ideas · Strategy Engine"
-            />
-          </section>
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-lg font-semibold text-text-primary">
+            Complete Strategy Recommendations
+          </h2>
+          <p className="text-sm text-text-muted">
+            Full Opportunity Engine recommendations for every institutional
+            horizon — expand any row for explainability.
+          </p>
+        </div>
 
-          <section>
-            <SharedRecommendationPanel
-              recommendations={swing}
-              title="AI Swing Ideas · Strategy Engine"
+        {INSTITUTIONAL_STRATEGY_IDS.map((strategyId) => {
+          const meta = INSTITUTIONAL_STRATEGY_META[strategyId];
+          return (
+            <StrategyResearchSection
+              key={strategyId}
+              strategyId={strategyId}
+              title={STRATEGY_RECOMMENDATION_TITLES[strategyId]}
+              emoji={meta.emoji}
+              rows={researchTerminal[strategyId]}
+              highlighted={selectedStrategy === strategyId}
+              defaultView={
+                selectedStrategy === strategyId ? "detailed" : "table"
+              }
             />
-          </section>
-        </>
-      )}
+          );
+        })}
+      </div>
     </div>
   );
 }

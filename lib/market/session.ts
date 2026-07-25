@@ -123,6 +123,20 @@ export function isMarketOpen(now = new Date()): boolean {
   return elapsed >= SESSION.MARKET_OPEN && elapsed < SESSION.MARKET_CLOSE;
 }
 
+/**
+ * Opportunity Engine auto-scan window (IST): trading days 09:00–15:30 inclusive start.
+ * Broader than live quote polling (09:15) so 09:00 / 09:05 / 09:10 ticks fire.
+ */
+export function isOpportunityScanSession(now = new Date()): boolean {
+  const { dayOfWeek, dateKey, hours, minutes } = getISTParts(now);
+  if (!isTradingCalendarDay(dayOfWeek, dateKey)) return false;
+
+  const elapsed = minutesSinceMidnight(hours, minutes);
+  return (
+    elapsed >= SESSION.PRE_OPEN_START && elapsed <= SESSION.MARKET_CLOSE
+  );
+}
+
 /** Current market status for display. */
 export function getMarketStatus(now = new Date()): MarketStatus {
   const { dayOfWeek, dateKey, hours, minutes } = getISTParts(now);

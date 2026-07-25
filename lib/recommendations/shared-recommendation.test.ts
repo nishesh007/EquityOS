@@ -115,7 +115,8 @@ describe("shared recommendation projection", () => {
   it("falls back to Opportunity Engine ranking when Strategy Engine is empty", () => {
     const legacy = candidate();
     legacy.strategySignal = undefined;
-    legacy.pipelineEligible = false;
+    legacy.pipelineEligible = true;
+    legacy.timeHorizon = "2–8 weeks";
     const fallbackState = state(legacy);
     fallbackState.scanCount = 3;
 
@@ -129,13 +130,37 @@ describe("shared recommendation projection", () => {
       opportunityScore: 88,
       strategyCount: 1,
       marketRegime: "Strong Bull",
+      validation: { valid: true },
     });
-    // Dynamic confidence: blended from scan confidence, conviction and
-    // risk/reward quality — never the fixed candidate value.
+    expect(recommendations[0].riskReward).toBeGreaterThan(1);
+    expect(recommendations[0].stopLoss).toBeLessThan(recommendations[0].entry);
+    expect(recommendations[0].targets[0]).toBeGreaterThan(
+      recommendations[0].entry
+    );
     expect(recommendations[0].confidence).toBeGreaterThan(0);
     expect(recommendations[0].confidence).toBeLessThanOrEqual(95);
-    expect(recommendations[0].confidence).toBe(
-      Math.round(recommendations[0].confidence * 100) / 100
-    );
+  });
+
+  it("rejects fallback recommendations that fail institutional geometry", () => {
+    const legacy = candidate();
+    legacy.strategySignal = undefined;
+    legacy.pipelineEligible = true;
+    legacy.stopLoss = 105;
+    legacy.timeHorizon = "2–8 weeks";
+    const fallbackState = state(legacy);
+    fallbackState.scanCount = 4;
+
+    expect(selectRecommendationsWithFallback(fallbackState)).toEqual([]);
+  });
+
+  it("rejects fallback when pipeline eligibility fails", () => {
+    const legacy = candidate();
+    legacy.strategySignal = undefined;
+    legacy.pipelineEligible = false;
+    legacy.timeHorizon = "2–8 weeks";
+    const fallbackState = state(legacy);
+    fallbackState.scanCount = 5;
+
+    expect(selectRecommendationsWithFallback(fallbackState)).toEqual([]);
   });
 });

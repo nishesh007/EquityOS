@@ -6,7 +6,12 @@ import {
   isMarketOpen,
   isTradingDay,
 } from "@/lib/market/session";
+import { nextOpportunityScanAt } from "@/lib/opportunity-engine/scan-schedule";
 import { buildTradeLevels } from "@/lib/opportunity-engine/levels";
+import {
+  constructDynamicTrade,
+  projectLevelsOntoCandidate,
+} from "@/lib/opportunity-engine/dynamic-trade-construction";
 import {
   buildConfidenceReasonContributions,
   buildConfidenceReasons,
@@ -42,10 +47,7 @@ import type {
   OpportunityCategory,
   ScanResult,
 } from "@/lib/opportunity-engine/types";
-import {
-  OPPORTUNITY_CATEGORIES,
-  SCAN_INTERVAL_MS,
-} from "@/lib/opportunity-engine/types";
+import { OPPORTUNITY_CATEGORIES } from "@/lib/opportunity-engine/types";
 import type { CategoryScanCandidate } from "@/lib/opportunity-engine/types";
 import {
   buildQuoteOnlyMetrics,
@@ -178,9 +180,13 @@ function toOpportunityCandidate(
   fullMetrics?: LiveMetricsRecord,
   marketRegimeScore?: number | null
 ): OpportunityCandidate {
-  const levels = buildTradeLevels(price, candidate.side, candidate.category, atr ?? null);
-  const now = new Date().toISOString();
   const metrics = fullMetrics ?? candidate.metrics;
+  const levels = buildTradeLevels(price, candidate.side, candidate.category, atr ?? null, {
+    metrics,
+    conviction: candidate.aiConvictionScore,
+    confidence: candidate.confidencePercent,
+  });
+  const now = new Date().toISOString();
   const conviction = computeLiveAiConvictionResult(
     metrics,
     candidate.category,
@@ -219,6 +225,7 @@ function toOpportunityCandidate(
     stopLoss: levels.stopLoss,
     target1: levels.target1,
     target2: levels.target2,
+    target3: levels.target3,
     riskReward: levels.riskReward,
     confidencePercent: candidate.confidencePercent,
     reason,
@@ -431,12 +438,44 @@ async function executeScan(force = false): Promise<ScanResult> {
           }
           const frameworkBoost = execution.longTermRanking?.frameworkScore;
           const consensusBoost = execution.consensus?.combinedScore;
-          const executedCandidate: OpportunityCandidate = {
-            ...candidate,
+          // Sprint 9F.1 — re-project candidate trade levels from Strategy Engine
+          // signal (or dynamic ATR/structure) so OE fields are never category templates.
+          const dynamicLevels = constructDynamicTrade({
+            price:
+              candidate.quote?.price ??
+              (typeof candidate.scanMetrics?.cmp === "number"
+                ? Number(candidate.scanMetrics.cmp)
+                : (candidate.entryZone.low + candidate.entryZone.high) / 2),
+            side: candidate.side,
+            category: candidate.category,
+            metrics: candidate.scanMetrics,
             strategyId: execution.primary.strategyId,
             strategyName: execution.primary.strategy,
             strategySignal: execution.primary,
-            strategySignals: execution.signals,
+            supportingStrategyNames:
+              execution.consensus?.supportingStrategies ?? [],
+            conviction:
+              execution.consensus?.conviction ?? execution.primary.conviction,
+            confidence:
+              execution.consensus?.finalConfidence ??
+              execution.primary.confidence,
+          });
+          const projected = projectLevelsOntoCandidate(dynamicLevels);
+          const executedCandidate: OpportunityCandidate = {
+            ...candidate,
+            ...projected,
+            strategyId: execution.primary.strategyId,
+            strategyName: execution.primary.strategy,
+            strategySignal: {
+              ...execution.primary,
+              // Keep signal levels authoritative; holding estimated dynamically.
+              holdingPeriod: dynamicLevels.holdingPeriod,
+            },
+            strategySignals: execution.signals.map((signal) =>
+              signal.strategyId === execution.primary!.strategyId
+                ? { ...signal, holdingPeriod: dynamicLevels.holdingPeriod }
+                : signal
+            ),
             executedStrategyIds: execution.executedStrategyIds,
             strategyConsensus: execution.consensus ?? undefined,
             longTermRanking: execution.longTermRanking ?? undefined,
@@ -461,9 +500,7 @@ async function executeScan(force = false): Promise<ScanResult> {
     }
 
     const durationMs = Date.now() - start;
-    const nextScanAt = isMarketOpen()
-      ? new Date(Date.now() + SCAN_INTERVAL_MS).toISOString()
-      : null;
+    const nextScanAt = nextOpportunityScanAt();
 
     finalizeScan(
       nextScanAt,

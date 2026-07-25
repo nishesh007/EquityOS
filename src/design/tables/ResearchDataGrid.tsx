@@ -142,7 +142,7 @@ export function ResearchDataGrid<Row>({
           <button
             type="button"
             onClick={() => setViewsOpen((o) => !o)}
-            className="inline-flex h-7 items-center gap-1.5 rounded-md border border-surface-border bg-surface-raised px-2 text-[11px] font-medium text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+            className="inline-flex h-7 items-center gap-1.5 rounded-md border border-surface-border bg-surface-raised px-2 text-[11px] font-medium text-text-secondary hover:bg-surface-hover hover:text-text-primary strategy-chrome-btn"
           >
             <Bookmark className="h-3.5 w-3.5" />
             Saved views
@@ -228,7 +228,7 @@ export function ResearchDataGrid<Row>({
           <button
             type="button"
             onClick={() => setExportOpen((o) => !o)}
-            className="inline-flex h-7 items-center gap-1.5 rounded-md border border-surface-border bg-surface-raised px-2 text-[11px] font-medium text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+            className="inline-flex h-7 items-center gap-1.5 rounded-md border border-surface-border bg-surface-raised px-2 text-[11px] font-medium text-text-secondary hover:bg-surface-hover hover:text-text-primary strategy-chrome-btn"
           >
             <FileSpreadsheet className="h-3.5 w-3.5" />
             Export
@@ -307,7 +307,7 @@ export function ResearchDataGrid<Row>({
       />
 
       {expandedRow && renderExpandedRow ? (
-        <div className="animate-fade-in rounded-xl border border-accent/25 bg-accent/5 p-4 text-sm text-text-secondary">
+        <div className="strategy-expanded-panel animate-fade-in rounded-xl p-4 text-sm text-text-secondary">
           {renderExpandedRow(expandedRow)}
         </div>
       ) : null}

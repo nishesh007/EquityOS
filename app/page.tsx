@@ -2,6 +2,7 @@ import {
   DashboardWidget,
   PersonalizedDashboard,
 } from "@/components/dashboard/workspace";
+import { ExecutiveIntelligenceLayer } from "@/components/dashboard/executive";
 import {
   AiOpportunitiesSlot,
   EarningsIntelligenceSlot,
@@ -23,7 +24,6 @@ import {
 } from "@/components/dashboard/widgets/LazyDashboardWidgets";
 import { WidgetSkeleton } from "@/components/dashboard/widgets/WidgetSkeleton";
 import { PageContainer } from "@/src/design/components/PageContainer";
-import { LayoutDashboard } from "lucide-react";
 import { Suspense, type ReactNode } from "react";
 
 /**
@@ -48,34 +48,19 @@ function Slot({
 }
 
 export default function DashboardPage() {
-  const header = (
-    <header className="mb-6 animate-fade-in-up">
-      <div className="flex items-center gap-3">
-        <span
-          aria-hidden
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-400"
-        >
-          <LayoutDashboard className="h-5 w-5" />
-        </span>
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-text-primary">
-            EquityOS Dashboard
-          </h1>
-          <p className="mt-0.5 text-sm text-text-muted">
-            AI-Powered Institutional Equity Research Terminal
-          </p>
-        </div>
-      </div>
-      <div
-        aria-hidden
-        className="mt-4 h-px w-full bg-gradient-to-r from-indigo-500/60 via-indigo-500/20 to-transparent"
-      />
-    </header>
+  const executive = (
+    <Suspense
+      fallback={
+        <WidgetSkeleton label="Executive Intelligence" className="mb-3 h-28" />
+      }
+    >
+      <ExecutiveIntelligenceLayer />
+    </Suspense>
   );
 
   return (
     <PageContainer>
-      <PersonalizedDashboard header={header}>
+      <PersonalizedDashboard executive={executive}>
         {/* —— Market (above-fold) — stream first —— */}
         <DashboardWidget id="market-snapshot">
           <Slot label="Market Snapshot" heightClass="h-64">
@@ -113,7 +98,7 @@ export default function DashboardPage() {
         <DashboardWidget id="ai-brief">
           <LazyComingSoonWidget
             title="AI Market Brief"
-            subtitle="Briefing surface reserved for layout"
+            subtitle="Executive briefing lives in the header strip"
           />
         </DashboardWidget>
 

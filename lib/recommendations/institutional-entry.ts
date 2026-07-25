@@ -4,12 +4,18 @@
  * Derives strategy-specific Ideal Entry / Entry Zone for dashboard cards.
  * Never mutates Recommendation Engine outputs or runs scans.
  * Anchors prefer VWAP / ORB open / EMA / prior close over live LTP.
+ *
+ * Sprint 9F: remapped entries are clamped through the institutional
+ * Recommendation Validator so presentation cannot invert SL / targets.
  */
 
 import type { OpportunityCandidate } from "@/lib/opportunity-engine/types";
 import type { SharedRecommendation } from "@/lib/recommendations/shared-recommendation";
 import type { InstitutionalStrategyId } from "@/lib/recommendations/institutional-strategy-dashboard";
-
+import {
+  resolveValidatedEntry,
+  validateInstitutionalTradeLevels,
+} from "@/lib/recommendations/recommendation-validator";
 /** Relative |current − ideal| below which we treat price as "at ideal entry". */
 export const ENTRY_AT_MARKET_TOLERANCE = 0.0015; // 0.15%
 
@@ -241,6 +247,7 @@ function upsidePercent(ideal: number, target: number, side: "Long" | "Short"): n
 /**
  * Build the dashboard entry plan for one institutional strategy pick.
  * Pure — safe for SSR projection cache; no I/O.
+ * Returns a geometry-safe plan or falls back to signal entry; never inverts SL.
  */
 export function planInstitutionalEntry(
   strategyId: InstitutionalStrategyId,
@@ -250,18 +257,89 @@ export function planInstitutionalEntry(
 ): InstitutionalEntryPlan {
   const profile = PROFILES[strategyId];
   const anchors = collectAnchors(candidate, recommendation);
-  const ideal = pickAnchor(strategyId, anchors, currentPrice);
-  const band = buildBand(ideal, profile.halfWidth, anchors.atr);
-  const bandWidthPct =
-    ideal > 0 ? (band.high - band.low) / ideal : 0;
-  const useZone =
+  const preferredIdeal = pickAnchor(strategyId, anchors, currentPrice);
+  const preferredBand = buildBand(
+    preferredIdeal,
+    profile.halfWidth,
+    anchors.atr
+  );
+  const preferredWidthPct =
+    preferredIdeal > 0
+      ? (preferredBand.high - preferredBand.low) / preferredIdeal
+      : 0;
+  const preferZone =
     profile.forceZone ||
-    (profile.preferZone && bandWidthPct >= ENTRY_AT_MARKET_TOLERANCE);
+    (profile.preferZone && preferredWidthPct >= ENTRY_AT_MARKET_TOLERANCE);
 
-  const reference = useZone
-    ? round2((band.low + band.high) / 2)
-    : ideal;
+  const validated = resolveValidatedEntry({
+    action: recommendation.action,
+    preferredEntry: preferZone
+      ? round2((preferredBand.low + preferredBand.high) / 2)
+      : preferredIdeal,
+    preferredLow: preferZone ? preferredBand.low : null,
+    preferredHigh: preferZone ? preferredBand.high : null,
+    signalEntry: recommendation.entry,
+    stopLoss: recommendation.stopLoss,
+    targets: recommendation.targets,
+    halfWidth: profile.halfWidth,
+  });
 
+  const fallbackIdeal =
+    validated?.entry ??
+    (positive(recommendation.entry) ?? preferredIdeal);
+  let mode: InstitutionalEntryMode =
+    validated?.mode ??
+    (preferZone ? "zone" : "ideal");
+  let low = validated?.low ?? (mode === "zone" ? preferredBand.low : null);
+  let high = validated?.high ?? (mode === "zone" ? preferredBand.high : null);
+  let reference =
+    mode === "zone" && low != null && high != null
+      ? round2((low + high) / 2)
+      : fallbackIdeal;
+
+  // Long-term (and other forceZone profiles) must keep a zone when geometry allows.
+  if (profile.forceZone) {
+    const centers = [
+      reference,
+      positive(recommendation.entry),
+      positive(preferredIdeal),
+      recommendation.targets[0] != null
+        ? round2((recommendation.stopLoss + recommendation.targets[0]) / 2)
+        : null,
+    ].filter((value): value is number => value != null && value > 0);
+
+    let fitted: { low: number; high: number; mid: number } | null = null;
+    for (const center of centers) {
+      let halfWidth = profile.halfWidth;
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        const forcedBand = buildBand(center, halfWidth, anchors.atr);
+        const mid = round2((forcedBand.low + forcedBand.high) / 2);
+        const zoneOk = validateInstitutionalTradeLevels({
+          action: recommendation.action,
+          entry: mid,
+          entryLow: forcedBand.low,
+          entryHigh: forcedBand.high,
+          stopLoss: recommendation.stopLoss,
+          targets: recommendation.targets,
+          holdingPeriod: recommendation.holdingPeriod || "validated",
+          primaryStrategy: recommendation.primaryStrategy || "validated",
+        }).valid;
+        if (zoneOk) {
+          fitted = { low: forcedBand.low, high: forcedBand.high, mid };
+          break;
+        }
+        halfWidth *= 0.55;
+      }
+      if (fitted) break;
+    }
+
+    if (fitted) {
+      mode = "zone";
+      low = fitted.low;
+      high = fitted.high;
+      reference = fitted.mid;
+    }
+  }
   const atMarket =
     currentPrice != null &&
     currentPrice > 0 &&
@@ -272,23 +350,31 @@ export function planInstitutionalEntry(
     positive(candidate.target1) ??
     reference;
 
+  const side =
+    recommendation.action === "SELL" || candidate.side === "Short"
+      ? ("Short" as const)
+      : ("Long" as const);
+
+  const dynamicUpside =
+    typeof recommendation.expectedReturnPercent === "number" &&
+    Number.isFinite(recommendation.expectedReturnPercent)
+      ? recommendation.expectedReturnPercent
+      : upsidePercent(reference, target, side);
+
   return {
-    mode: useZone ? "zone" : "ideal",
+    mode,
     ideal: reference,
-    low: useZone ? band.low : null,
-    high: useZone ? band.high : null,
+    low: mode === "zone" ? low : null,
+    high: mode === "zone" ? high : null,
     atMarket,
-    expectedUpsidePercent: upsidePercent(
-      reference,
-      target,
-      candidate.side === "Short" ? "Short" : "Long"
-    ),
+    expectedUpsidePercent: dynamicUpside,
   };
 }
 
 /**
  * Fallback planner when only a SharedRecommendation is available (no candidate).
  * Still applies strategy band so Entry is presented as a plan, not raw LTP copy.
+ * Sprint 9F: validated against stop / targets before return.
  */
 export function planInstitutionalEntryFromRecommendation(
   strategyId: InstitutionalStrategyId,
@@ -302,8 +388,25 @@ export function planInstitutionalEntryFromRecommendation(
       ? round2(currentPrice * 0.997)
       : 0);
   const band = buildBand(base, profile.halfWidth, null);
-  const useZone = profile.forceZone || profile.preferZone;
-  const reference = useZone ? round2((band.low + band.high) / 2) : base;
+  const preferZone = profile.forceZone || profile.preferZone;
+
+  const validated = resolveValidatedEntry({
+    action: recommendation.action,
+    preferredEntry: preferZone ? round2((band.low + band.high) / 2) : base,
+    preferredLow: preferZone ? band.low : null,
+    preferredHigh: preferZone ? band.high : null,
+    signalEntry: recommendation.entry,
+    stopLoss: recommendation.stopLoss,
+    targets: recommendation.targets,
+    halfWidth: profile.halfWidth,
+  });
+
+  const mode: InstitutionalEntryMode = validated?.mode ?? (preferZone ? "zone" : "ideal");
+  const reference =
+    validated?.entry ??
+    (preferZone ? round2((band.low + band.high) / 2) : base);
+  const low = validated?.low ?? (mode === "zone" ? band.low : null);
+  const high = validated?.high ?? (mode === "zone" ? band.high : null);
   const target = positive(recommendation.targets[0]) ?? reference;
   const atMarket =
     currentPrice != null &&
@@ -311,10 +414,10 @@ export function planInstitutionalEntryFromRecommendation(
     Math.abs(currentPrice - reference) / currentPrice <= ENTRY_AT_MARKET_TOLERANCE;
 
   return {
-    mode: useZone ? "zone" : "ideal",
+    mode,
     ideal: reference,
-    low: useZone ? band.low : null,
-    high: useZone ? band.high : null,
+    low: mode === "zone" ? low : null,
+    high: mode === "zone" ? high : null,
     atMarket,
     expectedUpsidePercent: upsidePercent(
       reference,

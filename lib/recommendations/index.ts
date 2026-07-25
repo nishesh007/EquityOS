@@ -14,6 +14,7 @@ export {
   INSTITUTIONAL_STRATEGY_IDS,
   INSTITUTIONAL_STRATEGY_META,
   NO_HIGH_CONVICTION_MESSAGE,
+  NO_RECOMMENDATION_AVAILABLE_MESSAGE,
   parseInstitutionalStrategyId,
   rankInstitutionalSlotsFromRecommendations,
   selectInstitutionalStrategyDashboard,
@@ -32,3 +33,63 @@ export type {
   InstitutionalEntryMode,
   InstitutionalEntryPlan,
 } from "./institutional-entry";
+export {
+  INSTITUTIONAL_MIN_RISK_REWARD,
+  computeTradeMetrics,
+  validateInstitutionalTradeLevels,
+  resolveValidatedEntry,
+  isPresentationEntryValid,
+} from "./recommendation-validator";
+export type {
+  InstitutionalTradeLevelsInput,
+  InstitutionalTradeLevelValidation,
+  InstitutionalTradeLevelChecks,
+  InstitutionalTradeLevelMetrics,
+  RecommendationSideAction,
+} from "./recommendation-validator";
+export { auditRecommendationValidation } from "./recommendation-validation-audit";
+export type { RecommendationValidationAudit } from "./recommendation-validation-audit";
+export {
+  INSTITUTIONAL_HOLDING_PERIODS,
+  OE_CATEGORY_HOLDING_PERIODS,
+  STRATEGY_RECOMMENDATION_TITLES,
+  ensureThreeTargets,
+  resolveInstitutionalHoldingPeriod,
+  isHoldingPeriodConsistentWithHorizon,
+} from "./institutional-horizons";
+export {
+  HORIZON_COLORS,
+  runHorizonPipelines,
+  clearHorizonPipelineCache,
+  selectHorizonDashboardSlots,
+  HORIZON_METHODOLOGY,
+  getTradabilityAudit,
+  getConflictAudit,
+  evaluateTradability,
+  filterUniverseByTradability,
+  DEFAULT_TRADABILITY_THRESHOLDS,
+  TRADABILITY_METHODOLOGY,
+  resolveRecommendationConflicts,
+} from "./horizons";
+export type {
+  LiquidityGrade,
+  TradabilityAssessment,
+  TradabilityAuditReport,
+  TradabilityThresholds,
+} from "./tradability";
+export type { ConflictAuditReport, ConflictPair } from "./conflict-validator";
+export {
+  EXPECTED_RETURN_DEFINITION,
+  EFFECTIVE_ENTRY_DEFINITION,
+  resolveEffectiveEntry,
+  computeCanonicalExpectedReturn,
+  computeCanonicalRiskReward,
+  sealTradeMetrics,
+  auditRecommendationIntegrity,
+  verifyRecommendationIntegrity,
+} from "./trade-integrity";
+export type {
+  CanonicalTradeMetrics,
+  IntegrityAuditReport,
+  IntegrityFailure,
+} from "./trade-integrity";

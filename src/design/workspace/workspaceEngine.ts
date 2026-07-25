@@ -34,8 +34,8 @@ export interface Workspace {
 }
 
 export interface WorkspaceStore {
-  /** v2: hide market-breadth. v3–v4: executive dashboard polish (Sprint 10C). */
-  version: 1 | 2 | 3 | 4;
+  /** v2: hide market-breadth. v3–v5: executive polish. v6: drop large Market Pulse panel. */
+  version: 1 | 2 | 3 | 4 | 5 | 6;
   activeId: string;
   workspaces: Workspace[];
 }
@@ -80,7 +80,7 @@ function defaultWorkspace(): Workspace {
 
 function defaultStore(): WorkspaceStore {
   const workspace = defaultWorkspace();
-  return { version: 4, activeId: workspace.id, workspaces: [workspace] };
+  return { version: 6, activeId: workspace.id, workspaces: [workspace] };
 }
 
 /** Hide detailed Market Internals from the executive dashboard layout. */
@@ -177,6 +177,43 @@ function ensureExecutiveMarketWidgets(
   };
 }
 
+/** Sprint 10C final layout — hide redundant pulse widget; align Results+News. */
+function refineFinalExecutiveLayout(workspace: Workspace): Workspace {
+  let changed = false;
+  const placements = workspace.placements.map((placement) => {
+    let next = placement;
+    if (placement.widgetId === "market-pulse" && placement.visible) {
+      next = { ...next, visible: false };
+      changed = true;
+    }
+    if (
+      placement.widgetId === "results-calendar" &&
+      (placement.size !== "medium" || placement.order !== 5)
+    ) {
+      next = { ...next, size: "medium", order: 5, region: "main" };
+      changed = true;
+    }
+    if (
+      placement.widgetId === "market-news" &&
+      (placement.size !== "medium" || placement.order !== 6)
+    ) {
+      next = { ...next, size: "medium", order: 6, region: "main" };
+      changed = true;
+    }
+    if (
+      placement.widgetId === "economic-calendar" &&
+      placement.order !== 7
+    ) {
+      next = { ...next, order: 7, visible: false };
+      changed = true;
+    }
+    return next;
+  });
+  return changed
+    ? polishExecutiveDashboardLayout({ ...workspace, placements })
+    : polishExecutiveDashboardLayout(workspace);
+}
+
 function migrateWorkspaceStore(store: WorkspaceStore): WorkspaceStore {
   let next = store;
   if (next.version < 2) {
@@ -200,6 +237,29 @@ function migrateWorkspaceStore(store: WorkspaceStore): WorkspaceStore {
       workspaces: next.workspaces.map((workspace) =>
         polishExecutiveDashboardLayout(ensureExecutiveMarketWidgets(workspace))
       ),
+    };
+  }
+  if (next.version < 5) {
+    next = {
+      version: 5,
+      activeId: next.activeId,
+      workspaces: next.workspaces.map((workspace) =>
+        refineFinalExecutiveLayout(ensureExecutiveMarketWidgets(workspace))
+      ),
+    };
+  }
+  if (next.version < 6) {
+    next = {
+      version: 6,
+      activeId: next.activeId,
+      workspaces: next.workspaces.map((workspace) => {
+        const placements = workspace.placements.map((placement) =>
+          placement.widgetId === "market-pulse" && placement.visible
+            ? { ...placement, visible: false }
+            : placement
+        );
+        return { ...workspace, placements };
+      }),
     };
   }
   return next;
@@ -268,7 +328,9 @@ export function loadWorkspaceStore(
       (parsed.version !== 1 &&
         parsed.version !== 2 &&
         parsed.version !== 3 &&
-        parsed.version !== 4) ||
+        parsed.version !== 4 &&
+        parsed.version !== 5 &&
+        parsed.version !== 6) ||
       !Array.isArray(parsed.workspaces)
     ) {
       return defaultStore();

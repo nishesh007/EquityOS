@@ -82,39 +82,39 @@ const TARGET_WINDOWS: Record<
   TargetTimeEstimates
 > = {
   intraday: {
-    target1: "1–2 Hours",
+    target1: "30–90 Minutes",
     target2: "2–4 Hours",
     finalTarget: "By Market Close",
   },
   swing: {
-    target1: "2–3 Weeks",
-    target2: "4–6 Weeks",
-    finalTarget: "6–8 Weeks",
+    target1: "5–8 Trading Days",
+    target2: "10–15 Trading Days",
+    finalTarget: "15–20 Trading Days",
   },
   breakout: {
-    target1: "3–5 Days",
-    target2: "6–10 Days",
-    finalTarget: "2–3 Weeks",
+    target1: "2–4 Weeks",
+    target2: "1–2 Months",
+    finalTarget: "1–3 Months",
   },
   momentum: {
-    target1: "3–6 Days",
-    target2: "1–2 Weeks",
-    finalTarget: "2–3 Weeks",
+    target1: "1–3 Months",
+    target2: "3–6 Months",
+    finalTarget: "6–12 Months",
   },
   relative_volume: {
-    target1: "Intraday",
-    target2: "1–2 Days",
-    finalTarget: "2–3 Days",
+    target1: "Same Session",
+    target2: "1–2 Trading Days",
+    finalTarget: "1–3 Trading Days",
   },
   mean_reversion: {
-    target1: "2–3 Days",
-    target2: "4–5 Days",
-    finalTarget: "1–2 Weeks",
+    target1: "2–4 Weeks",
+    target2: "1–2 Months",
+    finalTarget: "1–3 Months",
   },
   ai_high_conviction: {
-    target1: "2–4 Weeks",
-    target2: "5–8 Weeks",
-    finalTarget: "2–3 Months",
+    target1: "3–6 Months",
+    target2: "6–12 Months",
+    finalTarget: "12+ Months",
   },
 };
 

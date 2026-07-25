@@ -133,6 +133,18 @@ export async function enrichMetricsWithTechnicals(
       ? Math.round((liveVolume / avgVol20) * 100) / 100
       : null;
 
+  // Sprint 9F.5 — historical liquidity depth (not today's spike alone).
+  const slice20 = candles.slice(-20);
+  const avgClose20 =
+    slice20.reduce((sum, bar) => sum + bar.close, 0) / slice20.length;
+  const avgTurnover20 =
+    slice20.reduce(
+      (sum, bar) => sum + (bar.volume ?? 0) * bar.close,
+      0
+    ) / slice20.length;
+  const adtv20 =
+    avgVol20 !== null && avgClose20 > 0 ? avgVol20 * avgClose20 : null;
+
   const bollingerWidth =
     bands && bands.middle > 0
       ? Math.round(((bands.upper - bands.lower) / bands.middle) * 10000) / 100
@@ -145,9 +157,19 @@ export async function enrichMetricsWithTechnicals(
       ? Math.round(((price - dayLow) / (dayHigh - dayLow)) * 10000) / 100
       : null;
 
+  // Impact-cost proxy when exchange impact cost is unavailable: ATR / price.
+  const impactCostProxy =
+    atr14 !== null && price > 0
+      ? Math.round((atr14 / price) * 10000) / 100
+      : null;
+
   return {
     ...base,
     avg_volume_20d: avgVol20 !== null ? Math.round(avgVol20) : null,
+    avg_turnover_20d:
+      avgTurnover20 > 0 ? Math.round(avgTurnover20) : null,
+    adtv_20d: adtv20 !== null ? Math.round(adtv20) : null,
+    impact_cost_pct: impactCostProxy,
     volume_ratio: volumeRatio,
     rsi: rsi14 !== null ? Math.round(rsi14 * 100) / 100 : null,
     rsi_prev: rsiPrev !== null ? Math.round(rsiPrev * 100) / 100 : null,

@@ -30,7 +30,7 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = Object.freeze([
   {
     id: "themes",
     title: "Pick your look",
-    body: "Eight institutional themes and six accent colors in Settings → Appearance — density, font size and motion preferences included.",
+    body: "Twelve institutional themes and six accent colors in Settings → Appearance — density, font size and motion preferences included.",
   },
   {
     id: "shortcuts",

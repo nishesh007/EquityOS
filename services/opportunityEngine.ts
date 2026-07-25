@@ -1,9 +1,10 @@
 import { getOpportunityEngineState } from "@/lib/opportunity-engine/store";
-import {
-  SCAN_INTERVAL_MS,
-  type OpportunityEngineState,
-  type ScanResult,
+import type {
+  OpportunityEngineState,
+  ScanResult,
 } from "@/lib/opportunity-engine/types";
+import { shouldRunOpportunityScan } from "@/lib/opportunity-engine/scan-schedule";
+import { isOpportunityScanSession } from "@/lib/market/session";
 import type { MarketIntelligenceSnapshot } from "@/lib/market-intelligence";
 import {
   selectRecommendationsWithFallback,
@@ -166,12 +167,16 @@ export function requestBackgroundOpportunityScan(options?: {
   const current = getOpportunityState();
   if (current.isScanning) return;
 
-  const lastScan = current.lastScannedAt
-    ? Date.parse(current.lastScannedAt)
-    : Number.NaN;
-  const isFresh =
-    Number.isFinite(lastScan) && now - lastScan < SCAN_INTERVAL_MS;
-  if (!options?.force && isFresh && !categoriesAreEmpty(current)) {
+  // Outside NSE scan window: keep last successful scan; no automatic kick.
+  if (!options?.force && !isOpportunityScanSession()) {
+    return;
+  }
+
+  if (
+    !options?.force &&
+    !shouldRunOpportunityScan(current.lastScannedAt) &&
+    !categoriesAreEmpty(current)
+  ) {
     return;
   }
 

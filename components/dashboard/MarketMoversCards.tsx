@@ -111,7 +111,10 @@ function deriveVolumeShockers(breadth: MarketBreadth): MarketMover[] {
 }
 
 /** Presentation-only: rank by delivery % already on enriched quotes. */
-function deriveDeliveryLeaders(breadth: MarketBreadth): MarketMover[] {
+function deriveDeliveryLeaders(breadth: MarketBreadth): {
+  items: MarketMover[];
+  unavailable: boolean;
+} {
   const ranked = uniqueMovers([
     ...breadth.mostActive,
     ...breadth.gainers,
@@ -124,35 +127,59 @@ function deriveDeliveryLeaders(breadth: MarketBreadth): MarketMover[] {
         (b.quote?.deliveryPercent ?? 0) - (a.quote?.deliveryPercent ?? 0)
     )
     .slice(0, 5);
-  if (ranked.length > 0) return ranked;
-  return breadth.mostActive.slice(0, 5);
+
+  if (ranked.length > 0) {
+    return { items: ranked, unavailable: false };
+  }
+
+  // Fall back to most-active names but mark delivery as unavailable.
+  console.warn(
+    "[DeliveryLeaders] No deliveryPercent on mover quotes — showing Unavailable"
+  );
+  return {
+    items: breadth.mostActive.slice(0, 5),
+    unavailable: true,
+  };
 }
 
 function itemsForCard(
   theme: MoverCardTheme,
   breadth: MarketBreadth
-): MarketMover[] {
+): { items: MarketMover[]; deliveryUnavailable: boolean } {
   switch (theme.id) {
     case "gainers":
-      return breadth.gainers.slice(0, 5);
+      return { items: breadth.gainers.slice(0, 5), deliveryUnavailable: false };
     case "losers":
-      return breadth.losers.slice(0, 5);
+      return { items: breadth.losers.slice(0, 5), deliveryUnavailable: false };
     case "active":
-      return breadth.mostActive.slice(0, 5);
+      return {
+        items: breadth.mostActive.slice(0, 5),
+        deliveryUnavailable: false,
+      };
     case "volume-shock":
-      return deriveVolumeShockers(breadth);
-    case "delivery":
-      return deriveDeliveryLeaders(breadth);
+      return {
+        items: deriveVolumeShockers(breadth),
+        deliveryUnavailable: false,
+      };
+    case "delivery": {
+      const result = deriveDeliveryLeaders(breadth);
+      return { items: result.items, deliveryUnavailable: result.unavailable };
+    }
     default:
-      return [];
+      return { items: [], deliveryUnavailable: false };
   }
 }
 
-function metricLabel(item: MarketMover, metric: MoverMetric): string {
+function metricLabel(
+  item: MarketMover,
+  metric: MoverMetric,
+  deliveryUnavailable: boolean
+): string {
   if (metric === "volume") return item.volume || "—";
   if (metric === "delivery") {
     const pct = item.quote?.deliveryPercent;
-    return pct != null && Number.isFinite(pct) ? `${pct.toFixed(1)}%` : "—";
+    if (pct != null && Number.isFinite(pct)) return `${pct.toFixed(1)}%`;
+    return deliveryUnavailable ? "Unavailable" : "Unavailable";
   }
   return "";
 }
@@ -160,9 +187,11 @@ function metricLabel(item: MarketMover, metric: MoverMetric): string {
 function MoverCard({
   theme,
   items,
+  deliveryUnavailable = false,
 }: {
   theme: MoverCardTheme;
   items: MarketMover[];
+  deliveryUnavailable?: boolean;
 }) {
   return (
     <article
@@ -202,7 +231,7 @@ function MoverCard({
                   />
                 ) : (
                   <span className="shrink-0 font-mono text-[10px] tabular-nums text-white/70">
-                    {metricLabel(item, theme.metric)}
+                    {metricLabel(item, theme.metric, deliveryUnavailable)}
                   </span>
                 )}
               </StockLink>
@@ -243,13 +272,17 @@ export function MarketMoversCards({ breadth }: { breadth: MarketBreadth }) {
         </Link>
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        {CARD_THEMES.map((theme) => (
-          <MoverCard
-            key={theme.id}
-            theme={theme}
-            items={itemsForCard(theme, breadth)}
-          />
-        ))}
+        {CARD_THEMES.map((theme) => {
+          const { items, deliveryUnavailable } = itemsForCard(theme, breadth);
+          return (
+            <MoverCard
+              key={theme.id}
+              theme={theme}
+              items={items}
+              deliveryUnavailable={deliveryUnavailable}
+            />
+          );
+        })}
       </div>
     </div>
   );

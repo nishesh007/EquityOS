@@ -50,7 +50,7 @@ const WIDGET_LAYOUTS: readonly WidgetLayout[] = Object.freeze([
 
   // Primary work column (70%).
   { id: "executive-overview", title: "Executive Overview", region: "primary", size: "l", priority: "high", order: 0 },
-  { id: "ai-opportunities", title: "EquityOS Opportunity Dashboard", region: "primary", size: "l", priority: "high", order: 1 },
+  { id: "ai-opportunities", title: "EquityOS Recommendations", region: "primary", size: "l", priority: "high", order: 1 },
   { id: "portfolio-summary", title: "Portfolio", region: "primary", size: "m", priority: "high", order: 2 },
   { id: "portfolio-health", title: "Portfolio Health", region: "primary", size: "m", priority: "high", order: 3 },
 

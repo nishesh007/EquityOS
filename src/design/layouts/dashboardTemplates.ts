@@ -51,7 +51,8 @@ const institutional: DashboardTemplate = {
   description: "Executive terminal: snapshot, pulse, heatmap, AI and portfolio",
   placements: [
     place("market-snapshot", "snapshot", 0, "full", { pinned: true }),
-    place("market-pulse", "snapshot", 1, "full"),
+    // Pulse chips live in the Executive Intelligence header strip.
+    place("market-pulse", "snapshot", 1, "full", { visible: false }),
     place("market-heatmap", "snapshot", 2, "full"),
     // Sprint 10C IA — detailed internals live under Research → Market Internals.
     place("market-breadth", "snapshot", 3, "full", { visible: false }),
@@ -63,8 +64,8 @@ const institutional: DashboardTemplate = {
     place("ai-alerts", "main", 3, "medium", { visible: false }),
     place("research-summary", "main", 4, "medium", { visible: false }),
     place("results-calendar", "main", 5, "medium"),
-    place("economic-calendar", "main", 6, "medium", { visible: false }),
-    place("market-news", "main", 7, "medium"),
+    place("market-news", "main", 6, "medium"),
+    place("economic-calendar", "main", 7, "medium", { visible: false }),
     place("portfolio-health", "main", 8, "large", { visible: false }),
     place("ai-brief", "main", 9, "small", { visible: false }),
     place("earnings-intelligence", "bottom", 0, "full", { visible: false }),

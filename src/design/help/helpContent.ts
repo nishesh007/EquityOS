@@ -88,7 +88,7 @@ export const GUIDES: readonly HelpGuide[] = Object.freeze([
     title: "Personalize appearance",
     steps: [
       "Open Settings → Appearance.",
-      "Pick one of eight institutional themes and six accent colors.",
+      "Pick one of twelve institutional themes and six accent colors.",
       "Tune density, font size and animation preferences.",
       "Everything persists automatically per browser.",
     ],
@@ -126,6 +126,6 @@ export const RELEASE_NOTES: readonly ReleaseNote[] = Object.freeze([
   },
   { version: "10C.R7", title: "Command palette & productivity", highlights: ["Global command palette (Ctrl+K)", "Notification center and activity feed", "Breadcrumbs, status bar and help center", "Onboarding tour and context menus"] },
   { version: "10C.R6", title: "Workspace personalization", highlights: ["Drag & drop dashboard with docking", "Saved workspace profiles and 8 templates", "Widget library and JSON import/export"] },
-  { version: "10C.R5", title: "Premium appearance", highlights: ["8 institutional themes and 6 accents", "Typography, motion and glass systems"] },
+  { version: "10C.R5", title: "Premium appearance", highlights: ["12 institutional themes and 6 accents", "Typography, motion and glass systems"] },
   { version: "10C.R4", title: "Institutional tables", highlights: ["Sticky headers, density modes, column customization", "Premium cell rendering and CSV export"] },
 ]);

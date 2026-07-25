@@ -13,6 +13,7 @@ import {
   getSchedulerObservability,
   type SchedulerLastError,
 } from "@/lib/opportunity-engine/scheduler-observability";
+import { nextOpportunityScanAt } from "@/lib/opportunity-engine/scan-schedule";
 import {
   OPPORTUNITY_CATEGORIES,
   SCAN_INTERVAL_MS,
@@ -123,18 +124,21 @@ export function computeNextScheduledScan(input: {
 }): string | null {
   const { state, marketStatus, nowMs } = input;
 
-  if (marketStatus === "open") {
-    if (state.nextScanAt) return state.nextScanAt;
+  if (marketStatus === "open" || marketStatus === "pre_open") {
+    if (state.nextScanAt) {
+      const nextMs = Date.parse(state.nextScanAt);
+      if (Number.isFinite(nextMs) && nextMs >= nowMs) {
+        return state.nextScanAt;
+      }
+    }
+    const aligned = nextOpportunityScanAt(new Date(nowMs));
+    if (aligned) return aligned;
     if (state.lastScannedAt) {
       return new Date(
         new Date(state.lastScannedAt).getTime() + SCAN_INTERVAL_MS
       ).toISOString();
     }
     return new Date(nowMs + SCAN_INTERVAL_MS).toISOString();
-  }
-
-  if (marketStatus === "pre_open") {
-    return getNextSessionOpenISO(new Date(nowMs));
   }
 
   // Closed / post_close / holiday / weekend → next trading session open

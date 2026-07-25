@@ -72,7 +72,9 @@ function kickBackgroundScan(): void {
 }
 
 function filledCount(slots: InstitutionalStrategySlot[]): number {
-  return slots.filter((slot) => slot.pick != null).length;
+  return slots.filter(
+    (slot) => (slot.recommendationCount ?? 0) > 0 || slot.pick != null
+  ).length;
 }
 
 export function HydratedAiOpportunities({

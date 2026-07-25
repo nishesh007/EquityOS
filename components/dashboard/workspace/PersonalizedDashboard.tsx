@@ -1,18 +1,21 @@
 "use client";
 
 /**
- * Dashboard chrome — QuoteProvider + header band + actions.
+ * Dashboard chrome — QuoteProvider + layout shell.
  * Hydrates without the widget Flight trees (those are WorkspaceDashboard children).
  */
 
 import { DashboardQuoteProvider } from "@/components/dashboard/DashboardQuoteProvider";
 import { WorkspaceDashboard } from "@/src/design/workspace/WorkspaceDashboard";
 import type { ReactNode } from "react";
-import { QuickActionBar } from "./QuickActionBar";
 import { ScrollToTopButton } from "./ScrollToTopButton";
 
 export interface PersonalizedDashboardProps {
-  header: ReactNode;
+  /**
+   * Executive strip (Market Pulse + AI Briefing + Flash Cards).
+   * Rendered after the single header toolbar, before widgets.
+   */
+  executive?: ReactNode;
   /**
    * DashboardWidget children (Suspense-wrapped slots).
    * Streamed as Flight children — not a giant widgets Record prop.
@@ -25,32 +28,15 @@ export interface PersonalizedDashboardProps {
  * Widget data loaders stay in app/page.tsx Suspense slots.
  */
 export function PersonalizedDashboard({
-  header,
+  executive,
   children,
 }: PersonalizedDashboardProps) {
   return (
     <DashboardQuoteProvider>
-      <DashboardChrome header={header}>
-        <WorkspaceDashboard>{children}</WorkspaceDashboard>
-      </DashboardChrome>
+      <div className="relative">
+        <WorkspaceDashboard executive={executive}>{children}</WorkspaceDashboard>
+        <ScrollToTopButton />
+      </div>
     </DashboardQuoteProvider>
-  );
-}
-
-/** Chrome only — mounts before workspace widget holes resolve. */
-function DashboardChrome({
-  header,
-  children,
-}: {
-  header: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <div className="relative">
-      {header}
-      <QuickActionBar />
-      {children}
-      <ScrollToTopButton />
-    </div>
   );
 }

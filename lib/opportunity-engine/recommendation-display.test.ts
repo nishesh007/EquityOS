@@ -76,10 +76,10 @@ describe("partitionByConvictionGate", () => {
 describe("resolveTargetTimeEstimates", () => {
   it("uses relative windows, never calendar dates", () => {
     const swing = resolveTargetTimeEstimates({ category: "swing" });
-    expect(swing.target1).toBe("2–3 Weeks");
-    expect(swing.finalTarget).toBe("6–8 Weeks");
+    expect(swing.target1).toBe("5–8 Trading Days");
+    expect(swing.finalTarget).toBe("15–20 Trading Days");
     const intraday = resolveTargetTimeEstimates({ category: "intraday" });
-    expect(intraday.target1).toBe("1–2 Hours");
+    expect(intraday.target1).toBe("30–90 Minutes");
     expect(intraday.finalTarget).toBe("By Market Close");
   });
 });

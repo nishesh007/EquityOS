@@ -309,7 +309,7 @@ describe("Sprint 10C.R6 — visibility, pin, collapse", () => {
       })
     );
     const store = loadWorkspaceStore(storage);
-    expect(store.version).toBe(4);
+    expect(store.version).toBe(6);
     expect(
       store.workspaces[0].placements.find((p) => p.widgetId === "market-breadth")
         ?.visible
@@ -409,7 +409,7 @@ describe("Sprint 10C.R6 — visibility, pin, collapse", () => {
       })
     );
     const store = loadWorkspaceStore(storage);
-    expect(store.version).toBe(4);
+    expect(store.version).toBe(6);
     const placements = store.workspaces[0].placements;
     expect(placements.find((p) => p.widgetId === "market-movers")?.size).toBe(
       "full"
@@ -639,9 +639,9 @@ describe("Sprint 10C.R6 — keyboard shortcuts & accessibility", () => {
 });
 
 describe("Sprint 10C.R6 — regression", () => {
-  it("keeps the design system aggregate intact (8 themes, tokens present)", () => {
+  it("keeps the design system aggregate intact (12 themes, tokens present)", () => {
     const system = getDesignSystem();
-    expect(system.themes).toHaveLength(8);
+    expect(system.themes).toHaveLength(12);
     expect(system.spacing).toBeDefined();
     expect(system.typography).toBeDefined();
   });

@@ -409,7 +409,7 @@ export function InstitutionalTable<Row>({
                         checked={allPageSelected}
                         onChange={toggleAllPage}
                         aria-label="Select all rows on this page"
-                        className="h-3.5 w-3.5 accent-[rgb(var(--eos-color-accent))]"
+                        className="h-3.5 w-3.5 accent-[var(--strategy-accent,rgb(var(--eos-color-accent)))]"
                       />
                     </th>
                   )}
@@ -526,7 +526,7 @@ export function InstitutionalTable<Row>({
                               checked={selected.has(rowId)}
                               onChange={() => toggleRowSelected(rowId)}
                               aria-label={`Select row ${rowId}`}
-                              className="h-3.5 w-3.5 accent-[rgb(var(--eos-color-accent))]"
+                              className="h-3.5 w-3.5 accent-[var(--strategy-accent,rgb(var(--eos-color-accent)))]"
                             />
                           </td>
                         )}
@@ -560,7 +560,7 @@ export function InstitutionalTable<Row>({
                                   DENSITY_CELL_CLASSES[state.density],
                                   align === "right" && "text-right",
                                   isFocused &&
-                                    "rounded ring-1 ring-inset ring-accent"
+                                    "rounded ring-1 ring-inset ring-[var(--strategy-accent,rgb(var(--eos-color-accent)))]"
                                 )}
                               >
                                 {showHighlight &&

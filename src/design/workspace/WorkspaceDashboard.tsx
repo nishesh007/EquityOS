@@ -105,6 +105,11 @@ export interface WorkspaceDashboardProps {
    * (Flight children), not a Record prop — keeps chrome hydration light.
    */
   children?: ReactNode;
+  /**
+   * Executive Intelligence strip — rendered after the header toolbar,
+   * before widget regions (Sprint 10C final layout).
+   */
+  executive?: ReactNode;
 }
 
 interface DragState {
@@ -126,7 +131,10 @@ function collectWidgetsFromChildren(
   return map;
 }
 
-export function WorkspaceDashboard({ children }: WorkspaceDashboardProps) {
+export function WorkspaceDashboard({
+  children,
+  executive,
+}: WorkspaceDashboardProps) {
   const router = useRouter();
   const widgets = useMemo(
     () => collectWidgetsFromChildren(children),
@@ -611,7 +619,7 @@ export function WorkspaceDashboard({ children }: WorkspaceDashboardProps) {
   };
 
   return (
-    <div className={cn("space-y-4", !hydrated && "pointer-events-none")}>
+    <div className={cn("space-y-3", !hydrated && "pointer-events-none")}>
       <WorkspaceToolbar
         workspace={workspace}
         workspaces={profiles.length > 0 ? profiles : [workspace]}
@@ -679,6 +687,8 @@ export function WorkspaceDashboard({ children }: WorkspaceDashboardProps) {
         }}
         onFullscreen={toggleFullscreen}
       />
+
+      {executive}
 
       {flash ? (
         <p

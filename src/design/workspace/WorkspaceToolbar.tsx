@@ -9,13 +9,14 @@
  * callbacks provided by WorkspaceDashboard.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   Check,
   ChevronDown,
   Download,
   Eye,
+  LayoutDashboard,
   LayoutGrid,
   Maximize2,
   Palette,
@@ -48,7 +49,7 @@ const MENU_ITEM_CLASS =
   "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary focus-visible:bg-surface-hover";
 
 const TOOLBAR_BUTTON_CLASS =
-  "inline-flex items-center gap-1.5 rounded-md border border-transparent px-2 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary";
+  "inline-flex shrink-0 items-center gap-1.5 rounded-md border border-transparent px-2 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary";
 
 export interface WorkspaceToolbarProps {
   workspace: Workspace;
@@ -72,6 +73,9 @@ export interface WorkspaceToolbarProps {
   onAddWidget: (definition: WidgetDefinition) => void;
   onRestoreHidden: (widgetId: string | null) => void;
   onFullscreen: () => void;
+  /** When true, render the EquityOS Dashboard title in this same toolbar row. */
+  showDashboardTitle?: boolean;
+  leading?: ReactNode;
 }
 
 type OpenMenu = "layouts" | "hidden" | null;
@@ -92,6 +96,8 @@ export function WorkspaceToolbar({
   onAddWidget,
   onRestoreHidden,
   onFullscreen,
+  showDashboardTitle = true,
+  leading,
 }: WorkspaceToolbarProps) {
   const router = useRouter();
   const [openMenu, setOpenMenu] = useState<OpenMenu>(null);
@@ -138,9 +144,29 @@ export function WorkspaceToolbar({
   );
 
   return (
-    <div ref={rootRef}>
-      <GlassToolbar aria-label="Dashboard workspace toolbar" className="justify-between">
-        <div className="flex flex-wrap items-center gap-1">
+    <div
+      ref={rootRef}
+      className="mb-3 animate-fade-in-up"
+      role="group"
+      aria-label="Dashboard workspace toolbar"
+    >
+      <GlassToolbar className="flex-nowrap justify-start gap-1 overflow-x-auto">
+        {leading}
+        {showDashboardTitle ? (
+          <div className="mr-2 flex shrink-0 items-center gap-2 border-r border-surface-border pr-3">
+            <span
+              aria-hidden
+              className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-400"
+            >
+              <LayoutDashboard className="h-4 w-4" />
+            </span>
+            <h1 className="whitespace-nowrap text-sm font-semibold tracking-tight text-text-primary">
+              EquityOS Dashboard
+            </h1>
+          </div>
+        ) : null}
+
+        <div className="flex shrink-0 items-center gap-0.5">
           {/* Layout templates */}
           <div className="relative">
             <button
@@ -249,7 +275,7 @@ export function WorkspaceToolbar({
           </button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1">
+        <div className="ml-auto flex shrink-0 items-center gap-0.5">
           <button
             type="button"
             onClick={() => setResetConfirmOpen(true)}
@@ -285,7 +311,7 @@ export function WorkspaceToolbar({
             <RefreshCw className="h-3.5 w-3.5" />
           </button>
           <button type="button" onClick={() => toggleTheme()} title="Toggle theme" aria-label="Toggle theme" className={TOOLBAR_BUTTON_CLASS}>
-            <Palette className="h-3.5 w-3.5" />
+            <Palette className="h-3.5 w-3.5" /> Theme
           </button>
           <button type="button" onClick={onFullscreen} title="Fullscreen" aria-label="Toggle fullscreen" className={TOOLBAR_BUTTON_CLASS}>
             <Maximize2 className="h-3.5 w-3.5" />
@@ -297,7 +323,7 @@ export function WorkspaceToolbar({
             aria-label="Open settings"
             className={TOOLBAR_BUTTON_CLASS}
           >
-            <Settings className="h-3.5 w-3.5" />
+            <Settings className="h-3.5 w-3.5" /> Settings
           </button>
         </div>
       </GlassToolbar>

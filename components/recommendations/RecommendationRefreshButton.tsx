@@ -4,7 +4,14 @@ import { RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export function RecommendationRefreshButton() {
+export function RecommendationRefreshButton({
+  label = "Refresh Strategy Scan",
+  className =
+    "inline-flex items-center gap-2 rounded-lg border border-surface-border-subtle px-3 py-1.5 text-xs text-text-muted transition hover:text-text-primary disabled:opacity-60",
+}: {
+  label?: string;
+  className?: string;
+}) {
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -25,10 +32,10 @@ export function RecommendationRefreshButton() {
       type="button"
       onClick={() => void refresh()}
       disabled={refreshing}
-      className="inline-flex items-center gap-2 rounded-lg border border-surface-border-subtle px-3 py-1.5 text-xs text-text-muted transition hover:text-text-primary disabled:opacity-60"
+      className={className}
     >
       <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
-      {refreshing ? "Refreshing" : "Refresh Strategy Scan"}
+      {refreshing ? "Refreshing" : label}
     </button>
   );
 }

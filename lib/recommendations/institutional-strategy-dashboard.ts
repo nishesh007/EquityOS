@@ -1,107 +1,26 @@
 /**
- * Sprint 9A.1 — Institutional Opportunity Dashboard ranking.
+ * Sprint 9A.1 / 9F.2 — Institutional Opportunity Dashboard ranking.
  *
- * Pure projection over the master Opportunity Engine pool from a single scan.
- * Never starts a market scan, never duplicates Recommendation / Conviction logic.
- * Every strategy reuses the same persisted OE state categories.
+ * Sprint 9F.2: delegates to Horizon-First pipelines. OE categories are no
+ * longer remapped into horizons — each horizon independently selects and
+ * constructs recommendations.
  */
 
-import { HIGH_CONVICTION_MINIMUM } from "@/lib/opportunity-engine/recommendation-display";
+import type { OpportunityEngineState } from "@/lib/opportunity-engine/types";
+import {
+  INSTITUTIONAL_STRATEGY_IDS,
+  INSTITUTIONAL_STRATEGY_META,
+  type InstitutionalStrategyId,
+} from "@/lib/recommendations/horizons/ids";
+import { validateInstitutionalTradeLevels } from "@/lib/recommendations/recommendation-validator";
 import type {
-  OpportunityCandidate,
-  OpportunityCategory,
-  OpportunityEngineState,
-} from "@/lib/opportunity-engine/types";
-import {
-  planInstitutionalEntry,
-  planInstitutionalEntryFromRecommendation,
-} from "@/lib/recommendations/institutional-entry";
-import {
-  buildFallbackRecommendation,
-  buildSharedRecommendation,
-  type SharedMarketSnapshot,
-  type SharedRecommendation,
+  SharedMarketSnapshot,
+  SharedRecommendation,
 } from "@/lib/recommendations/shared-recommendation";
+import { selectHorizonDashboardSlots } from "@/lib/recommendations/horizons/adapters";
 
-export type InstitutionalStrategyId =
-  | "intraday"
-  | "swing"
-  | "btst"
-  | "scalping"
-  | "short_term"
-  | "medium_term"
-  | "long_term";
-
-export const INSTITUTIONAL_STRATEGY_IDS: readonly InstitutionalStrategyId[] =
-  Object.freeze([
-    "intraday",
-    "swing",
-    "btst",
-    "scalping",
-    "short_term",
-    "medium_term",
-    "long_term",
-  ]);
-
-export const INSTITUTIONAL_STRATEGY_META: Record<
-  InstitutionalStrategyId,
-  {
-    label: string;
-    emoji: string;
-    href: string;
-  }
-> = {
-  intraday: {
-    label: "Intraday",
-    emoji: "⚡",
-    href: "/ai?strategy=intraday",
-  },
-  swing: {
-    label: "Swing",
-    emoji: "📈",
-    href: "/ai?strategy=swing",
-  },
-  btst: {
-    label: "BTST",
-    emoji: "🌙",
-    href: "/ai?strategy=btst",
-  },
-  scalping: {
-    label: "Scalping",
-    emoji: "🎯",
-    href: "/ai?strategy=scalping",
-  },
-  short_term: {
-    label: "Short Term",
-    emoji: "⏳",
-    href: "/ai?strategy=short_term",
-  },
-  medium_term: {
-    label: "Medium Term",
-    emoji: "🚀",
-    href: "/ai?strategy=medium_term",
-  },
-  long_term: {
-    label: "Long Term",
-    emoji: "🏆",
-    href: "/ai?strategy=long_term",
-  },
-};
-
-/** Category buckets that feed each institutional ranking (master pool views). */
-const STRATEGY_CATEGORIES: Record<
-  InstitutionalStrategyId,
-  readonly OpportunityCategory[]
-> = {
-  intraday: ["intraday"],
-  swing: ["swing"],
-  /** Overnight / Intraday–2 days horizon — closest OE bucket to BTST. */
-  btst: ["relative_volume"],
-  scalping: ["intraday"],
-  short_term: ["breakout", "mean_reversion"],
-  medium_term: ["momentum"],
-  long_term: ["ai_high_conviction"],
-};
+export type { InstitutionalStrategyId };
+export { INSTITUTIONAL_STRATEGY_IDS, INSTITUTIONAL_STRATEGY_META };
 
 export interface InstitutionalStrategyPick {
   strategyId: InstitutionalStrategyId;
@@ -121,7 +40,7 @@ export interface InstitutionalStrategyPick {
   /** True when live price sits inside the ideal / zone mid tolerance. */
   entryAtMarket: boolean;
   primaryTarget: number;
-  /** (target − ideal entry) / ideal × 100 */
+  /** Canonical Expected Return % (Target1 from Effective Entry). */
   expectedUpsidePercent: number | null;
   conviction: number;
   lastScanTime: string;
@@ -132,169 +51,49 @@ export interface InstitutionalStrategySlot {
   label: string;
   emoji: string;
   href: string;
-  /** Highest-conviction pick, or null when nothing clears the gate. */
+  /**
+   * Highest-ranked recommendation from the same horizon table dataset.
+   * Null only when that horizon's recommendation list is genuinely empty.
+   */
   pick: InstitutionalStrategyPick | null;
+  /** Count of published recommendations in the matching table (Sprint 9F.6). */
+  recommendationCount?: number;
   lastScanTime: string;
 }
 
-export const NO_HIGH_CONVICTION_MESSAGE = "No High Conviction Opportunity";
+/** Empty-state copy — only when the matching recommendation table is empty. */
+export const NO_RECOMMENDATION_AVAILABLE_MESSAGE = "No Recommendation Available";
+
+/** @deprecated Use NO_RECOMMENDATION_AVAILABLE_MESSAGE (Sprint 9F.6). */
+export const NO_HIGH_CONVICTION_MESSAGE = NO_RECOMMENDATION_AVAILABLE_MESSAGE;
 
 let cachedDashboardKey = "";
 let cachedDashboardSlots: InstitutionalStrategySlot[] = [];
-
-function isScalpingCandidate(candidate: OpportunityCandidate): boolean {
-  if (candidate.strategySignal?.strategyId === "scalping") return true;
-  if (candidate.strategyId === "scalping") return true;
-  if (candidate.executedStrategyIds?.includes("scalping")) return true;
-  return (candidate.strategySignals ?? []).some(
-    (signal) => signal.strategyId === "scalping"
-  );
-}
-
-function matchesStrategy(
-  candidate: OpportunityCandidate,
-  strategyId: InstitutionalStrategyId
-): boolean {
-  const categories = STRATEGY_CATEGORIES[strategyId];
-  if (!categories.includes(candidate.category)) return false;
-
-  if (strategyId === "scalping") return isScalpingCandidate(candidate);
-  if (strategyId === "intraday") return !isScalpingCandidate(candidate);
-  return true;
-}
-
-function resolveCurrentPrice(candidate: OpportunityCandidate): number | null {
-  const quoted = candidate.quote?.price;
-  if (typeof quoted === "number" && Number.isFinite(quoted) && quoted > 0) {
-    return Math.round(quoted * 100) / 100;
-  }
-  const cmp = candidate.scanMetrics?.cmp;
-  if (typeof cmp === "number" && Number.isFinite(cmp) && cmp > 0) {
-    return Math.round(cmp * 100) / 100;
-  }
-  return null;
-}
-
-function toRecommendation(
-  candidate: OpportunityCandidate,
-  lastScanTime: string,
-  shared?: SharedMarketSnapshot
-): SharedRecommendation | null {
-  return (
-    buildSharedRecommendation(candidate, lastScanTime) ??
-    buildFallbackRecommendation(candidate, lastScanTime, shared)
-  );
-}
 
 function convictionOf(recommendation: SharedRecommendation): number {
   return Math.max(recommendation.conviction, recommendation.confidence);
 }
 
-function toPick(
-  strategyId: InstitutionalStrategyId,
-  recommendation: SharedRecommendation,
-  candidate: OpportunityCandidate,
-  lastScanTime: string
-): InstitutionalStrategyPick {
-  const currentPrice = resolveCurrentPrice(candidate);
-  const entryPlan = planInstitutionalEntry(
-    strategyId,
-    candidate,
-    recommendation,
-    currentPrice
-  );
-  const primaryTarget =
-    recommendation.targets[0] ??
-    candidate.target1 ??
-    entryPlan.ideal;
-
-  return {
-    strategyId,
-    company: recommendation.company,
-    symbol: recommendation.symbol,
-    currentPrice,
-    entry: entryPlan.ideal,
-    entryMode: entryPlan.mode,
-    entryLow: entryPlan.low,
-    entryHigh: entryPlan.high,
-    entryAtMarket: entryPlan.atMarket,
-    primaryTarget,
-    expectedUpsidePercent: entryPlan.expectedUpsidePercent,
-    conviction: Math.round(convictionOf(recommendation)),
-    lastScanTime,
-  };
-}
-
 /**
- * Rank one strategy over the master pool — highest conviction only.
- * Returns null when nothing meets HIGH_CONVICTION_MINIMUM (never invents picks).
- */
-function rankStrategy(
-  strategyId: InstitutionalStrategyId,
-  state: OpportunityEngineState,
-  lastScanTime: string,
-  shared?: SharedMarketSnapshot
-): InstitutionalStrategyPick | null {
-  let best: {
-    pick: InstitutionalStrategyPick;
-    score: number;
-  } | null = null;
-
-  for (const category of STRATEGY_CATEGORIES[strategyId]) {
-    for (const candidate of state.categories[category] ?? []) {
-      if (!matchesStrategy(candidate, strategyId)) continue;
-      const recommendation = toRecommendation(candidate, lastScanTime, shared);
-      if (!recommendation) continue;
-      if (recommendation.action === "WATCHLIST") continue;
-
-      const score = convictionOf(recommendation);
-      if (score < HIGH_CONVICTION_MINIMUM) continue;
-
-      if (!best || score > best.score) {
-        best = {
-          score,
-          pick: toPick(strategyId, recommendation, candidate, lastScanTime),
-        };
-      }
-    }
-  }
-
-  return best?.pick ?? null;
-}
-
-/**
- * Build the seven institutional slots from a single OE state snapshot.
+ * Build the seven institutional slots via Horizon-First pipelines.
  * Cached by tradingDate:scanCount:lastScannedAt (+ regime) — no I/O.
  */
 export function selectInstitutionalStrategyDashboard(
   state: OpportunityEngineState,
   shared?: SharedMarketSnapshot
 ): InstitutionalStrategySlot[] {
-  const key = `v2-entry:${state.tradingDate}:${state.scanCount}:${state.lastScannedAt}:${shared?.regime ?? ""}`;
+  const key = `v9f6-dash:${state.tradingDate}:${state.scanCount}:${state.lastScannedAt}:${shared?.regime ?? ""}`;
   if (key === cachedDashboardKey) return cachedDashboardSlots;
 
-  const lastScanTime = state.lastScannedAt ?? new Date(0).toISOString();
-  const slots = INSTITUTIONAL_STRATEGY_IDS.map((strategyId) => {
-    const meta = INSTITUTIONAL_STRATEGY_META[strategyId];
-    return {
-      strategyId,
-      label: meta.label,
-      emoji: meta.emoji,
-      href: meta.href,
-      pick: rankStrategy(strategyId, state, lastScanTime, shared),
-      lastScanTime,
-    } satisfies InstitutionalStrategySlot;
-  });
-
+  const slots = selectHorizonDashboardSlots(state, shared);
   cachedDashboardKey = key;
   cachedDashboardSlots = slots;
   return slots;
 }
 
 /**
- * Client-side projection when only SharedRecommendation[] is available
- * (e.g. post-hydrate refresh). Prefer selectInstitutionalStrategyDashboard
- * when OE state is on hand — this path cannot recover category-deduped losses.
+ * Client-side projection when only SharedRecommendation[] is available.
+ * Matches by primaryStrategyId === horizon id (horizon-first ids).
  */
 export function rankInstitutionalSlotsFromRecommendations(
   recommendations: SharedRecommendation[],
@@ -307,22 +106,16 @@ export function rankInstitutionalSlotsFromRecommendations(
 
   return INSTITUTIONAL_STRATEGY_IDS.map((strategyId) => {
     const meta = INSTITUTIONAL_STRATEGY_META[strategyId];
-    const categories = new Set(STRATEGY_CATEGORIES[strategyId]);
+
+    const matching = recommendations.filter(
+      (recommendation) =>
+        recommendation.primaryStrategyId === strategyId &&
+        recommendation.action !== "WATCHLIST"
+    );
 
     let best: SharedRecommendation | null = null;
-    for (const recommendation of recommendations) {
-      if (!categories.has(recommendation.category)) continue;
-      if (strategyId === "scalping") {
-        if (recommendation.primaryStrategyId !== "scalping") continue;
-      } else if (strategyId === "intraday") {
-        if (recommendation.primaryStrategyId === "scalping") continue;
-      }
-      if (recommendation.action === "WATCHLIST") continue;
-      if (convictionOf(recommendation) < HIGH_CONVICTION_MINIMUM) continue;
-      if (
-        !best ||
-        convictionOf(recommendation) > convictionOf(best)
-      ) {
+    for (const recommendation of matching) {
+      if (!best || convictionOf(recommendation) > convictionOf(best)) {
         best = recommendation;
       }
     }
@@ -332,33 +125,66 @@ export function rankInstitutionalSlotsFromRecommendations(
       label: meta.label,
       emoji: meta.emoji,
       href: meta.href,
+      recommendationCount: matching.length,
       pick: best
         ? (() => {
-            const entryPlan = planInstitutionalEntryFromRecommendation(
-              strategyId,
-              best,
-              null
-            );
-            const primaryTarget = best.targets[0] ?? entryPlan.ideal;
+            // Sprint 9F.4 — prefer sealed recommendation Entry Range.
+            const entryLow = best.entryLow ?? null;
+            const entryHigh = best.entryHigh ?? null;
+            const hasZone =
+              entryLow != null &&
+              entryHigh != null &&
+              entryLow !== entryHigh;
+            const entry = best.entry;
+            const presentation = validateInstitutionalTradeLevels({
+              action: best.action,
+              entry,
+              entryLow: hasZone ? entryLow : null,
+              entryHigh: hasZone ? entryHigh : null,
+              stopLoss: best.stopLoss,
+              targets: best.targets,
+              holdingPeriod: best.holdingPeriod,
+              primaryStrategy: best.primaryStrategy,
+              statedRiskReward: best.riskReward,
+            });
+            if (!presentation.valid) {
+              // Still surface the sealed recommendation so the card matches
+              // the table dataset (Sprint 9F.6 consistency).
+              return {
+                strategyId,
+                company: best.company,
+                symbol: best.symbol,
+                currentPrice: null,
+                entry,
+                entryMode: hasZone ? ("zone" as const) : ("ideal" as const),
+                entryLow: hasZone ? entryLow : null,
+                entryHigh: hasZone ? entryHigh : null,
+                entryAtMarket: false,
+                primaryTarget: best.targets[0] ?? entry,
+                expectedUpsidePercent: best.expectedReturnPercent ?? null,
+                conviction: best.conviction,
+                lastScanTime: scanTime,
+              } satisfies InstitutionalStrategyPick;
+            }
             return {
               strategyId,
               company: best.company,
               symbol: best.symbol,
               currentPrice: null,
-              entry: entryPlan.ideal,
-              entryMode: entryPlan.mode,
-              entryLow: entryPlan.low,
-              entryHigh: entryPlan.high,
-              entryAtMarket: entryPlan.atMarket,
-              primaryTarget,
-              expectedUpsidePercent: entryPlan.expectedUpsidePercent,
-              conviction: Math.round(convictionOf(best)),
-              lastScanTime: best.timestamp || scanTime,
-            };
+              entry,
+              entryMode: hasZone ? ("zone" as const) : ("ideal" as const),
+              entryLow: hasZone ? entryLow : null,
+              entryHigh: hasZone ? entryHigh : null,
+              entryAtMarket: false,
+              primaryTarget: best.targets[0] ?? entry,
+              expectedUpsidePercent: best.expectedReturnPercent ?? null,
+              conviction: best.conviction,
+              lastScanTime: scanTime,
+            } satisfies InstitutionalStrategyPick;
           })()
         : null,
       lastScanTime: scanTime,
-    } satisfies InstitutionalStrategySlot;
+    };
   });
 }
 
@@ -366,15 +192,12 @@ export function parseInstitutionalStrategyId(
   value: string | null | undefined
 ): InstitutionalStrategyId | null {
   if (!value) return null;
-  const normalized = value.trim().toLowerCase().replace(/-/g, "_");
-  return INSTITUTIONAL_STRATEGY_IDS.includes(
-    normalized as InstitutionalStrategyId
-  )
-    ? (normalized as InstitutionalStrategyId)
+  return INSTITUTIONAL_STRATEGY_IDS.includes(value as InstitutionalStrategyId)
+    ? (value as InstitutionalStrategyId)
     : null;
 }
 
-/** Test helper — clears projection cache between cases. */
+/** @internal test helper */
 export function __resetInstitutionalDashboardCacheForTests(): void {
   cachedDashboardKey = "";
   cachedDashboardSlots = [];

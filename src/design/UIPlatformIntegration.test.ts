@@ -98,9 +98,9 @@ describe("Sprint 10C.1 — platform freeze & release candidate", () => {
 });
 
 describe("Sprint 10C.R8 — themes and accessibility", () => {
-  it("reports the canonical eight-theme catalog", () => {
+  it("reports the canonical twelve-theme catalog", () => {
     const status = getThemeStatus();
-    expect(status.themeCount).toBe(8);
+    expect(status.themeCount).toBe(12);
     expect(status.themeIds).toEqual(BUILT_IN_THEMES.map((theme) => theme.id));
   });
 
@@ -110,7 +110,7 @@ describe("Sprint 10C.R8 — themes and accessibility", () => {
       expect(engine.setTheme(theme.id)).toBe(true);
       expect(engine.getTheme().id).toBe(theme.id);
     }
-    expect(engine.listThemes()).toHaveLength(8);
+    expect(engine.listThemes()).toHaveLength(12);
   });
 
   it("compiles every semantic color into CSS variables for every theme", () => {
@@ -268,7 +268,7 @@ describe("Sprint 10C.R8 — tables, widgets and charts", () => {
 describe("Sprint 10C.R8 — consistency and performance", () => {
   it("aggregates every shared token domain from one design system", () => {
     const system = getDesignSystem();
-    expect(system.themes).toHaveLength(8);
+    expect(system.themes).toHaveLength(12);
     expect(system.spacing).toBeDefined();
     expect(system.radius).toBeDefined();
     expect(system.typography).toBeDefined();

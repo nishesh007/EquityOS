@@ -56,16 +56,28 @@ beforeEach(() => {
 });
 
 describe("premium theme pack", () => {
-  it("registers Bloomberg, Trading Desk and Carbon Black (8 themes total)", () => {
-    expect(BUILT_IN_THEMES).toHaveLength(8);
+  it("registers Bloomberg through Cyber Neon premium themes (12 themes total)", () => {
+    expect(BUILT_IN_THEMES).toHaveLength(12);
     const ids = BUILT_IN_THEMES.map((theme) => theme.id);
     expect(ids).toEqual(
-      expect.arrayContaining(["bloomberg", "trading-desk", "carbon-black"])
+      expect.arrayContaining([
+        "bloomberg",
+        "trading-desk",
+        "carbon-black",
+        "paper-research",
+        "sepia-research",
+        "nord",
+        "cyber-neon",
+      ])
     );
     expect(PREMIUM_THEMES.map((theme) => theme.label)).toEqual([
       "Bloomberg",
       "Trading Desk",
       "Carbon Black",
+      "Paper Research",
+      "Sepia Research",
+      "Nord",
+      "Cyber Neon",
     ]);
   });
 

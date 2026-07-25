@@ -182,7 +182,7 @@ describe("computeNextScheduledScan", () => {
       marketStatus: "open",
       nowMs: last.getTime() + 60_000,
     });
-    expect(result).toBe(new Date(last.getTime() + 15 * 60_000).toISOString());
+    expect(result).toBe(new Date(last.getTime() + 5 * 60_000).toISOString());
   });
 
   it("points to next session open when frozen/closed", () => {

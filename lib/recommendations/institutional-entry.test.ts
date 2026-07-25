@@ -138,6 +138,7 @@ function baseRecommendation(
       score: 100,
       checks: {
         tradeLevels: true,
+        institutionalTradeLevels: true,
         confidence: true,
         opportunityScore: true,
         agreement: true,

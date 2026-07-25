@@ -4,6 +4,10 @@ export {
   bloomberg,
   tradingDesk,
   carbonBlack,
+  paperResearch,
+  sepiaResearch,
+  nord,
+  cyberNeon,
   PREMIUM_THEMES,
 } from "./premiumThemes";
 

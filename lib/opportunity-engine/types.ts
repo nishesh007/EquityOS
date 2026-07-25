@@ -138,6 +138,8 @@ export interface OpportunityCandidate {
   stopLoss: number;
   target1: number;
   target2: number;
+  /** Final / extended target (Target 3). Optional on legacy persisted scans. */
+  target3?: number;
   riskReward: number;
   confidencePercent: number;
   reason: string;
@@ -349,6 +351,6 @@ export interface CategoryScanCandidate {
   metrics: Record<string, number | null>;
 }
 
-export const SCAN_INTERVAL_MS = 15 * 60 * 1000;
+export const SCAN_INTERVAL_MS = 5 * 60 * 1000;
 export const MAX_SCAN_HISTORY = 50;
 

@@ -534,14 +534,58 @@ export async function runMarketBreadthEngine(
     marketStatusLabel: getMarketStatusLabel(marketStatus),
     lastUpdated: new Date().toISOString(),
     dataSource: `Live quotes · ${resolved.label} · company master equities`,
-    gainers: selectMovers(rows, "gainers"),
-    losers: selectMovers(rows, "losers"),
-    weekHighs,
+    ...(await withDeliveryLeaders({
+      gainers: selectMovers(rows, "gainers"),
+      losers: selectMovers(rows, "losers"),
+      weekHighs,
+      mostActive: rows
+        .slice()
+        .sort((a, b) => (b.quote.volume ?? 0) - (a.quote.volume ?? 0))
+        .slice(0, 5)
+        .map(toMover),
+    })),
     weekLows,
-    mostActive: rows
-      .slice()
-      .sort((a, b) => (b.quote.volume ?? 0) - (a.quote.volume ?? 0))
-      .slice(0, 5)
-      .map(toMover),
   };
+}
+
+async function withDeliveryLeaders(input: {
+  gainers: MarketMover[];
+  losers: MarketMover[];
+  weekHighs: MarketMover[];
+  mostActive: MarketMover[];
+}): Promise<{
+  gainers: MarketMover[];
+  losers: MarketMover[];
+  weekHighs: MarketMover[];
+  mostActive: MarketMover[];
+}> {
+  const pool = [
+    ...input.mostActive,
+    ...input.gainers,
+    ...input.losers,
+    ...input.weekHighs,
+  ];
+  try {
+    const { enrichMoversWithDelivery } = await import(
+      "@/lib/market-data/delivery-enrichment"
+    );
+    const { movers: enriched } = await enrichMoversWithDelivery(pool);
+    const bySymbol = new Map(
+      enriched.map((item) => [item.symbol.toUpperCase(), item])
+    );
+    const apply = (list: MarketMover[]) =>
+      list.map((item) => bySymbol.get(item.symbol.toUpperCase()) ?? item);
+    return {
+      gainers: apply(input.gainers),
+      losers: apply(input.losers),
+      weekHighs: apply(input.weekHighs),
+      mostActive: apply(input.mostActive),
+    };
+  } catch (error) {
+    console.warn(
+      "[DeliveryLeaders] Enrichment skipped:",
+      error instanceof Error ? error.message : error
+    );
+    return input;
+  }
 }

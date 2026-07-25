@@ -89,8 +89,8 @@ export function AiOpportunitiesWidget({
   return (
     <div className="space-y-5">
       <SectionHeader
-        title="EquityOS Opportunity Dashboard"
-        subtitle="One Market Scan • Seven Strategy Rankings • AI Strategy Engine"
+        title="EquityOS Recommendations"
+        subtitle="AI-powered recommendations across every investment horizon."
         summary={opportunitiesSummary}
         accent="blue"
         icon={<Sparkles className="h-5 w-5" />}
