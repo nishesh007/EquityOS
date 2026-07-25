@@ -1,9 +1,12 @@
 "use client";
 
 import { Card } from "@/components/ui/Card";
-import { CompanyLiveQuote } from "@/components/market/CompanyLiveQuote";
 import { useMarketQuotes } from "@/hooks/useMarketQuotes";
 import { createUnavailableQuote } from "@/lib/market-data/enriched-quote";
+import {
+  formatPercentValue,
+  formatRatioValue,
+} from "@/lib/format/research-numbers";
 import { cn, formatPrice, formatVolume, isValidMarketPrice } from "@/lib/utils";
 import type { CompanyProfile, TradingData } from "@/types";
 
@@ -53,21 +56,58 @@ export function KeyStatsGrid({ company, trading }: KeyStatsGridProps) {
 
   const stats: Stat[] = [
     { label: "Open", value: formatPrice(liveTrading.open), mono: true },
-    { label: "High", value: formatPrice(liveTrading.high), mono: true, tone: "gain" },
-    { label: "Low", value: formatPrice(liveTrading.low), mono: true, tone: "loss" },
-    { label: "Prev Close", value: formatPrice(liveTrading.previousClose), mono: true },
-    { label: "Volume", value: `${formatVolume(liveTrading.volume)}`, mono: true },
-    { label: "Delivery %", value: `${liveTrading.deliveryPercent}%`, mono: true, tone: "accent" },
+    {
+      label: "High",
+      value: formatPrice(liveTrading.high),
+      mono: true,
+      tone: "gain",
+    },
+    {
+      label: "Low",
+      value: formatPrice(liveTrading.low),
+      mono: true,
+      tone: "loss",
+    },
+    {
+      label: "Prev Close",
+      value: formatPrice(liveTrading.previousClose),
+      mono: true,
+    },
+    {
+      label: "Volume",
+      value: `${formatVolume(liveTrading.volume)}`,
+      mono: true,
+    },
+    {
+      label: "Delivery %",
+      value: formatPercentValue(liveTrading.deliveryPercent),
+      mono: true,
+      tone: "accent",
+    },
     { label: "VWAP", value: formatPrice(liveTrading.vwap), mono: true },
     { label: "Turnover", value: trading.turnover, mono: true },
-    { label: "Market Cap", value: quote.marketCap ?? company.marketCap, mono: true },
-    { label: "P/E", value: `${company.financials.pe}x`, mono: true },
-    { label: "P/B", value: `${company.financials.pb}x`, mono: true },
-    { label: "ROE", value: `${company.financials.roe}%`, mono: true },
-    { label: "ROCE", value: `${company.financials.roce}%`, mono: true },
-    { label: "Div Yield", value: `${trading.dividendYield}%`, mono: true },
-    { label: "Sector", value: company.sector },
-    { label: "Industry", value: company.industry },
+    {
+      label: "Market Cap",
+      value: quote.marketCap ?? company.marketCap,
+      mono: true,
+    },
+    { label: "P/E", value: formatRatioValue(company.financials.pe), mono: true },
+    { label: "P/B", value: formatRatioValue(company.financials.pb), mono: true },
+    {
+      label: "ROE",
+      value: formatPercentValue(company.financials.roe),
+      mono: true,
+    },
+    {
+      label: "ROCE",
+      value: formatPercentValue(company.financials.roce),
+      mono: true,
+    },
+    {
+      label: "Div Yield",
+      value: formatPercentValue(trading.dividendYield),
+      mono: true,
+    },
   ];
 
   const toneClass: Record<NonNullable<Stat["tone"]>, string> = {
@@ -78,41 +118,44 @@ export function KeyStatsGrid({ company, trading }: KeyStatsGridProps) {
   };
 
   return (
-    <Card padding="lg" className="animate-fade-in-up">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-        <CompanyLiveQuote
-          symbol={company.symbol}
-          initialQuote={company.quote}
-          size="lg"
-        />
+    <Card padding="md" className="animate-fade-in-up">
+      <div className="mb-3">
+        <h3 className="text-sm font-semibold tracking-tight text-text-primary">
+          Overview & Market Data
+        </h3>
+        <p className="mt-0.5 text-[10px] text-text-muted">
+          Session stats · multiples · 52-week range
+        </p>
+      </div>
 
-        <div className="w-full max-w-sm">
-          <div className="mb-1.5 flex items-center justify-between text-[10px] uppercase tracking-wider text-text-faint">
-            <span>52W Low</span>
-            <span>52W High</span>
-          </div>
-          <div className="relative h-2 rounded-full bg-surface-overlay">
-            <div className="absolute inset-y-0 left-0 w-full rounded-full bg-gradient-to-r from-loss/40 via-accent/40 to-gain/40" />
-            {isValidMarketPrice(livePrice) && (
-              <div
-                className="absolute top-1/2 h-4 w-1 -translate-y-1/2 rounded-full bg-text-primary shadow-glow"
-                style={{ left: `calc(${Math.max(2, Math.min(98, rangePosition))}% - 2px)` }}
-              />
-            )}
-          </div>
-          <div className="mt-1.5 flex items-center justify-between font-mono text-xs tabular-nums text-text-secondary">
-            <span>{formatPrice(trading.weekLow52)}</span>
-            <span className="text-text-faint">
-              {isValidMarketPrice(livePrice)
-                ? `${Math.round(rangePosition)}% of range`
-                : "52W range"}
-            </span>
-            <span>{formatPrice(trading.weekHigh52)}</span>
-          </div>
+      <div className="mb-3 w-full max-w-md">
+        <div className="mb-1.5 flex items-center justify-between text-[10px] uppercase tracking-wider text-text-faint">
+          <span>52W Low</span>
+          <span>52W High</span>
+        </div>
+        <div className="relative h-2 rounded-full bg-surface-overlay">
+          <div className="absolute inset-y-0 left-0 w-full rounded-full bg-gradient-to-r from-loss/40 via-accent/40 to-gain/40" />
+          {isValidMarketPrice(livePrice) && (
+            <div
+              className="absolute top-1/2 h-4 w-1 -translate-y-1/2 rounded-full bg-text-primary shadow-glow"
+              style={{
+                left: `calc(${Math.max(2, Math.min(98, rangePosition))}% - 2px)`,
+              }}
+            />
+          )}
+        </div>
+        <div className="mt-1.5 flex items-center justify-between font-mono text-xs tabular-nums text-text-secondary">
+          <span>{formatPrice(trading.weekLow52)}</span>
+          <span className="text-text-faint">
+            {isValidMarketPrice(livePrice)
+              ? `${Math.round(rangePosition)}% of range`
+              : "52W range"}
+          </span>
+          <span>{formatPrice(trading.weekHigh52)}</span>
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-surface-border-subtle bg-surface-border-subtle sm:grid-cols-4 lg:grid-cols-8">
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-surface-border-subtle bg-surface-border-subtle sm:grid-cols-4 lg:grid-cols-7">
         {stats.map((stat) => (
           <div key={stat.label} className="bg-surface-raised px-3 py-2.5">
             <p className="data-label truncate text-[10px]">{stat.label}</p>

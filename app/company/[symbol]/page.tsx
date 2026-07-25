@@ -5,7 +5,11 @@ import { ActionButtons } from "@/components/company/ActionButtons";
 import { FinancialSummaryCards } from "@/components/company/FinancialSummaryCards";
 import { CompanyTabs } from "@/components/company/CompanyTabs";
 import { ResearchTerminal } from "@/components/company/research/ResearchTerminal";
+import { CompanyNewsPanel } from "@/components/company/research/CompanyNewsPanel";
 import { EquityIntelligenceEngine } from "@/components/company/intelligence/EquityIntelligenceEngine";
+import { CompanyIntelligenceTimeline } from "@/components/company/intelligence/CompanyIntelligenceTimeline";
+import { QuarterlyIntelligence } from "@/components/company/intelligence/QuarterlyIntelligence";
+import { InstitutionalPeerComparison } from "@/components/company/intelligence/InstitutionalPeerComparison";
 import { fetchCompanyProfile } from "@/services/companyData";
 import { fetchEquityIntelligence } from "@/services/equityIntelligenceData";
 import { fetchCompanyResearch } from "@/services/researchData";
@@ -24,7 +28,6 @@ import {
   formatWatchlistPlatformSubtitle,
 } from "@/services/watchlistPlatform";
 import { PageContainer } from "@/src/design/components/PageContainer";
-import { SharedRecommendationPanel } from "@/components/recommendations";
 import { EmptyStatePanel } from "@/components/ui/EmptyStatePanel";
 import { Card, CardHeader } from "@/components/ui/Card";
 import {
@@ -55,9 +58,6 @@ export async function generateMetadata({ params }: CompanyPageProps) {
 
 export default async function CompanyPage({ params }: CompanyPageProps) {
   const { symbol } = await params;
-  // Warm OE (non-blocking scan) + kick MI refresh in the background.
-  // Do not await cold trading-pipeline MI — recommendations already read the
-  // cached snapshot via fetchRecommendationForSymbol.
   await ensureOpportunityEngineState();
   void getMarketIntelligenceSnapshot().catch(() => null);
   const strategyRecommendation = fetchRecommendationForSymbol(symbol);
@@ -116,84 +116,56 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
 
   return (
     <PageContainer>
-      <div className="mb-6">
+      <div className="mb-3">
         <CompanyBreadcrumb symbol={company.symbol} name={company.name} />
-        <p className="mt-1 text-xs text-text-muted">
-          Company research workspace ·{" "}
-          {companyWorkspace.empty
-            ? companyWorkspace.emptyMessage
-            : `${companyWorkspace.panels.length} panels · Strategy Engine ${
-                strategyRecommendation?.action ?? "no active signal"
-              }`}{" "}
-          · knowledge{" "}
-          {knowledge.empty
-            ? knowledge.emptyMessage
-            : `${knowledge.notes.length} notes · ${knowledge.evidence.items.length} evidence`}{" "}
-          · timeline{" "}
-          {timeline.empty
-            ? timeline.emptyMessage
-            : `${timeline.entries.length} events`}{" "}
-          · copilot{" "}
-          {strategyRecommendation
-            ? `${strategyRecommendation.action} · ${strategyRecommendation.opportunityScore}/100`
-            : summary.emptyMessage}{" "}
-          · automation{" "}
-          {analytics.empty
-            ? analytics.emptyMessage
-            : `${analytics.researchProductivity} productivity`}{" "}
-          · executive{" "}
-          {executive.empty
-            ? executive.emptyMessage
-            : executive.overview.researchProgress + "% progress"}{" "}
-          ·{" "}
+        <p className="mt-1 text-[11px] text-text-muted">
+          Research workspace
+          {!companyWorkspace.empty
+            ? ` · ${companyWorkspace.panels.length} panels`
+            : ""}
+          {knowledge.empty ? "" : ` · ${knowledge.notes.length} notes`}
+          {timeline.empty ? "" : ` · ${timeline.entries.length} events`}
           {researchWorkspace.ready
-            ? `${researchWorkspace.openSessions} sessions · ${researchWorkspace.openTabs} tabs`
-            : researchWorkspace.emptyMessage}{" "}
-          · watchlists {formatWatchlistPlatformSubtitle(watchlistPlatform)}
+            ? ` · ${researchWorkspace.openSessions} sessions`
+            : ""}
+          {" · "}
+          {formatWatchlistPlatformSubtitle(watchlistPlatform)}
+          {summary.empty && !executive.empty
+            ? ` · ${executive.overview.researchProgress}% progress`
+            : ""}
+          {analytics.empty
+            ? ""
+            : ` · ${analytics.researchProductivity} productivity`}
         </p>
-        {!companyWorkspace.empty ? (
-          <div className="mt-2 flex flex-wrap gap-2">
-            {companyWorkspace.quickActions.slice(0, 6).map((action) => (
-              <a
-                key={action.id}
-                href={action.href}
-                className="rounded-lg border border-surface-border-subtle px-2.5 py-1 text-[11px] font-medium text-text-muted transition hover:bg-surface-hover hover:text-text-secondary"
-              >
-                {action.label}
-              </a>
-            ))}
-          </div>
-        ) : null}
       </div>
 
-      <div className="space-y-6">
-        <SharedRecommendationPanel
-          recommendations={
-            strategyRecommendation ? [strategyRecommendation] : []
-          }
-          title="Company Strategy Recommendation"
+      <div className="space-y-4">
+        <CompanyHeader
+          company={company}
+          quickScore={intelligence?.score.overall ?? null}
+          quickVerdict={intelligence?.summary.verdict ?? null}
         />
-        <CompanyHeader company={company} />
-        <ActionButtons symbol={company.symbol} />
+        <div className="sticky top-0 z-30 -mx-1 border-b border-surface-border-subtle/50 bg-surface/90 px-1 py-1.5 backdrop-blur-md">
+          <ActionButtons symbol={company.symbol} />
+        </div>
+
         <ResearchTerminal
           company={company}
           research={research}
+          thesis={intelligence?.thesis}
           screenerInsight={screenerInsight}
         />
+
         {intelligence ? (
-          <EquityIntelligenceEngine
-            intelligence={intelligence}
-            symbol={company.symbol}
-            initialQuote={company.quote}
-          />
+          <EquityIntelligenceEngine intelligence={intelligence} />
         ) : (
-          <Card padding="lg">
+          <Card padding="md">
             <CardHeader
               title="Equity Intelligence"
               subtitle="Fundamentals · valuation · risk"
             />
             <EmptyStatePanel
-              message="Live fundamentals for this symbol are not available yet. Overview, research and Strategy Engine panels above remain authoritative."
+              message="Live fundamentals for this symbol are not available yet. Overview and research panels above remain authoritative."
               source="Fundamentals providers · Equity Intelligence"
               icon={Brain}
               action={
@@ -207,14 +179,33 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
             />
           </Card>
         )}
-        <FinancialSummaryCards
-          financials={company.financials}
-          dataTransparency={intelligence?.dataTransparency}
-        />
-        <CompanyTabs
-          company={company}
-          dataTransparency={intelligence?.dataTransparency}
-        />
+
+        <section aria-label="Financial statements" className="space-y-3">
+          {intelligence ? (
+            <QuarterlyIntelligence quarterly={intelligence.quarterly} />
+          ) : null}
+          <FinancialSummaryCards
+            financials={company.financials}
+            dataTransparency={intelligence?.dataTransparency}
+          />
+          <CompanyTabs
+            company={company}
+            dataTransparency={intelligence?.dataTransparency}
+          />
+        </section>
+
+        {intelligence ? (
+          <section aria-label="Peer comparison">
+            <InstitutionalPeerComparison peers={intelligence.peers} />
+          </section>
+        ) : null}
+
+        <section aria-label="News and events" className="space-y-3">
+          <CompanyNewsPanel news={research.news} />
+          {intelligence?.timeline?.length ? (
+            <CompanyIntelligenceTimeline events={intelligence.timeline} />
+          ) : null}
+        </section>
       </div>
     </PageContainer>
   );

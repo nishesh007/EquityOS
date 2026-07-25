@@ -1,5 +1,10 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import {
+  formatPercentValue,
+  formatRatioValue,
+  roundResearch,
+} from "@/lib/format/research-numbers";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -23,9 +28,9 @@ export function resolveMarketPrice(
 export function formatCurrency(value: number, compact = false): string {
   if (!Number.isFinite(value)) return "N/A";
   if (compact) {
-    if (value >= 1e7) return `₹${(value / 1e7).toFixed(2)}Cr`;
-    if (value >= 1e5) return `₹${(value / 1e5).toFixed(2)}L`;
-    if (value >= 1e3) return `₹${(value / 1e3).toFixed(1)}K`;
+    if (value >= 1e7) return `₹${roundResearch(value / 1e7, 1)}Cr`;
+    if (value >= 1e5) return `₹${roundResearch(value / 1e5, 1)}L`;
+    if (value >= 1e3) return `₹${roundResearch(value / 1e3, 1)}K`;
   }
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -37,35 +42,48 @@ export function formatCurrency(value: number, compact = false): string {
 export function formatNumber(value: number, decimals = 2): string {
   if (!Number.isFinite(value)) return "N/A";
   return new Intl.NumberFormat("en-IN", {
-    minimumFractionDigits: decimals,
+    minimumFractionDigits: 0,
     maximumFractionDigits: decimals,
-  }).format(value);
+  }).format(roundResearch(value, decimals));
 }
 
+/** Percentages — max 1 decimal (institutional research standard). */
 export function formatPercent(value: number, showSign = true): string {
-  if (!Number.isFinite(value)) return "N/A";
-  const sign = showSign && value > 0 ? "+" : "";
-  return `${sign}${value.toFixed(2)}%`;
+  return formatPercentValue(value, { signed: showSign });
 }
 
 export function formatPrice(value: number, decimals = 2): string {
   if (!isValidMarketPrice(value)) return "N/A";
-  return `₹${value.toLocaleString("en-IN", {
+  const rounded = roundResearch(value, decimals);
+  return `₹${rounded.toLocaleString("en-IN", {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   })}`;
 }
 
-/** Format ratio/multiple — shows N/A for invalid values. */
+/** Ratio/multiple — max 2 decimals; N/A for invalid values. */
 export function formatRatio(value: number, suffix = "x"): string {
   if (!Number.isFinite(value) || value <= 0) return "N/A";
-  return `${value.toFixed(1)}${suffix}`;
+  return formatRatioValue(value, suffix);
 }
 
 export function formatVolume(shares: number): string {
   if (!Number.isFinite(shares) || shares < 0) return "N/A";
-  if (shares >= 1e7) return `${(shares / 1e7).toFixed(2)} Cr`;
-  if (shares >= 1e5) return `${(shares / 1e5).toFixed(2)} L`;
-  if (shares >= 1e3) return `${(shares / 1e3).toFixed(2)} K`;
+  if (shares >= 1e7) return `${roundResearch(shares / 1e7, 2)} Cr`;
+  if (shares >= 1e5) return `${roundResearch(shares / 1e5, 2)} L`;
+  if (shares >= 1e3) return `${roundResearch(shares / 1e3, 2)} K`;
   return `${Math.round(shares)}`;
 }
+
+export {
+  formatScore,
+  formatPercentValue,
+  formatRatioValue,
+  formatPriceValue,
+  formatCompactInr,
+  formatByUnit,
+  formatResearchMetric,
+  formatScoreLabel,
+  roundResearch,
+  toFixedTrimmed,
+} from "@/lib/format/research-numbers";

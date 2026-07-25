@@ -1,126 +1,221 @@
+"use client";
+
 import { AskAIButton } from "@/components/ai/AskAIButton";
-import { Card, CardHeader } from "@/components/ui/Card";
-import { ScoreGauge } from "@/components/ui/ScoreGauge";
-import { SignalBadge } from "@/components/ui/SignalBadge";
-import { cn } from "@/lib/utils";
-import type { TechnicalAnalysis } from "@/types";
-import { Activity } from "lucide-react";
+import {
+  ResearchCardSection,
+  ResearchMetricCard,
+  type ResearchCardTone,
+} from "@/components/company/research-cards";
+import {
+  formatPriceValue,
+  formatResearchMetric,
+  formatScore,
+} from "@/lib/format/research-numbers";
+import type { Signal, TechnicalAnalysis, TechnicalIndicator } from "@/types";
+import {
+  Activity,
+  BarChart3,
+  Crosshair,
+  LineChart,
+  Waves,
+  Wind,
+} from "lucide-react";
+import { useMemo, type ComponentType } from "react";
 
 interface TechnicalIndicatorsPanelProps {
   symbol: string;
   technicals: TechnicalAnalysis;
+  support?: number;
+  resistance?: number;
+}
+
+type TechGroupId =
+  | "trend"
+  | "momentum"
+  | "moving-averages"
+  | "volume"
+  | "support"
+  | "resistance"
+  | "volatility"
+  | "other";
+
+interface TechGroup {
+  id: TechGroupId;
+  title: string;
+  icon: ComponentType<{ className?: string }>;
+  match: (name: string) => boolean;
+}
+
+const GROUPS: TechGroup[] = [
+  {
+    id: "trend",
+    title: "Trend",
+    icon: LineChart,
+    match: (n) =>
+      /supertrend|adx|relative strength|52 week/i.test(n) &&
+      !/momentum/i.test(n),
+  },
+  {
+    id: "momentum",
+    title: "Momentum",
+    icon: Waves,
+    match: (n) => /rsi|macd|momentum|histogram|signal line/i.test(n),
+  },
+  {
+    id: "moving-averages",
+    title: "Moving Averages",
+    icon: Activity,
+    match: (n) => /ema|sma/i.test(n),
+  },
+  {
+    id: "volume",
+    title: "Volume",
+    icon: BarChart3,
+    match: (n) => /volume|vwap/i.test(n),
+  },
+  {
+    id: "volatility",
+    title: "Volatility",
+    icon: Wind,
+    match: (n) => /atr|volatility|bollinger/i.test(n),
+  },
+];
+
+function signalTone(signal: Signal): ResearchCardTone {
+  if (signal === "bullish") return "positive";
+  if (signal === "bearish") return "negative";
+  return "technical";
+}
+
+function majoritySignal(indicators: TechnicalIndicator[]): Signal {
+  const counts = { bullish: 0, neutral: 0, bearish: 0 };
+  for (const i of indicators) counts[i.signal] += 1;
+  if (counts.bullish >= counts.bearish && counts.bullish >= counts.neutral) {
+    return "bullish";
+  }
+  if (counts.bearish >= counts.bullish && counts.bearish >= counts.neutral) {
+    return "bearish";
+  }
+  return "neutral";
 }
 
 export function TechnicalIndicatorsPanel({
   symbol,
   technicals,
+  support,
+  resistance,
 }: TechnicalIndicatorsPanelProps) {
-  const total = technicals.indicators.length;
+  const groupCards = useMemo(() => {
+    const used = new Set<string>();
+    const cards = GROUPS.map((group) => {
+      const indicators = technicals.indicators.filter((i) => {
+        if (!group.match(i.name)) return false;
+        used.add(i.name);
+        return true;
+      });
+      return { group, indicators };
+    }).filter((c) => c.indicators.length > 0);
 
-  const distribution = [
-    { label: "Bullish", count: technicals.bullishCount, color: "bg-gain" },
-    { label: "Neutral", count: technicals.neutralCount, color: "bg-text-faint" },
-    { label: "Bearish", count: technicals.bearishCount, color: "bg-loss" },
-  ];
+    const leftover = technicals.indicators.filter((i) => !used.has(i.name));
+    if (leftover.length > 0) {
+      cards.push({
+        group: {
+          id: "other" as TechGroupId,
+          title: "Other Signals",
+          icon: Activity,
+          match: () => true,
+        },
+        indicators: leftover,
+      });
+    }
+
+    return cards;
+  }, [technicals.indicators]);
+
+  const levelCards = [
+    support !== undefined && support > 0
+      ? {
+          id: "support" as const,
+          title: "Support",
+          value: formatPriceValue(support),
+          verdict: "Level",
+          tone: "positive" as ResearchCardTone,
+        }
+      : null,
+    resistance !== undefined && resistance > 0
+      ? {
+          id: "resistance" as const,
+          title: "Resistance",
+          value: formatPriceValue(resistance),
+          verdict: "Level",
+          tone: "negative" as ResearchCardTone,
+        }
+      : null,
+  ].filter(Boolean) as Array<{
+    id: "support" | "resistance";
+    title: string;
+    value: string;
+    verdict: string;
+    tone: ResearchCardTone;
+  }>;
 
   return (
-    <Card padding="lg" className="animate-fade-in-up">
-      <CardHeader
-        title="Technical Indicators"
-        subtitle="Multi-factor signal analysis"
-        action={
-          <div className="flex items-center gap-2">
-            <AskAIButton
-              symbol={symbol}
-              pageContext="company"
-              variant="chip"
-              explainTarget={{
-                type: "score",
-                key: "technical-score",
-                label: "Technical Score",
-                value: technicals.score,
-                symbol,
-                pageContext: "company",
-                detail: `${technicals.bullishCount} bullish, ${technicals.bearishCount} bearish indicators`,
-              }}
-            />
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/10">
-              <Activity className="h-4 w-4 text-accent" />
-            </div>
-          </div>
-        }
+    <ResearchCardSection
+      title="Technical Analysis"
+      subtitle="Indicator groups and key levels"
+      badge={
+        <span className="rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-cyan-400">
+          Score {formatScore(technicals.score)}
+        </span>
+      }
+      actions={
+        <AskAIButton
+          symbol={symbol}
+          pageContext="company"
+          variant="chip"
+          explainTarget={{
+            type: "score",
+            key: "technical-score",
+            label: "Technical Score",
+            value: Math.round(technicals.score),
+            symbol,
+            pageContext: "company",
+            detail: `${technicals.bullishCount} bullish, ${technicals.bearishCount} bearish indicators`,
+          }}
+        />
+      }
+    >
+      <ResearchMetricCard
+        title="Overall"
+        value={formatScore(technicals.score)}
+        verdict={technicals.summary}
+        tone={signalTone(technicals.summary)}
+        icon={Activity}
       />
-
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
-        <div className="flex flex-col items-center lg:w-52 lg:shrink-0">
-          <ScoreGauge score={technicals.score} label="Technical Score" />
-          <div className="mt-3">
-            <SignalBadge signal={technicals.summary} />
-          </div>
-        </div>
-
-        <div className="flex-1">
-          <div className="mb-4 flex h-2 overflow-hidden rounded-full bg-surface-overlay">
-            {distribution.map((d) =>
-              d.count > 0 ? (
-                <div
-                  key={d.label}
-                  className={cn(d.color, "h-full")}
-                  style={{ width: `${(d.count / total) * 100}%` }}
-                  title={`${d.label}: ${d.count}`}
-                />
-              ) : null
-            )}
-          </div>
-          <div className="mb-4 flex items-center gap-4 text-[10px] text-text-muted">
-            {distribution.map((d) => (
-              <span key={d.label} className="flex items-center gap-1.5">
-                <span className={cn("h-2 w-2 rounded-full", d.color)} />
-                {d.label} · {d.count}
-              </span>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-surface-border-subtle bg-surface-border-subtle sm:grid-cols-2">
-            {technicals.indicators.map((indicator) => (
-              <div
-                key={indicator.name}
-                className="flex items-center justify-between gap-3 bg-surface-raised px-3.5 py-2.5 transition-colors hover:bg-surface-hover/40"
-              >
-                <div className="min-w-0">
-                  <p className="text-xs font-medium text-text-primary">
-                    {indicator.name}
-                  </p>
-                  <p className="truncate text-[10px] text-text-muted">
-                    {indicator.detail}
-                  </p>
-                </div>
-                <div className="flex flex-shrink-0 flex-col items-end gap-1">
-                  <AskAIButton
-                    symbol={symbol}
-                    pageContext="company"
-                    variant="chip"
-                    className="mb-1"
-                    explainTarget={{
-                      type: "technical",
-                      key: indicator.name.toLowerCase().replace(/\s+/g, "-"),
-                      label: indicator.name,
-                      value: indicator.value,
-                      symbol,
-                      pageContext: "company",
-                      detail: `${indicator.detail} · Signal: ${indicator.signal}`,
-                    }}
-                  />
-                  <span className="font-mono text-xs tabular-nums text-text-secondary">
-                    {indicator.value}
-                  </span>
-                  <SignalBadge signal={indicator.signal} size="sm" showIcon={false} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </Card>
+      {groupCards.map(({ group, indicators }) => {
+        const signal = majoritySignal(indicators);
+        const primary = indicators[0];
+        return (
+          <ResearchMetricCard
+            key={group.id}
+            title={group.title}
+            value={formatResearchMetric(primary?.value ?? "—")}
+            verdict={signal}
+            tone={signalTone(signal)}
+            icon={group.icon}
+          />
+        );
+      })}
+      {levelCards.map((card) => (
+        <ResearchMetricCard
+          key={card.id}
+          title={card.title}
+          value={card.value}
+          verdict={card.verdict}
+          tone={card.tone}
+          icon={Crosshair}
+        />
+      ))}
+    </ResearchCardSection>
   );
 }

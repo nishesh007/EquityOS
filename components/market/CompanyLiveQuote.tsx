@@ -14,6 +14,8 @@ export interface CompanyLiveQuoteProps {
   size?: "sm" | "md" | "lg";
   align?: "left" | "right";
   showChange?: boolean;
+  /** Hide last-traded / updated lines for dense headers. */
+  compact?: boolean;
   className?: string;
 }
 
@@ -23,6 +25,7 @@ export function CompanyLiveQuote({
   size = "md",
   align = "left",
   showChange = true,
+  compact = false,
   className,
 }: CompanyLiveQuoteProps) {
   const normalized = symbol.toUpperCase();
@@ -47,20 +50,22 @@ export function CompanyLiveQuote({
         showChange={showChange}
         showTimestamp={false}
       />
-      <div className={cn("mt-0.5 flex flex-col gap-1", alignClass)}>
-        <div>
-          <p className="data-label">Last traded</p>
-          <p className="data-timestamp whitespace-pre-line font-mono">
-            {quote.lastTradeTimeIST ?? "—"}
-          </p>
+      {!compact ? (
+        <div className={cn("mt-0.5 flex flex-col gap-1", alignClass)}>
+          <div>
+            <p className="data-label">Last traded</p>
+            <p className="data-timestamp whitespace-pre-line font-mono">
+              {quote.lastTradeTimeIST ?? "—"}
+            </p>
+          </div>
+          <div>
+            <p className="data-label">Updated</p>
+            <p className="data-timestamp whitespace-pre-line font-mono">
+              {quote.lastUpdatedIST ?? "—"}
+            </p>
+          </div>
         </div>
-        <div>
-          <p className="data-label">Updated</p>
-          <p className="data-timestamp whitespace-pre-line font-mono">
-            {quote.lastUpdatedIST ?? "—"}
-          </p>
-        </div>
-      </div>
+      ) : null}
     </div>
   );
 }

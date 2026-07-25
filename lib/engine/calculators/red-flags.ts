@@ -5,6 +5,12 @@
 import type { EnrichedShareholding } from "@/lib/fundamentals/types";
 import type { AnalysisContext } from "@/lib/engine/analysis-context";
 import { amountToCrore, round } from "@/lib/engine/utils";
+import {
+  formatCompactInr,
+  formatPercentValue,
+  formatPriceValue,
+  formatRatioValue,
+} from "@/lib/format/research-numbers";
 import type { RedFlag, SeverityLevel, ValuationAnalysis } from "@/types";
 
 function severity(score: number): SeverityLevel {
@@ -24,7 +30,9 @@ export function detectRedFlags(
   const isBanking = profile.sector === "Banking";
   const debtThreshold = isBanking ? 7 : 0.8;
 
-  const quarterlyMargins = [...profile.quarterlyResults].reverse().map((q) => q.margin);
+  const quarterlyMargins = [...profile.quarterlyResults]
+    .reverse()
+    .map((q) => q.margin);
   if (quarterlyMargins.length >= 2) {
     const marginDelta = quarterlyMargins.at(-1)! - quarterlyMargins[0];
     if (marginDelta < -1.5) {
@@ -32,8 +40,8 @@ export function detectRedFlags(
         key: "falling-margins",
         label: "Falling Margins",
         severity: severity(Math.abs(marginDelta) * 20),
-        description: `Net margins contracted ${round(Math.abs(marginDelta), 1)}% over recent quarters, signalling pricing or cost pressure.`,
-        metric: `${round(quarterlyMargins.at(-1)!)}% net margin`,
+        description: `Net margins contracted ${formatPercentValue(Math.abs(marginDelta))} over recent quarters, signalling pricing or cost pressure.`,
+        metric: `${formatPercentValue(quarterlyMargins.at(-1)!)} net margin`,
       });
     }
   }
@@ -44,8 +52,8 @@ export function detectRedFlags(
       key: "declining-roe",
       label: "Declining ROE",
       severity: severity((annualRoe[0] - annualRoe.at(-1)!) * 10),
-      description: `ROE fell from ${annualRoe[0]}% to ${annualRoe.at(-1)}%, indicating deteriorating capital efficiency.`,
-      metric: `${f.roe}% ROE`,
+      description: `ROE fell from ${formatPercentValue(annualRoe[0])} to ${formatPercentValue(annualRoe.at(-1)!)}, indicating deteriorating capital efficiency.`,
+      metric: `${formatPercentValue(f.roe)} ROE`,
     });
   }
 
@@ -54,8 +62,8 @@ export function detectRedFlags(
       key: "increasing-debt",
       label: "Elevated Debt",
       severity: severity((f.debtToEquity / debtThreshold - 1) * 50 + 30),
-      description: `Debt-to-equity at ${f.debtToEquity}x exceeds the ${debtThreshold}x threshold for ${profile.sector}.`,
-      metric: `${f.debtToEquity}x D/E`,
+      description: `Debt-to-equity at ${formatRatioValue(f.debtToEquity)} exceeds the ${formatRatioValue(debtThreshold)} threshold for ${profile.sector}.`,
+      metric: `${formatRatioValue(f.debtToEquity)} D/E`,
     });
   }
 
@@ -68,8 +76,9 @@ export function detectRedFlags(
       key: "negative-cash-flow",
       label: "Negative Cash Flow",
       severity: "High",
-      description: "Free cash flow is negative, requiring external funding for operations and capex.",
-      metric: `₹${freeCashFlow.toLocaleString("en-IN")} Cr FCF`,
+      description:
+        "Free cash flow is negative, requiring external funding for operations and capex.",
+      metric: `${formatCompactInr(freeCashFlow)} FCF`,
     });
   }
 
@@ -79,19 +88,21 @@ export function detectRedFlags(
       key: "high-receivables",
       label: "High Receivables Risk",
       severity: "Medium",
-      description: `Strong ${f.revenueGrowth}% revenue growth with tight liquidity may indicate receivables buildup.`,
-      metric: `${round(receivablesRatio * 100)}% est. receivables/revenue`,
+      description: `Strong ${formatPercentValue(f.revenueGrowth)} revenue growth with tight liquidity may indicate receivables buildup.`,
+      metric: `${formatPercentValue(receivablesRatio * 100)} est. receivables/revenue`,
     });
   }
 
-  const shareholding: EnrichedShareholding = bundle?.shareholding ?? { ...profile.shareholding };
+  const shareholding: EnrichedShareholding = bundle?.shareholding ?? {
+    ...profile.shareholding,
+  };
   if (shareholding.changes && shareholding.changes.promoter < -1) {
     flags.push({
       key: "equity-dilution",
       label: "Promoter Stake Reduction",
       severity: severity(Math.abs(shareholding.changes.promoter) * 15),
-      description: `Promoter holding reduced ${Math.abs(shareholding.changes.promoter)}% QoQ, signalling potential dilution or stake sale.`,
-      metric: `${shareholding.promoter}% promoter`,
+      description: `Promoter holding reduced ${formatPercentValue(Math.abs(shareholding.changes.promoter))} QoQ, signalling potential dilution or stake sale.`,
+      metric: `${formatPercentValue(shareholding.promoter)} promoter`,
     });
   }
 
@@ -100,18 +111,21 @@ export function detectRedFlags(
       key: "weak-earnings-quality",
       label: "Weak Earnings Quality",
       severity: "Medium",
-      description: `Profit growth (${f.netProfitGrowth}%) significantly exceeds revenue growth (${f.revenueGrowth}%), suggesting non-operating gains.`,
-      metric: `${f.netProfitGrowth}% profit vs ${f.revenueGrowth}% revenue`,
+      description: `Profit growth (${formatPercentValue(f.netProfitGrowth)}) significantly exceeds revenue growth (${formatPercentValue(f.revenueGrowth)}), suggesting non-operating gains.`,
+      metric: `${formatPercentValue(f.netProfitGrowth)} profit vs ${formatPercentValue(f.revenueGrowth)} revenue`,
     });
   }
 
-  if (valuation.overallVerdict === "Overvalued" && valuation.marginOfSafety < -5) {
+  if (
+    valuation.overallVerdict === "Overvalued" &&
+    valuation.marginOfSafety < -5
+  ) {
     flags.push({
       key: "valuation-risk",
       label: "High Valuation Risk",
       severity: severity(Math.abs(valuation.marginOfSafety) * 3),
-      description: `Trading at ${f.pe}x P/E with ${valuation.marginOfSafety}% negative margin of safety vs intrinsic value ₹${valuation.intrinsicValue.toLocaleString("en-IN")}.`,
-      metric: `${f.pe}x P/E`,
+      description: `Trading at ${formatRatioValue(f.pe)} P/E with ${formatPercentValue(valuation.marginOfSafety)} negative margin of safety vs intrinsic value ${formatPriceValue(valuation.intrinsicValue, 0)}.`,
+      metric: `${formatRatioValue(f.pe)} P/E`,
     });
   }
 

@@ -1,65 +1,74 @@
-import { DataTransparencyBar } from "@/components/ui/DataTransparency";
-import { Card, CardHeader } from "@/components/ui/Card";
-import { Sparkline } from "@/components/ui/Sparkline";
-import { cn } from "@/lib/utils";
+import {
+  ResearchCardSection,
+  ResearchMetricCard,
+  type ResearchCardTone,
+} from "@/components/company/research-cards";
+import {
+  formatByUnit,
+} from "@/lib/format/research-numbers";
 import type { DataTransparency, MultiYearTrendAnalysis } from "@/types";
-import { TrendingUp } from "lucide-react";
+import {
+  Activity,
+  CircleDollarSign,
+  Landmark,
+  Percent,
+  TrendingUp,
+  WalletCards,
+} from "lucide-react";
 
 interface MultiYearTrendPanelProps {
   trends: MultiYearTrendAnalysis;
   dataTransparency: DataTransparency;
 }
 
-const directionStyles = {
-  improving: "text-gain",
-  deteriorating: "text-loss",
-  stable: "text-accent",
+const ICONS: Record<string, typeof TrendingUp> = {
+  revenue: TrendingUp,
+  profit: CircleDollarSign,
+  eps: Percent,
+  roe: Activity,
+  roce: Activity,
+  debt: Landmark,
+  margins: Percent,
+  fcf: WalletCards,
 };
 
-export function MultiYearTrendPanel({ trends, dataTransparency }: MultiYearTrendPanelProps) {
+function directionTone(
+  direction: "improving" | "deteriorating" | "stable",
+  key: string
+): ResearchCardTone {
+  if (key === "debt") {
+    if (direction === "deteriorating") return "positive";
+    if (direction === "improving") return "negative";
+    return "neutral";
+  }
+  if (direction === "improving") return "positive";
+  if (direction === "deteriorating") return "negative";
+  return "warning";
+}
+
+export function MultiYearTrendPanel({
+  trends,
+}: MultiYearTrendPanelProps) {
   return (
-    <Card padding="lg" className="animate-fade-in-up">
-      <CardHeader
-        title="Multi-Year Trend Engine"
-        subtitle="5–10 year financial trajectory analysis"
-        action={<TrendingUp className="h-4 w-4 text-accent" />}
-      />
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {trends.metrics.map((metric) => {
-          const isPositive = metric.key === "debt"
-            ? metric.direction === "deteriorating"
-            : metric.direction === "improving";
-          return (
-            <div
-              key={metric.key}
-              className="rounded-lg border border-surface-border-subtle bg-surface-overlay/30 p-4"
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="data-label">{metric.label}</p>
-                  <p className={cn("mt-1 text-[10px] font-medium uppercase tracking-wider", directionStyles[metric.direction])}>
-                    {metric.direction}
-                  </p>
-                </div>
-                <Sparkline
-                  data={metric.points.map((p) => p.value)}
-                  positive={isPositive}
-                  width={58}
-                  height={24}
-                />
-              </div>
-              <p className="mt-2 font-mono text-sm font-semibold text-text-primary tabular-nums">
-                {metric.points.at(-1)?.value ?? "—"}
-                <span className="ml-1 text-[10px] font-normal text-text-faint">{metric.unit}</span>
-              </p>
-              <p className="mt-2 text-[10px] leading-relaxed text-text-faint">
-                {metric.explanation}
-              </p>
-            </div>
-          );
-        })}
-      </div>
-      <DataTransparencyBar transparency={dataTransparency} className="mt-4" compact />
-    </Card>
+    <ResearchCardSection
+      title="Multi-Year Trends"
+      subtitle="5–10 year trajectory"
+    >
+      {trends.metrics.map((metric) => {
+        const latest = metric.points.at(-1)?.value;
+        const value =
+          latest === undefined ? "—" : formatByUnit(latest, metric.unit);
+        return (
+          <ResearchMetricCard
+            key={metric.key}
+            title={metric.label}
+            value={value}
+            verdict={metric.direction}
+            tone={directionTone(metric.direction, metric.key)}
+            icon={ICONS[metric.key] ?? TrendingUp}
+          />
+        );
+      })}
+    </ResearchCardSection>
   );
 }
