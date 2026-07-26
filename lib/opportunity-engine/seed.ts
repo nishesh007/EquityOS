@@ -27,6 +27,8 @@ export interface OpportunityEngineSeedSummary {
   symbolsScanned: number;
   quoteOnlyCount: number;
   enrichedCount: number;
+  rawCandidates: number;
+  pipelinePassed: number;
   durationMs: number;
   lastScannedAt: string | null;
   tradingDate: string | null;
@@ -113,6 +115,8 @@ export async function seedOpportunityEngineToPostgres(): Promise<OpportunityEngi
     symbolsScanned: scan.symbolsScanned,
     quoteOnlyCount: scan.quoteOnlyCount ?? 0,
     enrichedCount: scan.enrichedCount ?? 0,
+    rawCandidates: scan.rawCandidates ?? 0,
+    pipelinePassed: scan.pipelinePassed ?? 0,
     durationMs: Date.now() - started,
     lastScannedAt: storeState.lastScannedAt,
     tradingDate: storeState.tradingDate,
@@ -124,6 +128,8 @@ export async function seedOpportunityEngineToPostgres(): Promise<OpportunityEngi
     [
       `Quote-only rows: ${summary.quoteOnlyCount}`,
       `Enriched rows: ${summary.enrichedCount}`,
+      `Raw candidates: ${summary.rawCandidates}`,
+      `Pipeline passed: ${summary.pipelinePassed}`,
       `Category candidates generated: ${summary.categoryCandidatesGenerated}`,
       `Recommendations generated: ${summary.recommendationsGenerated}`,
       `Saved to PostgreSQL: ${summary.savedToPostgreSQL}`,
@@ -142,6 +148,8 @@ export function formatSeedSummary(summary: OpportunityEngineSeedSummary): string
   return [
     `Quote-only rows: ${summary.quoteOnlyCount}`,
     `Enriched rows: ${summary.enrichedCount}`,
+    `Raw candidates: ${summary.rawCandidates}`,
+    `Pipeline passed: ${summary.pipelinePassed}`,
     `Category candidates generated: ${summary.categoryCandidatesGenerated}`,
     `Recommendations generated: ${summary.recommendationsGenerated}`,
     `Saved to PostgreSQL: ${summary.savedToPostgreSQL}`,

@@ -32,6 +32,8 @@ describe("forced scan weekend bypass", () => {
         symbolsScanned: 100,
         quoteOnlyCount: 5,
         enrichedCount: 95,
+        rawCandidates: 40,
+        pipelinePassed: 40,
         durationMs: 1,
         lastScannedAt: null,
         tradingDate: "2026-07-24",

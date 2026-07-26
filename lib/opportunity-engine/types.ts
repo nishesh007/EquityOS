@@ -341,6 +341,10 @@ export interface ScanResult {
   quoteOnlyCount?: number;
   /** Universe rows with has_live_technicals === 1. */
   enrichedCount?: number;
+  /** Candidates after scanner, before pipeline gate. */
+  rawCandidates?: number;
+  /** Candidates retained after pipeline enrichment/filter. */
+  pipelinePassed?: number;
 }
 
 export interface CategoryScanCandidate {

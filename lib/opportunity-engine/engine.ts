@@ -504,14 +504,23 @@ async function executeScan(force = false): Promise<ScanResult> {
         regimeScore
       );
       totalRawCandidates += rawCandidates.length;
-      // Rank + gate through Trading Pipeline eligibility (no bypass).
-      const pipelineCandidates = enrichCandidatesWithPipeline(rawCandidates, pipeline);
+      // Keep Trading Pipeline gate on normal scans. Forced seed/refresh retains
+      // OE scanner output when the pipeline has zero eligible strategies
+      // (weekend / degraded MI) so enrichment-before-score can persist.
+      const hasEligibleStrategies = pipeline.eligibleStrategies.some(
+        (strategy) => strategy.eligible
+      );
+      const pipelineCandidates = enrichCandidatesWithPipeline(rawCandidates, pipeline, {
+        dropRejected: !(force && !hasEligibleStrategies),
+      });
       totalPipelinePassed += pipelineCandidates.length;
       const sessionCandlesBySymbol = SCALP_SESSION_CATEGORIES.has(category)
         ? await prefetchSessionCandles(
             pipelineCandidates.map((candidate) => candidate.symbol)
           )
         : new Map<string, OhlcBar[]>();
+      const retainWithoutPrimary =
+        Boolean(force && !hasEligibleStrategies);
       const candidates = pipelineCandidates.flatMap((candidate) => {
           const dailyCandles =
             candlesBySymbol.get(candidate.symbol) ?? [];
@@ -526,15 +535,17 @@ async function executeScan(force = false): Promise<ScanResult> {
           if (!execution.primary) {
             // Restore designed OE fallback path: keep pipeline-eligible
             // scanner setups when Strategy Engine returns IGNORE / no primary.
-            // Does not invent trade levels — candidate already passed OE + pipeline gates.
-            if (candidate.pipelineEligible) {
+            // Forced scans with empty eligibility also retain OE setups.
+            if (candidate.pipelineEligible || retainWithoutPrimary) {
               return [
                 {
                   ...candidate,
                   rejectedReasons: [
                     ...(candidate.rejectedReasons ?? []),
                     ...execution.rejectedReasons,
-                    "Strategy Engine returned no actionable signal — retained for Opportunity Engine fallback.",
+                    retainWithoutPrimary && !candidate.pipelineEligible
+                      ? "Forced scan retained Opportunity Engine candidate despite empty pipeline eligibility."
+                      : "Strategy Engine returned no actionable signal — retained for Opportunity Engine fallback.",
                   ],
                 },
               ];
@@ -657,6 +668,8 @@ async function executeScan(force = false): Promise<ScanResult> {
       symbolsScanned,
       quoteOnlyCount: built.quoteOnlyCount,
       enrichedCount: built.enrichedCount,
+      rawCandidates: totalRawCandidates,
+      pipelinePassed: totalPipelinePassed,
     };
   } catch (error) {
     clearScanningOnError();
