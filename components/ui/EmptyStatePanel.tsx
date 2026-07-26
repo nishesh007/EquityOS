@@ -13,7 +13,6 @@ export function EmptyStatePanel({
   source,
   action,
   icon: Icon = Inbox,
-  comingSoon,
   className = "",
 }: {
   title?: string;
@@ -21,8 +20,6 @@ export function EmptyStatePanel({
   source?: string;
   action?: ReactNode;
   icon?: LucideIcon;
-  /** When true, appends Sprint 10D notice. */
-  comingSoon?: boolean;
   className?: string;
 }) {
   return (
@@ -39,11 +36,6 @@ export function EmptyStatePanel({
       <p className="mt-1.5 max-w-sm text-xs leading-relaxed text-text-muted">
         {message}
       </p>
-      {comingSoon ? (
-        <p className="mt-2 rounded-full border border-amber-500/25 bg-amber-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-amber-400">
-          Coming in Sprint 10D
-        </p>
-      ) : null}
       {source ? (
         <p className="mt-2 text-[10px] uppercase tracking-wider text-text-faint">
           Source · {source}

@@ -177,14 +177,14 @@ Use `minmax(0, 1fr)` to prevent grid blowout with long content.
 - **Never show blank screens.** Every route has a `loading.tsx` with skeleton components.
 - Skeletons use `animate-pulse rounded-md bg-surface-overlay/60`.
 - Skeleton cards mirror real card structure with `glass-card p-5`.
-- TradingView chart uses `LazyTradingViewChart` with inline chart skeleton.
+- TradingView / chart workspace uses `LazyChartWorkspace` with an inline chart skeleton.
 - Loading text (e.g. chart resolving) uses `text-xs text-text-muted`.
 
 ---
 
 ## Error States
 
-- Route-level `error.tsx` on `/`, `/portfolio`, `/company/[symbol]`.
+- Route-level `error.tsx` on all primary feature routes (shared `RouteErrorFallback`).
 - Client `ErrorBoundary` component for isolating section failures.
 - Error cards use `border-loss/20` with `AlertTriangle` icon.
 - Error copy: concise, actionable ("Try again" button).

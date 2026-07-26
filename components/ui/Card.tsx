@@ -14,8 +14,6 @@ interface CardProps {
   className?: string;
   padding?: "sm" | "md" | "lg";
   hover?: boolean;
-  /** Translucent glass variant for overlays and hero panels. */
-  glass?: boolean;
   /** Optional 4px left accent strip. */
   accent?: SectionAccent;
 }
@@ -31,7 +29,6 @@ export function Card({
   className,
   padding = "md",
   hover = true,
-  glass = false,
   accent,
 }: CardProps) {
   const tokens = accent ? SECTION_ACCENTS[accent] : null;
@@ -44,9 +41,7 @@ export function Card({
         "transition-[box-shadow,border-color,transform] duration-300 ease-out",
         hover &&
           "hover:-translate-y-0.5 hover:border-surface-border hover:shadow-[var(--eos-shadow-floating)]",
-        glass
-          ? "bg-surface-raised/80 backdrop-blur-xl shadow-glass"
-          : "bg-surface-raised",
+        "bg-surface-raised",
         paddingMap[padding],
         tokens && "relative overflow-hidden pl-5 sm:pl-6",
         className

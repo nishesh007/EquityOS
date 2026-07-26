@@ -28,7 +28,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
   results: LineChart,
@@ -103,7 +103,7 @@ function intelligencePreview(event: EventIntelligenceEvent): string | null {
   return null;
 }
 
-export function EventCard({
+export const EventCard = memo(function EventCard({
   event,
   compact = false,
   onViewDetails,
@@ -243,4 +243,4 @@ export function EventCard({
       </div>
     </article>
   );
-}
+});

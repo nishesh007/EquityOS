@@ -1,6 +1,7 @@
 import { Card, CardHeader } from "@/components/ui/Card";
 import { EmptyStatePanel } from "@/components/ui/EmptyStatePanel";
 import type { MarketRegimeView } from "@/lib/market-intelligence";
+import { formatIstShortDateTime } from "@/lib/market/format";
 import { StatusBadge, statusToneFromLabel } from "@/src/design";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
@@ -15,18 +16,7 @@ import {
 } from "lucide-react";
 
 function formatUpdated(iso: string): string {
-  try {
-    return new Intl.DateTimeFormat("en-IN", {
-      timeZone: "Asia/Kolkata",
-      day: "numeric",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    }).format(new Date(iso));
-  } catch {
-    return iso;
-  }
+  return formatIstShortDateTime(iso);
 }
 
 type MetricTone = {

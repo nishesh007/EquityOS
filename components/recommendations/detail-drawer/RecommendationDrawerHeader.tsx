@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { formatInr } from "./SectionChrome";
 import type {
   RecommendationDetailContext,
   RecommendationDrawerAction,
@@ -38,11 +39,7 @@ const ACTION_STYLES: Record<
 };
 
 function formatPrice(value: number | null): string {
-  if (value == null || !Number.isFinite(value)) return "—";
-  return `₹${value.toLocaleString("en-IN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+  return formatInr(value);
 }
 
 function formatChange(

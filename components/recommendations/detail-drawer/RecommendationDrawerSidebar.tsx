@@ -16,14 +16,11 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
+import { formatInr } from "./SectionChrome";
 import type { RecommendationDetailContext } from "./types";
 
 function formatPrice(value: number | null): string {
-  if (value == null || !Number.isFinite(value)) return "—";
-  return `₹${value.toLocaleString("en-IN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+  return formatInr(value);
 }
 
 function Fact({

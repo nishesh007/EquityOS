@@ -99,11 +99,11 @@ ResearchTerminal → company.priceHistory
         → [Polygon | Mock synthetic OHLC]
 ```
 
-### TradingView Isolation
+### Chart Workspace Isolation
 
-- Controlled by `NEXT_PUBLIC_ENABLE_TRADINGVIEW` (default: `false`)
-- Loaded via `LazyTradingViewChart` with `next/dynamic` + `ssr: false`
-- On CDN failure or symbol resolution failure → `CustomCandlestickChart` from `priceHistory`
+- Primary chart surface is `LazyChartWorkspace` (`next/dynamic`, `ssr: false`)
+- Falls back to local OHLC / candlestick rendering from `priceHistory`
+- Optional TradingView integration remains env-gated when re-enabled
 - No runtime dialogs, no blank charts
 
 ---
@@ -226,12 +226,12 @@ Momentum scores now consume live `changePercent` when available.
 
 | Technique | Implementation |
 |---|---|
-| Lazy loading | `LazyTradingViewChart` via `next/dynamic` |
-| Memoization | `hooks/useMemoizedValue.ts` |
+| Lazy loading | `LazyChartWorkspace`, deferred dashboard widgets, event/recommendation drawers via `next/dynamic` |
+| Memoization | React `useMemo` / `memo` on list-heavy surfaces (events, paper trading rows) |
 | Server caching | `lib/cache/getCached()` with tiered TTL |
 | Request dedup | In-flight promise map in cache layer |
-| Client caching | `hooks/useCachedData.ts` (prepared for polling) |
-| SSR | Server Components for all pages |
+| Live quotes | `hooks/useMarketQuotes.ts` + `DashboardQuoteProvider` |
+| SSR | Server Components for page shells |
 
 ---
 

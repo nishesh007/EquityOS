@@ -1,6 +1,6 @@
 "use client";
 
-import { EventDetailDrawer } from "@/components/events/EventDetailDrawer";
+import dynamic from "next/dynamic";
 import {
   buildEventSeedCatalog,
   toDateKey,
@@ -15,6 +15,14 @@ import {
   useState,
   type ReactNode,
 } from "react";
+
+const EventDetailDrawer = dynamic(
+  () =>
+    import("@/components/events/EventDetailDrawer").then(
+      (mod) => mod.EventDetailDrawer
+    ),
+  { ssr: false }
+);
 
 interface GlobalEventDrawerContextValue {
   openEventById: (eventId: string) => void;

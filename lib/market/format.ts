@@ -76,3 +76,19 @@ export function formatISTClock(date: Date = new Date()): string {
     }) + " IST"
   );
 }
+
+/** Short IST date+time for card “updated” labels (e.g. 26 Jul, 03:18 pm). */
+export function formatIstShortDateTime(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat("en-IN", {
+      timeZone: IST_TIMEZONE,
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}

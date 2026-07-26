@@ -4,7 +4,6 @@ import { DayView } from "@/components/events/views/DayView";
 import { WeekView } from "@/components/events/views/WeekView";
 import { MonthView } from "@/components/events/views/MonthView";
 import { AgendaView } from "@/components/events/views/AgendaView";
-import { EventDetailDrawer } from "@/components/events/EventDetailDrawer";
 import { EventErrorState } from "@/components/events/EventErrorState";
 import { EventFilters } from "@/components/events/EventFilters";
 import { EventHero } from "@/components/events/EventHero";
@@ -18,8 +17,17 @@ import { useEventFilters } from "@/hooks/useEventFilters";
 import { useEventSearch } from "@/hooks/useEventSearch";
 import { createEmptyEventFilters } from "@/src/core/events";
 import type { EventIntelligenceEvent } from "@/types/event";
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState, useTransition } from "react";
+
+const EventDetailDrawer = dynamic(
+  () =>
+    import("@/components/events/EventDetailDrawer").then(
+      (mod) => mod.EventDetailDrawer
+    ),
+  { ssr: false }
+);
 
 interface EventIntelligenceProps {
   events: EventIntelligenceEvent[];

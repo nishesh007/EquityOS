@@ -10,6 +10,7 @@ import {
   PAPER_STRATEGY_LABELS,
 } from "@/lib/paper-trading/format";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { memo } from "react";
 import { TABLE_CLASSES } from "@/src/design/layout/tableStyles";
 
 interface PaperBestWorstTablesProps {
@@ -91,45 +92,11 @@ function CompactTradeTable({
             </thead>
             <tbody>
               {trades.map((trade) => (
-                <tr
+                <CompactTradeRow
                   key={trade.id}
-                  onClick={() => onSelect(trade)}
-                  className="cursor-pointer"
-                >
-                  <td>
-                    <div className="flex flex-col">
-                      <span className="font-medium text-text-primary">
-                        {trade.symbol}
-                      </span>
-                      <span className="line-clamp-1 text-[10px] text-text-faint">
-                        {trade.company}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="text-text-secondary">
-                    {PAPER_STRATEGY_LABELS[trade.strategy]}
-                  </td>
-                  <td
-                    className={cn(
-                      TABLE_CLASSES.numericCell,
-                      "text-right font-medium",
-                      trade.returnPercent >= 0 ? "text-gain" : "text-loss"
-                    )}
-                  >
-                    {formatPercent(trade.returnPercent)}
-                  </td>
-                  <td className="text-text-secondary">
-                    {formatHoldingDuration(trade.holdingMs)}
-                  </td>
-                  <td className={cn(TABLE_CLASSES.numericCell, "text-right")}>
-                    {trade.confidence.toFixed(0)}%
-                  </td>
-                  <td className="text-text-secondary">
-                    {trade.exitReason
-                      ? PAPER_EXIT_REASON_LABELS[trade.exitReason]
-                      : "—"}
-                  </td>
-                </tr>
+                  trade={trade}
+                  onSelect={onSelect}
+                />
               ))}
             </tbody>
           </table>
@@ -138,3 +105,45 @@ function CompactTradeTable({
     </section>
   );
 }
+
+const CompactTradeRow = memo(function CompactTradeRow({
+  trade,
+  onSelect,
+}: {
+  trade: PaperTrade;
+  onSelect: (trade: PaperTrade) => void;
+}) {
+  return (
+    <tr onClick={() => onSelect(trade)} className="cursor-pointer">
+      <td>
+        <div className="flex flex-col">
+          <span className="font-medium text-text-primary">{trade.symbol}</span>
+          <span className="line-clamp-1 text-[10px] text-text-faint">
+            {trade.company}
+          </span>
+        </div>
+      </td>
+      <td className="text-text-secondary">
+        {PAPER_STRATEGY_LABELS[trade.strategy]}
+      </td>
+      <td
+        className={cn(
+          TABLE_CLASSES.numericCell,
+          "text-right font-medium",
+          trade.returnPercent >= 0 ? "text-gain" : "text-loss"
+        )}
+      >
+        {formatPercent(trade.returnPercent)}
+      </td>
+      <td className="text-text-secondary">
+        {formatHoldingDuration(trade.holdingMs)}
+      </td>
+      <td className={cn(TABLE_CLASSES.numericCell, "text-right")}>
+        {trade.confidence.toFixed(0)}%
+      </td>
+      <td className="text-text-secondary">
+        {trade.exitReason ? PAPER_EXIT_REASON_LABELS[trade.exitReason] : "—"}
+      </td>
+    </tr>
+  );
+});

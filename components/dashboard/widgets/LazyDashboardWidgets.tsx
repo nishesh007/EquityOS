@@ -42,46 +42,6 @@ export const LazyMarketBreadthWidget = dynamic(
   }
 );
 
-export const LazyMarketMoversWidget = dynamic(
-  () =>
-    import("./DeferredDashboardWidgets").then((mod) => mod.MarketMoversWidget),
-  {
-    loading: () => (
-      <WidgetSkeleton label="Market Movers" className="h-48" />
-    ),
-  }
-);
-
-export const LazyResultsCalendarWidget = dynamic(
-  () =>
-    import("./DeferredDashboardWidgets").then(
-      (mod) => mod.ResultsCalendarWidget
-    ),
-  {
-    loading: () => (
-      <WidgetSkeleton label="Results Calendar" className="h-48" />
-    ),
-  }
-);
-
-export const LazyMarketNewsWidget = dynamic(
-  () =>
-    import("./DeferredDashboardWidgets").then((mod) => mod.MarketNewsWidget),
-  {
-    loading: () => <WidgetSkeleton label="News" className="h-48" />,
-  }
-);
-
-export const LazyEarningsIntelligenceWidget = dynamic(
-  () =>
-    import("./DeferredDashboardWidgets").then(
-      (mod) => mod.EarningsIntelligenceWidget
-    ),
-  {
-    loading: () => <WidgetSkeleton label="Earnings" className="h-40" />,
-  }
-);
-
 export const LazyComingSoonWidget = dynamic(
   () =>
     import("@/components/dashboard/workspace/ComingSoonWidget").then(
