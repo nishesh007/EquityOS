@@ -337,6 +337,10 @@ export interface ScanResult {
   updated: number;
   durationMs: number;
   symbolsScanned: number;
+  /** Universe rows still without has_live_technicals after OHLC enrich. */
+  quoteOnlyCount?: number;
+  /** Universe rows with has_live_technicals === 1. */
+  enrichedCount?: number;
 }
 
 export interface CategoryScanCandidate {

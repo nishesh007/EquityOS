@@ -25,6 +25,8 @@ export interface OpportunityEngineSeedSummary {
   slotsWithPick: number;
   byStrategy: Record<string, { recommendationCount: number; hasPick: boolean }>;
   symbolsScanned: number;
+  quoteOnlyCount: number;
+  enrichedCount: number;
   durationMs: number;
   lastScannedAt: string | null;
   tradingDate: string | null;
@@ -109,6 +111,8 @@ export async function seedOpportunityEngineToPostgres(): Promise<OpportunityEngi
     slotsWithPick: slots.filter((s) => s.pick != null).length,
     byStrategy,
     symbolsScanned: scan.symbolsScanned,
+    quoteOnlyCount: scan.quoteOnlyCount ?? 0,
+    enrichedCount: scan.enrichedCount ?? 0,
     durationMs: Date.now() - started,
     lastScannedAt: storeState.lastScannedAt,
     tradingDate: storeState.tradingDate,
@@ -118,8 +122,10 @@ export async function seedOpportunityEngineToPostgres(): Promise<OpportunityEngi
 
   console.info(
     [
-      `Recommendations generated: ${summary.recommendationsGenerated}`,
+      `Quote-only rows: ${summary.quoteOnlyCount}`,
+      `Enriched rows: ${summary.enrichedCount}`,
       `Category candidates generated: ${summary.categoryCandidatesGenerated}`,
+      `Recommendations generated: ${summary.recommendationsGenerated}`,
       `Saved to PostgreSQL: ${summary.savedToPostgreSQL}`,
       `Hydrated from PostgreSQL: ${summary.hydratedFromPostgreSQL}`,
       `API returned: ${summary.apiReturned}`,
@@ -134,6 +140,9 @@ export async function seedOpportunityEngineToPostgres(): Promise<OpportunityEngi
 
 export function formatSeedSummary(summary: OpportunityEngineSeedSummary): string {
   return [
+    `Quote-only rows: ${summary.quoteOnlyCount}`,
+    `Enriched rows: ${summary.enrichedCount}`,
+    `Category candidates generated: ${summary.categoryCandidatesGenerated}`,
     `Recommendations generated: ${summary.recommendationsGenerated}`,
     `Saved to PostgreSQL: ${summary.savedToPostgreSQL}`,
     `Hydrated from PostgreSQL: ${summary.hydratedFromPostgreSQL}`,

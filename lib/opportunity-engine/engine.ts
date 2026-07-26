@@ -69,7 +69,8 @@ import {
 import { peekMemoryPersistedData } from "@/lib/opportunity-engine/persistence";
 
 const QUOTE_BATCH_SIZE = 50;
-const METRICS_CONCURRENCY = 8;
+/** Concurrent OHLC technical enrichment across the ~2500 NSE universe. */
+const METRICS_CONCURRENCY = 16;
 
 let scanInFlight: Promise<ScanResult> | null = null;
 
@@ -120,42 +121,75 @@ function buildSymbolContexts(): LiveSymbolContext[] {
   }));
 }
 
+/**
+ * Build universe metrics with technical enrichment BEFORE scoring.
+ * Quote fields first, then concurrent OHLC → enrichMetricsWithTechnicals
+ * so scorers see volume_ratio / has_live_technicals / RSI / EMA / ATR / etc.
+ */
 async function buildQuoteMetricsRows(
   contexts: LiveSymbolContext[],
   quoteMap: Map<string, Awaited<ReturnType<typeof marketDataService.getEnrichedQuote>>>
-): Promise<LiveMetricsRecord[]> {
-  const rows: LiveMetricsRecord[] = [];
+): Promise<{
+  rows: LiveMetricsRecord[];
+  candlesBySymbol: Map<string, OhlcBar[]>;
+  quoteOnlyCount: number;
+  enrichedCount: number;
+}> {
+  const baseRows: LiveMetricsRecord[] = [];
 
   for (const ctx of contexts) {
     const quote = quoteMap.get(ctx.symbol);
     if (!quote) continue;
     const metrics = buildQuoteOnlyMetrics(ctx, quote);
-    if (metrics) rows.push(metrics);
+    if (metrics) baseRows.push(metrics);
   }
 
-  return rows;
+  const candlesBySymbol = new Map<string, OhlcBar[]>();
+  const rows = await mapWithConcurrency(
+    baseRows,
+    METRICS_CONCURRENCY,
+    async (row) => {
+      const symbol = String(row.symbol ?? "").toUpperCase();
+      const ohlc = await getOhlcCandles(symbol, "3M");
+      candlesBySymbol.set(symbol, ohlc.data);
+      return enrichMetricsWithTechnicals(row, ohlc.data);
+    }
+  );
+
+  let enrichedCount = 0;
+  for (const row of rows) {
+    if (row.has_live_technicals === 1) enrichedCount += 1;
+  }
+
+  return {
+    rows,
+    candlesBySymbol,
+    quoteOnlyCount: rows.length - enrichedCount,
+    enrichedCount,
+  };
 }
 
-async function enrichMetricsRows(
+/** Fundamentals only — technicals already applied on the full universe. */
+async function enrichFundamentalsOnRows(
   rows: LiveMetricsRecord[],
-  options?: { fundamentalsSymbols?: Set<string> }
-): Promise<{
-  rows: LiveMetricsRecord[];
-  candlesBySymbol: Map<string, OhlcBar[]>;
-}> {
-  const fundamentalsSymbols = options?.fundamentalsSymbols ?? new Set<string>();
-  const candlesBySymbol = new Map<string, OhlcBar[]>();
-  const enrichedRows = await mapWithConcurrency(rows, METRICS_CONCURRENCY, async (row) => {
-    const symbol = String(row.symbol ?? "").toUpperCase();
-    const ohlc = await getOhlcCandles(symbol, "3M");
-    candlesBySymbol.set(symbol, ohlc.data);
-    let enriched = await enrichMetricsWithTechnicals(row, ohlc.data);
-    if (fundamentalsSymbols.has(symbol)) {
-      enriched = await enrichMetricsWithFundamentals(enriched, symbol);
-    }
-    return enriched;
+  fundamentalsSymbols: Set<string>
+): Promise<LiveMetricsRecord[]> {
+  if (fundamentalsSymbols.size === 0) return rows;
+
+  const bySymbol = new Map(
+    rows.map((row) => [String(row.symbol ?? "").toUpperCase(), row] as const)
+  );
+  const targets = [...fundamentalsSymbols].filter((symbol) => bySymbol.has(symbol));
+
+  await mapWithConcurrency(targets, METRICS_CONCURRENCY, async (symbol) => {
+    const row = bySymbol.get(symbol);
+    if (!row) return;
+    bySymbol.set(symbol, await enrichMetricsWithFundamentals(row, symbol));
   });
-  return { rows: enrichedRows, candlesBySymbol };
+
+  return rows.map(
+    (row) => bySymbol.get(String(row.symbol ?? "").toUpperCase()) ?? row
+  );
 }
 
 /** Session (1D) bars only for scalp strategy categories — avoids doubling OHLC cost for the full shortlist. */
@@ -373,16 +407,19 @@ async function executeScan(force = false): Promise<ScanResult> {
 
     const symbols = contexts.map((ctx) => ctx.symbol);
     const quoteMap = await fetchQuotesInBatches(symbols);
-    const quoteMetricsRows = await buildQuoteMetricsRows(contexts, quoteMap);
-    const symbolsScanned = quoteMetricsRows.length;
+    const built = await buildQuoteMetricsRows(contexts, quoteMap);
+    const candlesBySymbol = built.candlesBySymbol;
+    let metricsRows = built.rows;
+    const symbolsScanned = metricsRows.length;
 
     const stageCounts = emptyPipelineStageCounts();
     stageCounts.universeReceived = contexts.length;
     stageCounts.quotesReceived = quoteMap.size;
     stageCounts.metricsScanned = symbolsScanned;
 
-    const categoryShortlists = scanLiveMetrics(quoteMetricsRows);
-    const swingPrefetchSymbols = selectSwingPrefetchSymbols(quoteMetricsRows);
+    // Score only after technical enrichment (no quote-only shortlist gate).
+    const categoryShortlists = scanLiveMetrics(metricsRows);
+    const swingPrefetchSymbols = selectSwingPrefetchSymbols(metricsRows);
     const shortlistSymbols = [
       ...new Set([
         ...collectShortlistSymbols(categoryShortlists),
@@ -391,13 +428,11 @@ async function executeScan(force = false): Promise<ScanResult> {
     ];
     stageCounts.shortlisted = shortlistSymbols.length;
 
-    const shortlistRows = quoteMetricsRows.filter((row) =>
-      shortlistSymbols.includes(String(row.symbol ?? "").toUpperCase())
-    );
-
     logPipelineStages("after-market-data", stageCounts, {
       quoteMapSize: quoteMap.size,
-      metricsRows: quoteMetricsRows.length,
+      metricsRows: metricsRows.length,
+      quoteOnlyCount: built.quoteOnlyCount,
+      enrichedCount: built.enrichedCount,
     });
 
     const fundamentalsSymbols = new Set<string>([
@@ -408,18 +443,15 @@ async function executeScan(force = false): Promise<ScanResult> {
       ),
     ]);
 
-    const enrichment = await enrichMetricsRows(shortlistRows, {
-      fundamentalsSymbols,
-    });
-    const enrichedRows = enrichment.rows;
+    metricsRows = await enrichFundamentalsOnRows(metricsRows, fundamentalsSymbols);
 
     const metricsBySymbol = new Map<string, LiveMetricsRecord>();
-    for (const row of enrichedRows) {
+    for (const row of metricsRows) {
       const symbol = String(row.symbol ?? "").toUpperCase();
       if (symbol) metricsBySymbol.set(symbol, row);
     }
 
-    const fullRescan = scanLiveMetrics(enrichedRows);
+    const fullRescan = scanLiveMetrics(metricsRows);
 
     let totalAdded = 0;
     let totalRemoved = 0;
@@ -447,7 +479,7 @@ async function executeScan(force = false): Promise<ScanResult> {
         : new Map<string, OhlcBar[]>();
       const candidates = pipelineCandidates.flatMap((candidate) => {
           const dailyCandles =
-            enrichment.candlesBySymbol.get(candidate.symbol) ?? [];
+            candlesBySymbol.get(candidate.symbol) ?? [];
           const sessionCandles =
             sessionCandlesBySymbol.get(candidate.symbol) ?? dailyCandles;
           const execution = executeOpportunityStrategies(
@@ -588,6 +620,8 @@ async function executeScan(force = false): Promise<ScanResult> {
       updated: totalUpdated,
       durationMs,
       symbolsScanned,
+      quoteOnlyCount: built.quoteOnlyCount,
+      enrichedCount: built.enrichedCount,
     };
   } catch (error) {
     clearScanningOnError();
