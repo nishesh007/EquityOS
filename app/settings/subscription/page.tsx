@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { SettingsShell, PlanCard, LicenseCard, PermissionBadge } from "@/components/saas";
+import { SubscriptionSubNav } from "@/components/billing";
 import { Card } from "@/components/ui/Card";
 import {
   useSubscription,
@@ -33,8 +35,17 @@ export default function SubscriptionSettingsPage() {
   return (
     <SettingsShell
       title="Subscription"
-      description="Plan entitlements, license metadata, and usage limits. Payments arrive in Sprint 12B."
+      description="Plan entitlements, license metadata, and commercial billing."
     >
+      <SubscriptionSubNav />
+      <div className="mb-4">
+        <Link
+          href="/settings/subscription/billing"
+          className="text-xs font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          Open billing dashboard →
+        </Link>
+      </div>
       <div className="grid gap-4 lg:grid-cols-3">
         <Card padding="lg" className="lg:col-span-2" accent="violet">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -140,7 +151,7 @@ export default function SubscriptionSettingsPage() {
 
       <div className="mt-4">
         <h2 className="mb-3 text-sm font-semibold text-text-primary">
-          Plans (entitlement only — no payment)
+          Plans — use Billing to pay, or change entitlement here
         </h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {plans.map((p) => (

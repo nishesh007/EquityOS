@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { AppShell } from "@/components/layout/AppShell";
 import { SaasProvider } from "@/lib/saas";
+import { BillingProvider } from "@/lib/billing";
 import { ThemeProvider } from "@/src/design/theme/ThemeProvider";
 import "@/styles/globals.css";
 
@@ -33,7 +34,9 @@ export default function RootLayout({
       <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}>
         <ThemeProvider>
           <SaasProvider>
-            <AppShell>{children}</AppShell>
+            <BillingProvider>
+              <AppShell>{children}</AppShell>
+            </BillingProvider>
           </SaasProvider>
         </ThemeProvider>
       </body>
