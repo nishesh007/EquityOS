@@ -25,6 +25,7 @@ import {
   Scale,
   FileBarChart,
   SlidersHorizontal,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +34,7 @@ const navItems = [
   { label: "Research", href: "/research", icon: BookOpen, exact: true },
   { label: "Market Internals", href: "/research/market-internals", icon: Activity },
   { label: "Strategy Optimization", href: "/research/optimization", icon: SlidersHorizontal },
+  { label: "AI Strategy Builder", href: "/research/strategy-builder", icon: Sparkles },
   { label: "Markets", href: "/markets", icon: LineChart },
   { label: "Portfolio", href: "/portfolio", icon: Briefcase },
   { label: "Watchlist", href: "/watchlist", icon: Star },
@@ -49,7 +51,7 @@ const navItems = [
 const bottomNavItems = [
   { label: "Screener", href: "/screener", icon: TrendingUp },
   { label: "Research Confidence", href: "/validation", icon: ShieldCheck },
-  { label: "Settings", href: "/settings", icon: Settings },
+  { label: "Settings", href: "/settings/profile", icon: Settings },
 ];
 
 function isNavActive(pathname: string, href: string, exact?: boolean): boolean {

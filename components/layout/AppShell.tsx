@@ -6,18 +6,16 @@ import { GlobalEventDrawerProvider } from "@/components/events/GlobalEventDrawer
 import { RecommendationDetailDrawerProvider } from "@/components/recommendations/detail-drawer";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TopNav } from "@/components/layout/TopNav";
+import { UpgradeBanner } from "@/components/saas";
 import { onUiEvent } from "@/src/design/command/uiBus";
 import { Breadcrumbs } from "@/src/design/navigation/BreadcrumbTrail";
 import { PageTransition } from "@/src/design/navigation/PageTransition";
 import { StatusBar } from "@/src/design/navigation/StatusBar";
 import { matchShortcut } from "@/src/design/workspace/workspaceShortcuts";
 import dynamic from "next/dynamic";
+import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
-/**
- * Command palette / help / notifications — client-only, idle-deferred.
- * Keeps root layout compile free of the TerminalExperience graph.
- */
 const TerminalExperience = dynamic(
   () =>
     import("@/src/design/command/TerminalExperience").then(
@@ -26,11 +24,23 @@ const TerminalExperience = dynamic(
   { ssr: false }
 );
 
+const AUTH_PREFIXES = [
+  "/login",
+  "/signup",
+  "/forgot-password",
+  "/reset-password",
+  "/verify-email",
+];
+
 interface AppShellProps {
   children: ReactNode;
 }
 
 export function AppShell({ children }: AppShellProps) {
+  const pathname = usePathname();
+  const isAuthRoute = AUTH_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`)
+  );
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [terminalReady, setTerminalReady] = useState(false);
   const sidebarWidth = sidebarCollapsed ? "68px" : "240px";
@@ -46,8 +56,8 @@ export function AppShell({ children }: AppShellProps) {
     return () => mobile.removeEventListener("change", onChange);
   }, []);
 
-  // Sprint 10C.R6/R7 — Ctrl+B and the palette action toggle the sidebar.
   useEffect(() => {
+    if (isAuthRoute) return;
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target && /^(input|textarea|select)$/i.test(target.tagName)) return;
@@ -64,10 +74,10 @@ export function AppShell({ children }: AppShellProps) {
       window.removeEventListener("keydown", onKeyDown);
       offToggle();
     };
-  }, []);
+  }, [isAuthRoute]);
 
-  // Defer TerminalExperience chunk until after first paint / idle.
   useEffect(() => {
+    if (isAuthRoute) return;
     let cancelled = false;
     const enable = () => {
       if (!cancelled) setTerminalReady(true);
@@ -84,7 +94,15 @@ export function AppShell({ children }: AppShellProps) {
       }
       window.clearTimeout(timeout);
     };
-  }, []);
+  }, [isAuthRoute]);
+
+  if (isAuthRoute) {
+    return (
+      <div className="min-h-screen bg-surface">
+        <ErrorBoundary title="Authentication failed">{children}</ErrorBoundary>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
@@ -100,6 +118,9 @@ export function AppShell({ children }: AppShellProps) {
               className="relative z-0 mt-14 min-h-[calc(100vh-3.5rem)] pb-8 transition-[margin-left] duration-300"
               style={{ marginLeft: sidebarWidth }}
             >
+              <div className="px-4 pt-3 md:px-6">
+                <UpgradeBanner />
+              </div>
               <Breadcrumbs />
               <ErrorBoundary title="Application section failed">
                 <PageTransition>{children}</PageTransition>

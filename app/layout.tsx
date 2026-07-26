@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { AppShell } from "@/components/layout/AppShell";
-// Deep import — avoid compiling the entire @/src/design barrel on every page.
+import { SaasProvider } from "@/lib/saas";
 import { ThemeProvider } from "@/src/design/theme/ThemeProvider";
 import "@/styles/globals.css";
 
@@ -32,7 +32,9 @@ export default function RootLayout({
     <html lang="en" className="dark" data-scroll-behavior="smooth">
       <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}>
         <ThemeProvider>
-          <AppShell>{children}</AppShell>
+          <SaasProvider>
+            <AppShell>{children}</AppShell>
+          </SaasProvider>
         </ThemeProvider>
       </body>
     </html>

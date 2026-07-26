@@ -3,7 +3,24 @@ import type { NextRequest } from "next/server";
 import { checkRateLimit, rateLimitHeaders } from "@/lib/platform/rate-limit";
 import { getClientIp } from "@/lib/platform/security";
 
+const PROTECTED_PREFIXES = ["/settings"];
+
 export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  if (PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+    const session = request.cookies.get("equityos_session")?.value;
+    if (!session) {
+      const login = new URL("/login", request.url);
+      login.searchParams.set("next", pathname);
+      return NextResponse.redirect(login);
+    }
+  }
+
+  if (!pathname.startsWith("/api/ai")) {
+    return NextResponse.next();
+  }
+
   const ip = getClientIp(request);
   const result = checkRateLimit(`api-ai:${ip}`);
 
@@ -22,5 +39,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/api/ai/:path*"],
+  matcher: ["/api/ai/:path*", "/settings", "/settings/:path*"],
 };
