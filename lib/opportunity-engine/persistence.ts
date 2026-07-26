@@ -1,22 +1,40 @@
 /**
- * Opportunity Engine persistence — disk locally, in-memory on Vercel/serverless.
- * Never mkdir under process.cwd() when disk persistence is disabled.
+ * Opportunity Engine persistence.
+ *
+ * Read order (startup / cold start):
+ * 1. PostgreSQL when DATABASE_URL is set (primary)
+ * 2. Read-only project `.data/` (local / existing file — never mkdir on Vercel)
+ * 3. Serverless scratch under os.tmpdir() (/tmp on Vercel)
+ * 4. Process memory (warm L1 after any successful hydrate)
+ *
+ * Write order:
+ * 1. Process memory
+ * 2. PostgreSQL when DATABASE_URL is set (primary durable)
+ * 3. /tmp scratch on serverless
+ * 4. Project `.data/` only when disk persistence is enabled (never /var/task)
  */
 
 import fs from "node:fs";
 import path from "node:path";
-import { isDiskPersistenceEnabled } from "@/lib/platform/runtime-fs";
+import type { Pool } from "pg";
+import {
+  diskPersistenceMode,
+  getServerlessScratchDir,
+  isDiskPersistenceEnabled,
+  isServerlessRuntime,
+} from "@/lib/platform/runtime-fs";
 import type {
   OpportunityDaySnapshot,
   OpportunityEngineState,
 } from "@/lib/opportunity-engine/types";
 
-const DATA_DIR = path.join(process.cwd(), ".data", "opportunity-engine");
-const STATE_FILE = path.join(DATA_DIR, "state.json");
-const ARCHIVE_DIR = path.join(DATA_DIR, "archive");
-const LOCK_FILE = path.join(DATA_DIR, "scheduler.lock");
+const PROJECT_DATA_DIR = path.join(process.cwd(), ".data", "opportunity-engine");
+const PROJECT_STATE_FILE = path.join(PROJECT_DATA_DIR, "state.json");
+const PROJECT_ARCHIVE_DIR = path.join(PROJECT_DATA_DIR, "archive");
+const PROJECT_LOCK_FILE = path.join(PROJECT_DATA_DIR, "scheduler.lock");
 
 const LOCK_TTL_MS = 5 * 60 * 1000;
+const PG_STATE_KEY = "opportunity-engine:state";
 
 export interface PersistedEngineData {
   state: OpportunityEngineState;
@@ -29,97 +47,351 @@ export interface SchedulerLock {
   expiresAt: string;
 }
 
-/** Process-local fallbacks when the deployment FS is read-only. */
+export type PersistenceSource =
+  | "memory"
+  | "postgres"
+  | "project-data"
+  | "scratch"
+  | "none";
+
+/** Process-local L1 cache. */
 let memoryData: PersistedEngineData | null = null;
+let memorySource: PersistenceSource = "none";
 const memoryArchives = new Map<string, OpportunityDaySnapshot>();
 let memoryLock: SchedulerLock | null = null;
+let remoteHydratePromise: Promise<PersistedEngineData | null> | null = null;
+let remoteHydrated = false;
+let loggedPersistenceMode = false;
+let pgPool: Pool | null = null;
+let pgSchemaReady: Promise<void> | null = null;
 
-function ensureDataDir(): boolean {
-  // Hard gate — never mkdir on Vercel/read-only hosts (ENOENT under /var/task).
-  if (!isDiskPersistenceEnabled()) return false;
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    return true;
-  } catch (error) {
-    console.warn(
-      "[OpportunityEngine] Disk persistence unavailable; using memory:",
-      error instanceof Error ? error.message : error
-    );
-    return false;
-  }
+function scratchDir(): string | null {
+  return getServerlessScratchDir("opportunity-engine");
 }
 
-function ensureArchiveDir(): boolean {
-  if (!ensureDataDir()) return false;
-  try {
-    if (!fs.existsSync(ARCHIVE_DIR)) {
-      fs.mkdirSync(ARCHIVE_DIR, { recursive: true });
-    }
-    return true;
-  } catch {
-    return false;
-  }
+function scratchStateFile(): string | null {
+  const dir = scratchDir();
+  return dir ? path.join(dir, "state.json") : null;
 }
 
-function archiveFilePath(tradingDate: string): string {
-  return path.join(ARCHIVE_DIR, `${tradingDate}.json`);
+function scratchArchiveDir(): string | null {
+  const dir = scratchDir();
+  return dir ? path.join(dir, "archive") : null;
 }
 
-export function loadPersistedData(): PersistedEngineData | null {
-  if (!isDiskPersistenceEnabled()) {
-    return memoryData;
-  }
+function scratchLockFile(): string | null {
+  const dir = scratchDir();
+  return dir ? path.join(dir, "scheduler.lock") : null;
+}
 
-  if (!ensureDataDir()) return memoryData;
+function databaseUrl(): string | undefined {
+  const url = process.env.DATABASE_URL?.trim();
+  return url || undefined;
+}
 
+export function isPostgresPersistenceEnabled(): boolean {
+  return Boolean(databaseUrl());
+}
+
+function logPersistenceModeOnce(): void {
+  if (loggedPersistenceMode) return;
+  loggedPersistenceMode = true;
+  console.info(
+    `[OpportunityEngine] persistence primary=${
+      isPostgresPersistenceEnabled() ? "postgres" : diskPersistenceMode()
+    }` +
+      ` diskWrites=${isDiskPersistenceEnabled()}` +
+      ` serverless=${isServerlessRuntime()}` +
+      ` scratch=${scratchDir() ?? "none"}`
+  );
+}
+
+function parsePersisted(raw: string): PersistedEngineData | null {
   try {
-    if (!fs.existsSync(STATE_FILE)) return memoryData;
-    const raw = fs.readFileSync(STATE_FILE, "utf8");
     const parsed = JSON.parse(raw) as PersistedEngineData;
-    if (!parsed?.state) return memoryData;
-    memoryData = {
+    if (!parsed?.state) return null;
+    return {
       state: parsed.state,
       firstDetectedMap: parsed.firstDetectedMap ?? {},
     };
-    return memoryData;
   } catch {
-    return memoryData;
+    return null;
   }
 }
 
-export function persistEngineData(data: PersistedEngineData): void {
-  memoryData = data;
-
-  if (!isDiskPersistenceEnabled()) return;
-  if (!ensureDataDir()) return;
-
+function readJsonFile(file: string): PersistedEngineData | null {
   try {
-    const payload = JSON.stringify(data, null, 2);
-    fs.writeFileSync(STATE_FILE, payload, "utf8");
+    if (!fs.existsSync(file)) return null;
+    return parsePersisted(fs.readFileSync(file, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function writeJsonFile(file: string, data: unknown): boolean {
+  try {
+    const dir = path.dirname(file);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(file, JSON.stringify(data, null, 2), "utf8");
+    return true;
   } catch (error) {
     console.warn(
-      "[OpportunityEngine] persistEngineData disk write failed:",
+      "[OpportunityEngine] write failed:",
+      file,
       error instanceof Error ? error.message : error
     );
+    return false;
+  }
+}
+
+function ensureProjectDataDir(): boolean {
+  if (!isDiskPersistenceEnabled()) return false;
+  try {
+    if (!fs.existsSync(PROJECT_DATA_DIR)) {
+      fs.mkdirSync(PROJECT_DATA_DIR, { recursive: true });
+    }
+    return true;
+  } catch (error) {
+    console.warn(
+      "[OpportunityEngine] Disk persistence unavailable:",
+      error instanceof Error ? error.message : error
+    );
+    return false;
+  }
+}
+
+function ensureProjectArchiveDir(): boolean {
+  if (!ensureProjectDataDir()) return false;
+  try {
+    if (!fs.existsSync(PROJECT_ARCHIVE_DIR)) {
+      fs.mkdirSync(PROJECT_ARCHIVE_DIR, { recursive: true });
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function getPgPool(): Promise<Pool | null> {
+  const url = databaseUrl();
+  if (!url) return null;
+  if (!pgPool) {
+    const { Pool } = await import("pg");
+    pgPool = new Pool({
+      connectionString: url,
+      max: 2,
+      idleTimeoutMillis: 10_000,
+      connectionTimeoutMillis: 8_000,
+    });
+  }
+  return pgPool;
+}
+
+async function ensurePgSchema(pool: Pool): Promise<void> {
+  if (!pgSchemaReady) {
+    pgSchemaReady = pool
+      .query(
+        `
+        CREATE TABLE IF NOT EXISTS equityos_kv (
+          key text PRIMARY KEY,
+          value jsonb NOT NULL,
+          updated_at timestamptz NOT NULL DEFAULT now()
+        )
+      `
+      )
+      .then(() => undefined)
+      .catch((error) => {
+        pgSchemaReady = null;
+        throw error;
+      });
+  }
+  await pgSchemaReady;
+}
+
+async function loadFromPostgres(): Promise<PersistedEngineData | null> {
+  const pool = await getPgPool();
+  if (!pool) return null;
+  try {
+    await ensurePgSchema(pool);
+    const result = await pool.query<{ value: PersistedEngineData }>(
+      `SELECT value FROM equityos_kv WHERE key = $1 LIMIT 1`,
+      [PG_STATE_KEY]
+    );
+    const value = result.rows[0]?.value;
+    if (!value?.state) return null;
+    return {
+      state: value.state,
+      firstDetectedMap: value.firstDetectedMap ?? {},
+    };
+  } catch (error) {
+    console.warn(
+      "[OpportunityEngine] Postgres load failed:",
+      error instanceof Error ? error.message : error
+    );
+    return null;
+  }
+}
+
+async function saveToPostgres(data: PersistedEngineData): Promise<void> {
+  const pool = await getPgPool();
+  if (!pool) return;
+  try {
+    await ensurePgSchema(pool);
+    await pool.query(
+      `
+      INSERT INTO equityos_kv (key, value, updated_at)
+      VALUES ($1, $2::jsonb, now())
+      ON CONFLICT (key) DO UPDATE
+        SET value = EXCLUDED.value,
+            updated_at = now()
+      `,
+      [PG_STATE_KEY, JSON.stringify(data)]
+    );
+  } catch (error) {
+    console.warn(
+      "[OpportunityEngine] Postgres save failed:",
+      error instanceof Error ? error.message : error
+    );
+  }
+}
+
+function adoptPersisted(
+  data: PersistedEngineData,
+  source: PersistenceSource
+): PersistedEngineData {
+  memoryData = data;
+  memorySource = source;
+  return data;
+}
+
+/** Sync fallbacks only — never touches Postgres. */
+function hydrateLocalLayers(): PersistedEngineData | null {
+  logPersistenceModeOnce();
+
+  if (memoryData?.state) {
+    return memoryData;
+  }
+
+  // Read-only project `.data` (no mkdir). Used for local development;
+  // on Vercel the file is typically absent.
+  const fromProject = readJsonFile(PROJECT_STATE_FILE);
+  if (fromProject) {
+    return adoptPersisted(fromProject, "project-data");
+  }
+
+  const scratch = scratchStateFile();
+  if (scratch) {
+    const fromScratch = readJsonFile(scratch);
+    if (fromScratch) {
+      return adoptPersisted(fromScratch, "scratch");
+    }
+  }
+
+  return memoryData;
+}
+
+/**
+ * Sync peek used by legacy callers. Prefer ensurePersistedDataHydrated().
+ * Does not await Postgres — may return null on cold serverless until async hydrate.
+ */
+export function loadPersistedData(): PersistedEngineData | null {
+  return hydrateLocalLayers();
+}
+
+/**
+ * Startup / request hydrate — Postgres primary when DATABASE_URL is set.
+ */
+export async function ensurePersistedDataHydrated(): Promise<PersistedEngineData | null> {
+  logPersistenceModeOnce();
+
+  if (memoryData?.state && (remoteHydrated || !isPostgresPersistenceEnabled())) {
+    return memoryData;
+  }
+
+  if (isPostgresPersistenceEnabled()) {
+    if (!remoteHydratePromise) {
+      remoteHydratePromise = loadFromPostgres().finally(() => {
+        remoteHydratePromise = null;
+      });
+    }
+    const remote = await remoteHydratePromise;
+    remoteHydrated = true;
+    if (remote?.state) {
+      adoptPersisted(remote, "postgres");
+      const scratch = scratchStateFile();
+      if (scratch) writeJsonFile(scratch, remote);
+      console.info(
+        `[OpportunityEngine] hydrated from postgres candidates=${Object.values(
+          remote.state.categories ?? {}
+        ).reduce((n, list) => n + list.length, 0)} lastScannedAt=${
+          remote.state.lastScannedAt ?? "null"
+        }`
+      );
+      return memoryData;
+    }
+  }
+
+  const local = hydrateLocalLayers();
+  if (local?.state) {
+    console.info(
+      `[OpportunityEngine] hydrated from ${memorySource} lastScannedAt=${
+        local.state.lastScannedAt ?? "null"
+      }`
+    );
+  }
+  return local;
+}
+
+export function persistEngineData(data: PersistedEngineData): void {
+  adoptPersisted(data, memorySource === "none" ? "memory" : memorySource);
+  if (memorySource === "none" || memorySource === "postgres") {
+    memorySource = isPostgresPersistenceEnabled() ? "postgres" : "memory";
+  }
+  logPersistenceModeOnce();
+
+  const candidateCount = Object.values(data.state.categories ?? {}).reduce(
+    (n, list) => n + list.length,
+    0
+  );
+  console.info(
+    `[OpportunityEngine] persist store candidates=${candidateCount}` +
+      ` recommendations=${data.state.recommendations?.length ?? 0}` +
+      ` scanCount=${data.state.scanCount ?? 0}` +
+      ` lastScannedAt=${data.state.lastScannedAt ?? "null"}` +
+      ` primary=${isPostgresPersistenceEnabled() ? "postgres" : diskPersistenceMode()}`
+  );
+
+  // Primary durable write.
+  if (isPostgresPersistenceEnabled()) {
+    void saveToPostgres(data);
+  }
+
+  // Never write under /var/task — scratch only when project disk is disabled.
+  const scratch = scratchStateFile();
+  if (scratch) {
+    writeJsonFile(scratch, data);
+  }
+
+  if (isDiskPersistenceEnabled() && ensureProjectDataDir()) {
+    writeJsonFile(PROJECT_STATE_FILE, data);
   }
 }
 
 export function archiveOpportunitySnapshot(snapshot: OpportunityDaySnapshot): void {
   memoryArchives.set(snapshot.tradingDate, snapshot);
 
-  if (!isDiskPersistenceEnabled()) return;
-  if (!ensureArchiveDir()) return;
-
-  try {
-    const payload = JSON.stringify(snapshot, null, 2);
-    fs.writeFileSync(archiveFilePath(snapshot.tradingDate), payload, "utf8");
-  } catch (error) {
-    console.warn(
-      "[OpportunityEngine] archive disk write failed:",
-      error instanceof Error ? error.message : error
+  if (isDiskPersistenceEnabled() && ensureProjectArchiveDir()) {
+    writeJsonFile(
+      path.join(PROJECT_ARCHIVE_DIR, `${snapshot.tradingDate}.json`),
+      snapshot
     );
+  }
+
+  const archiveDir = scratchArchiveDir();
+  if (archiveDir) {
+    writeJsonFile(path.join(archiveDir, `${snapshot.tradingDate}.json`), snapshot);
   }
 }
 
@@ -127,21 +399,29 @@ export function loadArchivedOpportunitySnapshot(
   tradingDate: string
 ): OpportunityDaySnapshot | null {
   const mem = memoryArchives.get(tradingDate);
-  if (!isDiskPersistenceEnabled()) return mem ?? null;
+  if (mem) return mem;
 
-  if (!ensureArchiveDir()) return mem ?? null;
+  const candidates = [
+    path.join(PROJECT_ARCHIVE_DIR, `${tradingDate}.json`),
+    scratchArchiveDir()
+      ? path.join(scratchArchiveDir()!, `${tradingDate}.json`)
+      : null,
+  ].filter(Boolean) as string[];
 
-  try {
-    const file = archiveFilePath(tradingDate);
-    if (!fs.existsSync(file)) return mem ?? null;
-    const raw = fs.readFileSync(file, "utf8");
-    const parsed = JSON.parse(raw) as OpportunityDaySnapshot;
-    if (!parsed?.tradingDate || !parsed?.state) return mem ?? null;
-    memoryArchives.set(tradingDate, parsed);
-    return parsed;
-  } catch {
-    return mem ?? null;
+  for (const file of candidates) {
+    try {
+      if (!fs.existsSync(file)) continue;
+      const parsed = JSON.parse(
+        fs.readFileSync(file, "utf8")
+      ) as OpportunityDaySnapshot;
+      if (!parsed?.tradingDate || !parsed?.state) continue;
+      memoryArchives.set(tradingDate, parsed);
+      return parsed;
+    } catch {
+      /* try next */
+    }
   }
+  return null;
 }
 
 export function loadFirstDetectedMap(): Map<string, string> {
@@ -150,40 +430,31 @@ export function loadFirstDetectedMap(): Map<string, string> {
   return new Map(Object.entries(data.firstDetectedMap));
 }
 
+function readLockFile(file: string | null): SchedulerLock | null {
+  if (!file || !fs.existsSync(file)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(file, "utf8")) as SchedulerLock;
+  } catch {
+    return null;
+  }
+}
+
 export function acquireSchedulerLock(): boolean {
   const now = Date.now();
 
-  if (!isDiskPersistenceEnabled()) {
-    if (memoryLock && new Date(memoryLock.expiresAt).getTime() > now) {
-      return memoryLock.pid === process.pid;
-    }
-    memoryLock = {
-      pid: process.pid,
-      acquiredAt: new Date(now).toISOString(),
-      expiresAt: new Date(now + LOCK_TTL_MS).toISOString(),
-    };
-    return true;
+  if (memoryLock && new Date(memoryLock.expiresAt).getTime() > now) {
+    return memoryLock.pid === process.pid;
   }
 
-  if (!ensureDataDir()) {
-    // Fall back to memory lock if disk cannot be prepared.
-    memoryLock = {
-      pid: process.pid,
-      acquiredAt: new Date(now).toISOString(),
-      expiresAt: new Date(now + LOCK_TTL_MS).toISOString(),
-    };
-    return true;
-  }
+  const lockFiles = [
+    isDiskPersistenceEnabled() ? PROJECT_LOCK_FILE : null,
+    scratchLockFile(),
+  ].filter(Boolean) as string[];
 
-  if (fs.existsSync(LOCK_FILE)) {
-    try {
-      const existing = JSON.parse(fs.readFileSync(LOCK_FILE, "utf8")) as SchedulerLock;
-      const expiresAt = new Date(existing.expiresAt).getTime();
-      if (expiresAt > now) {
-        return existing.pid === process.pid;
-      }
-    } catch {
-      // Stale or corrupt lock — overwrite below.
+  for (const file of lockFiles) {
+    const existing = readLockFile(file);
+    if (existing && new Date(existing.expiresAt).getTime() > now) {
+      return existing.pid === process.pid;
     }
   }
 
@@ -192,52 +463,30 @@ export function acquireSchedulerLock(): boolean {
     acquiredAt: new Date(now).toISOString(),
     expiresAt: new Date(now + LOCK_TTL_MS).toISOString(),
   };
+  memoryLock = lock;
 
-  try {
-    fs.writeFileSync(LOCK_FILE, JSON.stringify(lock, null, 2), "utf8");
-    memoryLock = lock;
-    return true;
-  } catch {
-    memoryLock = lock;
-    return true;
+  if (isDiskPersistenceEnabled() && ensureProjectDataDir()) {
+    writeJsonFile(PROJECT_LOCK_FILE, lock);
   }
+  const scratch = scratchLockFile();
+  if (scratch) writeJsonFile(scratch, lock);
+
+  return true;
 }
 
 export function refreshSchedulerLock(): void {
   const now = Date.now();
+  if (!memoryLock || memoryLock.pid !== process.pid) return;
+  memoryLock = {
+    ...memoryLock,
+    expiresAt: new Date(now + LOCK_TTL_MS).toISOString(),
+  };
 
-  if (!isDiskPersistenceEnabled()) {
-    if (!memoryLock || memoryLock.pid !== process.pid) return;
-    memoryLock = {
-      ...memoryLock,
-      expiresAt: new Date(now + LOCK_TTL_MS).toISOString(),
-    };
-    return;
+  if (isDiskPersistenceEnabled() && fs.existsSync(PROJECT_LOCK_FILE)) {
+    writeJsonFile(PROJECT_LOCK_FILE, memoryLock);
   }
-
-  if (!fs.existsSync(LOCK_FILE)) {
-    if (memoryLock?.pid === process.pid) {
-      memoryLock = {
-        ...memoryLock,
-        expiresAt: new Date(now + LOCK_TTL_MS).toISOString(),
-      };
-    }
-    return;
-  }
-
-  try {
-    const existing = JSON.parse(fs.readFileSync(LOCK_FILE, "utf8")) as SchedulerLock;
-    if (existing.pid !== process.pid) return;
-    const lock: SchedulerLock = {
-      pid: process.pid,
-      acquiredAt: existing.acquiredAt,
-      expiresAt: new Date(now + LOCK_TTL_MS).toISOString(),
-    };
-    fs.writeFileSync(LOCK_FILE, JSON.stringify(lock, null, 2), "utf8");
-    memoryLock = lock;
-  } catch {
-    // Ignore lock refresh failures.
-  }
+  const scratch = scratchLockFile();
+  if (scratch) writeJsonFile(scratch, memoryLock);
 }
 
 export function releaseSchedulerLock(): void {
@@ -245,40 +494,47 @@ export function releaseSchedulerLock(): void {
     memoryLock = null;
   }
 
-  if (!isDiskPersistenceEnabled()) return;
-  if (!fs.existsSync(LOCK_FILE)) return;
-
-  try {
-    const existing = JSON.parse(fs.readFileSync(LOCK_FILE, "utf8")) as SchedulerLock;
-    if (existing.pid === process.pid) {
-      fs.unlinkSync(LOCK_FILE);
+  for (const file of [PROJECT_LOCK_FILE, scratchLockFile()]) {
+    if (!file || !fs.existsSync(file)) continue;
+    try {
+      const existing = readLockFile(file);
+      if (existing?.pid === process.pid) fs.unlinkSync(file);
+    } catch {
+      /* ignore */
     }
-  } catch {
-    // Ignore release failures.
   }
 }
 
 export function isSchedulerLockHolder(): boolean {
   const now = Date.now();
-
-  if (!isDiskPersistenceEnabled()) {
-    if (!memoryLock) return false;
+  if (memoryLock) {
     if (new Date(memoryLock.expiresAt).getTime() <= now) return false;
     return memoryLock.pid === process.pid;
   }
 
-  if (!fs.existsSync(LOCK_FILE)) {
-    if (!memoryLock) return false;
-    if (new Date(memoryLock.expiresAt).getTime() <= now) return false;
-    return memoryLock.pid === process.pid;
-  }
-
-  try {
-    const existing = JSON.parse(fs.readFileSync(LOCK_FILE, "utf8")) as SchedulerLock;
-    const expiresAt = new Date(existing.expiresAt).getTime();
-    if (expiresAt <= now) return false;
+  for (const file of [PROJECT_LOCK_FILE, scratchLockFile()]) {
+    const existing = readLockFile(file);
+    if (!existing) continue;
+    if (new Date(existing.expiresAt).getTime() <= now) continue;
     return existing.pid === process.pid;
-  } catch {
-    return false;
   }
+  return false;
+}
+
+export function peekMemoryPersistedData(): PersistedEngineData | null {
+  return memoryData;
+}
+
+export function getPersistenceSource(): PersistenceSource {
+  return memorySource;
+}
+
+/** Test helper — clears L1 so cold-start hydrate can be simulated. */
+export function resetPersistenceMemoryForTests(): void {
+  memoryData = null;
+  memorySource = "none";
+  remoteHydrated = false;
+  remoteHydratePromise = null;
+  memoryArchives.clear();
+  memoryLock = null;
 }

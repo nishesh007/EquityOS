@@ -61,6 +61,12 @@ import { executeOpportunityStrategies } from "@/lib/opportunity-engine/strategy-
 import type { OhlcBar } from "@/lib/providers/types";
 import { getTradingPipelineResult } from "@/services/marketIntelligence";
 import type { TradingPipelineResult } from "@/src/modules/tradingPipeline";
+import {
+  countCategoryCandidates,
+  emptyPipelineStageCounts,
+  logPipelineStages,
+} from "@/lib/opportunity-engine/pipeline-telemetry";
+import { peekMemoryPersistedData } from "@/lib/opportunity-engine/persistence";
 
 const QUOTE_BATCH_SIZE = 50;
 const METRICS_CONCURRENCY = 8;
@@ -310,6 +316,10 @@ async function executeScan(force = false): Promise<ScanResult> {
 
   const current = getOpportunityEngineState();
   if (current.isFrozen && !force) {
+    logPipelineStages("scan-skipped-frozen", emptyPipelineStageCounts(), {
+      reason: "frozen",
+      stored: countCategoryCandidates(current.categories),
+    });
     return {
       state: current,
       added: 0,
@@ -323,6 +333,11 @@ async function executeScan(force = false): Promise<ScanResult> {
   // Do not mutate opportunity lists on weekends/holidays (non-session days).
   // Post-close freeze still runs on trading days after 15:30.
   if (!isTradingDay() && getMarketStatus() !== "post_close") {
+    logPipelineStages("scan-skipped-non-trading-day", emptyPipelineStageCounts(), {
+      reason: "non_trading_day",
+      stored: countCategoryCandidates(current.categories),
+      memoryPopulated: Boolean(peekMemoryPersistedData()?.state),
+    });
     return {
       state: current,
       added: 0,
@@ -354,6 +369,11 @@ async function executeScan(force = false): Promise<ScanResult> {
     const quoteMetricsRows = await buildQuoteMetricsRows(contexts, quoteMap);
     const symbolsScanned = quoteMetricsRows.length;
 
+    const stageCounts = emptyPipelineStageCounts();
+    stageCounts.universeReceived = contexts.length;
+    stageCounts.quotesReceived = quoteMap.size;
+    stageCounts.metricsScanned = symbolsScanned;
+
     const categoryShortlists = scanLiveMetrics(quoteMetricsRows);
     const swingPrefetchSymbols = selectSwingPrefetchSymbols(quoteMetricsRows);
     const shortlistSymbols = [
@@ -362,10 +382,16 @@ async function executeScan(force = false): Promise<ScanResult> {
         ...swingPrefetchSymbols,
       ]),
     ];
+    stageCounts.shortlisted = shortlistSymbols.length;
 
     const shortlistRows = quoteMetricsRows.filter((row) =>
       shortlistSymbols.includes(String(row.symbol ?? "").toUpperCase())
     );
+
+    logPipelineStages("after-market-data", stageCounts, {
+      quoteMapSize: quoteMap.size,
+      metricsRows: quoteMetricsRows.length,
+    });
 
     const fundamentalsSymbols = new Set<string>([
       ...swingPrefetchSymbols,
@@ -391,6 +417,9 @@ async function executeScan(force = false): Promise<ScanResult> {
     let totalAdded = 0;
     let totalRemoved = 0;
     let totalUpdated = 0;
+    let totalRawCandidates = 0;
+    let totalPipelinePassed = 0;
+    let totalStoredCandidates = 0;
 
     for (const category of OPPORTUNITY_CATEGORIES) {
       const rawCandidates = buildCategoryCandidates(
@@ -400,8 +429,10 @@ async function executeScan(force = false): Promise<ScanResult> {
         quoteMap,
         regimeScore
       );
+      totalRawCandidates += rawCandidates.length;
       // Rank + gate through Trading Pipeline eligibility (no bypass).
       const pipelineCandidates = enrichCandidatesWithPipeline(rawCandidates, pipeline);
+      totalPipelinePassed += pipelineCandidates.length;
       const sessionCandlesBySymbol = SCALP_SESSION_CATEGORIES.has(category)
         ? await prefetchSessionCandles(
             pipelineCandidates.map((candidate) => candidate.symbol)
@@ -497,6 +528,7 @@ async function executeScan(force = false): Promise<ScanResult> {
       totalAdded += added;
       totalRemoved += removed;
       totalUpdated += updated;
+      totalStoredCandidates += candidates.length;
     }
 
     const durationMs = Date.now() - start;
@@ -527,8 +559,23 @@ async function executeScan(force = false): Promise<ScanResult> {
       }
     }
 
+    const finalState = getOpportunityEngineState();
+    stageCounts.rawCandidates = totalRawCandidates;
+    stageCounts.pipelinePassed = totalPipelinePassed;
+    stageCounts.scoredStored = totalStoredCandidates;
+    stageCounts.recommendationsStored =
+      finalState.recommendations?.length ??
+      countCategoryCandidates(finalState.categories);
+    logPipelineStages("after-scan-store", stageCounts, {
+      memoryPopulated: Boolean(peekMemoryPersistedData()?.state),
+      added: totalAdded,
+      removed: totalRemoved,
+      updated: totalUpdated,
+      durationMs,
+    });
+
     return {
-      state: getOpportunityEngineState(),
+      state: finalState,
       added: totalAdded,
       removed: totalRemoved,
       updated: totalUpdated,

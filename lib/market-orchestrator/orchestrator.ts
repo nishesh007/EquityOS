@@ -6,7 +6,7 @@
 
 import { cache } from "react";
 import { fetchUpcomingResults } from "@/services/marketData";
-import { getOpportunityEngineState } from "@/lib/opportunity-engine/store";
+import { ensureOpportunityEngineHydrated } from "@/lib/opportunity-engine/store";
 import type { MarketIntelligenceSnapshot } from "@/lib/market-intelligence";
 import { selectRecommendationsWithFallback } from "@/lib/recommendations";
 import type { SharedRecommendation } from "@/lib/recommendations";
@@ -47,16 +47,16 @@ export const loadDashboardAboveFold = cache(async function loadDashboardAboveFol
 });
 
 /**
- * Persisted OE recommendations — sync store + cached MI only.
+ * Persisted OE recommendations — hydrate store + cached MI only.
  * Never awaits OE scan, MI pipeline, portfolio, watchlist, or heatmap.
  */
 export const loadDashboardRecommendations = cache(
   async function loadDashboardRecommendations(): Promise<SharedRecommendation[]> {
     const intelligence =
       getCachedMarketIntelligenceSnapshot() ?? resolveCachedIntelligence();
-    // Sync store peek — never ensure()/scan.
+    const state = await ensureOpportunityEngineHydrated();
     return selectRecommendationsWithFallback(
-      getOpportunityEngineState(),
+      state,
       toSharedSnapshot(intelligence)
     );
   }

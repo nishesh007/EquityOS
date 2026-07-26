@@ -18,12 +18,14 @@ import {
   type OpportunityStatusSnapshot,
   type OpportunityUiPhase,
 } from "@/lib/opportunity-engine/ui-phase";
+import type { RecommendationFreshness } from "@/lib/opportunity-engine/recommendation-freshness";
 import { useEffect, useState } from "react";
 
 async function fetchDashboardRefresh(): Promise<{
   slots: InstitutionalStrategySlot[] | null;
   recommendations: SharedRecommendation[];
   status: OpportunityStatusSnapshot | null;
+  freshness: RecommendationFreshness | null;
 }> {
   const [recsRes, statusRes] = await Promise.all([
     fetch("/api/recommendations", { cache: "no-store" }),
@@ -32,16 +34,34 @@ async function fetchDashboardRefresh(): Promise<{
 
   let recommendations: SharedRecommendation[] = [];
   let slots: InstitutionalStrategySlot[] | null = null;
+  let freshness: RecommendationFreshness | null = null;
 
   if (recsRes.ok) {
     const json = (await recsRes.json()) as {
       recommendations?: SharedRecommendation[];
       strategyDashboard?: InstitutionalStrategySlot[];
+      freshness?: RecommendationFreshness;
+      generatedAt?: string | null;
+      marketDate?: string | null;
+      stale?: boolean;
+      staleReason?: string | null;
     };
     recommendations = json.recommendations ?? [];
     if (Array.isArray(json.strategyDashboard)) {
       slots = json.strategyDashboard;
     }
+    freshness =
+      json.freshness ??
+      (json.generatedAt || json.stale
+        ? {
+            generatedAt: json.generatedAt ?? null,
+            marketDate: json.marketDate ?? null,
+            stale: Boolean(json.stale),
+            staleReason: json.staleReason ?? null,
+            displayMessage: null,
+            hasRecommendations: recommendations.length > 0,
+          }
+        : null);
   }
 
   let status: OpportunityStatusSnapshot | null = null;
@@ -62,7 +82,7 @@ async function fetchDashboardRefresh(): Promise<{
     };
   }
 
-  return { slots, recommendations, status };
+  return { slots, recommendations, status, freshness };
 }
 
 function kickBackgroundScan(): void {
@@ -80,11 +100,16 @@ function filledCount(slots: InstitutionalStrategySlot[]): number {
 export function HydratedAiOpportunities({
   initialSlots,
   initialStatus,
+  initialFreshness = null,
 }: {
   initialSlots: InstitutionalStrategySlot[];
   initialStatus: OpportunityStatusSnapshot;
+  initialFreshness?: RecommendationFreshness | null;
 }) {
   const [slots, setSlots] = useState(initialSlots);
+  const [freshness, setFreshness] = useState<RecommendationFreshness | null>(
+    initialFreshness
+  );
   const [status, setStatus] = useState<OpportunityStatusSnapshot>(() => ({
     ...initialStatus,
     recommendationCount: filledCount(initialSlots),
@@ -94,6 +119,7 @@ export function HydratedAiOpportunities({
 
   useEffect(() => {
     setSlots(initialSlots);
+    setFreshness(initialFreshness);
     setStatus({
       isScanning: initialStatus.isScanning,
       lastScannedAt: initialStatus.lastScannedAt,
@@ -104,6 +130,7 @@ export function HydratedAiOpportunities({
     });
   }, [
     initialSlots,
+    initialFreshness,
     initialStatus.isScanning,
     initialStatus.lastScannedAt,
     initialStatus.scanCount,
@@ -129,8 +156,15 @@ export function HydratedAiOpportunities({
       // Single delayed refresh — not polling during initial load.
       refreshTimer = setTimeout(() => {
         void fetchDashboardRefresh().then(
-          ({ slots: nextSlots, recommendations, status: nextStatus }) => {
+          ({
+            slots: nextSlots,
+            recommendations,
+            status: nextStatus,
+            freshness: nextFreshness,
+          }) => {
             if (cancelled) return;
+
+            if (nextFreshness) setFreshness(nextFreshness);
 
             if (nextSlots) {
               setSlots(nextSlots);
@@ -192,5 +226,11 @@ export function HydratedAiOpportunities({
     recommendationCount: filledCount(slots),
   });
 
-  return <AiOpportunitiesWidget slots={slots} phase={phase} />;
+  return (
+    <AiOpportunitiesWidget
+      slots={slots}
+      phase={phase}
+      freshness={freshness}
+    />
+  );
 }

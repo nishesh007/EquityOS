@@ -10,9 +10,11 @@ import { MAX_SCAN_HISTORY } from "@/lib/opportunity-engine/types";
 import { getTradingDateKey, isMarketOpen } from "@/lib/market/session";
 import {
   archiveOpportunitySnapshot,
+  ensurePersistedDataHydrated,
   loadPersistedData,
   persistEngineData,
 } from "@/lib/opportunity-engine/persistence";
+import { countCategoryCandidates } from "@/lib/opportunity-engine/pipeline-telemetry";
 import {
   replayRecommendation,
   syncRecommendationMemory,
@@ -64,13 +66,7 @@ function persistNow(): void {
   recordPersistenceWrite();
 }
 
-function hydrateFromDisk(): void {
-  if (hydrated) return;
-  hydrated = true;
-
-  const persisted = loadPersistedData();
-  if (!persisted) return;
-
+function applyPersistedData(persisted: NonNullable<ReturnType<typeof loadPersistedData>>): void {
   const migratedTradingDate = resolveStoredTradingDate(persisted.state);
 
   state = {
@@ -104,6 +100,37 @@ function hydrateFromDisk(): void {
     };
     persistNow();
   }
+}
+
+function storeLooksEmpty(): boolean {
+  return (
+    countCategoryCandidates(state.categories) === 0 &&
+    (state.recommendations?.length ?? 0) === 0
+  );
+}
+
+function hydrateFromDisk(): void {
+  if (hydrated) return;
+  hydrated = true;
+
+  const persisted = loadPersistedData();
+  if (!persisted) return;
+  applyPersistedData(persisted);
+}
+
+/**
+ * Ensure sync + remote persistence layers are loaded into the in-memory store.
+ * Call from API / RSC before reading recommendations on serverless.
+ */
+export async function ensureOpportunityEngineHydrated(): Promise<OpportunityEngineState> {
+  const persisted = await ensurePersistedDataHydrated();
+  if (!hydrated) {
+    hydrateFromDisk();
+  } else if (persisted && storeLooksEmpty() && countCategoryCandidates(persisted.state.categories) > 0) {
+    applyPersistedData(persisted);
+  }
+  ensureTradingDayLifecycle();
+  return getOpportunityEngineState();
 }
 
 /**

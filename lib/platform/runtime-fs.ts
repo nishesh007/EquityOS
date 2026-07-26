@@ -1,16 +1,17 @@
 /**
  * Runtime filesystem policy — Sprint production hardening.
  *
- * Vercel / serverless filesystems are read-only under `/var/task`.
- * Local development may still use `.data/` and `data/` folders.
- *
- * Never mkdir/write project directories when disk persistence is disabled.
+ * Vercel / serverless: never mkdir/write under process.cwd() (/var/task).
+ * Local development: project `.data/` and `data/` remain writable.
+ * Serverless scratch: os.tmpdir() is writable and used for best-effort state.
  */
+
+import os from "node:os";
+import path from "node:path";
 
 function cwdLooksReadOnly(): boolean {
   try {
     const cwd = process.cwd().replace(/\\/g, "/");
-    // AWS Lambda / Vercel serverless unpack root.
     if (cwd === "/var/task" || cwd.startsWith("/var/task/")) return true;
   } catch {
     /* ignore */
@@ -18,30 +19,32 @@ function cwdLooksReadOnly(): boolean {
   return false;
 }
 
+export function isServerlessRuntime(): boolean {
+  if (process.env.VERCEL === "1" || Boolean(process.env.VERCEL)) return true;
+  if (process.env.VERCEL_ENV) return true;
+  if (process.env.AWS_LAMBDA_FUNCTION_NAME) return true;
+  if (process.env.LAMBDA_TASK_ROOT) return true;
+  return cwdLooksReadOnly();
+}
+
 /** True when local disk read/write under process.cwd() is allowed. */
 export function isDiskPersistenceEnabled(): boolean {
   if (process.env.EQUITYOS_FORCE_DISK_PERSISTENCE === "1") return true;
   if (process.env.EQUITYOS_DISABLE_DISK_PERSISTENCE === "1") return false;
-
-  // Vercel sets VERCEL=1 (and often VERCEL_ENV).
-  if (process.env.VERCEL === "1" || Boolean(process.env.VERCEL)) return false;
-  if (process.env.VERCEL_ENV) return false;
-
-  // Generic serverless / Lambda markers.
-  if (process.env.AWS_LAMBDA_FUNCTION_NAME) return false;
-  if (process.env.LAMBDA_TASK_ROOT) return false;
-
-  // Hard read-only deploy root (covers env-var edge cases).
-  if (cwdLooksReadOnly()) return false;
-
-  // Production hosts must not assume a writable project tree.
-  // Local `next start` can opt back in with EQUITYOS_FORCE_DISK_PERSISTENCE=1.
-  if (process.env.NODE_ENV === "production") return false;
-
+  if (isServerlessRuntime()) return false;
   return true;
 }
 
-/** Human-readable reason for logs / health. */
+/**
+ * Writable scratch directory for serverless (Vercel `/tmp`, Lambda `/tmp`).
+ * Null when project-disk persistence is enabled (use cwd `.data` instead).
+ */
+export function getServerlessScratchDir(...segments: string[]): string | null {
+  if (isDiskPersistenceEnabled()) return null;
+  return path.join(os.tmpdir(), "equityos", ...segments);
+}
+
+/** Human-readable persistence mode for logs / health. */
 export function diskPersistenceMode(): "disk" | "memory" {
   return isDiskPersistenceEnabled() ? "disk" : "memory";
 }

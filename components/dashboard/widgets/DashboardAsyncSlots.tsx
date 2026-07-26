@@ -33,7 +33,7 @@ import {
 } from "@/lib/market-orchestrator/dashboardContext";
 import { getCachedMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
 import {
-  peekOpportunityEngineState,
+  loadOpportunityEngineState,
   toSharedSnapshot,
 } from "@/services/opportunityEngine";
 
@@ -65,23 +65,29 @@ export async function MarketPulseSlot() {
  * never from SSR (avoids Node event-loop "Waiting for shell").
  */
 export async function AiOpportunitiesSlot() {
-  const state = peekOpportunityEngineState();
+  const state = await loadOpportunityEngineState();
   const marketIntelligence =
     getCachedMarketIntelligenceSnapshot() ?? resolveCachedIntelligence();
   const slots = selectInstitutionalStrategyDashboard(
     state,
     toSharedSnapshot(marketIntelligence)
   );
+  const recommendationCount = slots.filter(
+    (slot) => (slot.recommendationCount ?? 0) > 0 || slot.pick != null
+  ).length;
+  const { buildRecommendationFreshness } = await import(
+    "@/lib/opportunity-engine/recommendation-freshness"
+  );
+  const freshness = buildRecommendationFreshness(state, recommendationCount);
   return (
     <HydratedAiOpportunities
       initialSlots={slots}
+      initialFreshness={freshness}
       initialStatus={{
         isScanning: state.isScanning,
         lastScannedAt: state.lastScannedAt,
         scanCount: state.scanCount,
-        recommendationCount: slots.filter(
-          (slot) => (slot.recommendationCount ?? 0) > 0 || slot.pick != null
-        ).length,
+        recommendationCount,
       }}
     />
   );

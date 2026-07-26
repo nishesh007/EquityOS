@@ -234,16 +234,23 @@ export function queueOpportunitySchedulerBootstrap(): void {
   const delay = schedulerDelayMs();
   schedule(() => {
     const started = Date.now();
-    void import("@/lib/opportunity-engine/scheduler")
-      .then(({ startOpportunityScheduler }) => {
+    void (async () => {
+      try {
+        const { ensurePersistedDataHydrated } = await import(
+          "@/lib/opportunity-engine/persistence"
+        );
+        await ensurePersistedDataHydrated();
+        const { startOpportunityScheduler } = await import(
+          "@/lib/opportunity-engine/scheduler"
+        );
         startOpportunityScheduler();
         console.info(
           `[EquityOS bootstrap] opportunity scheduler started after ${Date.now() - started}ms (delay ${delay}ms)`
         );
-      })
-      .catch((error) => {
+      } catch (error) {
         console.error("[EquityOS bootstrap] scheduler failed:", error);
-      });
+      }
+    })();
   }, delay);
 }
 

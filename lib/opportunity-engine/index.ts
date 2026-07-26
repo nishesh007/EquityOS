@@ -12,7 +12,18 @@ export {
 export { ensureTradingDayLifecycle } from "@/lib/opportunity-engine/store";
 export {
   loadArchivedOpportunitySnapshot,
+  ensurePersistedDataHydrated,
+  peekMemoryPersistedData,
+  getPersistenceSource,
+  isPostgresPersistenceEnabled,
+  resetPersistenceMemoryForTests,
 } from "@/lib/opportunity-engine/persistence";
+export { ensureOpportunityEngineHydrated } from "@/lib/opportunity-engine/store";
+export {
+  buildRecommendationFreshness,
+  isMarketClosedForRecommendations,
+} from "@/lib/opportunity-engine/recommendation-freshness";
+export type { RecommendationFreshness } from "@/lib/opportunity-engine/recommendation-freshness";
 export {
   listActiveRecommendationCandidates,
   listRecommendationHistory,

@@ -13,7 +13,7 @@ import {
   selectInstitutionalStrategyDashboard,
 } from "@/lib/recommendations";
 import {
-  peekOpportunityEngineState,
+  loadOpportunityEngineState,
   toSharedSnapshot,
 } from "@/services/opportunityEngine";
 import { getCachedMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
@@ -58,7 +58,7 @@ export default async function AIInsightsPage({
   const resolved = (await searchParams) ?? {};
   const selectedStrategy = parseInstitutionalStrategyId(resolved.strategy);
 
-  const state = peekOpportunityEngineState();
+  const state = await loadOpportunityEngineState();
   // Cache-only MI for shared snapshot fallback — never runs trading pipeline.
   const marketIntelligence = getCachedMarketIntelligenceSnapshot();
   const shared = toSharedSnapshot(marketIntelligence);

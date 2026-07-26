@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   diskPersistenceMode,
   isDiskPersistenceEnabled,
+  isServerlessRuntime,
 } from "@/lib/platform/runtime-fs";
 
 describe("runtime-fs disk persistence gate", () => {
@@ -29,18 +30,19 @@ describe("runtime-fs disk persistence gate", () => {
     process.env.VERCEL = "1";
     process.env.NODE_ENV = "development";
     delete process.env.EQUITYOS_FORCE_DISK_PERSISTENCE;
+    expect(isServerlessRuntime()).toBe(true);
     expect(isDiskPersistenceEnabled()).toBe(false);
     expect(diskPersistenceMode()).toBe("memory");
   });
 
-  it("disables disk in production by default", () => {
+  it("allows disk in local production (non-Vercel)", () => {
     delete process.env.VERCEL;
     delete process.env.VERCEL_ENV;
     delete process.env.AWS_LAMBDA_FUNCTION_NAME;
     delete process.env.LAMBDA_TASK_ROOT;
     delete process.env.EQUITYOS_FORCE_DISK_PERSISTENCE;
     process.env.NODE_ENV = "production";
-    expect(isDiskPersistenceEnabled()).toBe(false);
+    expect(isDiskPersistenceEnabled()).toBe(true);
   });
 
   it("allows force override on Vercel", () => {

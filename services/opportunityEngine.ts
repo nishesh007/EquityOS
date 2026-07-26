@@ -1,4 +1,7 @@
-import { getOpportunityEngineState } from "@/lib/opportunity-engine/store";
+import {
+  ensureOpportunityEngineHydrated,
+  getOpportunityEngineState,
+} from "@/lib/opportunity-engine/store";
 import type {
   OpportunityEngineState,
   ScanResult,
@@ -14,6 +17,11 @@ import {
 import {
   getCachedMarketIntelligenceSnapshot,
 } from "@/services/marketIntelligence";
+import {
+  countCategoryCandidates,
+  logPipelineStages,
+} from "@/lib/opportunity-engine/pipeline-telemetry";
+import { peekMemoryPersistedData } from "@/lib/opportunity-engine/persistence";
 
 export interface OpportunityEngineBundle {
   state: OpportunityEngineState;
@@ -42,18 +50,23 @@ export function toSharedSnapshot(
  * Safe for SSR Suspense slots and dashboard first paint.
  */
 export async function ensureOpportunityEngineState(): Promise<OpportunityEngineState> {
+  return ensureOpportunityEngineHydrated();
+}
+
+/** Sync store peek — dashboard SSR / Suspense loaders. Prefer async ensure on serverless. */
+export function peekOpportunityEngineState(): OpportunityEngineState {
   return getOpportunityState();
 }
 
-/** Sync store peek — dashboard SSR / Suspense loaders. */
-export function peekOpportunityEngineState(): OpportunityEngineState {
-  return getOpportunityState();
+/** Async peek that hydrates memory/scratch/Postgres before reading. */
+export async function loadOpportunityEngineState(): Promise<OpportunityEngineState> {
+  return ensureOpportunityEngineHydrated();
 }
 
 export async function fetchSharedRecommendationsFresh(
   limit?: number
 ): Promise<SharedRecommendation[]> {
-  const state = getOpportunityState();
+  const state = await ensureOpportunityEngineHydrated();
   // Cache-only MI — never run trading pipeline on recommendation reads.
   const { resolveCachedIntelligence } = await import(
     "@/lib/market-orchestrator/dashboardContext"
@@ -64,6 +77,20 @@ export async function fetchSharedRecommendationsFresh(
     state,
     toSharedSnapshot(marketIntelligence)
   );
+  logPipelineStages("api-recommendations", {
+    universeReceived: state.universeSize,
+    quotesReceived: 0,
+    metricsScanned: state.lastScanMetrics?.symbolsScanned ?? 0,
+    shortlisted: 0,
+    rawCandidates: countCategoryCandidates(state.categories),
+    pipelinePassed: countCategoryCandidates(state.categories),
+    scoredStored: countCategoryCandidates(state.categories),
+    recommendationsStored: state.recommendations?.length ?? 0,
+    apiReturned: recommendations.length,
+  }, {
+    memoryPopulated: Boolean(peekMemoryPersistedData()?.state),
+    lastScannedAt: state.lastScannedAt,
+  });
   return typeof limit === "number"
     ? recommendations.slice(0, limit)
     : recommendations;

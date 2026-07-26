@@ -14,19 +14,19 @@ import {
 } from "@/lib/market-orchestrator/orchestrator";
 import { selectInstitutionalStrategyDashboard } from "@/lib/recommendations";
 import {
-  peekOpportunityEngineState,
+  loadOpportunityEngineState,
   toSharedSnapshot,
 } from "@/services/opportunityEngine";
 
 export async function ExecutiveIntelligenceLayer() {
-  const [aboveFold, portfolio, recommendations, results] = await Promise.all([
+  const [aboveFold, portfolio, recommendations, results, state] = await Promise.all([
     loadDashboardAboveFold(),
     loadDashboardPortfolio(),
     loadDashboardRecommendations(),
     loadDashboardUpcomingResults(),
+    loadOpportunityEngineState(),
   ]);
 
-  const state = peekOpportunityEngineState();
   const marketIntelligence = aboveFold.intelligence;
   const slots = selectInstitutionalStrategyDashboard(
     state,

@@ -12,15 +12,25 @@ import {
   wireWorkspaceHistory,
 } from "@/src/core/recommendations";
 import { getStrategyPlatformStatus } from "@/src/modules/strategies";
-import { selectRecommendationsWithFallback, selectInstitutionalStrategyDashboard } from "@/lib/recommendations";
 import {
-  peekOpportunityEngineState,
+  selectRecommendationsWithFallback,
+  selectInstitutionalStrategyDashboard,
+} from "@/lib/recommendations";
+import {
+  loadOpportunityEngineState,
   toSharedSnapshot,
 } from "@/services/opportunityEngine";
 import { getCachedMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
+import { resolveCachedIntelligence } from "@/lib/market-orchestrator/dashboardContext";
 import {
-  resolveCachedIntelligence,
-} from "@/lib/market-orchestrator/dashboardContext";
+  countCategoryCandidates,
+  logPipelineStages,
+} from "@/lib/opportunity-engine/pipeline-telemetry";
+import {
+  getPersistenceSource,
+  peekMemoryPersistedData,
+} from "@/lib/opportunity-engine/persistence";
+import { buildRecommendationFreshness } from "@/lib/opportunity-engine/recommendation-freshness";
 
 const STATUSES = new Set<RecommendationRecordStatus>([
   "ACTIVE",
@@ -41,8 +51,8 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Store + cached MI only — never await OE scan or MI pipeline on this GET.
-  const state = peekOpportunityEngineState();
+  // Hydrate Postgres → .data → /tmp → memory. Never await OE scan on this GET.
+  const state = await loadOpportunityEngineState();
   const marketIntelligence =
     getCachedMarketIntelligenceSnapshot() ?? resolveCachedIntelligence();
   const recommendations = requestedStatus
@@ -65,10 +75,46 @@ export async function GET(request: NextRequest) {
         )
       : [];
 
+  const freshness = buildRecommendationFreshness(
+    state,
+    sharedRecommendations.length
+  );
+
+  logPipelineStages(
+    "GET /api/recommendations",
+    {
+      universeReceived: state.universeSize,
+      quotesReceived: 0,
+      metricsScanned: state.lastScanMetrics?.symbolsScanned ?? 0,
+      shortlisted: 0,
+      rawCandidates: countCategoryCandidates(state.categories),
+      pipelinePassed: countCategoryCandidates(state.categories),
+      scoredStored: countCategoryCandidates(state.categories),
+      recommendationsStored: state.recommendations?.length ?? 0,
+      apiReturned: sharedRecommendations.length,
+    },
+    {
+      memoryPopulated: Boolean(peekMemoryPersistedData()?.state),
+      persistenceSource: getPersistenceSource(),
+      tradingDate: state.tradingDate,
+      lastScannedAt: state.lastScannedAt,
+      stale: freshness.stale,
+      staleReason: freshness.staleReason,
+    }
+  );
+
   return NextResponse.json({
     recommendations: sharedRecommendations,
     strategyDashboard,
-    history: requestedStatus ? recommendations : listRecommendationHistory(state),
+    history: requestedStatus
+      ? recommendations
+      : listRecommendationHistory(state),
+    // Closed-market contract: serve latest successful scan with stale markers.
+    generatedAt: freshness.generatedAt,
+    marketDate: freshness.marketDate,
+    stale: freshness.stale,
+    staleReason: freshness.staleReason,
+    freshness,
     marketIntelligence,
     strategyPlatform: getStrategyPlatformStatus(),
     pipeline: state.pipeline ?? null,

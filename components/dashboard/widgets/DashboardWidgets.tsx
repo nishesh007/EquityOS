@@ -10,6 +10,7 @@ import {
   opportunityPhaseCopy,
   type OpportunityUiPhase,
 } from "@/lib/opportunity-engine/ui-phase";
+import type { RecommendationFreshness } from "@/lib/opportunity-engine/recommendation-freshness";
 import type {
   InstitutionalStrategySlot,
   SharedRecommendation,
@@ -75,9 +76,11 @@ export function MarketPulseWidget({
 export function AiOpportunitiesWidget({
   slots,
   phase = "empty",
+  freshness = null,
 }: {
   slots: InstitutionalStrategySlot[];
   phase?: OpportunityUiPhase;
+  freshness?: RecommendationFreshness | null;
 }) {
   const filled = slots.filter((slot) => slot.pick != null).length;
   const phaseCopy = opportunityPhaseCopy(filled > 0 ? "available" : phase);
@@ -85,6 +88,12 @@ export function AiOpportunitiesWidget({
     filled === 0
       ? phaseCopy.summary
       : `${filled} of 7 strategies show a high-conviction pick from the master market scan.`;
+
+  const staleBanner =
+    freshness?.displayMessage ??
+    (freshness?.stale && freshness.generatedAt
+      ? `Showing latest validated recommendations generated on ${freshness.generatedAt}.`
+      : null);
 
   return (
     <div className="space-y-5">
@@ -100,6 +109,19 @@ export function AiOpportunitiesWidget({
           </StatusBadge>
         }
       />
+      {staleBanner && filled > 0 ? (
+        <p
+          className="rounded-lg border border-border/60 bg-surface-elevated/40 px-3 py-2 text-sm text-text-secondary"
+          role="status"
+          data-stale={freshness?.stale ? "true" : "false"}
+          data-stale-reason={freshness?.staleReason ?? undefined}
+        >
+          {staleBanner}
+          {freshness?.stale && freshness.staleReason ? (
+            <span className="ml-2 text-text-muted">({freshness.staleReason})</span>
+          ) : null}
+        </p>
+      ) : null}
       <InstitutionalOpportunityDashboard slots={slots} />
     </div>
   );
