@@ -14,7 +14,6 @@ import {
 import { getStrategyPlatformStatus } from "@/src/modules/strategies";
 import {
   selectRecommendationsWithFallback,
-  selectInstitutionalStrategyDashboard,
 } from "@/lib/recommendations";
 import {
   loadOpportunityEngineState,
@@ -31,6 +30,7 @@ import {
   peekMemoryPersistedData,
 } from "@/lib/opportunity-engine/persistence";
 import { buildRecommendationFreshness } from "@/lib/opportunity-engine/recommendation-freshness";
+import { reportRecommendationStages } from "@/lib/recommendations/stage-trace";
 
 const STATUSES = new Set<RecommendationRecordStatus>([
   "ACTIVE",
@@ -67,13 +67,13 @@ export async function GET(request: NextRequest) {
         )
       : [];
 
-  const strategyDashboard =
-    !requestedStatus || requestedStatus === "ACTIVE"
-      ? selectInstitutionalStrategyDashboard(
-          state,
-          toSharedSnapshot(marketIntelligence)
-        )
-      : [];
+  const { slots: strategyDashboard, report: stageReport } =
+    reportRecommendationStages(
+      "GET /api/recommendations",
+      state,
+      sharedRecommendations,
+      toSharedSnapshot(marketIntelligence)
+    );
 
   const freshness = buildRecommendationFreshness(
     state,
@@ -100,6 +100,7 @@ export async function GET(request: NextRequest) {
       lastScannedAt: state.lastScannedAt,
       stale: freshness.stale,
       staleReason: freshness.staleReason,
+      firstZeroStage: stageReport.firstZeroStage,
     }
   );
 
@@ -115,6 +116,8 @@ export async function GET(request: NextRequest) {
     stale: freshness.stale,
     staleReason: freshness.staleReason,
     freshness,
+    // Production diagnostics — stage counts for empty-recs triage.
+    stageTrace: stageReport,
     marketIntelligence,
     strategyPlatform: getStrategyPlatformStatus(),
     pipeline: state.pipeline ?? null,

@@ -330,9 +330,10 @@ async function executeScan(force = false): Promise<ScanResult> {
     };
   }
 
-  // Do not mutate opportunity lists on weekends/holidays (non-session days).
+  // Do not mutate opportunity lists on weekends/holidays (non-session days),
+  // unless force=true (one-time institutional seed / manual refresh).
   // Post-close freeze still runs on trading days after 15:30.
-  if (!isTradingDay() && getMarketStatus() !== "post_close") {
+  if (!force && !isTradingDay() && getMarketStatus() !== "post_close") {
     logPipelineStages("scan-skipped-non-trading-day", emptyPipelineStageCounts(), {
       reason: "non_trading_day",
       stored: countCategoryCandidates(current.categories),
@@ -346,6 +347,12 @@ async function executeScan(force = false): Promise<ScanResult> {
       durationMs: Date.now() - start,
       symbolsScanned: 0,
     };
+  }
+
+  if (force && !isTradingDay()) {
+    console.info(
+      "[OpportunityEngine] Forced scan on non-trading day (seed / manual refresh)"
+    );
   }
 
   setScanning(true);

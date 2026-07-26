@@ -122,15 +122,31 @@ function hydrateFromDisk(): void {
  * Ensure sync + remote persistence layers are loaded into the in-memory store.
  * Call from API / RSC before reading recommendations on serverless.
  */
-export async function ensureOpportunityEngineHydrated(): Promise<OpportunityEngineState> {
+export async function ensureOpportunityEngineHydrated(options?: {
+  /** Re-apply persisted payload even if the process store is already warm. */
+  forceReload?: boolean;
+}): Promise<OpportunityEngineState> {
   const persisted = await ensurePersistedDataHydrated();
   if (!hydrated) {
     hydrateFromDisk();
-  } else if (persisted && storeLooksEmpty() && countCategoryCandidates(persisted.state.categories) > 0) {
+  } else if (persisted && options?.forceReload) {
+    applyPersistedData(persisted);
+  } else if (
+    persisted &&
+    storeLooksEmpty() &&
+    countCategoryCandidates(persisted.state.categories) > 0
+  ) {
     applyPersistedData(persisted);
   }
   ensureTradingDayLifecycle();
   return getOpportunityEngineState();
+}
+
+/** Test/seed helper — drop process-local store so the next hydrate reloads. */
+export function resetOpportunityEngineStoreForTests(): void {
+  state = createInitialState();
+  firstDetectedMap = new Map();
+  hydrated = false;
 }
 
 /**

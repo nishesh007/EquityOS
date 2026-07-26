@@ -234,9 +234,17 @@ async function loadFromPostgres(): Promise<PersistedEngineData | null> {
   }
 }
 
-async function saveToPostgres(data: PersistedEngineData): Promise<void> {
+async function saveToPostgres(
+  data: PersistedEngineData,
+  options?: { throwOnError?: boolean }
+): Promise<void> {
   const pool = await getPgPool();
-  if (!pool) return;
+  if (!pool) {
+    if (options?.throwOnError) {
+      throw new Error("DATABASE_URL is not configured");
+    }
+    return;
+  }
   try {
     await ensurePgSchema(pool);
     await pool.query(
@@ -254,6 +262,7 @@ async function saveToPostgres(data: PersistedEngineData): Promise<void> {
       "[OpportunityEngine] Postgres save failed:",
       error instanceof Error ? error.message : error
     );
+    if (options?.throwOnError) throw error;
   }
 }
 
@@ -363,7 +372,7 @@ export function persistEngineData(data: PersistedEngineData): void {
       ` primary=${isPostgresPersistenceEnabled() ? "postgres" : diskPersistenceMode()}`
   );
 
-  // Primary durable write.
+  // Primary durable write (fire-and-forget for hot path).
   if (isPostgresPersistenceEnabled()) {
     void saveToPostgres(data);
   }
@@ -377,6 +386,28 @@ export function persistEngineData(data: PersistedEngineData): void {
   if (isDiskPersistenceEnabled() && ensureProjectDataDir()) {
     writeJsonFile(PROJECT_STATE_FILE, data);
   }
+}
+
+/**
+ * Await Postgres write — used by one-time seed / admin flush.
+ * Throws if DATABASE_URL is set but the write fails.
+ */
+export async function persistEngineDataAsync(
+  data: PersistedEngineData
+): Promise<{ savedToPostgres: boolean; candidateCount: number }> {
+  persistEngineData(data);
+  const candidateCount = Object.values(data.state.categories ?? {}).reduce(
+    (n, list) => n + list.length,
+    0
+  );
+
+  if (!isPostgresPersistenceEnabled()) {
+    return { savedToPostgres: false, candidateCount };
+  }
+
+  await saveToPostgres(data, { throwOnError: true });
+  memorySource = "postgres";
+  return { savedToPostgres: true, candidateCount };
 }
 
 export function archiveOpportunitySnapshot(snapshot: OpportunityDaySnapshot): void {

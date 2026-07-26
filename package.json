@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "generate:company-master": "node scripts/generate-company-master.mjs",
-    "validate:search": "node scripts/validate-search.mjs"
+    "validate:search": "node scripts/validate-search.mjs",
+    "seed:opportunity-engine": "npx tsx scripts/seed-opportunity-engine.mts"
   },
   "dependencies": {
     "clsx": "^2.1.1",

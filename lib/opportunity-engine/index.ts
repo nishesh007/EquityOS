@@ -17,6 +17,7 @@ export {
   getPersistenceSource,
   isPostgresPersistenceEnabled,
   resetPersistenceMemoryForTests,
+  persistEngineDataAsync,
 } from "@/lib/opportunity-engine/persistence";
 export { ensureOpportunityEngineHydrated } from "@/lib/opportunity-engine/store";
 export {
@@ -24,6 +25,11 @@ export {
   isMarketClosedForRecommendations,
 } from "@/lib/opportunity-engine/recommendation-freshness";
 export type { RecommendationFreshness } from "@/lib/opportunity-engine/recommendation-freshness";
+export {
+  seedOpportunityEngineToPostgres,
+  formatSeedSummary,
+} from "@/lib/opportunity-engine/seed";
+export type { OpportunityEngineSeedSummary } from "@/lib/opportunity-engine/seed";
 export {
   listActiveRecommendationCandidates,
   listRecommendationHistory,
