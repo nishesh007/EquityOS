@@ -21,6 +21,10 @@ import {
   ShieldCheck,
   Activity,
   FlaskConical,
+  History,
+  Scale,
+  FileBarChart,
+  SlidersHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +32,7 @@ const navItems = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard, exact: true },
   { label: "Research", href: "/research", icon: BookOpen, exact: true },
   { label: "Market Internals", href: "/research/market-internals", icon: Activity },
+  { label: "Strategy Optimization", href: "/research/optimization", icon: SlidersHorizontal },
   { label: "Markets", href: "/markets", icon: LineChart },
   { label: "Portfolio", href: "/portfolio", icon: Briefcase },
   { label: "Watchlist", href: "/watchlist", icon: Star },
@@ -35,8 +40,12 @@ const navItems = [
   { label: "Earnings", href: "/results", icon: Calendar },
   { label: "Event Intelligence", href: "/events", icon: CalendarRange },
   { label: "Paper Trading Lab", href: "/paper-trading", icon: FlaskConical },
+  { label: "Historical Replay", href: "/backtesting", icon: History, exact: true },
+  { label: "Strategy Validation", href: "/backtesting/validation", icon: Scale },
+  { label: "Report Center", href: "/backtesting/reports", icon: FileBarChart },
   { label: "AI Insights", href: "/ai", icon: Bot, badge: "New" },
 ];
+
 const bottomNavItems = [
   { label: "Screener", href: "/screener", icon: TrendingUp },
   { label: "Research Confidence", href: "/validation", icon: ShieldCheck },

@@ -16,6 +16,8 @@ interface CardProps {
   hover?: boolean;
   /** Optional 4px left accent strip. */
   accent?: SectionAccent;
+  /** Optional test id for institutional workspaces. */
+  "data-testid"?: string;
 }
 
 const paddingMap = {
@@ -30,11 +32,13 @@ export function Card({
   padding = "md",
   hover = true,
   accent,
+  "data-testid": dataTestId,
 }: CardProps) {
   const tokens = accent ? SECTION_ACCENTS[accent] : null;
 
   return (
     <div
+      data-testid={dataTestId}
       className={cn(
         "rounded-xl border border-surface-border-subtle",
         "shadow-[var(--eos-shadow-card)]",
