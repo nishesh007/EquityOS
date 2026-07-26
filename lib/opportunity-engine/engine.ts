@@ -69,8 +69,13 @@ import {
 import { peekMemoryPersistedData } from "@/lib/opportunity-engine/persistence";
 
 const QUOTE_BATCH_SIZE = 50;
-/** Concurrent OHLC technical enrichment across the ~2500 NSE universe. */
-const METRICS_CONCURRENCY = 16;
+/**
+ * Concurrent OHLC technical enrichment across the ~2500 NSE universe.
+ * Kept moderate to avoid Yahoo/Finnhub rate limits that collapse enrichment.
+ */
+const METRICS_CONCURRENCY = 6;
+/** Minimum daily bars required before scorers see has_live_technicals. */
+const TECH_MIN_BARS = 30;
 
 let scanInFlight: Promise<ScanResult> | null = null;
 
@@ -121,6 +126,33 @@ function buildSymbolContexts(): LiveSymbolContext[] {
   }));
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function quoteLiquidityScore(row: LiveMetricsRecord): number {
+  const volume = typeof row.volume === "number" ? row.volume : 0;
+  const changePercent =
+    typeof row.change_percent === "number" ? Math.abs(row.change_percent) : 0;
+  return changePercent * 10 + Math.log10(volume + 1) * 5;
+}
+
+async function fetchTechnicalsCandles(symbol: string): Promise<OhlcBar[]> {
+  // Prefer 1Y daily so technicals have enough history even after holidays.
+  const primary = await getOhlcCandles(symbol, "1Y", { minBars: TECH_MIN_BARS });
+  if (primary.data.length >= TECH_MIN_BARS) return primary.data;
+
+  await sleep(120);
+  const retry = await getOhlcCandles(symbol, "1Y", { minBars: TECH_MIN_BARS });
+  if (retry.data.length >= TECH_MIN_BARS) return retry.data;
+
+  const fallback = await getOhlcCandles(symbol, "6M", { minBars: TECH_MIN_BARS });
+  if (fallback.data.length >= TECH_MIN_BARS) return fallback.data;
+
+  // Best-effort (may be short → has_live_technicals stays 0).
+  return primary.data.length >= retry.data.length ? primary.data : retry.data;
+}
+
 /**
  * Build universe metrics with technical enrichment BEFORE scoring.
  * Quote fields first, then concurrent OHLC → enrichMetricsWithTechnicals
@@ -144,15 +176,18 @@ async function buildQuoteMetricsRows(
     if (metrics) baseRows.push(metrics);
   }
 
+  // Enrich liquid movers first so rate-limited provider budgets hit scorer-relevant names.
+  baseRows.sort((a, b) => quoteLiquidityScore(b) - quoteLiquidityScore(a));
+
   const candlesBySymbol = new Map<string, OhlcBar[]>();
   const rows = await mapWithConcurrency(
     baseRows,
     METRICS_CONCURRENCY,
     async (row) => {
       const symbol = String(row.symbol ?? "").toUpperCase();
-      const ohlc = await getOhlcCandles(symbol, "3M");
-      candlesBySymbol.set(symbol, ohlc.data);
-      return enrichMetricsWithTechnicals(row, ohlc.data);
+      const candles = await fetchTechnicalsCandles(symbol);
+      candlesBySymbol.set(symbol, candles);
+      return enrichMetricsWithTechnicals(row, candles);
     }
   );
 

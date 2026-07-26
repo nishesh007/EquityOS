@@ -116,10 +116,13 @@ function unavailableResult(attempted: string[]): OhlcResult {
 }
 
 function isUsableResult(
-  result: OhlcResult | null | undefined
+  result: OhlcResult | null | undefined,
+  minBars = 1
 ): result is OhlcResult {
   return Boolean(
-    result && result.data.length > 0 && result.source !== "unavailable"
+    result &&
+      result.data.length >= minBars &&
+      result.source !== "unavailable"
   );
 }
 
@@ -169,31 +172,45 @@ async function fetchHistoricalCandles(
 
 /**
  * Prefer fresh usable cache; never overwrite a good candle series with [].
+ * `minBars` lets technical enrichment reject short series and try a longer range.
  */
 export async function getOhlcCandles(
   symbol: string,
-  timeframe: ChartTimeframe
+  timeframe: ChartTimeframe,
+  options?: { minBars?: number }
 ): Promise<OhlcResult> {
   const normalized = symbol.toUpperCase();
   const key = cacheKey("ohlc", normalized, timeframe);
+  const minBars = options?.minBars ?? 1;
 
   const fresh = getCachedSync<OhlcResult>(key);
-  if (isUsableResult(fresh)) {
+  if (isUsableResult(fresh, minBars)) {
     return fresh;
   }
 
   const result = await fetchHistoricalCandles(normalized, timeframe, key);
   const attemptedProviders = result.attempted;
 
-  if (isUsableResult(result)) {
+  if (isUsableResult(result, minBars)) {
     // Only persist non-empty series so blank misses cannot clobber good history.
     return getCached({ key, ttlMs: CACHE_TTL.CANDLES }, async () => result);
   }
 
   const stale = getStaleCachedSync<OhlcResult>(key);
-  if (isUsableResult(stale)) {
+  if (isUsableResult(stale, minBars)) {
     return {
       data: stale.data,
+      provider: "cache",
+      source: "cached",
+      attempted: attemptedProviders,
+    };
+  }
+
+  // Return best available (may be short/empty) so callers can decide.
+  if (isUsableResult(result, 1)) return result;
+  if (isUsableResult(stale, 1)) {
+    return {
+      data: stale!.data,
       provider: "cache",
       source: "cached",
       attempted: attemptedProviders,
