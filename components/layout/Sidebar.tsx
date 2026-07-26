@@ -26,7 +26,7 @@ import {
   FileBarChart,
   SlidersHorizontal,
   Sparkles,
-  CreditCard,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -52,7 +52,7 @@ const navItems = [
 const bottomNavItems = [
   { label: "Screener", href: "/screener", icon: TrendingUp },
   { label: "Research Confidence", href: "/validation", icon: ShieldCheck },
-  { label: "Admin Billing", href: "/admin/billing", icon: CreditCard },
+  { label: "Administration", href: "/admin", icon: Shield },
   { label: "Settings", href: "/settings/profile", icon: Settings },
 ];
 

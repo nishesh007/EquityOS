@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import { AppShell } from "@/components/layout/AppShell";
 import { SaasProvider } from "@/lib/saas";
 import { BillingProvider } from "@/lib/billing";
+import { OpsProvider } from "@/lib/ops";
 import { ThemeProvider } from "@/src/design/theme/ThemeProvider";
 import "@/styles/globals.css";
 
@@ -35,7 +36,9 @@ export default function RootLayout({
         <ThemeProvider>
           <SaasProvider>
             <BillingProvider>
-              <AppShell>{children}</AppShell>
+              <OpsProvider>
+                <AppShell>{children}</AppShell>
+              </OpsProvider>
             </BillingProvider>
           </SaasProvider>
         </ThemeProvider>

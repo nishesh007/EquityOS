@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PageContainer } from "@/src/design";
+import { AdminShell } from "@/components/admin";
 import {
   BillingCard,
   CouponCard,
@@ -69,16 +69,11 @@ export default function AdminBillingPage() {
     .filter(Boolean) as string[];
 
   return (
-    <PageContainer>
+    <AdminShell
+      title="Admin Billing"
+      description="Subscriptions, payments, invoices, refunds, coupons, and revenue."
+    >
       <div className="space-y-5" data-testid="admin-billing">
-        <div>
-          <h1 className="text-xl font-semibold text-text-primary">
-            Admin Billing
-          </h1>
-          <p className="mt-1 text-sm text-text-secondary">
-            Subscriptions, payments, invoices, refunds, coupons, and revenue.
-          </p>
-        </div>
 
         <label className="block max-w-md text-xs">
           Search customers / licenses / payments
@@ -258,6 +253,6 @@ export default function AdminBillingPage() {
           </p>
         </BillingCard>
       </div>
-    </PageContainer>
+    </AdminShell>
   );
 }
