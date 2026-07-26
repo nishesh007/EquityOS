@@ -4,9 +4,10 @@ import { useMarketQuotes } from "@/hooks/useMarketQuotes";
 import { createUnavailableQuote } from "@/lib/market-data/enriched-quote";
 import { getCompanyRoute } from "@/lib/routes";
 import type { ScreenerRow } from "@/lib/screener/types";
+import { createInstitutionalTable, ResearchDataGrid } from "@/src/design";
+import { ActionBadge, isActionBadgeValue } from "@/components/ui/ActionBadge";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
-import { createInstitutionalTable, ResearchDataGrid } from "@/src/design";
 
 interface ScreenerResultsTableProps {
   rows: ScreenerRow[];
@@ -139,8 +140,13 @@ export function ScreenerResultsTable({
               <p className="text-[10px] font-semibold uppercase tracking-wider text-text-faint">
                 Strategy Details
               </p>
-              <p className="mt-1 text-xs">
-                {row.recommendation} · {row.strategy}
+              <p className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                {isActionBadgeValue(row.recommendation) ? (
+                  <ActionBadge action={row.recommendation} />
+                ) : (
+                  <span>{row.recommendation}</span>
+                )}
+                <span>· {row.strategy}</span>
               </p>
             </div>
             <div>

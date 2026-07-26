@@ -8,6 +8,11 @@
 
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  ActionBadge,
+  isActionBadgeValue,
+  normalizeActionBadge,
+} from "@/components/ui/ActionBadge";
 import { Sparkline } from "@/src/design/charts/Sparkline";
 import { ProgressBar, ProgressRing } from "@/src/design/charts/Progress";
 import type { CellKind } from "@/src/design/tables/tableEngine";
@@ -56,6 +61,15 @@ export function CellRenderer({ kind, value, options, className }: CellRendererPr
       return <span className="text-text-faint">—</span>;
     }
     return <ProgressRing percent={percent} size={34} className={className} />;
+  }
+
+  // Institutional BUY / SELL / HOLD — solid ActionBadge (all recommendation tables).
+  if (
+    (kind === "badge" || kind === "status") &&
+    isActionBadgeValue(value)
+  ) {
+    const action = normalizeActionBadge(value)!;
+    return <ActionBadge action={action} className={className} />;
   }
 
   const rendered = renderCell(kind, value, options);

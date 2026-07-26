@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { ActionBadge } from "@/components/ui/ActionBadge";
 import { InstitutionalCard } from "@/src/design";
 import type {
   CommitteeVerdict,
@@ -51,12 +52,6 @@ export function SectionShell({
   );
 }
 
-const ACTION_BADGE: Record<DecisionAction | CommitteeVerdict, string> = {
-  BUY: "border-emerald-500/35 bg-emerald-500/12 text-emerald-400",
-  HOLD: "border-amber-500/35 bg-amber-500/12 text-amber-400",
-  SELL: "border-rose-500/35 bg-rose-500/12 text-rose-400",
-};
-
 const CONVICTION_BADGE: Record<ConvictionBand, string> = {
   High: "border-emerald-500/35 bg-emerald-500/12 text-emerald-400",
   Medium: "border-amber-500/35 bg-amber-500/12 text-amber-400",
@@ -79,17 +74,7 @@ export function VerdictBadge({
   verdict: DecisionAction | CommitteeVerdict;
   className?: string;
 }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-tight",
-        ACTION_BADGE[verdict],
-        className
-      )}
-    >
-      {verdict}
-    </span>
-  );
+  return <ActionBadge action={verdict} className={className} />;
 }
 
 export function ConvictionBadge({ band }: { band: ConvictionBand }) {

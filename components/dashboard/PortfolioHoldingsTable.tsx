@@ -55,7 +55,7 @@ const HOLDINGS_TABLE = createInstitutionalTable<HoldingRow>({
     { id: "pnlPercent", label: "P&L %", kind: "trend" },
     { id: "strategy", label: "Current Strategy", kind: "text" },
     { id: "holdingConfidence", label: "Confidence", kind: "number" },
-    { id: "signal", label: "Signal", kind: "text" },
+    { id: "signal", label: "Signal", kind: "badge" },
     { id: "risk", label: "Risk", kind: "number" },
     { id: "regime", label: "Regime", kind: "text" },
     { id: "opportunityChange", label: "Opportunity", kind: "text" },

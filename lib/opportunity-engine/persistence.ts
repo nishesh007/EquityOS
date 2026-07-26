@@ -1,5 +1,11 @@
+/**
+ * Opportunity Engine persistence — disk locally, in-memory on Vercel/serverless.
+ * Never mkdir under process.cwd() when disk persistence is disabled.
+ */
+
 import fs from "node:fs";
 import path from "node:path";
+import { isDiskPersistenceEnabled } from "@/lib/platform/runtime-fs";
 import type {
   OpportunityDaySnapshot,
   OpportunityEngineState,
@@ -23,16 +29,37 @@ export interface SchedulerLock {
   expiresAt: string;
 }
 
-function ensureDataDir(): void {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+/** Process-local fallbacks when the deployment FS is read-only. */
+let memoryData: PersistedEngineData | null = null;
+const memoryArchives = new Map<string, OpportunityDaySnapshot>();
+let memoryLock: SchedulerLock | null = null;
+
+function ensureDataDir(): boolean {
+  // Hard gate — never mkdir on Vercel/read-only hosts (ENOENT under /var/task).
+  if (!isDiskPersistenceEnabled()) return false;
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    return true;
+  } catch (error) {
+    console.warn(
+      "[OpportunityEngine] Disk persistence unavailable; using memory:",
+      error instanceof Error ? error.message : error
+    );
+    return false;
   }
 }
 
-function ensureArchiveDir(): void {
-  ensureDataDir();
-  if (!fs.existsSync(ARCHIVE_DIR)) {
-    fs.mkdirSync(ARCHIVE_DIR, { recursive: true });
+function ensureArchiveDir(): boolean {
+  if (!ensureDataDir()) return false;
+  try {
+    if (!fs.existsSync(ARCHIVE_DIR)) {
+      fs.mkdirSync(ARCHIVE_DIR, { recursive: true });
+    }
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -41,46 +68,79 @@ function archiveFilePath(tradingDate: string): string {
 }
 
 export function loadPersistedData(): PersistedEngineData | null {
-  ensureDataDir();
+  if (!isDiskPersistenceEnabled()) {
+    return memoryData;
+  }
+
+  if (!ensureDataDir()) return memoryData;
+
   try {
-    if (!fs.existsSync(STATE_FILE)) return null;
+    if (!fs.existsSync(STATE_FILE)) return memoryData;
     const raw = fs.readFileSync(STATE_FILE, "utf8");
     const parsed = JSON.parse(raw) as PersistedEngineData;
-    if (!parsed?.state) return null;
-    return {
+    if (!parsed?.state) return memoryData;
+    memoryData = {
       state: parsed.state,
       firstDetectedMap: parsed.firstDetectedMap ?? {},
     };
+    return memoryData;
   } catch {
-    return null;
+    return memoryData;
   }
 }
 
 export function persistEngineData(data: PersistedEngineData): void {
-  ensureDataDir();
-  const payload = JSON.stringify(data, null, 2);
-  fs.writeFileSync(STATE_FILE, payload, "utf8");
+  memoryData = data;
+
+  if (!isDiskPersistenceEnabled()) return;
+  if (!ensureDataDir()) return;
+
+  try {
+    const payload = JSON.stringify(data, null, 2);
+    fs.writeFileSync(STATE_FILE, payload, "utf8");
+  } catch (error) {
+    console.warn(
+      "[OpportunityEngine] persistEngineData disk write failed:",
+      error instanceof Error ? error.message : error
+    );
+  }
 }
 
 export function archiveOpportunitySnapshot(snapshot: OpportunityDaySnapshot): void {
-  ensureArchiveDir();
-  const payload = JSON.stringify(snapshot, null, 2);
-  fs.writeFileSync(archiveFilePath(snapshot.tradingDate), payload, "utf8");
+  memoryArchives.set(snapshot.tradingDate, snapshot);
+
+  if (!isDiskPersistenceEnabled()) return;
+  if (!ensureArchiveDir()) return;
+
+  try {
+    const payload = JSON.stringify(snapshot, null, 2);
+    fs.writeFileSync(archiveFilePath(snapshot.tradingDate), payload, "utf8");
+  } catch (error) {
+    console.warn(
+      "[OpportunityEngine] archive disk write failed:",
+      error instanceof Error ? error.message : error
+    );
+  }
 }
 
 export function loadArchivedOpportunitySnapshot(
   tradingDate: string
 ): OpportunityDaySnapshot | null {
-  ensureArchiveDir();
+  const mem = memoryArchives.get(tradingDate);
+  if (!isDiskPersistenceEnabled()) return mem ?? null;
+
+  if (!ensureArchiveDir()) return mem ?? null;
+
   try {
     const file = archiveFilePath(tradingDate);
-    if (!fs.existsSync(file)) return null;
+    if (!fs.existsSync(file)) return mem ?? null;
     const raw = fs.readFileSync(file, "utf8");
     const parsed = JSON.parse(raw) as OpportunityDaySnapshot;
-    if (!parsed?.tradingDate || !parsed?.state) return null;
+    if (!parsed?.tradingDate || !parsed?.state) return mem ?? null;
+    memoryArchives.set(tradingDate, parsed);
     return parsed;
   } catch {
-    return null;
+    return mem ?? null;
   }
 }
 
@@ -91,8 +151,29 @@ export function loadFirstDetectedMap(): Map<string, string> {
 }
 
 export function acquireSchedulerLock(): boolean {
-  ensureDataDir();
   const now = Date.now();
+
+  if (!isDiskPersistenceEnabled()) {
+    if (memoryLock && new Date(memoryLock.expiresAt).getTime() > now) {
+      return memoryLock.pid === process.pid;
+    }
+    memoryLock = {
+      pid: process.pid,
+      acquiredAt: new Date(now).toISOString(),
+      expiresAt: new Date(now + LOCK_TTL_MS).toISOString(),
+    };
+    return true;
+  }
+
+  if (!ensureDataDir()) {
+    // Fall back to memory lock if disk cannot be prepared.
+    memoryLock = {
+      pid: process.pid,
+      acquiredAt: new Date(now).toISOString(),
+      expiresAt: new Date(now + LOCK_TTL_MS).toISOString(),
+    };
+    return true;
+  }
 
   if (fs.existsSync(LOCK_FILE)) {
     try {
@@ -112,29 +193,61 @@ export function acquireSchedulerLock(): boolean {
     expiresAt: new Date(now + LOCK_TTL_MS).toISOString(),
   };
 
-  fs.writeFileSync(LOCK_FILE, JSON.stringify(lock, null, 2), "utf8");
-  return true;
+  try {
+    fs.writeFileSync(LOCK_FILE, JSON.stringify(lock, null, 2), "utf8");
+    memoryLock = lock;
+    return true;
+  } catch {
+    memoryLock = lock;
+    return true;
+  }
 }
 
 export function refreshSchedulerLock(): void {
-  if (!fs.existsSync(LOCK_FILE)) return;
+  const now = Date.now();
+
+  if (!isDiskPersistenceEnabled()) {
+    if (!memoryLock || memoryLock.pid !== process.pid) return;
+    memoryLock = {
+      ...memoryLock,
+      expiresAt: new Date(now + LOCK_TTL_MS).toISOString(),
+    };
+    return;
+  }
+
+  if (!fs.existsSync(LOCK_FILE)) {
+    if (memoryLock?.pid === process.pid) {
+      memoryLock = {
+        ...memoryLock,
+        expiresAt: new Date(now + LOCK_TTL_MS).toISOString(),
+      };
+    }
+    return;
+  }
+
   try {
     const existing = JSON.parse(fs.readFileSync(LOCK_FILE, "utf8")) as SchedulerLock;
     if (existing.pid !== process.pid) return;
-    const now = Date.now();
     const lock: SchedulerLock = {
       pid: process.pid,
       acquiredAt: existing.acquiredAt,
       expiresAt: new Date(now + LOCK_TTL_MS).toISOString(),
     };
     fs.writeFileSync(LOCK_FILE, JSON.stringify(lock, null, 2), "utf8");
+    memoryLock = lock;
   } catch {
     // Ignore lock refresh failures.
   }
 }
 
 export function releaseSchedulerLock(): void {
+  if (memoryLock?.pid === process.pid) {
+    memoryLock = null;
+  }
+
+  if (!isDiskPersistenceEnabled()) return;
   if (!fs.existsSync(LOCK_FILE)) return;
+
   try {
     const existing = JSON.parse(fs.readFileSync(LOCK_FILE, "utf8")) as SchedulerLock;
     if (existing.pid === process.pid) {
@@ -146,11 +259,24 @@ export function releaseSchedulerLock(): void {
 }
 
 export function isSchedulerLockHolder(): boolean {
-  if (!fs.existsSync(LOCK_FILE)) return false;
+  const now = Date.now();
+
+  if (!isDiskPersistenceEnabled()) {
+    if (!memoryLock) return false;
+    if (new Date(memoryLock.expiresAt).getTime() <= now) return false;
+    return memoryLock.pid === process.pid;
+  }
+
+  if (!fs.existsSync(LOCK_FILE)) {
+    if (!memoryLock) return false;
+    if (new Date(memoryLock.expiresAt).getTime() <= now) return false;
+    return memoryLock.pid === process.pid;
+  }
+
   try {
     const existing = JSON.parse(fs.readFileSync(LOCK_FILE, "utf8")) as SchedulerLock;
     const expiresAt = new Date(existing.expiresAt).getTime();
-    if (expiresAt <= Date.now()) return false;
+    if (expiresAt <= now) return false;
     return existing.pid === process.pid;
   } catch {
     return false;

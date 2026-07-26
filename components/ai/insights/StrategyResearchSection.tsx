@@ -19,6 +19,7 @@ import {
   horizonSectionSurfaceStyle,
 } from "@/lib/recommendations/horizons/colors";
 import { ConfidenceBar } from "@/components/ui/ConfidenceBar";
+import { ActionBadge, normalizeActionBadge } from "@/components/ui/ActionBadge";
 import {
   createInstitutionalTable,
   ResearchDataGrid,
@@ -28,9 +29,6 @@ import {
   LayoutGrid,
   List,
   Rows3,
-  TrendingDown,
-  TrendingUp,
-  Eye,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -50,6 +48,12 @@ function formatPct(value: number | null | undefined): string {
   return `${sign}${value.toFixed(1)}%`;
 }
 
+function toDisplayAction(
+  action: InsightsResearchRow["action"]
+): "BUY" | "SELL" | "HOLD" {
+  return normalizeActionBadge(action) ?? "BUY";
+}
+
 function formatTs(iso: string): string {
   try {
     return new Date(iso).toLocaleString("en-IN", {
@@ -62,33 +66,6 @@ function formatTs(iso: string): string {
   } catch {
     return iso;
   }
-}
-
-type DisplayAction = "BUY" | "WATCH" | "SELL";
-
-function toDisplayAction(action: InsightsResearchRow["action"]): DisplayAction {
-  if (action === "SELL") return "SELL";
-  if (action === "WATCHLIST") return "WATCH";
-  return "BUY";
-}
-
-const ACTION_BADGE: Record<DisplayAction, string> = {
-  BUY: "bg-emerald-500/15 text-emerald-400 border-emerald-500/45",
-  WATCH: "bg-slate-500/15 text-slate-300 border-slate-400/40",
-  SELL: "bg-rose-500/15 text-rose-400 border-rose-500/45",
-};
-
-function ActionBadge({ action }: { action: DisplayAction }) {
-  const Icon =
-    action === "SELL" ? TrendingDown : action === "WATCH" ? Eye : TrendingUp;
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${ACTION_BADGE[action]}`}
-    >
-      <Icon className="h-3 w-3" aria-hidden />
-      {action}
-    </span>
-  );
 }
 
 function HoldingBadge({

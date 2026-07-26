@@ -38,6 +38,7 @@ styles/         globals.css design tokens
 | `analytics/` | Shared analytics KPIs / charts / tables / filters (11F.1) |
 | `backtesting/` | Historical Replay Center UI (11B.2) |
 | `optimization/` | Strategy Optimization Workspace UI (11C.1) |
+| `strategy-builder/` | AI Strategy Builder UI (11D) |
 | `ai/`, `charts/`, `market/`, `portfolio/`, `screener/`, … | Feature islands |
 
 Colocate feature-only hooks next to the feature (e.g. `detail-drawer/use*.ts`, `usePaperTableWindow.ts`). Put cross-feature hooks in `hooks/`.
@@ -54,6 +55,8 @@ Colocate feature-only hooks next to the feature (e.g. `detail-drawer/use*.ts`, `
 - `components/backtesting` — Replay Center, Strategy Validation, Report Center, shared hardening UI
 - `lib/optimization` — Strategy Optimization store, engine, walk-forward, Monte Carlo, UI persistence, logging (11C.1–11C.5)
 - `components/optimization` — Strategy Optimization Lab UI + hardening chrome (11C.1–11C.5)
+- `lib/strategy-builder` — AI Strategy Builder generation, scoring, library, comparison, export (11D)
+- `components/strategy-builder` — AI Strategy Builder workspace UI (11D)
 - `lib/paper-trading` — paper lab domain (keep format helpers local; different semantics)
 - `lib/recommendations` / `lib/opportunity-engine` — recommendation pipeline (do not change in audit sprints)
 

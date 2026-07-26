@@ -43,6 +43,19 @@ Sprint 11F — import as `@/services/<file>` (no barrel).
 
 ---
 
+## Analytics (Sprint 11F.1)
+
+Shared analytics is **not** a page façade — use engines/components directly:
+
+| Module | Path |
+|---|---|
+| Types + metrics + time range + export | `@/lib/analytics` |
+| KPI / cards / tables / charts / filters | `@/components/analytics` |
+
+Docs: `docs/ANALYTICS_ARCHITECTURE.md`.
+
+---
+
 ## Conventions
 
 1. Services are **async-friendly façades** — map engine results to presenter/DTO shapes for pages.

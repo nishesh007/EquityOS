@@ -85,6 +85,15 @@ Each feature route should provide `loading.tsx` (where applicable) and `error.ts
 | [SHARED_COMPONENT_CATALOG.md](./SHARED_COMPONENT_CATALOG.md) | UI primitives catalog |
 | [CORE_SERVICE_CATALOG.md](./CORE_SERVICE_CATALOG.md) | Services catalog |
 | [ARCHITECTURE_AUDIT_11F.md](./ARCHITECTURE_AUDIT_11F.md) | Sprint 11F audit report |
+| [ANALYTICS_ARCHITECTURE.md](./ANALYTICS_ARCHITECTURE.md) | Shared analytics infrastructure (11F.1) |
+| [BACKTESTING_ARCHITECTURE.md](./BACKTESTING_ARCHITECTURE.md) | Historical backtesting framework (11B.1) |
+| [BACKTESTING_REPLAY_CENTER.md](./BACKTESTING_REPLAY_CENTER.md) | Historical Replay Center (11B.2) |
+| [VALIDATION_ARCHITECTURE.md](./VALIDATION_ARCHITECTURE.md) | Strategy Validation (11B.3) |
+| [REPORT_CENTER.md](./REPORT_CENTER.md) | Institutional Report Center (11B.4) |
+| [PRODUCTION_CHECKLIST.md](./PRODUCTION_CHECKLIST.md) | Backtesting release checklist (11B.5) |
+| [PERFORMANCE_GUIDE.md](./PERFORMANCE_GUIDE.md) | Backtesting performance (11B.5) |
+| [ACCESSIBILITY_GUIDE.md](./ACCESSIBILITY_GUIDE.md) | Backtesting accessibility (11B.5) |
+| [RELEASE_NOTES_11B.md](./RELEASE_NOTES_11B.md) | Sprint 11B release notes |
 | [ENGINEERING.md](./ENGINEERING.md) | Live market data architecture |
 | [EVENT_INTELLIGENCE.md](./EVENT_INTELLIGENCE.md) | Events platform |
 | [DESIGN_BIBLE.md](./DESIGN_BIBLE.md) | Visual / UX rules |

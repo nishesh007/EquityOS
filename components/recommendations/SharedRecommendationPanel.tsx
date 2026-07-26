@@ -7,6 +7,7 @@ import {
   type OpportunityUiPhase,
 } from "@/lib/opportunity-engine/ui-phase";
 import { Badge } from "@/components/ui/Badge";
+import { ActionBadge, normalizeActionBadge } from "@/components/ui/ActionBadge";
 import { CardFooter } from "@/components/ui/Card";
 import { ConfidenceBar } from "@/components/ui/ConfidenceBar";
 import { EmptyStatePanel } from "@/components/ui/EmptyStatePanel";
@@ -22,11 +23,8 @@ import {
 } from "@/src/design";
 import {
   Crosshair,
-  Eye,
   RefreshCw,
   Target,
-  TrendingDown,
-  TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -40,66 +38,30 @@ function price(value: number): string {
   })}`;
 }
 
-/** Presentation labels — maps engine actions to premium UI labels. */
-type DisplayAction = "BUY" | "ACCUMULATE" | "WATCH" | "SELL";
-
-/**
- * Map Strategy Engine actions to display labels.
- * BUY → BUY · WATCHLIST → WATCH · SELL → SELL.
- * ACCUMULATE styles are reserved for future engine actions — not invented here.
- */
-function toDisplayAction(rec: SharedRecommendation): DisplayAction {
-  if (rec.action === "SELL") return "SELL";
-  if (rec.action === "WATCHLIST") return "WATCH";
-  return "BUY";
+/** Map Strategy Engine actions to institutional BUY / SELL / HOLD badges. */
+function toDisplayAction(
+  rec: SharedRecommendation
+): "BUY" | "SELL" | "HOLD" {
+  return normalizeActionBadge(rec.action) ?? "BUY";
 }
 
-const ACTION_STYLES: Record<
-  DisplayAction,
-  {
-    border: string;
-    hover: string;
-    badge: string;
-    icon: React.ReactNode;
-  }
+const ACTION_ROW_STYLES: Record<
+  "BUY" | "SELL" | "HOLD",
+  { border: string; hover: string }
 > = {
   BUY: {
-    border: "border-l-emerald-500",
-    hover: "hover:bg-emerald-500/5",
-    badge: "bg-emerald-500/15 text-emerald-400 border-emerald-500/40",
-    icon: <TrendingUp className="h-3 w-3" />,
+    border: "border-l-[#22C55E]",
+    hover: "hover:bg-[#16A34A]/5",
   },
-  ACCUMULATE: {
-    border: "border-l-sky-500",
-    hover: "hover:bg-sky-500/5",
-    badge: "bg-sky-500/15 text-sky-400 border-sky-500/40",
-    icon: <TrendingUp className="h-3 w-3" />,
-  },
-  WATCH: {
-    border: "border-l-amber-500",
-    hover: "hover:bg-amber-500/5",
-    badge: "bg-amber-500/15 text-amber-400 border-amber-500/40",
-    icon: <Eye className="h-3 w-3" />,
+  HOLD: {
+    border: "border-l-[#F59E0B]",
+    hover: "hover:bg-[#D97706]/5",
   },
   SELL: {
-    border: "border-l-rose-500",
-    hover: "hover:bg-rose-500/5",
-    badge: "bg-rose-500/15 text-rose-400 border-rose-500/40",
-    icon: <TrendingDown className="h-3 w-3" />,
+    border: "border-l-[#EF4444]",
+    hover: "hover:bg-[#DC2626]/5",
   },
 };
-
-function ActionBadge({ action }: { action: DisplayAction }) {
-  const style = ACTION_STYLES[action];
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-tight transition-colors duration-200 ${style.badge}`}
-    >
-      {style.icon}
-      {action}
-    </span>
-  );
-}
 
 function formatTs(iso: string): string {
   try {
@@ -181,7 +143,7 @@ function OpportunityCard({
   onOpen?: (recommendation: SharedRecommendation) => void;
 }) {
   const display = toDisplayAction(recommendation);
-  const style = ACTION_STYLES[display];
+  const style = ACTION_ROW_STYLES[display];
   const target = recommendation.targets.at(-1) ?? 0;
 
   return (

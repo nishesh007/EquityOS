@@ -66,3 +66,5 @@ Prefer these only inside institutional / design-system surfaces:
 ## Feature islands (not primitives)
 
 Heavy feature modules live under `components/<feature>/` with their own barrels where useful (`events`, `recommendations`, `paper-trading`, dashboard subfolders).
+
+Shared analytics infrastructure (Sprint 11F.1) lives under `components/analytics/` — KPIs, cards, tables, charts, filters. Import when building Backtesting / Paper / Portfolio analytics surfaces; not wired into routes yet.

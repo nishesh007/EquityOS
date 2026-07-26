@@ -28,6 +28,7 @@ import {
   recordSchedulerFailure,
   recordSchedulerSuccess,
 } from "@/lib/opportunity-engine/scheduler-observability";
+import { diskPersistenceMode } from "@/lib/platform/runtime-fs";
 
 /** Tick frequently; actual scans only fire on new 5-minute buckets. */
 const TICK_MS = 30_000;
@@ -70,6 +71,9 @@ export function startOpportunityScheduler(): void {
 
   schedulerStarted = true;
   markSchedulerStarted();
+  console.info(
+    `[OpportunityEngine] Scheduler started (persistence=${diskPersistenceMode()})`
+  );
 
   intervalHandle = setInterval(() => {
     void tickScan();

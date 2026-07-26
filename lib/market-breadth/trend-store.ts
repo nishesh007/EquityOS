@@ -1,9 +1,11 @@
 /**
- * Persist daily breadth % and EMA participation for trends (file-backed, server-only).
+ * Persist daily breadth % and EMA participation for trends.
+ * File-backed locally; in-memory on Vercel/serverless.
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { isDiskPersistenceEnabled } from "@/lib/platform/runtime-fs";
 import type {
   BreadthTrendPoint,
   BreadthUniverseId,
@@ -22,30 +24,43 @@ interface TrendStore {
   >;
 }
 
+let memoryStore: TrendStore = { version: 2, series: {}, participation: {} };
+
 function todayKey(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
 function readStore(): TrendStore {
+  if (!isDiskPersistenceEnabled()) {
+    return memoryStore;
+  }
+
   try {
     if (!existsSync(TREND_FILE)) {
-      return { version: 2, series: {}, participation: {} };
+      return memoryStore;
     }
     const raw = JSON.parse(readFileSync(TREND_FILE, "utf8")) as Partial<TrendStore> & {
       version?: number;
       series?: TrendStore["series"];
     };
-    return {
+    memoryStore = {
       version: 2,
-      series: raw.series ?? {},
-      participation: raw.participation ?? {},
+      series: { ...memoryStore.series, ...(raw.series ?? {}) },
+      participation: {
+        ...memoryStore.participation,
+        ...(raw.participation ?? {}),
+      },
     };
+    return memoryStore;
   } catch {
-    return { version: 2, series: {}, participation: {} };
+    return memoryStore;
   }
 }
 
 function writeStore(store: TrendStore): void {
+  memoryStore = store;
+  if (!isDiskPersistenceEnabled()) return;
+
   try {
     if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
     writeFileSync(TREND_FILE, JSON.stringify(store, null, 2), "utf8");

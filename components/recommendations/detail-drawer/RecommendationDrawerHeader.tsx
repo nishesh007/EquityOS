@@ -1,15 +1,13 @@
 "use client";
 
 import { ConfidenceBar } from "@/components/ui/ConfidenceBar";
+import { ActionBadge } from "@/components/ui/ActionBadge";
 import { cn } from "@/lib/utils";
 import { FOCUS_RING_CLASS } from "@/src/design/motion/motionPresets";
 import {
-  Eye,
   FileText,
   RefreshCw,
   Star,
-  TrendingDown,
-  TrendingUp,
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -17,26 +15,7 @@ import { useRef, useState } from "react";
 import { formatInr } from "./SectionChrome";
 import type {
   RecommendationDetailContext,
-  RecommendationDrawerAction,
 } from "./types";
-
-const ACTION_STYLES: Record<
-  RecommendationDrawerAction,
-  { badge: string; icon: React.ReactNode }
-> = {
-  BUY: {
-    badge: "bg-emerald-500/15 text-emerald-400 border-emerald-500/40",
-    icon: <TrendingUp className="h-3 w-3" />,
-  },
-  HOLD: {
-    badge: "bg-amber-500/15 text-amber-400 border-amber-500/40",
-    icon: <Eye className="h-3 w-3" />,
-  },
-  SELL: {
-    badge: "bg-rose-500/15 text-rose-400 border-rose-500/40",
-    icon: <TrendingDown className="h-3 w-3" />,
-  },
-};
 
 function formatPrice(value: number | null): string {
   return formatInr(value);
@@ -125,7 +104,6 @@ export function RecommendationDrawerHeader({
   const [refreshing, setRefreshing] = useState(false);
   const [watchlistAdded, setWatchlistAdded] = useState(false);
   const watchlistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const actionStyle = ACTION_STYLES[context.action];
   const change = formatChange(context.changeAbsolute, context.changePercent);
 
   async function refresh(): Promise<void> {
@@ -157,15 +135,7 @@ export function RecommendationDrawerHeader({
             >
               {context.company}
             </h2>
-            <span
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-tight",
-                actionStyle.badge
-              )}
-            >
-              {actionStyle.icon}
-              {context.action}
-            </span>
+            <ActionBadge action={context.action} />
           </div>
           <p className="mt-0.5 font-mono text-xs text-text-muted">
             {context.symbol}

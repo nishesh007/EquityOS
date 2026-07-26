@@ -22,6 +22,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight } from "luci
 import { cn } from "@/lib/utils";
 import { TABLE_CLASSES } from "@/src/design/layout/tableStyles";
 import { CellRenderer } from "@/src/design/cells/CellRenderer";
+import { isActionBadgeValue } from "@/components/ui/ActionBadge";
 import { WidgetEmptyState } from "@/src/design/widgets/WidgetEmptyState";
 import { WidgetSkeleton } from "@/src/design/widgets/WidgetSkeleton";
 import { TableToolbar } from "@/src/design/toolbars/TableToolbar";
@@ -564,7 +565,8 @@ export function InstitutionalTable<Row>({
                                 )}
                               >
                                 {showHighlight &&
-                                typeof rawValue === "string" ? (
+                                typeof rawValue === "string" &&
+                                !isActionBadgeValue(rawValue) ? (
                                   <span>
                                     {highlightSearchText(
                                       rawValue,

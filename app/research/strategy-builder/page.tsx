@@ -1,0 +1,7 @@
+"use client";
+
+import { StrategyBuilderWorkspace } from "@/components/strategy-builder";
+
+export default function StrategyBuilderPage() {
+  return <StrategyBuilderWorkspace />;
+}

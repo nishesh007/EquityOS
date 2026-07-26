@@ -1,10 +1,14 @@
 /**
  * Persist last usable market-breadth snapshot per universe.
  * Used as previous-session fallback when the in-memory cache is cold.
+ *
+ * Disk under `data/market-breadth` only when local FS is writable;
+ * on Vercel/serverless uses process memory only.
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { isDiskPersistenceEnabled } from "@/lib/platform/runtime-fs";
 import type { MarketBreadth } from "@/types";
 import type { BreadthUniverseId } from "./types";
 
@@ -16,22 +20,32 @@ interface SnapshotStore {
   byUniverse: Partial<Record<BreadthUniverseId, MarketBreadth>>;
 }
 
+let memoryStore: SnapshotStore = { version: 1, byUniverse: {} };
+
 function readStore(): SnapshotStore {
+  if (!isDiskPersistenceEnabled()) {
+    return memoryStore;
+  }
+
   try {
     if (!existsSync(SNAPSHOT_FILE)) {
-      return { version: 1, byUniverse: {} };
+      return memoryStore;
     }
     const raw = JSON.parse(readFileSync(SNAPSHOT_FILE, "utf8")) as Partial<SnapshotStore>;
-    return {
+    memoryStore = {
       version: 1,
-      byUniverse: raw.byUniverse ?? {},
+      byUniverse: { ...memoryStore.byUniverse, ...(raw.byUniverse ?? {}) },
     };
+    return memoryStore;
   } catch {
-    return { version: 1, byUniverse: {} };
+    return memoryStore;
   }
 }
 
 function writeStore(store: SnapshotStore): void {
+  memoryStore = store;
+  if (!isDiskPersistenceEnabled()) return;
+
   try {
     if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
     writeFileSync(SNAPSHOT_FILE, JSON.stringify(store), "utf8");
