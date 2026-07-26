@@ -20,6 +20,7 @@ import {
   BookOpen,
   ShieldCheck,
   Activity,
+  FlaskConical,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +34,7 @@ const navItems = [
   { label: "News", href: "/news", icon: Newspaper },
   { label: "Earnings", href: "/results", icon: Calendar },
   { label: "Event Intelligence", href: "/events", icon: CalendarRange },
+  { label: "Paper Trading Lab", href: "/paper-trading", icon: FlaskConical },
   { label: "AI Insights", href: "/ai", icon: Bot, badge: "New" },
 ];
 const bottomNavItems = [

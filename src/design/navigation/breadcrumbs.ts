@@ -21,6 +21,7 @@ const SEGMENT_LABELS: Readonly<Record<string, string>> = Object.freeze({
   news: "News",
   results: "Results Calendar",
   events: "Event Intelligence",
+  "paper-trading": "Paper Trading Lab",
   opportunities: "AI Insights",
   screener: "Screener",
   validation: "Research Confidence",

@@ -145,6 +145,21 @@ const PAGE_COMMANDS: readonly CommandItem[] = Object.freeze([
     ],
   },
   {
+    id: "page-paper-trading",
+    title: "Paper Trading Lab",
+    category: "page",
+    href: "/paper-trading",
+    keywords: [
+      "paper trading",
+      "virtual trades",
+      "validation",
+      "intraday",
+      "scalping",
+      "swing",
+      "simulation",
+    ],
+  },
+  {
     id: "page-opportunities",
     title: "AI Opportunities",
     category: "opportunity",
