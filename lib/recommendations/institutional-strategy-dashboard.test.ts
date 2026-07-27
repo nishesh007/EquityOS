@@ -11,9 +11,13 @@ import type {
 import { clearHorizonPipelineCache } from "@/lib/recommendations/horizons";
 import {
   __resetInstitutionalDashboardCacheForTests,
-  selectInstitutionalStrategyDashboard,
+  filledSlotCount,
   parseInstitutionalStrategyId,
+  rankInstitutionalSlotsFromRecommendations,
+  resolveDashboardSlotsFromRecommendations,
+  selectInstitutionalStrategyDashboard,
 } from "./institutional-strategy-dashboard";
+import type { SharedRecommendation } from "./shared-recommendation";
 
 function makeCandidate(
   overrides: Partial<OpportunityCandidate> &
@@ -209,5 +213,206 @@ describe("institutional strategy dashboard ranking (horizon-first)", () => {
     if (longTerm?.pick) {
       expect(longTerm.pick.symbol).not.toBe("RVOL1");
     }
+  });
+});
+
+function makeSharedRecommendation(
+  overrides: Partial<SharedRecommendation> &
+    Pick<SharedRecommendation, "symbol" | "category" | "primaryStrategyId">
+): SharedRecommendation {
+  return {
+    id: `test:${overrides.symbol}`,
+    company: overrides.company ?? `${overrides.symbol} Ltd`,
+    action: "BUY",
+    primaryStrategy: overrides.primaryStrategy ?? "Test Strategy",
+    matchedStrategies: [],
+    supportingStrategies: [],
+    opposingStrategies: [],
+    strategyCount: 1,
+    agreementPercent: 80,
+    conflictPercent: 0,
+    opportunityScore: overrides.opportunityScore ?? 80,
+    frameworkScore: 70,
+    confidence: overrides.confidence ?? 75,
+    conviction: overrides.conviction ?? 80,
+    entry: 100,
+    stopLoss: 95,
+    targets: [110, 116, 122],
+    risk: 5,
+    reward: 10,
+    riskReward: 2,
+    holdingPeriod: "5–20 trading days",
+    marketContext: "Bullish",
+    marketRegime: "Strong Bull",
+    riskMode: "Neutral",
+    eligibility: { eligible: true, score: 80, reasons: [] },
+    reasons: ["test"],
+    evidence: [],
+    matchedFrameworks: {
+      technical: [],
+      fundamental: [],
+      valuation: [],
+      growth: [],
+    },
+    validation: {
+      valid: true,
+      score: 100,
+      checks: {
+        tradeLevels: true,
+        institutionalTradeLevels: true,
+        confidence: true,
+        opportunityScore: true,
+        agreement: true,
+        marketContext: true,
+        marketRegime: true,
+        eligibility: true,
+      },
+      reasons: [],
+    },
+    longTermRanking: null,
+    timestamp: "2026-07-25T04:00:00.000Z",
+    source: "OpportunityEngine",
+    ...overrides,
+  };
+}
+
+describe("dashboard slot projection fallback", () => {
+  it("filledSlotCount counts only non-null picks", () => {
+    const empty = rankInstitutionalSlotsFromRecommendations([], "t");
+    expect(filledSlotCount(empty)).toBe(0);
+    expect(empty).toHaveLength(7);
+  });
+
+  it("projects OE strategy ids onto horizons via category", () => {
+    const recommendations = [
+      makeSharedRecommendation({
+        symbol: "INTR1",
+        category: "intraday",
+        primaryStrategyId: "opening-range-fade",
+        conviction: 90,
+      }),
+      makeSharedRecommendation({
+        symbol: "SWING1",
+        category: "swing",
+        primaryStrategyId: "opening-range-fade",
+        conviction: 88,
+      }),
+      makeSharedRecommendation({
+        symbol: "MOM1",
+        category: "momentum",
+        primaryStrategyId: "opening-range-fade",
+        conviction: 85,
+      }),
+      makeSharedRecommendation({
+        symbol: "AI1",
+        category: "ai_high_conviction",
+        primaryStrategyId: "opening-range-fade",
+        conviction: 92,
+      }),
+      makeSharedRecommendation({
+        symbol: "BRK1",
+        category: "breakout",
+        primaryStrategyId: "opening-range-fade",
+        conviction: 84,
+      }),
+      makeSharedRecommendation({
+        symbol: "RVOL1",
+        category: "relative_volume",
+        primaryStrategyId: "opening-range-fade",
+        conviction: 83,
+      }),
+      makeSharedRecommendation({
+        symbol: "MR1",
+        category: "mean_reversion",
+        primaryStrategyId: "opening-range-fade",
+        conviction: 82,
+      }),
+    ];
+
+    const slots = rankInstitutionalSlotsFromRecommendations(
+      recommendations,
+      "2026-07-25T04:00:00.000Z"
+    );
+    expect(slots).toHaveLength(7);
+    expect(filledSlotCount(slots)).toBe(7);
+    expect(slots.find((s) => s.strategyId === "intraday")?.pick?.symbol).toBe(
+      "INTR1"
+    );
+    expect(slots.find((s) => s.strategyId === "swing")?.pick?.symbol).toBe(
+      "SWING1"
+    );
+    expect(slots.find((s) => s.strategyId === "medium_term")?.pick?.symbol).toBe(
+      "MOM1"
+    );
+    expect(slots.find((s) => s.strategyId === "long_term")?.pick?.symbol).toBe(
+      "AI1"
+    );
+  });
+
+  it("never lets an empty strategyDashboard override recommendations", () => {
+    const emptyDashboard = rankInstitutionalSlotsFromRecommendations(
+      [],
+      "t"
+    );
+    expect(filledSlotCount(emptyDashboard)).toBe(0);
+
+    const recommendations = Array.from({ length: 20 }, (_, i) =>
+      makeSharedRecommendation({
+        symbol: `SYM${i}`,
+        category:
+          i % 2 === 0
+            ? "intraday"
+            : i % 3 === 0
+              ? "swing"
+              : "ai_high_conviction",
+        primaryStrategyId: "opening-range-fade",
+        conviction: 70 + (i % 20),
+      })
+    );
+
+    const resolved = resolveDashboardSlotsFromRecommendations({
+      strategyDashboard: emptyDashboard,
+      recommendations,
+      lastScanTime: "2026-07-25T04:00:00.000Z",
+    });
+
+    expect(recommendations).toHaveLength(20);
+    expect(resolved).toHaveLength(7);
+    expect(filledSlotCount(resolved)).toBe(7);
+  });
+
+  it("preserves populated strategyDashboard picks", () => {
+    const populated = rankInstitutionalSlotsFromRecommendations(
+      [
+        makeSharedRecommendation({
+          symbol: "KEEP1",
+          category: "swing",
+          primaryStrategyId: "swing",
+          conviction: 99,
+        }),
+      ],
+      "t"
+    );
+    // Force a known pick on swing via leftover fill for other slots
+    expect(filledSlotCount(populated)).toBeGreaterThan(0);
+
+    const ignored = [
+      makeSharedRecommendation({
+        symbol: "OTHER",
+        category: "intraday",
+        primaryStrategyId: "opening-range-fade",
+        conviction: 50,
+      }),
+    ];
+
+    const resolved = resolveDashboardSlotsFromRecommendations({
+      strategyDashboard: populated,
+      recommendations: ignored,
+    });
+
+    expect(resolved).toBe(populated);
+    expect(
+      resolved.find((s) => s.pick?.symbol === "KEEP1")
+    ).toBeTruthy();
   });
 });

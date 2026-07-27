@@ -22,7 +22,12 @@ import {
   loadDashboardUpcomingResults,
   loadDashboardWatchlist,
 } from "@/lib/market-orchestrator/orchestrator";
-import { selectInstitutionalStrategyDashboard } from "@/lib/recommendations";
+import {
+  filledSlotCount,
+  resolveDashboardSlotsFromRecommendations,
+  selectInstitutionalStrategyDashboard,
+  selectRecommendationsWithFallback,
+} from "@/lib/recommendations";
 import {
   resolveCachedIntelligence,
 } from "@/lib/market-orchestrator/dashboardContext";
@@ -65,6 +70,9 @@ export async function MarketPulseSlot() {
  * OE: persisted store read only inside Suspense.
  * Background Opportunity / Strategy scan starts post-hydration on the client —
  * never from SSR (avoids Node event-loop "Waiting for shell").
+ *
+ * Prefer populated strategyDashboard picks; if every pick is null, project
+ * cards from the shared recommendations list (same guard as client hydrate).
  */
 export async function AiOpportunitiesSlot() {
   const state = await loadOpportunityEngineState();
@@ -72,17 +80,25 @@ export async function AiOpportunitiesSlot() {
     getCachedMarketSnapshot()?.intelligence ??
     getCachedMarketIntelligenceSnapshot() ??
     resolveCachedIntelligence();
-  const slots = selectInstitutionalStrategyDashboard(
+  const shared = toSharedSnapshot(marketIntelligence);
+  const strategyDashboard = selectInstitutionalStrategyDashboard(
     state,
-    toSharedSnapshot(marketIntelligence)
+    shared
   );
-  const recommendationCount = slots.filter(
-    (slot) => (slot.recommendationCount ?? 0) > 0 || slot.pick != null
-  ).length;
+  const recommendations = selectRecommendationsWithFallback(state, shared);
+  const slots = resolveDashboardSlotsFromRecommendations({
+    strategyDashboard,
+    recommendations,
+    lastScanTime: state.lastScannedAt,
+  });
+  const recommendationCount = filledSlotCount(slots);
   const { buildRecommendationFreshness } = await import(
     "@/lib/opportunity-engine/recommendation-freshness"
   );
-  const freshness = buildRecommendationFreshness(state, recommendationCount);
+  const freshness = buildRecommendationFreshness(
+    state,
+    Math.max(recommendationCount, recommendations.length)
+  );
   return (
     <HydratedAiOpportunities
       initialSlots={slots}

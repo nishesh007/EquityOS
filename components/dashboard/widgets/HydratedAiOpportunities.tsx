@@ -2,9 +2,9 @@
 
 /**
  * SSR: persisted institutional slots + OE status peek only.
- * After hydration: idle-kick one background OE scan (debounced server-side).
- * One delayed status refresh when empty — never a poll loop / never blocks shell.
- * Sprint 9A.1 — projects seven strategy cards from the master pool (no extra scans).
+ * On mount: immediately fetch GET /api/recommendations and upgrade slots
+ * when the API has more populated picks than current React state.
+ * Never wipe populated client picks with an empty SSR initialSlots.
  */
 
 import { AiOpportunitiesWidget } from "@/components/dashboard/widgets/DashboardWidgets";
@@ -12,7 +12,7 @@ import type {
   InstitutionalStrategySlot,
   SharedRecommendation,
 } from "@/lib/recommendations";
-import { rankInstitutionalSlotsFromRecommendations } from "@/lib/recommendations";
+import { filledSlotCount } from "@/lib/recommendations";
 import {
   deriveOpportunityUiPhase,
   type OpportunityStatusSnapshot,
@@ -21,8 +21,8 @@ import {
 import type { RecommendationFreshness } from "@/lib/opportunity-engine/recommendation-freshness";
 import { useEffect, useState } from "react";
 
-async function fetchDashboardRefresh(): Promise<{
-  slots: InstitutionalStrategySlot[] | null;
+async function fetchRecommendations(): Promise<{
+  strategyDashboard: InstitutionalStrategySlot[] | null;
   recommendations: SharedRecommendation[];
   status: OpportunityStatusSnapshot | null;
   freshness: RecommendationFreshness | null;
@@ -33,7 +33,7 @@ async function fetchDashboardRefresh(): Promise<{
   ]);
 
   let recommendations: SharedRecommendation[] = [];
-  let slots: InstitutionalStrategySlot[] | null = null;
+  let strategyDashboard: InstitutionalStrategySlot[] | null = null;
   let freshness: RecommendationFreshness | null = null;
 
   if (recsRes.ok) {
@@ -48,7 +48,7 @@ async function fetchDashboardRefresh(): Promise<{
     };
     recommendations = json.recommendations ?? [];
     if (Array.isArray(json.strategyDashboard)) {
-      slots = json.strategyDashboard;
+      strategyDashboard = json.strategyDashboard;
     }
     freshness =
       json.freshness ??
@@ -82,19 +82,13 @@ async function fetchDashboardRefresh(): Promise<{
     };
   }
 
-  return { slots, recommendations, status, freshness };
+  return { strategyDashboard, recommendations, status, freshness };
 }
 
 function kickBackgroundScan(): void {
   void fetch("/api/opportunities/scan?async=1", { method: "POST" }).catch(
     () => undefined
   );
-}
-
-function filledCount(slots: InstitutionalStrategySlot[]): number {
-  return slots.filter(
-    (slot) => (slot.recommendationCount ?? 0) > 0 || slot.pick != null
-  ).length;
 }
 
 export function HydratedAiOpportunities({
@@ -112,22 +106,34 @@ export function HydratedAiOpportunities({
   );
   const [status, setStatus] = useState<OpportunityStatusSnapshot>(() => ({
     ...initialStatus,
-    recommendationCount: filledCount(initialSlots),
+    recommendationCount: filledSlotCount(initialSlots),
   }));
-  const initialFilled = filledCount(initialSlots);
   const initialScanKey = `${initialStatus.scanCount}:${initialStatus.lastScannedAt ?? ""}`;
 
+  // Sync SSR props — never replace populated client picks with empty SSR slots.
   useEffect(() => {
-    setSlots(initialSlots);
+    let keptPopulatedClientSlots = false;
+    setSlots((current) => {
+      if (
+        filledSlotCount(initialSlots) === 0 &&
+        filledSlotCount(current) > 0
+      ) {
+        keptPopulatedClientSlots = true;
+        return current;
+      }
+      return initialSlots;
+    });
     setFreshness(initialFreshness);
-    setStatus({
+    setStatus((prev) => ({
       isScanning: initialStatus.isScanning,
       lastScannedAt: initialStatus.lastScannedAt,
       scanCount: initialStatus.scanCount,
-      recommendationCount: filledCount(initialSlots),
+      recommendationCount: keptPopulatedClientSlots
+        ? Math.max(prev.recommendationCount, filledSlotCount(initialSlots))
+        : filledSlotCount(initialSlots),
       lastError: initialStatus.lastError ?? null,
       scanQueued: false,
-    });
+    }));
   }, [
     initialSlots,
     initialFreshness,
@@ -137,93 +143,51 @@ export function HydratedAiOpportunities({
     initialStatus.lastError,
   ]);
 
+  // On mount / scan-key change: immediately fetch recommendations (no idle / 8s wait).
   useEffect(() => {
     let cancelled = false;
-    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
-    const initiallyEmpty = initialFilled === 0;
 
-    const run = () => {
-      // Single master scan kick — never one-per-strategy.
-      kickBackgroundScan();
+    kickBackgroundScan();
 
-      if (!initiallyEmpty) return;
+    void fetchRecommendations().then(
+      ({ strategyDashboard, status: nextStatus, freshness: nextFreshness }) => {
+        if (cancelled) return;
 
-      setStatus((prev) => ({
-        ...prev,
-        scanQueued: prev.isScanning ? false : true,
-      }));
+        if (nextFreshness) setFreshness(nextFreshness);
 
-      // Single delayed refresh — not polling during initial load.
-      refreshTimer = setTimeout(() => {
-        void fetchDashboardRefresh().then(
-          ({
-            slots: nextSlots,
-            recommendations,
-            status: nextStatus,
-            freshness: nextFreshness,
-          }) => {
-            if (cancelled) return;
-
-            if (nextFreshness) setFreshness(nextFreshness);
-
-            if (nextSlots) {
-              setSlots(nextSlots);
-            } else if (recommendations.length > 0) {
-              setSlots(
-                rankInstitutionalSlotsFromRecommendations(
-                  recommendations,
-                  nextStatus?.lastScannedAt ??
-                    recommendations[0]?.timestamp ??
-                    new Date(0).toISOString()
-                )
-              );
+        const apiFilled = filledSlotCount(strategyDashboard);
+        if (strategyDashboard && apiFilled > 0) {
+          setSlots((current) => {
+            const currentFilled = filledSlotCount(current);
+            if (apiFilled > currentFilled) {
+              return strategyDashboard;
             }
+            return current;
+          });
+        }
 
-            if (nextStatus) {
-              setStatus({
-                ...nextStatus,
-                scanQueued: false,
-                recommendationCount:
-                  nextSlots != null
-                    ? filledCount(nextSlots)
-                    : recommendations.length > 0
-                      ? recommendations.length
-                      : nextStatus.recommendationCount,
-              });
-            } else {
-              setStatus((prev) => ({
-                ...prev,
-                scanQueued: false,
-                recommendationCount:
-                  nextSlots != null
-                    ? filledCount(nextSlots)
-                    : recommendations.length,
-              }));
-            }
-          }
-        );
-      }, 8_000);
-    };
-
-    const idle =
-      typeof window !== "undefined" && "requestIdleCallback" in window
-        ? window.requestIdleCallback(run, { timeout: 2_500 })
-        : null;
-    const fallback = window.setTimeout(run, idle == null ? 0 : 2_500);
+        if (nextStatus) {
+          setStatus((prev) => ({
+            ...nextStatus,
+            scanQueued: false,
+            recommendationCount: Math.max(
+              apiFilled,
+              prev.recommendationCount,
+              nextStatus.recommendationCount
+            ),
+          }));
+        }
+      }
+    );
 
     return () => {
       cancelled = true;
-      window.clearTimeout(fallback);
-      if (idle != null && "cancelIdleCallback" in window) {
-        window.cancelIdleCallback(idle);
-      }
-      if (refreshTimer) clearTimeout(refreshTimer);
     };
-  }, [initialFilled, initialScanKey]);
+  }, [initialScanKey]);
 
   const phase: OpportunityUiPhase = deriveOpportunityUiPhase({
     ...status,
-    recommendationCount: filledCount(slots),
+    recommendationCount: filledSlotCount(slots),
   });
 
   return (

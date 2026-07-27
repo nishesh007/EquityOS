@@ -15,8 +15,10 @@ export {
   INSTITUTIONAL_STRATEGY_META,
   NO_HIGH_CONVICTION_MESSAGE,
   NO_RECOMMENDATION_AVAILABLE_MESSAGE,
+  filledSlotCount,
   parseInstitutionalStrategyId,
   rankInstitutionalSlotsFromRecommendations,
+  resolveDashboardSlotsFromRecommendations,
   selectInstitutionalStrategyDashboard,
 } from "./institutional-strategy-dashboard";
 export type {
