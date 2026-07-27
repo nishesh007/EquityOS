@@ -1,6 +1,9 @@
 /**
  * Follow-up engine — generates intelligent follow-ups after every AI answer.
+ * Server-only — loads company context / market data.
  */
+
+import "server-only";
 
 import {
   loadCompanyContext,
@@ -9,27 +12,17 @@ import {
 import type { CompanyContext } from "@/lib/ai/context/companyContext";
 import { buildFollowUpQuestions } from "@/lib/ai/questionGenerator";
 import { getCompanyMasterRecords } from "@/lib/company-master";
+import type {
+  FollowUpBundle,
+  RelatedCompany,
+  RelatedSector,
+} from "@/lib/ai/followUp-types";
 
-export interface RelatedCompany {
-  symbol: string;
-  name: string;
-  sector: string;
-  reason: string;
-}
-
-export interface RelatedSector {
-  sector: string;
-  reason: string;
-  exampleSymbols: string[];
-}
-
-export interface FollowUpBundle {
-  questions: Array<{ id: string; text: string; category: string }>;
-  relatedCompanies: RelatedCompany[];
-  relatedSectors: RelatedSector[];
-  resolvedSymbol: string | null;
-  generatedAt: string;
-}
+export type {
+  FollowUpBundle,
+  RelatedCompany,
+  RelatedSector,
+} from "@/lib/ai/followUp-types";
 
 function buildRelatedCompanies(
   context: CompanyContext | null,

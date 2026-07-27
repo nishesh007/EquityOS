@@ -7,7 +7,7 @@ import {
   type BreadthUniverseId,
   type MarketBreadthSnapshot,
 } from "@/lib/market-breadth";
-import { marketDataService } from "@/lib/market-data";
+import { marketDataService } from "@/lib/market-data/server";
 import {
   getCached,
   getCachedStaleWhileRevalidate,
@@ -103,7 +103,7 @@ function buildMarketPulse(): MarketPulse {
     institutionalFlow: {
       fii: 0,
       dii: 0,
-      asOf: "Coming in Sprint 10D",
+      asOf: "Unavailable",
     },
     putCallRatio: 0,
     marketTrend: "Neutral",
@@ -152,13 +152,23 @@ function isUsableBreadthSnapshot(breadth: MarketBreadth): boolean {
 }
 
 export async function fetchMarketBreadth(
-  universe: BreadthUniverseId = "nse"
+  universe: BreadthUniverseId = "nse",
+  options: { forceRefresh?: boolean } = {}
 ): Promise<MarketBreadth> {
   const ttl =
     universe === "nse" || universe === "nifty500"
       ? CACHE_TTL.FIFTEEN_MINUTES
       : CACHE_TTL.DASHBOARD;
   const key = cacheKey("market-breadth", universe);
+
+  if (options.forceRefresh) {
+    const live = await buildLiveMarketBreadth(universe);
+    if (isUsableBreadthSnapshot(live)) {
+      writeLastBreadthSnapshot(universe, live);
+      seedCache(key, live, ttl);
+    }
+    return live;
+  }
 
   // Cold process: seed memory from previous-session disk snapshot so
   // dashboard hydrate never waits on a full universe scan.

@@ -294,8 +294,9 @@ export function synthesizeMockQuote(symbol: string): MockQuoteSeed {
   const normalized = normalizeNseSymbol(symbol);
   const meta = getNseSymbolMeta(normalized);
   const rng = createRng(hashSeed(`quote-${normalized}`));
-  const ltp = meta?.price && meta.price > 0 ? meta.price : round(50 + rng() * 8000, 2);
-  const changePercent = meta?.changePercent ?? round((rng() - 0.5) * 3, 2);
+  // NSE registry is fundamentals-only — never seed LTP from it.
+  const ltp = round(50 + rng() * 8000, 2);
+  const changePercent = round((rng() - 0.5) * 3, 2);
   const change = round(ltp * (changePercent / 100), 2);
   const previousClose = round(ltp - change, 2);
   const intraday = 0.008 + rng() * 0.02;

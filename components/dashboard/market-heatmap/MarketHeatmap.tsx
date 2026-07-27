@@ -29,6 +29,10 @@ interface MarketHeatmapProps {
   initial?: MarketHeatmapSnapshot | null;
   /** Default universe when lazy-loading. */
   defaultUniverse?: HeatmapUniverseId;
+  /** Consume only `initial` — no /api/market/heatmap fetches. */
+  snapshotLocked?: boolean;
+  /** Hide footer as-of (page owns timestamp). */
+  hideTimestamps?: boolean;
 }
 
 const CLIENT_CACHE_PREFIX = "equityos.heatmap.v1:";
@@ -163,6 +167,8 @@ function SectorTileButton({
 export function MarketHeatmap({
   initial = null,
   defaultUniverse = "nse",
+  snapshotLocked = false,
+  hideTimestamps = false,
 }: MarketHeatmapProps) {
   const [universe, setUniverse] = useState<HeatmapUniverseId>(
     initial?.universe ?? defaultUniverse
@@ -181,6 +187,7 @@ export function MarketHeatmap({
   const [showingCached, setShowingCached] = useState(false);
 
   const load = useCallback(async (nextUniverse: HeatmapUniverseId) => {
+    if (snapshotLocked) return;
     setError(null);
     setRefreshing(true);
     try {
@@ -206,9 +213,13 @@ export function MarketHeatmap({
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [snapshotLocked]);
 
   useEffect(() => {
+    if (snapshotLocked) {
+      setShowingCached(false);
+      return;
+    }
     // Cache-first paint, then silent background refresh. Never block on rebuild.
     if (!initial) {
       const cached = readClientHeatmapCache(universe);
@@ -221,17 +232,20 @@ export function MarketHeatmap({
     }
     void load(universe);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount + universe owned by handlers
-  }, []);
+  }, [snapshotLocked]);
 
   useEffect(() => {
     if (initial) {
       setSnapshot(initial);
       setShowingCached(false);
-      writeClientHeatmapCache(initial.universe, initial);
+      if (!snapshotLocked) {
+        writeClientHeatmapCache(initial.universe, initial);
+      }
     }
-  }, [initial]);
+  }, [initial, snapshotLocked]);
 
   const onUniverseChange = (id: HeatmapUniverseId) => {
+    if (snapshotLocked) return;
     setUniverse(id);
     const cached = readClientHeatmapCache(id);
     if (cached) {
@@ -296,6 +310,7 @@ export function MarketHeatmap({
               pending={pending && !snapshot}
               onUniverseChange={onUniverseChange}
               onColorMetricChange={setColorMetric}
+              universeDisabled={snapshotLocked}
             />
           }
         />
@@ -362,8 +377,11 @@ export function MarketHeatmap({
 
         <CardFooter className="!mt-3 !pt-2">
           <span>
-            Last updated · {formatTs(snapshot?.lastUpdated)} · Source ·{" "}
-            {snapshot?.dataSource ?? "Market Heatmap"}
+            {hideTimestamps
+              ? `Source · ${snapshot?.dataSource ?? "Market Heatmap"}`
+              : `Last updated · ${formatTs(snapshot?.lastUpdated)} · Source · ${
+                  snapshot?.dataSource ?? "Market Heatmap"
+                }`}
           </span>
           <span>Click a sector to drill down</span>
         </CardFooter>

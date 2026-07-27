@@ -1,14 +1,11 @@
-import type { CompanyProfile } from "@/types";
+import type { FundamentalsSeedProfile } from "@/lib/fundamentals/seed-types";
 
 /** Static fundamentals seed data — terminal fallback for Sprint 7B. */
-export const MOCK_COMPANY_SEEDS: Record<string, Omit<CompanyProfile, "priceHistory">> = {
+/** Fundamentals-only seeds — never include LTP/OHLC/volume/change%. */
+export const MOCK_COMPANY_SEEDS: Record<string, FundamentalsSeedProfile> = {
   RELIANCE: {
     symbol: "RELIANCE",
-    name: "Reliance Industries Ltd",
-    price: 2890.5,
-    change: 35.4,
-    changePercent: 1.24,
-    marketCap: "₹19.5L Cr",
+    name: "Reliance Industries Ltd",    marketCap: "₹19.5L Cr",
     sector: "Conglomerate",
     industry: "Oil & Gas / Retail / Telecom",
     description:
@@ -41,9 +38,9 @@ export const MOCK_COMPANY_SEEDS: Record<string, Omit<CompanyProfile, "priceHisto
     ],
     shareholding: { promoter: 50.39, fii: 23.12, dii: 14.85, public: 11.64, lastUpdated: "Mar 2026" },
     peers: [
-      { symbol: "ADANIENT", name: "Adani Enterprises", price: 2845.2, changePercent: 2.24, pe: 85.2, marketCap: "₹3.2L Cr" },
-      { symbol: "TATASTEEL", name: "Tata Steel", price: 142.8, changePercent: 0.92, pe: 18.4, marketCap: "₹1.8L Cr" },
-      { symbol: "ONGC", name: "ONGC", price: 268.4, changePercent: -0.35, pe: 9.8, marketCap: "₹3.4L Cr" },
+      { symbol: "ADANIENT", name: "Adani Enterprises", pe: 85.2, marketCap: "₹3.2L Cr" },
+      { symbol: "TATASTEEL", name: "Tata Steel", pe: 18.4, marketCap: "₹1.8L Cr" },
+      { symbol: "ONGC", name: "ONGC", pe: 9.8, marketCap: "₹3.4L Cr" },
     ],
     valuation: [
       { label: "P/E Ratio", value: "27.4x", industryAvg: "22.1x", status: "overvalued" },
@@ -61,11 +58,7 @@ export const MOCK_COMPANY_SEEDS: Record<string, Omit<CompanyProfile, "priceHisto
   },
   TCS: {
     symbol: "TCS",
-    name: "Tata Consultancy Services",
-    price: 4125.8,
-    change: 34.8,
-    changePercent: 0.85,
-    marketCap: "₹15.0L Cr",
+    name: "Tata Consultancy Services",    marketCap: "₹15.0L Cr",
     sector: "IT",
     industry: "IT Services & Consulting",
     description:
@@ -98,9 +91,9 @@ export const MOCK_COMPANY_SEEDS: Record<string, Omit<CompanyProfile, "priceHisto
     ],
     shareholding: { promoter: 71.77, fii: 12.45, dii: 10.82, public: 4.96, lastUpdated: "Mar 2026" },
     peers: [
-      { symbol: "INFY", name: "Infosys", price: 1892.15, changePercent: 1.56, pe: 28.4, marketCap: "₹7.8L Cr" },
-      { symbol: "WIPRO", name: "Wipro", price: 285.6, changePercent: -0.75, pe: 22.1, marketCap: "₹1.5L Cr" },
-      { symbol: "HCLTECH", name: "HCL Technologies", price: 1842.3, changePercent: 0.62, pe: 26.8, marketCap: "₹5.0L Cr" },
+      { symbol: "INFY", name: "Infosys", pe: 28.4, marketCap: "₹7.8L Cr" },
+      { symbol: "WIPRO", name: "Wipro", pe: 22.1, marketCap: "₹1.5L Cr" },
+      { symbol: "HCLTECH", name: "HCL Technologies", pe: 26.8, marketCap: "₹5.0L Cr" },
     ],
     valuation: [
       { label: "P/E Ratio", value: "32.1x", industryAvg: "28.5x", status: "overvalued" },
@@ -116,11 +109,7 @@ export const MOCK_COMPANY_SEEDS: Record<string, Omit<CompanyProfile, "priceHisto
   },
   HDFCBANK: {
     symbol: "HDFCBANK",
-    name: "HDFC Bank Ltd",
-    price: 1724.3,
-    change: -7.28,
-    changePercent: -0.42,
-    marketCap: "₹13.2L Cr",
+    name: "HDFC Bank Ltd",    marketCap: "₹13.2L Cr",
     sector: "Banking",
     industry: "Private Sector Bank",
     description:
@@ -153,9 +142,9 @@ export const MOCK_COMPANY_SEEDS: Record<string, Omit<CompanyProfile, "priceHisto
     ],
     shareholding: { promoter: 0.0, fii: 32.18, dii: 38.42, public: 29.4, lastUpdated: "Mar 2026" },
     peers: [
-      { symbol: "ICICIBANK", name: "ICICI Bank", price: 1285.4, changePercent: 0.32, pe: 18.2, marketCap: "₹9.1L Cr" },
-      { symbol: "SBIN", name: "State Bank of India", price: 812.35, changePercent: -0.64, pe: 10.4, marketCap: "₹7.3L Cr" },
-      { symbol: "KOTAKBANK", name: "Kotak Mahindra Bank", price: 1982.5, changePercent: 0.18, pe: 20.8, marketCap: "₹3.9L Cr" },
+      { symbol: "ICICIBANK", name: "ICICI Bank", pe: 18.2, marketCap: "₹9.1L Cr" },
+      { symbol: "SBIN", name: "State Bank of India", pe: 10.4, marketCap: "₹7.3L Cr" },
+      { symbol: "KOTAKBANK", name: "Kotak Mahindra Bank", pe: 20.8, marketCap: "₹3.9L Cr" },
     ],
     valuation: [
       { label: "P/E Ratio", value: "19.6x", industryAvg: "16.8x", status: "overvalued" },
@@ -170,11 +159,7 @@ export const MOCK_COMPANY_SEEDS: Record<string, Omit<CompanyProfile, "priceHisto
   },
   INFY: {
     symbol: "INFY",
-    name: "Infosys Ltd",
-    price: 1892.15,
-    change: 29.05,
-    changePercent: 1.56,
-    marketCap: "₹7.8L Cr",
+    name: "Infosys Ltd",    marketCap: "₹7.8L Cr",
     sector: "IT",
     industry: "IT Services & Consulting",
     description:
@@ -207,9 +192,9 @@ export const MOCK_COMPANY_SEEDS: Record<string, Omit<CompanyProfile, "priceHisto
     ],
     shareholding: { promoter: 14.61, fii: 33.82, dii: 38.45, public: 13.12, lastUpdated: "Mar 2026" },
     peers: [
-      { symbol: "TCS", name: "Tata Consultancy Services", price: 4125.8, changePercent: 0.85, pe: 32.1, marketCap: "₹15.0L Cr" },
-      { symbol: "WIPRO", name: "Wipro", price: 285.6, changePercent: -0.75, pe: 22.1, marketCap: "₹1.5L Cr" },
-      { symbol: "TECHM", name: "Tech Mahindra", price: 1682.4, changePercent: 0.45, pe: 34.2, marketCap: "₹1.6L Cr" },
+      { symbol: "TCS", name: "Tata Consultancy Services", pe: 32.1, marketCap: "₹15.0L Cr" },
+      { symbol: "WIPRO", name: "Wipro", pe: 22.1, marketCap: "₹1.5L Cr" },
+      { symbol: "TECHM", name: "Tech Mahindra", pe: 34.2, marketCap: "₹1.6L Cr" },
     ],
     valuation: [
       { label: "P/E Ratio", value: "28.4x", industryAvg: "28.5x", status: "fair" },
@@ -224,11 +209,7 @@ export const MOCK_COMPANY_SEEDS: Record<string, Omit<CompanyProfile, "priceHisto
   },
   ICICIBANK: {
     symbol: "ICICIBANK",
-    name: "ICICI Bank Ltd",
-    price: 1285.4,
-    change: 4.1,
-    changePercent: 0.32,
-    marketCap: "₹9.1L Cr",
+    name: "ICICI Bank Ltd",    marketCap: "₹9.1L Cr",
     sector: "Banking",
     industry: "Private Sector Bank",
     description:
@@ -261,9 +242,9 @@ export const MOCK_COMPANY_SEEDS: Record<string, Omit<CompanyProfile, "priceHisto
     ],
     shareholding: { promoter: 0.0, fii: 42.18, dii: 35.62, public: 22.2, lastUpdated: "Mar 2026" },
     peers: [
-      { symbol: "HDFCBANK", name: "HDFC Bank", price: 1724.3, changePercent: -0.42, pe: 19.6, marketCap: "₹13.2L Cr" },
-      { symbol: "SBIN", name: "State Bank of India", price: 812.35, changePercent: -0.64, pe: 10.4, marketCap: "₹7.3L Cr" },
-      { symbol: "AXISBANK", name: "Axis Bank", price: 1182.6, changePercent: 0.55, pe: 14.2, marketCap: "₹3.6L Cr" },
+      { symbol: "HDFCBANK", name: "HDFC Bank", pe: 19.6, marketCap: "₹13.2L Cr" },
+      { symbol: "SBIN", name: "State Bank of India", pe: 10.4, marketCap: "₹7.3L Cr" },
+      { symbol: "AXISBANK", name: "Axis Bank", pe: 14.2, marketCap: "₹3.6L Cr" },
     ],
     valuation: [
       { label: "P/E Ratio", value: "18.2x", industryAvg: "16.8x", status: "overvalued" },
@@ -278,11 +259,7 @@ export const MOCK_COMPANY_SEEDS: Record<string, Omit<CompanyProfile, "priceHisto
   },
   BHARTIARTL: {
     symbol: "BHARTIARTL",
-    name: "Bharti Airtel Ltd",
-    price: 1685.4,
-    change: 24.6,
-    changePercent: 1.48,
-    marketCap: "₹9.8L Cr",
+    name: "Bharti Airtel Ltd",    marketCap: "₹9.8L Cr",
     sector: "Telecom",
     industry: "Telecommunications",
     description:
@@ -315,8 +292,8 @@ export const MOCK_COMPANY_SEEDS: Record<string, Omit<CompanyProfile, "priceHisto
     ],
     shareholding: { promoter: 55.93, fii: 18.42, dii: 16.28, public: 9.37, lastUpdated: "Mar 2026" },
     peers: [
-      { symbol: "RELIANCE", name: "Reliance Industries", price: 2890.5, changePercent: 1.24, pe: 27.4, marketCap: "₹19.5L Cr" },
-      { symbol: "IDEA", name: "Vodafone Idea", price: 12.8, changePercent: -1.2, pe: 0, marketCap: "₹1.4L Cr" },
+      { symbol: "RELIANCE", name: "Reliance Industries", pe: 27.4, marketCap: "₹19.5L Cr" },
+      { symbol: "IDEA", name: "Vodafone Idea", pe: 0, marketCap: "₹1.4L Cr" },
     ],
     valuation: [
       { label: "P/E Ratio", value: "66.2x", industryAvg: "45.0x", status: "overvalued" },
@@ -331,11 +308,7 @@ export const MOCK_COMPANY_SEEDS: Record<string, Omit<CompanyProfile, "priceHisto
   },
   SBIN: {
     symbol: "SBIN",
-    name: "State Bank of India",
-    price: 812.35,
-    change: -5.2,
-    changePercent: -0.64,
-    marketCap: "₹7.3L Cr",
+    name: "State Bank of India",    marketCap: "₹7.3L Cr",
     sector: "Banking",
     industry: "Public Sector Bank",
     description:
@@ -368,9 +341,9 @@ export const MOCK_COMPANY_SEEDS: Record<string, Omit<CompanyProfile, "priceHisto
     ],
     shareholding: { promoter: 55.5, fii: 10.82, dii: 22.45, public: 11.23, lastUpdated: "Mar 2026" },
     peers: [
-      { symbol: "HDFCBANK", name: "HDFC Bank", price: 1724.3, changePercent: -0.42, pe: 19.6, marketCap: "₹13.2L Cr" },
-      { symbol: "ICICIBANK", name: "ICICI Bank", price: 1285.4, changePercent: 0.32, pe: 18.2, marketCap: "₹9.1L Cr" },
-      { symbol: "PNB", name: "Punjab National Bank", price: 108.2, changePercent: -0.28, pe: 8.2, marketCap: "₹1.2L Cr" },
+      { symbol: "HDFCBANK", name: "HDFC Bank", pe: 19.6, marketCap: "₹13.2L Cr" },
+      { symbol: "ICICIBANK", name: "ICICI Bank", pe: 18.2, marketCap: "₹9.1L Cr" },
+      { symbol: "PNB", name: "Punjab National Bank", pe: 8.2, marketCap: "₹1.2L Cr" },
     ],
     valuation: [
       { label: "P/E Ratio", value: "10.4x", industryAvg: "16.8x", status: "undervalued" },
@@ -385,11 +358,7 @@ export const MOCK_COMPANY_SEEDS: Record<string, Omit<CompanyProfile, "priceHisto
   },
   LT: {
     symbol: "LT",
-    name: "Larsen & Toubro Ltd",
-    price: 3642.8,
-    change: 48.3,
-    changePercent: 1.34,
-    marketCap: "₹5.0L Cr",
+    name: "Larsen & Toubro Ltd",    marketCap: "₹5.0L Cr",
     sector: "Infrastructure",
     industry: "Engineering & Construction",
     description:
@@ -422,8 +391,8 @@ export const MOCK_COMPANY_SEEDS: Record<string, Omit<CompanyProfile, "priceHisto
     ],
     shareholding: { promoter: 23.54, fii: 22.18, dii: 32.45, public: 21.83, lastUpdated: "Mar 2026" },
     peers: [
-      { symbol: "ADANIENT", name: "Adani Enterprises", price: 2845.2, changePercent: 2.24, pe: 85.2, marketCap: "₹3.2L Cr" },
-      { symbol: "NCC", name: "NCC Ltd", price: 268.4, changePercent: 0.82, pe: 18.4, marketCap: "₹0.2L Cr" },
+      { symbol: "ADANIENT", name: "Adani Enterprises", pe: 85.2, marketCap: "₹3.2L Cr" },
+      { symbol: "NCC", name: "NCC Ltd", pe: 18.4, marketCap: "₹0.2L Cr" },
     ],
     valuation: [
       { label: "P/E Ratio", value: "33.2x", industryAvg: "28.0x", status: "overvalued" },
@@ -438,11 +407,7 @@ export const MOCK_COMPANY_SEEDS: Record<string, Omit<CompanyProfile, "priceHisto
   },
   WIPRO: {
     symbol: "WIPRO",
-    name: "Wipro Ltd",
-    price: 285.6,
-    change: -2.15,
-    changePercent: -0.75,
-    marketCap: "₹1.5L Cr",
+    name: "Wipro Ltd",    marketCap: "₹1.5L Cr",
     sector: "IT",
     industry: "IT Services & Consulting",
     description:
@@ -475,8 +440,8 @@ export const MOCK_COMPANY_SEEDS: Record<string, Omit<CompanyProfile, "priceHisto
     ],
     shareholding: { promoter: 72.96, fii: 6.82, dii: 12.45, public: 7.77, lastUpdated: "Mar 2026" },
     peers: [
-      { symbol: "INFY", name: "Infosys", price: 1892.15, changePercent: 1.56, pe: 28.4, marketCap: "₹7.8L Cr" },
-      { symbol: "TCS", name: "Tata Consultancy Services", price: 4125.8, changePercent: 0.85, pe: 32.1, marketCap: "₹15.0L Cr" },
+      { symbol: "INFY", name: "Infosys", pe: 28.4, marketCap: "₹7.8L Cr" },
+      { symbol: "TCS", name: "Tata Consultancy Services", pe: 32.1, marketCap: "₹15.0L Cr" },
     ],
     valuation: [
       { label: "P/E Ratio", value: "22.1x", industryAvg: "28.5x", status: "undervalued" },
@@ -491,11 +456,7 @@ export const MOCK_COMPANY_SEEDS: Record<string, Omit<CompanyProfile, "priceHisto
   },
   ADANIENT: {
     symbol: "ADANIENT",
-    name: "Adani Enterprises Ltd",
-    price: 2845.2,
-    change: 62.4,
-    changePercent: 2.24,
-    marketCap: "₹3.2L Cr",
+    name: "Adani Enterprises Ltd",    marketCap: "₹3.2L Cr",
     sector: "Conglomerate",
     industry: "Diversified",
     description:
@@ -528,8 +489,8 @@ export const MOCK_COMPANY_SEEDS: Record<string, Omit<CompanyProfile, "priceHisto
     ],
     shareholding: { promoter: 72.28, fii: 10.42, dii: 8.85, public: 8.45, lastUpdated: "Mar 2026" },
     peers: [
-      { symbol: "RELIANCE", name: "Reliance Industries", price: 2890.5, changePercent: 1.24, pe: 27.4, marketCap: "₹19.5L Cr" },
-      { symbol: "LT", name: "Larsen & Toubro", price: 3642.8, changePercent: 1.34, pe: 33.2, marketCap: "₹5.0L Cr" },
+      { symbol: "RELIANCE", name: "Reliance Industries", pe: 27.4, marketCap: "₹19.5L Cr" },
+      { symbol: "LT", name: "Larsen & Toubro", pe: 33.2, marketCap: "₹5.0L Cr" },
     ],
     valuation: [
       { label: "P/E Ratio", value: "85.2x", industryAvg: "22.1x", status: "overvalued" },
@@ -544,11 +505,7 @@ export const MOCK_COMPANY_SEEDS: Record<string, Omit<CompanyProfile, "priceHisto
   },
   MARUTI: {
     symbol: "MARUTI",
-    name: "Maruti Suzuki India Ltd",
-    price: 12450.0,
-    change: 185.5,
-    changePercent: 1.51,
-    marketCap: "₹3.9L Cr",
+    name: "Maruti Suzuki India Ltd",    marketCap: "₹3.9L Cr",
     sector: "Auto",
     industry: "Passenger Vehicles",
     description:
@@ -581,8 +538,8 @@ export const MOCK_COMPANY_SEEDS: Record<string, Omit<CompanyProfile, "priceHisto
     ],
     shareholding: { promoter: 56.21, fii: 22.45, dii: 14.82, public: 6.52, lastUpdated: "Mar 2026" },
     peers: [
-      { symbol: "TATAMOTORS", name: "Tata Motors", price: 782.4, changePercent: 0.92, pe: 12.4, marketCap: "₹3.4L Cr" },
-      { symbol: "M&M", name: "Mahindra & Mahindra", price: 3124.5, changePercent: 1.82, pe: 28.2, marketCap: "₹3.9L Cr" },
+      { symbol: "TATAMOTORS", name: "Tata Motors", pe: 12.4, marketCap: "₹3.4L Cr" },
+      { symbol: "M&M", name: "Mahindra & Mahindra", pe: 28.2, marketCap: "₹3.9L Cr" },
     ],
     valuation: [
       { label: "P/E Ratio", value: "28.6x", industryAvg: "24.0x", status: "overvalued" },
@@ -597,7 +554,7 @@ export const MOCK_COMPANY_SEEDS: Record<string, Omit<CompanyProfile, "priceHisto
   },
 };
 
-export function getMockSeed(symbol: string): Omit<CompanyProfile, "priceHistory"> | null {
+export function getMockSeed(symbol: string): FundamentalsSeedProfile | null {
   return MOCK_COMPANY_SEEDS[symbol.toUpperCase()] ?? null;
 }
 

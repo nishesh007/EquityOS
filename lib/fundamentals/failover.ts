@@ -29,8 +29,10 @@ async function buildFundamentalsChain(): Promise<FundamentalsProvider[]> {
   }
 
   if (isDevelopmentMode()) {
-    const { mockFundamentalsProvider } = await import("@/lib/fundamentals/mock-provider");
-    chain.push(mockFundamentalsProvider);
+    const { createMockFundamentalsProvider } = await import(
+      "@/lib/fundamentals/mock-provider"
+    );
+    chain.push(createMockFundamentalsProvider());
   }
 
   return chain;

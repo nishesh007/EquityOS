@@ -17,7 +17,15 @@ function makeProfile(symbol: string): CompanyProfile | null {
   if (seed) {
     return {
       ...seed,
-      priceHistory: { "1D": [], "1W": [], "1M": [], "3M": [], "6M": [], "1Y": [], "5Y": [] },
+      price: 0,
+      change: 0,
+      changePercent: 0,
+      peers: seed.peers.map((peer) => ({
+        ...peer,
+        price: 0,
+        changePercent: 0,
+      })),
+      priceHistory: { "1D": [], "5D": [], "1W": [], "1M": [], "3M": [], "6M": [], "1Y": [], "3Y": [], "5Y": [] },
     };
   }
   const { resolveFundamentalsSeed } = require("@/lib/fundamentals/dynamic-seed") as typeof import("@/lib/fundamentals/dynamic-seed");
@@ -25,7 +33,15 @@ function makeProfile(symbol: string): CompanyProfile | null {
     const dynamic = resolveFundamentalsSeed(symbol);
     return {
       ...dynamic,
-      priceHistory: { "1D": [], "1W": [], "1M": [], "3M": [], "6M": [], "1Y": [], "5Y": [] },
+      price: 0,
+      change: 0,
+      changePercent: 0,
+      peers: dynamic.peers.map((peer) => ({
+        ...peer,
+        price: 0,
+        changePercent: 0,
+      })),
+      priceHistory: { "1D": [], "5D": [], "1W": [], "1M": [], "3M": [], "6M": [], "1Y": [], "3Y": [], "5Y": [] },
     };
   } catch {
     return null;

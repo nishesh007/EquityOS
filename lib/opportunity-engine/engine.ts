@@ -1,5 +1,14 @@
 import { getCompanyMasterRecords } from "@/lib/company-master";
-import { marketDataService } from "@/lib/market-data";
+import { marketDataService } from "@/lib/market-data/server";
+import type { EnrichedQuote } from "@/lib/market-data/enriched-quote";
+import {
+  acquireQuotes,
+  getQuoteMaxAgeMs,
+  printQuoteFreshnessStats,
+  type QuoteFreshnessStats,
+} from "@/lib/market-data/quote-acquisition";
+import { toEnrichedQuote } from "@/lib/market-data/enriched-quote";
+import type { QuoteResult } from "@/lib/market-data/quote-result";
 import {
   getMarketStatus,
   getTradingDateKey,
@@ -23,6 +32,12 @@ import {
   buildPipelineScanSummary,
   enrichCandidatesWithPipeline,
 } from "@/lib/opportunity-engine/pipeline-enrichment";
+import { PipelineAuditLedger } from "@/lib/opportunity-engine/pipeline-audit";
+import {
+  countCategoryCandidates,
+  emptyPipelineStageCounts,
+  logPipelineStages,
+} from "@/lib/opportunity-engine/pipeline-telemetry";
 import {
   collectShortlistSymbols,
   rescoreCategory,
@@ -57,18 +72,13 @@ import {
   type LiveSymbolContext,
 } from "@/lib/opportunity-engine/live-metrics";
 import { getOhlcCandles } from "@/lib/market/ohlc-engine";
+import { OE_OHLC_USAGE } from "@/lib/market/ohlc-timeframes";
 import { executeOpportunityStrategies } from "@/lib/opportunity-engine/strategy-execution";
 import type { OhlcBar } from "@/lib/providers/types";
 import { getTradingPipelineResult } from "@/services/marketIntelligence";
 import type { TradingPipelineResult } from "@/src/modules/tradingPipeline";
-import {
-  countCategoryCandidates,
-  emptyPipelineStageCounts,
-  logPipelineStages,
-} from "@/lib/opportunity-engine/pipeline-telemetry";
 import { peekMemoryPersistedData } from "@/lib/opportunity-engine/persistence";
 
-const QUOTE_BATCH_SIZE = 50;
 /**
  * Concurrent OHLC technical enrichment across the ~2500 NSE universe.
  * Kept moderate to avoid Yahoo/Finnhub rate limits that collapse enrichment.
@@ -78,21 +88,59 @@ const METRICS_CONCURRENCY = 6;
 const TECH_MIN_BARS = 30;
 
 let scanInFlight: Promise<ScanResult> | null = null;
+let lastQuoteFreshnessStats: QuoteFreshnessStats | null = null;
+
+function acquiredToEnrichedQuote(
+  symbol: string,
+  acquired: Awaited<ReturnType<typeof acquireQuotes>>["quotes"] extends Map<
+    string,
+    infer V
+  >
+    ? V
+    : never
+): EnrichedQuote {
+  if (acquired.price == null || acquired.price <= 0) {
+    return toEnrichedQuote(symbol, null);
+  }
+  const result: QuoteResult = {
+    data: {
+      symbol: acquired.symbol,
+      ltp: acquired.price,
+      open: acquired.open ?? acquired.price,
+      high: acquired.high ?? acquired.price,
+      low: acquired.low ?? acquired.price,
+      previousClose: acquired.previousClose ?? acquired.price,
+      change: acquired.change ?? 0,
+      changePercent: acquired.changePercent ?? 0,
+      volume: acquired.volume,
+      provider: acquired.provider,
+      source: acquired.source === "live" ? "live" : "cached",
+      fetchedAt: acquired.timestamp,
+    },
+    provider: acquired.provider,
+    source: acquired.source === "live" ? "live" : "cached",
+    attempted: acquired.attempted,
+    stale: acquired.stale,
+    quoteAge: acquired.quoteAge,
+  };
+  return toEnrichedQuote(symbol, result);
+}
 
 async function fetchQuotesInBatches(symbols: string[]) {
-  const quoteMap = new Map<
-    string,
-    Awaited<ReturnType<typeof marketDataService.getEnrichedQuote>>
-  >();
+  const { quotes, stats } = await acquireQuotes(symbols);
+  lastQuoteFreshnessStats = stats;
+  printQuoteFreshnessStats(stats);
 
-  for (let i = 0; i < symbols.length; i += QUOTE_BATCH_SIZE) {
-    const batch = symbols.slice(i, i + QUOTE_BATCH_SIZE);
-    const batchQuotes = await marketDataService.getEnrichedQuotes(batch);
-    for (const [symbol, quote] of batchQuotes) {
-      quoteMap.set(symbol.toUpperCase(), quote);
+  const quoteMap = new Map<string, EnrichedQuote>();
+  for (const symbol of symbols) {
+    const key = symbol.toUpperCase();
+    const acquired = quotes.get(key);
+    if (!acquired) {
+      quoteMap.set(key, toEnrichedQuote(key, null));
+      continue;
     }
+    quoteMap.set(key, acquiredToEnrichedQuote(key, acquired));
   }
-
   return quoteMap;
 }
 
@@ -126,10 +174,6 @@ function buildSymbolContexts(): LiveSymbolContext[] {
   }));
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 function quoteLiquidityScore(row: LiveMetricsRecord): number {
   const volume = typeof row.volume === "number" ? row.volume : 0;
   const changePercent =
@@ -138,19 +182,11 @@ function quoteLiquidityScore(row: LiveMetricsRecord): number {
 }
 
 async function fetchTechnicalsCandles(symbol: string): Promise<OhlcBar[]> {
-  // Prefer 1Y daily so technicals have enough history even after holidays.
-  const primary = await getOhlcCandles(symbol, "1Y", { minBars: TECH_MIN_BARS });
-  if (primary.data.length >= TECH_MIN_BARS) return primary.data;
-
-  await sleep(120);
-  const retry = await getOhlcCandles(symbol, "1Y", { minBars: TECH_MIN_BARS });
-  if (retry.data.length >= TECH_MIN_BARS) return retry.data;
-
-  const fallback = await getOhlcCandles(symbol, "6M", { minBars: TECH_MIN_BARS });
-  if (fallback.data.length >= TECH_MIN_BARS) return fallback.data;
-
-  // Best-effort (may be short → has_live_technicals stays 0).
-  return primary.data.length >= retry.data.length ? primary.data : retry.data;
+  // Canonical: Trend analysis uses 1Y daily only. No cross-TF fallback.
+  const primary = await getOhlcCandles(symbol, OE_OHLC_USAGE.trend, {
+    minBars: TECH_MIN_BARS,
+  });
+  return primary.data;
 }
 
 /**
@@ -168,11 +204,12 @@ async function buildQuoteMetricsRows(
   enrichedCount: number;
 }> {
   const baseRows: LiveMetricsRecord[] = [];
+  const maxAgeMs = getQuoteMaxAgeMs();
 
   for (const ctx of contexts) {
     const quote = quoteMap.get(ctx.symbol);
     if (!quote) continue;
-    const metrics = buildQuoteOnlyMetrics(ctx, quote);
+    const metrics = buildQuoteOnlyMetrics(ctx, quote, maxAgeMs);
     if (metrics) baseRows.push(metrics);
   }
 
@@ -234,7 +271,7 @@ async function prefetchSessionCandles(
   const unique = [...new Set(symbols.map((symbol) => symbol.toUpperCase()).filter(Boolean))];
   const sessionCandlesBySymbol = new Map<string, OhlcBar[]>();
   await mapWithConcurrency(unique, METRICS_CONCURRENCY, async (symbol) => {
-    const session = await getOhlcCandles(symbol, "1D");
+    const session = await getOhlcCandles(symbol, OE_OHLC_USAGE.session);
     sessionCandlesBySymbol.set(symbol, session.data);
   });
   return sessionCandlesBySymbol;
@@ -427,6 +464,9 @@ async function executeScan(force = false): Promise<ScanResult> {
   setScanning(true);
 
   try {
+    const audit = new PipelineAuditLedger();
+    const priorCandidateCount = countCategoryCandidates(current.categories);
+
     // Trading Pipeline first — shared Context → Regime → Eligibility SSOT.
     let pipeline: TradingPipelineResult;
     try {
@@ -439,6 +479,7 @@ async function executeScan(force = false): Promise<ScanResult> {
 
     const contexts = buildSymbolContexts();
     setUniverseSize(contexts.length);
+    audit.setStage("stage1_input_stocks", contexts.length);
 
     const symbols = contexts.map((ctx) => ctx.symbol);
     const quoteMap = await fetchQuotesInBatches(symbols);
@@ -446,6 +487,30 @@ async function executeScan(force = false): Promise<ScanResult> {
     const candlesBySymbol = built.candlesBySymbol;
     let metricsRows = built.rows;
     const symbolsScanned = metricsRows.length;
+
+    audit.setStage("stage2_after_enrichment", metricsRows.length);
+    audit.setStage("stage3_after_technicals", built.enrichedCount);
+
+    // Quote missing / null price rejections
+    for (const ctx of contexts) {
+      const quote = quoteMap.get(ctx.symbol);
+      if (!quote) {
+        audit.reject(ctx.symbol, "Price unavailable", "stage2_after_enrichment");
+        continue;
+      }
+      if (quote.price === null || quote.price <= 0) {
+        audit.reject(ctx.symbol, "Price unavailable", "stage2_after_enrichment");
+      }
+    }
+    for (const row of metricsRows) {
+      const symbol = String(row.symbol ?? "");
+      if (!symbol) continue;
+      if (row.has_live_technicals !== 1) {
+        audit.reject(symbol, "Missing technicals", "stage3_after_technicals");
+      } else if (row.volume_ratio == null) {
+        audit.reject(symbol, "Volume ratio null", "stage3_after_technicals");
+      }
+    }
 
     const stageCounts = emptyPipelineStageCounts();
     stageCounts.universeReceived = contexts.length;
@@ -479,6 +544,13 @@ async function executeScan(force = false): Promise<ScanResult> {
     ]);
 
     metricsRows = await enrichFundamentalsOnRows(metricsRows, fundamentalsSymbols);
+    const fundamentalsEnriched = metricsRows.filter(
+      (row) => row.has_live_fundamentals === 1
+    ).length;
+    audit.setStage(
+      "stage4_after_fundamentals",
+      fundamentalsSymbols.size > 0 ? fundamentalsEnriched : metricsRows.length
+    );
 
     const metricsBySymbol = new Map<string, LiveMetricsRecord>();
     for (const row of metricsRows) {
@@ -487,6 +559,11 @@ async function executeScan(force = false): Promise<ScanResult> {
     }
 
     const fullRescan = scanLiveMetrics(metricsRows);
+    const scoredCount = OPPORTUNITY_CATEGORIES.reduce(
+      (n, category) => n + fullRescan[category].length,
+      0
+    );
+    audit.setStage("stage5_after_scoring", scoredCount);
 
     let totalAdded = 0;
     let totalRemoved = 0;
@@ -494,6 +571,10 @@ async function executeScan(force = false): Promise<ScanResult> {
     let totalRawCandidates = 0;
     let totalPipelinePassed = 0;
     let totalStoredCandidates = 0;
+    const pendingMerges: Array<{
+      category: OpportunityCategory;
+      candidates: OpportunityCandidate[];
+    }> = [];
 
     for (const category of OPPORTUNITY_CATEGORIES) {
       const rawCandidates = buildCategoryCandidates(
@@ -510,9 +591,31 @@ async function executeScan(force = false): Promise<ScanResult> {
       const hasEligibleStrategies = pipeline.eligibleStrategies.some(
         (strategy) => strategy.eligible
       );
-      const pipelineCandidates = enrichCandidatesWithPipeline(rawCandidates, pipeline, {
-        dropRejected: !(force && !hasEligibleStrategies),
+      const dropRejected = !(force && !hasEligibleStrategies);
+      const enrichedAll = enrichCandidatesWithPipeline(rawCandidates, pipeline, {
+        dropRejected: false,
       });
+      for (const candidate of enrichedAll) {
+        if (candidate.pipelineEligible === false) {
+          const reason = candidate.rejectedReasons?.[0] ?? "Risk filter failed";
+          audit.reject(
+            candidate.symbol,
+            reason.includes("trend") || reason.includes("Trend")
+              ? "Trend filter failed"
+              : reason.includes("liquidity") || reason.includes("Liquidity")
+                ? "Risk filter failed"
+                : reason.includes("confidence") || reason.includes("Confidence")
+                  ? "Confidence < Threshold"
+                  : reason.includes("RR") || reason.includes("risk") || reason.includes("Risk")
+                    ? "Risk filter failed"
+                    : reason,
+            "stage6_after_confidence"
+          );
+        }
+      }
+      const pipelineCandidates = dropRejected
+        ? enrichedAll.filter((c) => c.pipelineEligible !== false)
+        : enrichedAll;
       totalPipelinePassed += pipelineCandidates.length;
       const sessionCandlesBySymbol = SCALP_SESSION_CATEGORIES.has(category)
         ? await prefetchSessionCandles(
@@ -550,6 +653,11 @@ async function executeScan(force = false): Promise<ScanResult> {
                 },
               ];
             }
+            audit.reject(
+              candidate.symbol,
+              execution.rejectedReasons[0] ?? "Strategy Engine returned no actionable signal",
+              "stage6_after_confidence"
+            );
             return [];
           }
           const frameworkBoost = execution.longTermRanking?.frameworkScore;
@@ -609,29 +717,58 @@ async function executeScan(force = false): Promise<ScanResult> {
           };
           return [executedCandidate];
         });
-      const { added, removed, updated } = mergeCategoryResults(category, candidates);
-      totalAdded += added;
-      totalRemoved += removed;
-      totalUpdated += updated;
       totalStoredCandidates += candidates.length;
+      pendingMerges.push({ category, candidates });
+    }
+
+    audit.setStage("stage6_after_confidence", totalPipelinePassed);
+
+    // Empty live scan must not wipe carry-forward / prior good recommendations.
+    const retainPrior =
+      totalStoredCandidates === 0 && priorCandidateCount > 0;
+    if (retainPrior) {
+      console.warn(
+        `[OpportunityEngine] Empty scan produced 0 candidates while ${priorCandidateCount} ` +
+          `prior candidates exist — retaining prior recommendations (root-cause guard).`
+      );
+      audit.reject(
+        "*",
+        "Empty live scan retained prior recommendations",
+        "stage6_after_confidence"
+      );
+    } else {
+      for (const { category, candidates } of pendingMerges) {
+        const { added, removed, updated } = mergeCategoryResults(
+          category,
+          candidates
+        );
+        totalAdded += added;
+        totalRemoved += removed;
+        totalUpdated += updated;
+      }
     }
 
     const durationMs = Date.now() - start;
     const nextScanAt = nextOpportunityScanAt();
 
-    finalizeScan(
-      nextScanAt,
-      {
-        durationMs,
-        symbolsScanned,
-        added: totalAdded,
-        removed: totalRemoved,
-        updated: totalUpdated,
-      },
-      pipelineSummary
-    );
+    if (!retainPrior) {
+      finalizeScan(
+        nextScanAt,
+        {
+          durationMs,
+          symbolsScanned,
+          added: totalAdded,
+          removed: totalRemoved,
+          updated: totalUpdated,
+        },
+        pipelineSummary
+      );
+    } else {
+      // Still clear isScanning without advancing scanCount / wiping lastScannedAt.
+      setScanning(false);
+    }
 
-    if (!isMarketOpen() && getMarketStatus() === "post_close") {
+    if (!retainPrior && !isMarketOpen() && getMarketStatus() === "post_close") {
       const sessionDate = getTradingDateKey();
       const liveState = getOpportunityEngineState();
       // Regenerate post-market only for the current trading day.
@@ -645,18 +782,27 @@ async function executeScan(force = false): Promise<ScanResult> {
     }
 
     const finalState = getOpportunityEngineState();
+    const finalStored = countCategoryCandidates(finalState.categories);
+    audit.setStage("stage7_ui_formatting", finalStored);
+    audit.logSummary("scan-complete", {
+      retainedPrior: retainPrior,
+      durationMs,
+      force,
+    });
+
     stageCounts.rawCandidates = totalRawCandidates;
     stageCounts.pipelinePassed = totalPipelinePassed;
-    stageCounts.scoredStored = totalStoredCandidates;
+    stageCounts.scoredStored = retainPrior ? priorCandidateCount : totalStoredCandidates;
     stageCounts.recommendationsStored =
-      finalState.recommendations?.length ??
-      countCategoryCandidates(finalState.categories);
+      finalState.recommendations?.length ?? finalStored;
     logPipelineStages("after-scan-store", stageCounts, {
       memoryPopulated: Boolean(peekMemoryPersistedData()?.state),
       added: totalAdded,
       removed: totalRemoved,
       updated: totalUpdated,
       durationMs,
+      retainedPrior: retainPrior,
+      auditFirstZero: audit.snapshot().firstZeroStage,
     });
 
     return {
@@ -670,6 +816,15 @@ async function executeScan(force = false): Promise<ScanResult> {
       enrichedCount: built.enrichedCount,
       rawCandidates: totalRawCandidates,
       pipelinePassed: totalPipelinePassed,
+      quoteFreshness: lastQuoteFreshnessStats
+        ? {
+            quotesFetched: lastQuoteFreshnessStats.quotesFetched,
+            fresh: lastQuoteFreshnessStats.fresh,
+            stale: lastQuoteFreshnessStats.stale,
+            providerFailures: lastQuoteFreshnessStats.providerFailures,
+            cacheHitRatio: lastQuoteFreshnessStats.cacheHitRatio,
+          }
+        : undefined,
     };
   } catch (error) {
     clearScanningOnError();

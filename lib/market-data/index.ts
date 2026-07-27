@@ -1,23 +1,19 @@
 /**
- * Sprint 8A — Unified Live Market Data Architecture.
- * All market data consumption flows through MarketDataService.
+ * Client-safe market-data surface.
+ *
+ * Do NOT re-export quote-store, quote-acquisition, failover, or MarketDataService
+ * from this barrel — those pull node:fs and are server-only.
+ *
+ * Server code: import from `@/lib/market-data/server`.
  */
 
-export {
-  marketDataService,
-  getQuote,
-  getMarketData,
-  getIndex,
-  getQuotes,
-  getEnrichedQuote,
-  getEnrichedQuotes,
-  getProviderChain,
-  getMarketDataProviderHealth,
-} from "@/lib/market-data/service";
-export type { QuoteResult } from "@/lib/market-data/service";
+export type { QuoteResult } from "@/lib/market-data/quote-result";
 export type { EnrichedQuote, QuoteAvailability } from "@/lib/market-data/enriched-quote";
-export { toEnrichedQuote, createUnavailableQuote, buildInitialQuotesMap } from "@/lib/market-data/enriched-quote";
-export type { OhlcResult } from "@/lib/market/ohlc-engine";
+export {
+  toEnrichedQuote,
+  createUnavailableQuote,
+  buildInitialQuotesMap,
+} from "@/lib/market-data/enriched-quote";
 
 export type {
   MarketData,
@@ -43,13 +39,3 @@ export {
   liveQuoteToMarketData,
   marketDataToLiveQuote,
 } from "@/lib/market-data/mappers";
-
-export {
-  fetchMarketDataWithFailover,
-  fetchIndexWithFailover,
-  fetchQuoteWithFailover,
-  getProductionProviderChain,
-  getActiveMarketDataProviders,
-} from "@/lib/market-data/fallback";
-export { getProviderHealth } from "@/lib/market-data/provider-health";
-export type { ProviderHealth } from "@/lib/market-data/provider-health";

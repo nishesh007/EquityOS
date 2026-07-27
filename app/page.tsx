@@ -104,7 +104,7 @@ export default function DashboardPage() {
         <DashboardWidget id="ai-brief">
           <LazyComingSoonWidget
             title="AI Market Brief"
-            subtitle="Executive briefing lives in the header strip"
+            subtitle="Live briefing is in the executive header strip above"
           />
         </DashboardWidget>
 
@@ -122,7 +122,7 @@ export default function DashboardPage() {
         <DashboardWidget id="portfolio-health">
           <LazyComingSoonWidget
             title="Portfolio Health"
-            subtitle="Open Portfolio Doctor for live health metrics"
+            subtitle="Data unavailable here — open Portfolio for live health metrics"
           />
         </DashboardWidget>
 

@@ -3,6 +3,11 @@ import { fetchFundamentalsBundle } from "@/lib/fundamentals";
 import type { EnrichedQuote } from "@/lib/market-data/enriched-quote";
 import { getOhlcCandles } from "@/lib/market/ohlc-engine";
 import {
+  OE_OHLC_BAR_WINDOWS,
+  OE_OHLC_USAGE,
+} from "@/lib/market/ohlc-timeframes";
+import { getSessionElapsedFraction } from "@/lib/market/session";
+import {
   adx,
   atr,
   bollingerBands,
@@ -72,9 +77,20 @@ function parseFundamentalScore(
 
 export function buildQuoteOnlyMetrics(
   ctx: LiveSymbolContext,
-  quote: EnrichedQuote
+  quote: EnrichedQuote,
+  maxAgeMs?: number
 ): LiveMetricsRecord | null {
   if (quote.price === null || quote.price <= 0) return null;
+
+  // Stale quotes are processable; only reject when older than max age.
+  if (
+    quote.stale &&
+    typeof maxAgeMs === "number" &&
+    Number.isFinite(quote.quoteAge) &&
+    quote.quoteAge > maxAgeMs
+  ) {
+    return null;
+  }
 
   return {
     symbol: ctx.symbol,
@@ -90,10 +106,22 @@ export function buildQuoteOnlyMetrics(
     low: quote.low,
     prev_close: quote.previousClose,
     vwap: quote.vwap,
-    has_live_quote: 1,
+    has_live_quote: quote.stale ? 0 : 1,
+    has_stale_quote: quote.stale ? 1 : 0,
+    quote_age_ms: Number.isFinite(quote.quoteAge) ? quote.quoteAge : null,
   };
 }
 
+function oeWindow(candles: OhlcBar[], bars: number): OhlcBar[] {
+  return candles.length <= bars ? candles : candles.slice(-bars);
+}
+
+/**
+ * Enrich quote metrics from a single OHLC series.
+ * Trend/structure indicators use the full series (scan=1Y, live=3M).
+ * Momentum / RS use the documented 6M window of that same series.
+ * Never switches to a different timeframe fetch mid-calculation.
+ */
 export async function enrichMetricsWithTechnicals(
   base: LiveMetricsRecord,
   candles: OhlcBar[]
@@ -103,14 +131,16 @@ export async function enrichMetricsWithTechnicals(
   }
 
   const closes = candles.map((bar) => bar.close);
+  const momentumCandles = oeWindow(candles, OE_OHLC_BAR_WINDOWS.momentum);
+  const momentumCloses = momentumCandles.map((bar) => bar.close);
   const price = typeof base.cmp === "number" ? base.cmp : closes.at(-1) ?? 0;
   const rsi14 = rsi(closes, 14);
   const rsiPrev =
     closes.length > 15 ? rsi(closes.slice(0, -1), 14) : null;
   const adxResult = adx(candles, 14);
   const atr14 = atr(candles, 14);
-  const momentum10 = momentum(closes, 10);
-  const rs20 = relativeStrength(closes, 20);
+  const momentum10 = momentum(momentumCloses, 10);
+  const rs20 = relativeStrength(momentumCloses, 20);
   const vol20 = volatility(closes, 20);
   const weekHigh = Math.max(...candles.slice(-252).map((bar) => bar.high));
   const weekLow = Math.min(...candles.slice(-252).map((bar) => bar.low));
@@ -128,9 +158,20 @@ export async function enrichMetricsWithTechnicals(
   const athDistance = weekHigh > 0 ? ((price - weekHigh) / weekHigh) * 100 : null;
 
   const liveVolume = typeof base.volume === "number" ? base.volume : null;
+  // During live cash hours, quote.volume is cumulative session volume — not a
+  // full-day print. Comparing it raw to 20d ADV collapses RVOL near open and
+  // falsely rejects nearly every name. Time-adjust to a full-session equivalent.
+  // Outside the session (post-close / weekend), volume is already full-day.
+  const sessionFraction = getSessionElapsedFraction();
   const volumeRatio =
     liveVolume !== null && avgVol20 !== null && avgVol20 > 0
-      ? Math.round((liveVolume / avgVol20) * 100) / 100
+      ? Math.round(
+          ((sessionFraction !== null && sessionFraction > 0
+            ? liveVolume / sessionFraction
+            : liveVolume) /
+            avgVol20) *
+            100
+        ) / 100
       : null;
 
   // Sprint 9F.5 — historical liquidity depth (not today's spike alone).
@@ -157,8 +198,10 @@ export async function enrichMetricsWithTechnicals(
       ? Math.round(((price - dayLow) / (dayHigh - dayLow)) * 10000) / 100
       : null;
 
-  // Impact-cost proxy when exchange impact cost is unavailable: ATR / price.
-  const impactCostProxy =
+  // ATR as % of price — volatility context only.
+  // Do NOT write this into impact_cost_pct: true NSE impact cost is typically
+  // << ATR%, and the tradability engine hard-rejects impact_cost > 2.5%.
+  const atrPct =
     atr14 !== null && price > 0
       ? Math.round((atr14 / price) * 10000) / 100
       : null;
@@ -169,7 +212,9 @@ export async function enrichMetricsWithTechnicals(
     avg_turnover_20d:
       avgTurnover20 > 0 ? Math.round(avgTurnover20) : null,
     adtv_20d: adtv20 !== null ? Math.round(adtv20) : null,
-    impact_cost_pct: impactCostProxy,
+    atr_pct: atrPct,
+    // Only real exchange impact cost belongs here — leave null when unknown.
+    impact_cost_pct: null,
     volume_ratio: volumeRatio,
     rsi: rsi14 !== null ? Math.round(rsi14 * 100) / 100 : null,
     rsi_prev: rsiPrev !== null ? Math.round(rsiPrev * 100) / 100 : null,
@@ -239,7 +284,7 @@ export async function buildLiveMetrics(
   const quoteMetrics = buildQuoteOnlyMetrics(ctx, quote);
   if (!quoteMetrics) return null;
 
-  const ohlc = await getOhlcCandles(ctx.symbol, "3M");
+  const ohlc = await getOhlcCandles(ctx.symbol, OE_OHLC_USAGE.entry);
   let metrics = await enrichMetricsWithTechnicals(quoteMetrics, ohlc.data);
 
   if (options?.includeFundamentals) {

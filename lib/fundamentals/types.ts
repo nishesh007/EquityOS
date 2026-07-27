@@ -9,11 +9,11 @@ import type {
   CompanyNews,
   CompanyNote,
   CompanyTimelineEvent,
-  PeerCompany,
   QuarterlyResult,
   ShareholdingPattern,
   ValuationMetric,
 } from "@/types";
+import type { FundamentalsPeerSeed } from "@/lib/fundamentals/seed-types";
 import type { DataSource, ProviderTier } from "@/lib/providers/types";
 
 export type StatementPeriod = "annual" | "quarterly";
@@ -135,10 +135,11 @@ export interface FundamentalsBundle {
   website: string;
   founded: string;
   employees: string;
+  /**
+   * Static / provider market-cap label (e.g. "₹19.5L Cr").
+   * NEVER derived from mock LTP. Live market-cap overlays come from market-data.
+   */
   marketCap: string;
-  price: number;
-  change: number;
-  changePercent: number;
   financials: CompanyFinancials;
   statements: FinancialStatements;
   ratios: FinancialRatios;
@@ -149,7 +150,8 @@ export interface FundamentalsBundle {
   corporateActions: CorporateAction[];
   timeline: CompanyTimelineEvent[];
   valuation: ValuationMetric[];
-  peers: PeerCompany[];
+  /** Fundamentals peers — identity + ratios only. Prices come from market-data. */
+  peers: FundamentalsPeerSeed[];
   news: CompanyNews[];
   notes: CompanyNote[];
   provider: string;

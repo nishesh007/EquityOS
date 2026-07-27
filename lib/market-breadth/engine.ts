@@ -6,7 +6,7 @@
 
 import { lookupCompanyMaster } from "@/lib/company-master";
 import type { EnrichedQuote } from "@/lib/market-data/enriched-quote";
-import { marketDataService } from "@/lib/market-data";
+import { marketDataService } from "@/lib/market-data/server";
 import {
   getMarketStatus,
   getMarketStatusLabel,
@@ -15,6 +15,12 @@ import { ema, rsi } from "@/lib/technical/math";
 import { formatVolume } from "@/lib/utils";
 import type { MarketMover } from "@/types";
 import { classifyMarketMood } from "./mood";
+import {
+  classifyDayMove,
+  computeBreadthCoreMetrics,
+  computeSectorBreadthMetrics,
+  sectorAdvanceSharePercent,
+} from "./metrics";
 import {
   isParticipationCoverageSufficient,
   MAX_TECHNICAL_FETCHES,
@@ -116,47 +122,12 @@ function pctOf(count: number | null, sample: number): number | null {
 }
 
 function buildSectors(rows: QuoteRow[]): SectorBreadthRow[] {
-  const bySector = new Map<
-    string,
-    { advances: number; declines: number; unchanged: number; total: number; changes: number[] }
-  >();
-
-  for (const row of rows) {
-    const sector =
-      lookupCompanyMaster(row.symbol)?.sector?.trim() || "Equities";
-    const bucket = bySector.get(sector) ?? {
-      advances: 0,
-      declines: 0,
-      unchanged: 0,
-      total: 0,
-      changes: [],
-    };
-    bucket.changes.push(row.changePercent);
-    bucket.total += 1;
-    if (row.changePercent > 0) bucket.advances += 1;
-    else if (row.changePercent < 0) bucket.declines += 1;
-    else bucket.unchanged += 1;
-    bySector.set(sector, bucket);
-  }
-
-  return [...bySector.entries()]
-    .map(([name, bucket]) => {
-      const avg =
-        bucket.changes.reduce((sum, value) => sum + value, 0) /
-        Math.max(1, bucket.changes.length);
-      return {
-        name,
-        changePercent: Math.round(avg * 100) / 100,
-        breadth: Math.round(
-          (bucket.advances / Math.max(1, bucket.total)) * 1000
-        ) / 10,
-        advances: bucket.advances,
-        declines: bucket.declines,
-        unchanged: bucket.unchanged,
-        total: bucket.total,
-      };
-    })
-    .sort((a, b) => b.breadth - a.breadth);
+  return computeSectorBreadthMetrics(
+    rows.map((row) => ({
+      changePercent: row.changePercent,
+      sector: lookupCompanyMaster(row.symbol)?.sector?.trim() || "Equities",
+    }))
+  );
 }
 
 function selectMovers(
@@ -165,9 +136,12 @@ function selectMovers(
   limit = 5
 ): MarketMover[] {
   return rows
-    .filter((row) =>
-      direction === "gainers" ? row.changePercent > 0 : row.changePercent < 0
-    )
+    .filter((row) => {
+      const move = classifyDayMove(row.changePercent);
+      return direction === "gainers"
+        ? move === "advance"
+        : move === "decline";
+    })
     .sort((a, b) =>
       direction === "gainers"
         ? b.changePercent - a.changePercent
@@ -362,17 +336,17 @@ export async function runMarketBreadthEngine(
   }
 
   const totalStocks = resolved.symbols.length;
-  const quotedStocks = rows.length;
-  const advances = rows.filter((row) => row.changePercent > 0).length;
-  const declines = rows.filter((row) => row.changePercent < 0).length;
-  const unchanged = quotedStocks - advances - declines;
-  const advanceDeclineRatio =
-    declines > 0 ? advances / declines : advances > 0 ? advances : 0;
-  const breadthPercent =
-    quotedStocks > 0
-      ? Math.round((advances / quotedStocks) * 1000) / 10
-      : 0;
-  const netAdvances = advances - declines;
+  const core = computeBreadthCoreMetrics(rows);
+  const {
+    quotedStocks,
+    advances,
+    declines,
+    unchanged,
+    advanceDeclineRatio,
+    breadthPercent,
+    netAdvances,
+    moverParticipationPercent: moverParticipation,
+  } = core;
   const quoteCoveragePercent =
     totalStocks > 0
       ? Math.round((quotedStocks / totalStocks) * 1000) / 10
@@ -441,14 +415,7 @@ export async function runMarketBreadthEngine(
         : 0;
 
   const sectorBreadth = buildSectors(rows);
-  const sectorAdvanceSharePercent =
-    sectorBreadth.length > 0
-      ? Math.round(
-          (sectorBreadth.filter((s) => s.breadth >= 50).length /
-            sectorBreadth.length) *
-            1000
-        ) / 10
-      : null;
+  const sectorAdvanceShare = sectorAdvanceSharePercent(sectorBreadth);
 
   // Mood uses EMA/RSI only when the technical sample meets the full gate.
   const moodResult = classifyMarketMood({
@@ -459,7 +426,7 @@ export async function runMarketBreadthEngine(
       : null,
     newHighs52w,
     newLows52w,
-    sectorAdvanceSharePercent,
+    sectorAdvanceSharePercent: sectorAdvanceShare,
     averageRsi: participationReady ? technicals.averageRsi : null,
   });
 
@@ -484,11 +451,6 @@ export async function runMarketBreadthEngine(
       ? sectorBreadth[sectorBreadth.length - 1]?.name ?? null
       : null;
 
-  const moverParticipation =
-    quotedStocks > 0
-      ? Math.round(((advances + declines) / quotedStocks) * 1000) / 10
-      : 0;
-
   return {
     universe: universeId,
     universeLabel: resolved.label,
@@ -497,7 +459,7 @@ export async function runMarketBreadthEngine(
     advances,
     declines,
     unchanged,
-    advanceDeclineRatio: Math.round(advanceDeclineRatio * 100) / 100,
+    advanceDeclineRatio,
     breadthPercent,
     netAdvances,
     marketMood: moodResult.mood,

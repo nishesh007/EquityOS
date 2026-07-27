@@ -4,7 +4,13 @@ import type { EnrichedQuote } from "@/lib/market-data/enriched-quote";
 import type { ChartTimeframe } from "@/types";
 import type { OhlcBar } from "@/lib/providers/types";
 import { cn } from "@/lib/utils";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { ChartHeader } from "./ChartHeader";
 import { ChartSidebar } from "./ChartSidebar";
 import { ChartTimeframeBar } from "./ChartTimeframeBar";
@@ -22,8 +28,8 @@ import {
   saveIndicators,
 } from "./persistence";
 import {
-  isIntradayTimeframe,
-  resolvePriceHistoryKey,
+  isPreloadedChartTimeframe,
+  resolveOhlcTimeframe,
   type ChartDrawing,
   type ChartLayoutId,
   type ChartToolId,
@@ -78,11 +84,18 @@ export function ChartWorkspace({
   const [indicatorsOpen, setIndicatorsOpen] = useState(true);
   const [hydrated, setHydrated] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
+  const [fetchedBars, setFetchedBars] = useState<
+    Partial<Record<WorkspaceTimeframe, OhlcBar[]>>
+  >({});
+  const [fetchStatus, setFetchStatus] = useState<
+    "idle" | "loading" | "empty" | "error"
+  >("idle");
 
   useEffect(() => {
     setPrefs(loadChartPrefs());
     setIndicators(loadIndicators());
     setDrawings(loadDrawings(symbol));
+    setFetchedBars({});
     setHydrated(true);
   }, [symbol]);
 
@@ -120,14 +133,74 @@ export function ChartWorkspace({
     return list;
   }, [panes, prefs.paneTimeframes, prefs.timeframe]);
 
-  const primaryBars =
-    priceHistory[resolvePriceHistoryKey(prefs.timeframe)] ?? [];
-  const compareBars = comparePriceHistory
-    ? comparePriceHistory[resolvePriceHistoryKey(prefs.timeframe)]
-    : undefined;
+  const resolveBars = useCallback(
+    (tf: WorkspaceTimeframe): OhlcBar[] => {
+      if (isPreloadedChartTimeframe(tf) && (priceHistory[tf]?.length ?? 0) > 0) {
+        return priceHistory[tf];
+      }
+      return fetchedBars[tf] ?? [];
+    },
+    [priceHistory, fetchedBars]
+  );
+
+  // Exact-TF fetch only — never borrow another timeframe's candles.
+  useEffect(() => {
+    const needed = [...new Set([prefs.timeframe, ...paneTfs])];
+    const missing = needed.filter((tf) => resolveBars(tf).length === 0);
+    if (missing.length === 0) {
+      setFetchStatus(resolveBars(prefs.timeframe).length === 0 ? "empty" : "idle");
+      return;
+    }
+
+    let cancelled = false;
+    setFetchStatus("loading");
+
+    void (async () => {
+      try {
+        const results = await Promise.all(
+          missing.map(async (tf) => {
+            const ohlcTf = resolveOhlcTimeframe(tf);
+            const res = await fetch(
+              `/api/market/ohlc?symbol=${encodeURIComponent(symbol)}&timeframe=${encodeURIComponent(ohlcTf)}`
+            );
+            if (!res.ok) throw new Error(`OHLC ${tf} failed`);
+            const json = (await res.json()) as { candles?: OhlcBar[] };
+            return [tf, json.candles ?? []] as const;
+          })
+        );
+        if (cancelled) return;
+        setFetchedBars((prev) => {
+          const next = { ...prev };
+          for (const [tf, candles] of results) next[tf] = candles;
+          return next;
+        });
+        const primary = results.find(([tf]) => tf === prefs.timeframe)?.[1];
+        setFetchStatus(
+          (primary?.length ?? 0) === 0 &&
+            resolveBars(prefs.timeframe).length === 0
+            ? "empty"
+            : "idle"
+        );
+      } catch {
+        if (!cancelled) setFetchStatus("error");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [symbol, prefs.timeframe, paneTfs, resolveBars]);
+
+  const primaryBars = resolveBars(prefs.timeframe);
+  const compareBars =
+    comparePriceHistory && isPreloadedChartTimeframe(prefs.timeframe)
+      ? comparePriceHistory[prefs.timeframe]
+      : undefined;
 
   const onScreenshot = () => {
-    setFlash("Screenshot captured to clipboard layout — use OS snip for export.");
+    setFlash(
+      "Screenshot captured to clipboard layout — use OS snip for export."
+    );
     window.setTimeout(() => setFlash(null), 2400);
   };
 
@@ -166,10 +239,18 @@ export function ChartWorkspace({
           onLayoutChange={(layout) => updatePrefs({ ...prefs, layout })}
         />
 
-        {isIntradayTimeframe(prefs.timeframe) ? (
+        {fetchStatus === "loading" ? (
+          <p className="text-[10px] text-text-muted">Loading {prefs.timeframe} candles…</p>
+        ) : null}
+        {fetchStatus === "empty" ||
+        (fetchStatus === "idle" && primaryBars.length === 0) ? (
           <p className="text-[10px] text-amber-400/90">
-            Intraday {prefs.timeframe} selected — provider daily OHLC shown until
-            intraday feed lands.
+            No data available for {prefs.timeframe}. Retry or pick another timeframe.
+          </p>
+        ) : null}
+        {fetchStatus === "error" ? (
+          <p className="text-[10px] text-rose-400/90">
+            Failed to load {prefs.timeframe} candles. Retry shortly.
           </p>
         ) : null}
 
@@ -198,8 +279,7 @@ export function ChartWorkspace({
             )}
           >
             {paneTfs.map((tf, index) => {
-              const bars =
-                priceHistory[resolvePriceHistoryKey(tf)] ?? primaryBars;
+              const bars = resolveBars(tf);
               return (
                 <div
                   key={`${tf}-${index}`}

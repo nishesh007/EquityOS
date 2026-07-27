@@ -38,6 +38,15 @@ import type { MarketBreadth } from "@/types";
 interface MarketPulseProps {
   pulse: MarketPulseType;
   marketIntelligence?: MarketIntelligenceSnapshot | null;
+  /** Optional breadth from canonical snapshot (no client fetch). */
+  breadth?: MarketBreadth | null;
+  /** Session status from snapshot when locked. */
+  marketStatus?: MarketStatus;
+  /** Consume only props — no /api/market/context or breadth fetches. */
+  snapshotLocked?: boolean;
+  hideTimestamps?: boolean;
+  hideFlows?: boolean;
+  hidePcr?: boolean;
 }
 
 interface PulseMetricProps {
@@ -45,7 +54,6 @@ interface PulseMetricProps {
   children: ReactNode;
   detail: ReactNode;
   icon: ReactNode;
-  /** R4 subtle tinted background (5–8% opacity), dark theme preserved. */
   tint?: string;
 }
 
@@ -70,14 +78,11 @@ function PulseMetric({ label, children, detail, icon, tint }: PulseMetricProps) 
       <div className="mt-2.5 text-text-primary [&_.data-value]:text-[24px] [&_.data-value]:font-bold [&_.data-value]:leading-none [&_.data-value]:tracking-tight sm:[&_.data-value]:text-[26px]">
         {children}
       </div>
-      <div className="data-secondary mt-1.5 leading-relaxed">
-        {detail}
-      </div>
+      <div className="data-secondary mt-1.5 leading-relaxed">{detail}</div>
     </div>
   );
 }
 
-/** Per-metric tinted surfaces (5–8% opacity) — presentation only. */
 const METRIC_TINTS = {
   vix: "border-emerald-500/15 bg-emerald-500/5",
   flow: "border-emerald-500/15 bg-emerald-500/5",
@@ -102,11 +107,20 @@ function resolveVixQuote(
   );
 }
 
-export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
+export function MarketPulse({
+  pulse,
+  marketIntelligence,
+  breadth: snapshotBreadth = null,
+  marketStatus: snapshotMarketStatus,
+  snapshotLocked = false,
+  hideTimestamps = false,
+  hideFlows = false,
+  hidePcr = false,
+}: MarketPulseProps) {
   const flow = pulse.institutionalFlow;
   const flowAvailable =
     flow.asOf !== "Unavailable" &&
-    flow.asOf !== "Coming in Sprint 10D" &&
+    flow.asOf !== "Data unavailable" &&
     (flow.fii !== 0 || flow.dii !== 0);
 
   const [liveContext, setLiveContext] = useState<MarketContextView | null>(
@@ -117,10 +131,11 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
   );
   const seedContext = marketIntelligence?.context ?? null;
   const needsMetricHydrate =
-    !seedContext ||
-    (seedContext.momentum ?? 0) === 0 ||
-    (seedContext.institutionalParticipation ?? 0) === 0 ||
-    (seedContext.advanceCount ?? 0) === 0;
+    !snapshotLocked &&
+    (!seedContext ||
+      (seedContext.momentum ?? 0) === 0 ||
+      (seedContext.institutionalParticipation ?? 0) === 0 ||
+      (seedContext.advanceCount ?? 0) === 0);
 
   useEffect(() => {
     if (!needsMetricHydrate) return;
@@ -145,13 +160,21 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
     };
   }, [needsMetricHydrate]);
 
+  const lockedBreadth =
+    snapshotLocked && snapshotBreadth && isUsableMarketBreadth(snapshotBreadth)
+      ? snapshotBreadth
+      : null;
+
   const context = enrichContextFromBreadth(
     liveContext ?? seedContext,
-    breadthOverlay
+    lockedBreadth ?? breadthOverlay
   );
-  const derived = breadthOverlay
-    ? derivePulseMetricsFromBreadth(breadthOverlay)
-    : null;
+  const derived = lockedBreadth
+    ? derivePulseMetricsFromBreadth(lockedBreadth)
+    : breadthOverlay
+      ? derivePulseMetricsFromBreadth(breadthOverlay)
+      : null;
+
   const initialQuotes = useMemo(() => {
     const map: Record<string, EnrichedQuote> = {};
     if (pulse.vixQuote) {
@@ -162,11 +185,12 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
 
   const { quotes, marketStatus, loading } = useMarketQuotes(["INDIAVIX"], {
     initialQuotes,
+    enabled: !snapshotLocked,
   });
 
   const vixQuote = resolveVixQuote(
-    quotes.get("INDIAVIX"),
-    loading,
+    snapshotLocked ? undefined : quotes.get("INDIAVIX"),
+    snapshotLocked ? false : loading,
     pulse.vixQuote
   );
   const vixAvailable =
@@ -175,7 +199,9 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
     vixQuote.price > 0;
 
   const vixUpdated = vixQuote.lastUpdatedIST?.replace("\n", " ");
-  const sessionLabel = getMarketStatusLabel(marketStatus as MarketStatus);
+  const resolvedStatus =
+    snapshotMarketStatus ?? (marketStatus as MarketStatus);
+  const sessionLabel = getMarketStatusLabel(resolvedStatus);
 
   const breadthScore =
     pulse.breadthScore > 0
@@ -212,7 +238,7 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
         }
         action={
           <MarketSessionIndicator
-            marketStatus={marketStatus}
+            marketStatus={resolvedStatus}
             marketStatusLabel={sessionLabel}
           />
         }
@@ -224,71 +250,75 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
           tint={METRIC_TINTS.vix}
           icon={<Activity className="h-4 w-4" />}
           detail={
-            vixUpdated ? (
-              <>Updated {vixUpdated}</>
-            ) : (
-              "Coming in Sprint 10D · data source pending"
-            )
+            hideTimestamps
+              ? vixAvailable
+                ? "Volatility index"
+                : "Data unavailable"
+              : vixUpdated
+                ? <>Updated {vixUpdated}</>
+                : "Data unavailable"
           }
         >
           <div className="flex items-end gap-2">
             {vixAvailable ? (
               <>
-                <p className="data-value">
-                  {vixQuote.price!.toFixed(2)}
-                </p>
+                <p className="data-value">{vixQuote.price!.toFixed(2)}</p>
                 <ChangeIndicator value={vixQuote.changePercent ?? 0} size="sm" />
               </>
             ) : (
               <p className="text-xl font-semibold text-text-muted">
-                Coming in Sprint 10D
+                Data unavailable
               </p>
             )}
           </div>
         </PulseMetric>
 
-        <PulseMetric
-          label="FII / DII"
-          tint={METRIC_TINTS.flow}
-          icon={<ArrowDownToLine className="h-4 w-4" />}
-          detail={
-            flowAvailable
-              ? `Net cash flow · ${flow.asOf}`
-              : "Coming in Sprint 10D · data source pending"
-          }
-        >
-          {flowAvailable ? (
-            <div className="flex items-center gap-3 font-mono text-xs tabular-nums">
-              <span className={flow.fii >= 0 ? "text-gain" : "text-loss"}>
-                FII {formatFlow(flow.fii)}
-              </span>
-              <span className={flow.dii >= 0 ? "text-gain" : "text-loss"}>
-                DII {formatFlow(flow.dii)}
-              </span>
-            </div>
-          ) : (
-            <p className="text-xl font-semibold text-text-muted">
-              Coming in Sprint 10D
-            </p>
-          )}
-        </PulseMetric>
+        {!hideFlows ? (
+          <PulseMetric
+            label="FII / DII"
+            tint={METRIC_TINTS.flow}
+            icon={<ArrowDownToLine className="h-4 w-4" />}
+            detail={
+              flowAvailable
+                ? `Net cash flow · ${flow.asOf}`
+                : "Data unavailable"
+            }
+          >
+            {flowAvailable ? (
+              <div className="flex items-center gap-3 font-mono text-xs tabular-nums">
+                <span className={flow.fii >= 0 ? "text-gain" : "text-loss"}>
+                  FII {formatFlow(flow.fii)}
+                </span>
+                <span className={flow.dii >= 0 ? "text-gain" : "text-loss"}>
+                  DII {formatFlow(flow.dii)}
+                </span>
+              </div>
+            ) : (
+              <p className="text-xl font-semibold text-text-muted">
+                Data unavailable
+              </p>
+            )}
+          </PulseMetric>
+        ) : null}
 
-        <PulseMetric
-          label="Put Call Ratio"
-          tint={METRIC_TINTS.pcr}
-          icon={<Gauge className="h-4 w-4" />}
-          detail={
-            pulse.putCallRatio > 0
-              ? "Options positioning"
-              : "Coming in Sprint 10D · data source pending"
-          }
-        >
-          <p className="data-value">
-            {pulse.putCallRatio > 0
-              ? pulse.putCallRatio
-              : "Coming in Sprint 10D"}
-          </p>
-        </PulseMetric>
+        {!hidePcr ? (
+          <PulseMetric
+            label="Put Call Ratio"
+            tint={METRIC_TINTS.pcr}
+            icon={<Gauge className="h-4 w-4" />}
+            detail={
+              pulse.putCallRatio > 0
+                ? "Options positioning"
+                : "Data unavailable"
+            }
+          >
+            <p className="data-value">
+              {pulse.putCallRatio > 0
+                ? pulse.putCallRatio
+                : "Data unavailable"}
+            </p>
+          </PulseMetric>
+        ) : null}
 
         <PulseMetric
           label="Market Trend"
@@ -312,12 +342,12 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
           detail={
             breadthScore > 0
               ? (context?.breadthQuality ?? "Tracked-universe participation")
-              : "Coming in Sprint 10D · data source pending"
+              : "Data unavailable"
           }
         >
           <div className="flex items-center gap-3">
             <p className="data-value">
-              {breadthScore > 0 ? breadthScore : "Coming in Sprint 10D"}
+              {breadthScore > 0 ? breadthScore : "Data unavailable"}
             </p>
             {breadthScore > 0 ? (
               <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-border">
@@ -337,11 +367,11 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
           detail={
             momentum != null
               ? "Shared Market Context"
-              : "Coming in Sprint 10D · data source pending"
+              : "Data unavailable"
           }
         >
           <p className="data-value">
-            {momentum != null ? momentum : "Coming in Sprint 10D"}
+            {momentum != null ? momentum : "Data unavailable"}
           </p>
         </PulseMetric>
 
@@ -352,11 +382,11 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
           detail={
             volatility
               ? "Shared Market Context"
-              : "Coming in Sprint 10D · data source pending"
+              : "Data unavailable"
           }
         >
           <p className="text-sm font-semibold text-text-primary">
-            {volatility ?? "Coming in Sprint 10D"}
+            {volatility ?? "Data unavailable"}
           </p>
         </PulseMetric>
 
@@ -367,11 +397,11 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
           detail={
             liquidity != null
               ? "Shared Market Context"
-              : "Coming in Sprint 10D · data source pending"
+              : "Data unavailable"
           }
         >
           <p className="data-value">
-            {liquidity != null ? liquidity : "Coming in Sprint 10D"}
+            {liquidity != null ? liquidity : "Data unavailable"}
           </p>
         </PulseMetric>
 
@@ -382,13 +412,13 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
           detail={
             participation != null
               ? "Institutional participation score"
-              : "Coming in Sprint 10D · data source pending"
+              : "Data unavailable"
           }
         >
           <p className="data-value">
             {participation != null
               ? `${participation}%`
-              : "Coming in Sprint 10D"}
+              : "Data unavailable"}
           </p>
         </PulseMetric>
       </div>
@@ -396,7 +426,7 @@ export function MarketPulse({ pulse, marketIntelligence }: MarketPulseProps) {
       {!context && !vixAvailable && !flowAvailable ? (
         <div className="mt-4">
           <EmptyStatePanel
-            message="Market Pulse is waiting on live quotes and Sprint 10D institutional feeds."
+            message="Market Pulse is waiting on live quotes and institutional feeds."
             source="Market Context · India VIX · FII/DII"
           />
         </div>

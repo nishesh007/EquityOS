@@ -10,7 +10,7 @@ import {
 } from "@/lib/market/session";
 import { normalizeSymbol } from "@/lib/market-data/symbols";
 import type { DataSource } from "@/lib/market-data/types";
-import type { QuoteResult } from "@/lib/market-data/service";
+import type { QuoteResult } from "@/lib/market-data/quote-result";
 import { isValidMarketPrice } from "@/lib/utils";
 
 export type QuoteAvailability = "live" | "delayed" | "unavailable";
@@ -42,16 +42,21 @@ export interface EnrichedQuote {
   availability: QuoteAvailability;
   provider: string;
   source: DataSource;
+  /** True when serving last successful / cached quote after live miss. */
+  stale: boolean;
+  /** Age of the quote observation in milliseconds. */
+  quoteAge: number;
 }
 
 function resolveAvailability(
   source: DataSource,
   price: number | null,
-  marketStatus: MarketStatus
+  marketStatus: MarketStatus,
+  stale: boolean
 ): QuoteAvailability {
   if (!isValidMarketPrice(price)) return "unavailable";
+  if (stale || source === "cached") return "delayed";
   if (source === "live") return marketStatus === "open" ? "live" : "delayed";
-  if (source === "cached") return "delayed";
   return "unavailable";
 }
 
@@ -80,6 +85,13 @@ function resolveLastTradeTime(
   return getLastSessionCloseISO();
 }
 
+function computeQuoteAgeMs(timestamp: string | null | undefined, now: Date): number {
+  if (!timestamp) return Number.POSITIVE_INFINITY;
+  const ts = new Date(timestamp).getTime();
+  if (!Number.isFinite(ts)) return Number.POSITIVE_INFINITY;
+  return Math.max(0, now.getTime() - ts);
+}
+
 export function toEnrichedQuote(
   symbol: string,
   result: QuoteResult | null,
@@ -88,7 +100,19 @@ export function toEnrichedQuote(
   const marketStatus = getMarketStatus(now);
   const exchange = resolveExchange(symbol);
 
-  if (!result || result.source === "mock" || result.source === "unavailable") {
+  const usableLtp =
+    result &&
+    result.source !== "mock" &&
+    Number.isFinite(result.data.ltp) &&
+    result.data.ltp > 0
+      ? result.data.ltp
+      : null;
+
+  if (
+    !result ||
+    result.source === "mock" ||
+    (result.source === "unavailable" && usableLtp == null)
+  ) {
     const staleAt = result?.data?.fetchedAt ?? null;
     return {
       symbol: symbol.toUpperCase(),
@@ -117,12 +141,24 @@ export function toEnrichedQuote(
       availability: "unavailable",
       provider: result?.provider ?? "unavailable",
       source: "unavailable",
+      stale: true,
+      quoteAge: computeQuoteAgeMs(staleAt, now),
     };
   }
 
   const { data } = result;
   const price = isValidMarketPrice(data.ltp) ? data.ltp : null;
-  const availability = resolveAvailability(result.source, price, marketStatus);
+  const stale = result.source === "cached" || Boolean(result.stale);
+  const quoteAge =
+    typeof result.quoteAge === "number"
+      ? result.quoteAge
+      : computeQuoteAgeMs(data.fetchedAt, now);
+  const availability = resolveAvailability(
+    result.source === "unavailable" && price != null ? "cached" : result.source,
+    price,
+    marketStatus,
+    stale
+  );
   const lastTradeTime = resolveLastTradeTime(data.fetchedAt, marketStatus);
 
   return {
@@ -173,7 +209,13 @@ export function toEnrichedQuote(
     lastSuccessfulUpdateIST: formatISTTime(data.fetchedAt),
     availability,
     provider: result.provider,
-    source: result.source,
+    source: stale
+      ? "cached"
+      : result.source === "unavailable"
+        ? "cached"
+        : result.source,
+    stale,
+    quoteAge,
   };
 }
 

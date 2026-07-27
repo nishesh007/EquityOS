@@ -2,7 +2,7 @@ import { adapterFetch, hasApiKey } from "@/lib/adapters/http";
 import { loadProviderConfig } from "@/lib/providers/config";
 import { toFinnhubSymbol } from "@/lib/adapters/finnhub";
 import { BaseDataAdapter, type AdapterConfig } from "@/lib/adapters/types";
-import type { ChartTimeframe } from "@/types";
+import type { ChartTimeframe } from "@/lib/market/ohlc-timeframes";
 import type { OhlcBar } from "@/lib/providers/types";
 
 export interface PolygonParams {
@@ -35,11 +35,13 @@ const TIMEFRAME_TO_POLYGON: Record<
   { multiplier: number; timespan: string; limit: number }
 > = {
   "1D": { multiplier: 5, timespan: "minute", limit: 78 },
-  "1W": { multiplier: 30, timespan: "minute", limit: 65 },
+  "5D": { multiplier: 15, timespan: "minute", limit: 130 },
+  "1W": { multiplier: 1, timespan: "day", limit: 5 },
   "1M": { multiplier: 1, timespan: "day", limit: 22 },
   "3M": { multiplier: 1, timespan: "day", limit: 66 },
   "6M": { multiplier: 1, timespan: "day", limit: 130 },
   "1Y": { multiplier: 1, timespan: "day", limit: 252 },
+  "3Y": { multiplier: 1, timespan: "day", limit: 756 },
   "5Y": { multiplier: 1, timespan: "week", limit: 260 },
 };
 

@@ -4,7 +4,7 @@
  * Does not modify Recommendation Engine state.
  */
 
-import { marketDataService } from "@/lib/market-data";
+import { marketDataService } from "@/lib/market-data/server";
 import { getMarketStatus, isMarketOpen } from "@/lib/market/session";
 import type { SharedRecommendation } from "@/lib/recommendations/shared-recommendation";
 import { PAPER_TRADING_CONFIG } from "@/lib/paper-trading/config";

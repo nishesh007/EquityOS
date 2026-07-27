@@ -2,7 +2,11 @@ import { adapterFetch, hasApiKey } from "@/lib/adapters/http";
 import { resolveMarketDataSymbol } from "@/lib/fundamentals/symbols";
 import { loadProviderConfig } from "@/lib/providers/config";
 import { BaseDataAdapter, type AdapterConfig } from "@/lib/adapters/types";
-import type { ChartTimeframe } from "@/types";
+import {
+  OHLC_PROVIDER_SPECS,
+  isOhlcTimeframe,
+  type OhlcTimeframe,
+} from "@/lib/market/ohlc-timeframes";
 import type { OhlcBar } from "@/lib/providers/types";
 
 export interface FinnhubQuoteParams {
@@ -42,17 +46,21 @@ interface FinnhubCandleResponse {
 }
 
 const TIMEFRAME_TO_FINNHUB: Record<
-  ChartTimeframe,
+  OhlcTimeframe,
   { resolution: string; lookbackDays: number }
-> = {
-  "1D": { resolution: "5", lookbackDays: 1 },
-  "1W": { resolution: "15", lookbackDays: 7 },
-  "1M": { resolution: "D", lookbackDays: 31 },
-  "3M": { resolution: "D", lookbackDays: 93 },
-  "6M": { resolution: "D", lookbackDays: 186 },
-  "1Y": { resolution: "D", lookbackDays: 370 },
-  "5Y": { resolution: "W", lookbackDays: 365 * 5 + 7 },
-};
+> = Object.fromEntries(
+  (
+    Object.entries(OHLC_PROVIDER_SPECS) as Array<
+      [OhlcTimeframe, (typeof OHLC_PROVIDER_SPECS)[OhlcTimeframe]]
+    >
+  ).map(([tf, spec]) => [
+    tf,
+    {
+      resolution: spec.finnhubResolution,
+      lookbackDays: spec.finnhubLookbackDays,
+    },
+  ])
+) as Record<OhlcTimeframe, { resolution: string; lookbackDays: number }>;
 
 const INDEX_SYMBOL_MAP: Record<string, string> = {
   NIFTY: "^NSEI",
@@ -124,9 +132,12 @@ export class FinnhubAdapter extends BaseDataAdapter<
     };
   }
 
-  async fetchCandles(symbol: string, timeframe: ChartTimeframe): Promise<OhlcBar[]> {
+  async fetchCandles(symbol: string, timeframe: OhlcTimeframe): Promise<OhlcBar[]> {
     if (!hasApiKey(this.config.apiKey)) {
       this.notConnected();
+    }
+    if (!isOhlcTimeframe(timeframe)) {
+      throw new Error(`Finnhub: unsupported timeframe ${String(timeframe)}`);
     }
 
     const finnhubSymbol = toFinnhubSymbol(symbol);

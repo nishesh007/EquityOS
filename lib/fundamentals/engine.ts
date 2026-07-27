@@ -6,6 +6,7 @@ import { CACHE_TTL, cacheKey, getCached, getStaleCachedSync } from "@/lib/cache"
 import { fetchFundamentalsWithFailover } from "@/lib/fundamentals/failover";
 import { normalizeNseSymbol } from "@/lib/fundamentals/symbols";
 import { toUiQuarterlyResults } from "@/lib/fundamentals/quarterly-engine";
+import { fundamentalsPeersToDisplay } from "@/lib/fundamentals/strip-market-fields";
 import type { FundamentalsBundle, FundamentalsFailoverResult } from "@/lib/fundamentals/types";
 import type { CompanyProfile, ShareholdingPattern } from "@/types";
 
@@ -30,9 +31,10 @@ export function bundleToCompanyProfile(
   return {
     symbol: bundle.symbol,
     name: bundle.name,
-    price: bundle.price,
-    change: bundle.change,
-    changePercent: bundle.changePercent,
+    // Price fields are market-data only — zero until live quote attach.
+    price: 0,
+    change: 0,
+    changePercent: 0,
     marketCap: bundle.marketCap,
     sector: bundle.sector,
     industry: bundle.industry,
@@ -45,7 +47,7 @@ export function bundleToCompanyProfile(
     quarterlyResults: toUiQuarterlyResults(bundle.quarterlyResults),
     annualFinancials: bundle.annualFinancials,
     shareholding,
-    peers: bundle.peers,
+    peers: fundamentalsPeersToDisplay(bundle.peers),
     valuation: bundle.valuation,
     news: bundle.news,
     notes: bundle.notes,
@@ -135,11 +137,13 @@ export function buildFallbackPriceHistory(
 ): CompanyProfile["priceHistory"] {
   return {
     "1D": [],
+    "5D": [],
     "1W": [],
     "1M": [],
     "3M": [],
     "6M": [],
     "1Y": [],
+    "3Y": [],
     "5Y": [],
   };
 }

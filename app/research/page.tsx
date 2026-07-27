@@ -164,17 +164,17 @@ export default async function ResearchPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-medium text-text-primary">
-              Market Internals
+              Markets
             </p>
             <p className="mt-0.5 text-xs text-text-muted">
-              Breadth, participation, strength and mood — deep market analysis
+              Breadth, participation, strength, sectors and flows — institutional snapshot
             </p>
           </div>
           <Link
-            href="/research/market-internals"
+            href="/markets#breadth-analytics"
             className="text-[11px] font-semibold text-accent hover:underline"
           >
-            Open Market Internals →
+            Open Markets →
           </Link>
         </div>
       </div>

@@ -18,6 +18,8 @@ export type { DashboardContext } from "./dashboardContext";
 
 export type {
   DashboardMarketSnapshot,
+  InstitutionalMarketSnapshot,
+  MarketCoreSnapshot,
   MarketBreadth,
   MarketContext,
   MarketHeatmapData,
@@ -27,3 +29,20 @@ export type {
   PortfolioSummary,
   WatchlistSummary,
 } from "./types";
+
+export {
+  loadMarketSnapshot,
+  loadMarketSnapshotUncached,
+  loadInstitutionalMarketSnapshot,
+  getCachedMarketSnapshot,
+  clearMarketSnapshotCache,
+  MARKET_SNAPSHOT_TTL_MS,
+} from "./marketsSnapshot";
+export { assertUniformMarketSnapshotTimestamp } from "./marketsSnapshotGuard";
+export {
+  MARKETS_REFRESH_MS_OPEN,
+  getMarketsRefreshIntervalMs,
+  resolveMarketsRefreshMode,
+} from "./marketsRefreshPolicy";
+export { compareDashboardMarketsIntelligence } from "./dashboard-markets-parity";
+export type { IntelligenceParityResult } from "./dashboard-markets-parity";

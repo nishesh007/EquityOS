@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useState, createContext, useContext } 
 import { usePathname } from "next/navigation";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import type { Conversation } from "@/lib/ai/conversation";
-import type { ExplainTarget } from "@/lib/ai/explainEngine";
-import { buildExplainSeedPrompt } from "@/lib/ai/explainEngine";
+import type { ExplainTarget } from "@/lib/ai/explain-target";
+import { buildExplainSeedPrompt } from "@/lib/ai/explain-target";
 import { cn } from "@/lib/utils";
 import { Bot, History, Sparkles, X } from "lucide-react";
 import dynamic from "next/dynamic";

@@ -2,7 +2,7 @@
  * Institutional Earnings Dashboard — unit tests (Sprint 9B.R5).
  */
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_EARNINGS_CALENDAR_SEED,
   getEarningsCalendarService,
@@ -23,8 +23,13 @@ import {
   toRankedCardPresentation,
 } from "./index";
 
+/** Seed calendar dates are anchored around mid-July 2026. */
+const DASHBOARD_NOW = new Date("2026-07-15T06:30:00.000Z");
+
 describe("Earnings Dashboard Ranking", () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(DASHBOARD_NOW);
     resetEarningsCalendarService();
     resetEarningsPreviewEngine();
     resetEarningsDashboardEngine();
@@ -41,6 +46,7 @@ describe("Earnings Dashboard Ranking", () => {
     resetEarningsDashboardEngine();
     resetEarningsPreviewEngine();
     resetEarningsCalendarService();
+    vi.useRealTimers();
   });
 
   it("calculates institutional scorecards and ranks earnings", () => {

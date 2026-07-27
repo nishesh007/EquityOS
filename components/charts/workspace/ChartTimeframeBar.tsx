@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils";
 import {
   CHART_LAYOUTS,
   WORKSPACE_TIMEFRAMES,
-  isIntradayTimeframe,
   type ChartLayoutId,
   type WorkspaceTimeframe,
 } from "./types";
@@ -37,11 +36,7 @@ export function ChartTimeframeBar({
               type="button"
               role="tab"
               aria-selected={active}
-              title={
-                isIntradayTimeframe(tf)
-                  ? "Intraday feed reserved — daily candles shown"
-                  : undefined
-              }
+              title={undefined}
               onClick={() => onTimeframeChange(tf)}
               className={cn(
                 "rounded-md px-2 py-1 text-[11px] font-semibold tabular-nums transition-colors",

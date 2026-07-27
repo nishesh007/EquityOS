@@ -43,10 +43,13 @@ export const COMPANY_PANEL_LABELS: Record<CompanyPanelId, string> = {
 
 export const COMPANY_TIMEFRAMES = [
   "1D",
+  "5D",
   "1W",
   "1M",
   "3M",
+  "6M",
   "1Y",
+  "3Y",
   "5Y",
 ] as const;
 

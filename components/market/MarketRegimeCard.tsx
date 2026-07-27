@@ -162,8 +162,10 @@ function isInvestorReason(reason: string): boolean {
 
 export function MarketRegimeCard({
   regime,
+  hideTimestamps = false,
 }: {
   regime: MarketRegimeView | null;
+  hideTimestamps?: boolean;
 }) {
   if (!regime) {
     return (
@@ -193,7 +195,11 @@ export function MarketRegimeCard({
         title="Market Regime"
         subtitle="Institutional classification"
         icon={<Compass className="h-4 w-4" />}
-        timestamp={`Updated ${formatUpdated(regime.timestamp)} IST`}
+        timestamp={
+          hideTimestamps
+            ? undefined
+            : `Updated ${formatUpdated(regime.timestamp)} IST`
+        }
       />
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -259,9 +265,11 @@ export function MarketRegimeCard({
         </ul>
       ) : null}
 
-      <p className="data-timestamp mt-2">
-        Last updated {formatUpdated(regime.timestamp)} IST
-      </p>
+      {!hideTimestamps ? (
+        <p className="data-timestamp mt-2">
+          Last updated {formatUpdated(regime.timestamp)} IST
+        </p>
+      ) : null}
     </Card>
   );
 }

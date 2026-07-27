@@ -1,3 +1,9 @@
+/**
+ * Company research context loader — server-only (live market + fundamentals).
+ */
+
+import "server-only";
+
 import {
   resolveSearchQuery,
   searchCompanies,
@@ -18,7 +24,8 @@ import {
   buildFinancialIntelligenceFromProfile,
   type FinancialIntelligence,
 } from "@/lib/financials/financialEngine";
-import { marketDataService, type EnrichedQuote } from "@/lib/market-data";
+import { marketDataService, type EnrichedQuote } from "@/lib/market-data/server";
+import { resolveLiveMarketPrice } from "@/lib/fundamentals/strip-market-fields";
 import { isValidMarketPrice } from "@/lib/utils";
 import { fetchCompanyProfile } from "@/services/companyData";
 import { fetchEquityIntelligence } from "@/services/equityIntelligenceData";
@@ -353,10 +360,10 @@ function normalizeCompanyContext(
       name: profile.name,
       sector: profile.sector,
       industry: profile.industry,
-      price: profile.price,
-      change: profile.change,
-      changePercent: profile.changePercent,
-      marketCap: profile.marketCap,
+      price: resolveLiveMarketPrice({ quotePrice: profile.quote?.price }) ?? 0,
+      change: profile.quote?.change ?? 0,
+      changePercent: profile.quote?.changePercent ?? 0,
+      marketCap: profile.quote?.marketCap ?? profile.marketCap,
       description: profile.description,
       website: profile.website,
       founded: profile.founded,

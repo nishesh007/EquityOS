@@ -1,6 +1,9 @@
 /**
  * Explain engine — context-aware explanations for ratios, statements, charts, and scores.
+ * Server-only — loads company context via MarketDataService.
  */
+
+import "server-only";
 
 import { loadCompanyContext } from "@/lib/ai/context/companyContext";
 import { QUALITY_DIRECTIVES } from "@/lib/ai/core/directives";
@@ -8,23 +11,13 @@ import { ExplainEngineError } from "@/lib/ai/core/errors";
 import { streamChatCompletion } from "@/lib/ai/core/openai-client";
 import { FUNDAMENTALS_METRIC_REGISTRY } from "@/lib/fundamentals/registry";
 import { getResearchSystemPrompt } from "@/lib/ai/systemPrompt";
+import type { ExplainTarget } from "@/lib/ai/explain-target";
 
-export type ExplainTargetType =
-  | "ratio"
-  | "financial_row"
-  | "chart"
-  | "technical"
-  | "score";
-
-export interface ExplainTarget {
-  type: ExplainTargetType;
-  key: string;
-  label: string;
-  value?: string | number | null;
-  symbol: string;
-  pageContext?: string | null;
-  detail?: string | null;
-}
+export type {
+  ExplainTarget,
+  ExplainTargetType,
+} from "@/lib/ai/explain-target";
+export { buildExplainSeedPrompt } from "@/lib/ai/explain-target";
 
 export interface ExplainPromptBundle {
   systemPrompt: string;
@@ -152,10 +145,4 @@ export async function* streamExplainResponse(
     requestId,
     symbol: target.symbol,
   });
-}
-
-export function buildExplainSeedPrompt(target: ExplainTarget): string {
-  const value =
-    target.value !== undefined && target.value !== null ? ` (${target.value})` : "";
-  return `Explain ${target.label}${value} for ${target.symbol}`;
 }

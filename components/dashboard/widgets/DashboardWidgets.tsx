@@ -37,11 +37,10 @@ export function MarketSnapshotWidget({
   breadth: MarketBreadthData;
 }) {
   const regime = marketIntelligence.regime.regime;
+  // Use published breadth % from metrics.ts (via engine) — never recompute A/(A+D).
   const breadthScore =
-    breadth.advances + breadth.declines > 0
-      ? Math.round(
-          (breadth.advances / (breadth.advances + breadth.declines)) * 100
-        )
+    breadth.breadthPercent != null && breadth.breadthPercent > 0
+      ? Math.round(breadth.breadthPercent)
       : null;
   const marketPulseSummary =
     breadthScore != null
@@ -66,11 +65,26 @@ export function MarketSnapshotWidget({
 export function MarketPulseWidget({
   pulse,
   marketIntelligence,
+  breadth,
+  marketStatus,
+  snapshotLocked = false,
 }: {
   pulse: MarketPulseData;
   marketIntelligence: MarketIntelligenceSnapshot;
+  breadth?: MarketBreadthData | null;
+  marketStatus?: import("@/lib/market/session").MarketStatus;
+  snapshotLocked?: boolean;
 }) {
-  return <MarketPulse pulse={pulse} marketIntelligence={marketIntelligence} />;
+  return (
+    <MarketPulse
+      pulse={pulse}
+      marketIntelligence={marketIntelligence}
+      breadth={breadth}
+      marketStatus={marketStatus}
+      snapshotLocked={snapshotLocked}
+      hideTimestamps={snapshotLocked}
+    />
+  );
 }
 
 export function AiOpportunitiesWidget({

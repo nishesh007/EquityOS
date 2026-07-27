@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getProviderHealth } from "@/lib/market-data";
+import { getProviderHealth } from "@/lib/market-data/server";
 
 export async function GET() {
   return NextResponse.json({

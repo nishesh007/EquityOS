@@ -34,22 +34,22 @@ export const INTERNALS_COPY: Record<string, MetricExplainCopy> = {
   advances: {
     title: "Advances",
     description:
-      "Stocks with positive day change %. Why it matters: measures participation on the upside. Formula: count(change% > 0) among quoted stocks.",
+      "Stocks with positive day change %. Why it matters: measures participation on the upside. Formula: count(change% > 0.01) among quoted stocks.",
   },
   declines: {
     title: "Declines",
     description:
-      "Stocks with negative day change %. Why it matters: measures downside participation. Formula: count(change% < 0) among quoted stocks.",
+      "Stocks with negative day change %. Why it matters: measures downside participation. Formula: count(change% < −0.01) among quoted stocks.",
   },
   unchanged: {
     title: "Unchanged",
     description:
-      "Quoted stocks with flat day change. Why it matters: completes the A/D identity. Formula: quoted − advances − declines.",
+      "Quoted stocks with flat day change. Why it matters: completes the A/D identity. Formula: count(|change%| ≤ 0.01) ≡ quoted − advances − declines.",
   },
   adRatio: {
     title: "A/D Ratio",
     description:
-      "Advances divided by declines. Why it matters: classic breadth intensity (not mood by itself). Formula: advances ÷ max(declines, 1) when declines > 0; else advances.",
+      "Advances divided by declines. Why it matters: classic breadth intensity (not mood by itself). Formula: advances ÷ declines when declines > 0; otherwise advances (or 0 if both zero).",
   },
   breadthPct: {
     title: "Breadth %",

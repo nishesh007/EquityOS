@@ -19,7 +19,6 @@ import {
   ArrowLeft,
   BookOpen,
   ShieldCheck,
-  Activity,
   FlaskConical,
   History,
   Scale,
@@ -33,7 +32,6 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard, exact: true },
   { label: "Research", href: "/research", icon: BookOpen, exact: true },
-  { label: "Market Internals", href: "/research/market-internals", icon: Activity },
   { label: "Strategy Optimization", href: "/research/optimization", icon: SlidersHorizontal },
   { label: "AI Strategy Builder", href: "/research/strategy-builder", icon: Sparkles },
   { label: "Markets", href: "/markets", icon: LineChart },

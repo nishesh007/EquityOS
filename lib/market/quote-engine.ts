@@ -1,9 +1,10 @@
 /**
- * Live quote engine — delegates to Sprint 8A MarketDataService.
- * UI and services must use this module, never adapters directly.
+ * Thin quote helpers — server-only (delegates to MarketDataService).
  */
 
-import { marketDataService, type QuoteResult } from "@/lib/market-data";
+import "server-only";
+
+import { marketDataService, type QuoteResult } from "@/lib/market-data/server";
 
 export type { QuoteResult };
 

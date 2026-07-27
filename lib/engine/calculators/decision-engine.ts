@@ -6,6 +6,7 @@
 
 import type { AnalysisContext } from "@/lib/engine/analysis-context";
 import type { EnrichedShareholding } from "@/lib/fundamentals/types";
+import { resolveLiveMarketPrice } from "@/lib/fundamentals/strip-market-fields";
 import { createScoreResult, weightedOverallScore } from "@/lib/engine/framework";
 import type { ScoreResult } from "@/lib/engine/types";
 import { amountToCrore, clamp, round, toneForScore, verdictForScore } from "@/lib/engine/utils";
@@ -99,7 +100,7 @@ function buildTechnicalSnapshot(
 ): AIDecisionAnalysis["technical"] {
   const technicals = research?.technicals;
   const ai = research?.ai;
-  const price = profile.price;
+  const price = (resolveLiveMarketPrice({ quotePrice: profile.quote?.price }) ?? 0);
 
   if (!technicals) {
     const momentum = equityScore.factors.find((f) => f.key === "momentum");
@@ -501,7 +502,7 @@ function buildEntryAndTargets(
   research?: CompanyResearch | null,
   riskMeter?: number
 ): Pick<AIDecisionAnalysis, "entry" | "targets"> {
-  const price = profile.price;
+  const price = (resolveLiveMarketPrice({ quotePrice: profile.quote?.price }) ?? 0);
   const swing = research?.swing;
   const support = research?.ai.support ?? round(price * 0.94);
   const resistance = research?.ai.resistance ?? round(price * 1.06);
@@ -553,7 +554,7 @@ function buildConviction(
   decisionScore: number,
   riskMeter: number
 ): AIDecisionAnalysis["conviction"] {
-  const price = profile.price;
+  const price = (resolveLiveMarketPrice({ quotePrice: profile.quote?.price }) ?? 0);
   const intrinsic = valuation.intrinsicValue;
   const upside = valuation.upsidePercent;
   const downside = intrinsic > 0 && price > 0

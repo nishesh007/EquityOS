@@ -1,6 +1,6 @@
 "use client";
 
-import type { FollowUpBundle } from "@/lib/ai/followUpEngine";
+import type { FollowUpBundle } from "@/lib/ai/followUp-types";
 import { cn } from "@/lib/utils";
 import { Building2, ChevronRight, Layers, MessageCircleQuestion } from "lucide-react";
 import Link from "next/link";

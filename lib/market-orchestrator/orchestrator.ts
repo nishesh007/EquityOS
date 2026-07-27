@@ -1,7 +1,7 @@
 /**
  * Central Market Data Orchestrator — granular dashboard loaders.
- * Page SSR must never await the full aggregate; each Suspense slot
- * calls only the slice it needs.
+ * Above-fold market strip uses the canonical Market Snapshot
+ * (same Context / Regime / timestamp as the Markets page).
  */
 
 import { cache } from "react";
@@ -15,6 +15,9 @@ import {
   getDashboardContext,
   resolveCachedIntelligence,
 } from "./dashboardContext";
+import {
+  getCachedMarketSnapshot,
+} from "./marketsSnapshot";
 import {
   memoizedFetchMarketNews,
   memoizedFetchPortfolioSummary,
@@ -39,21 +42,21 @@ function toSharedSnapshot(intelligence: MarketIntelligenceSnapshot | null) {
 }
 
 /**
- * Above-fold market strip — indices + pulse + cached breadth/MI only.
- * Never runs trading pipeline, OE scan, heatmap, or portfolio engines.
+ * Above-fold market strip — canonical Market Snapshot (shared with Markets).
  */
 export const loadDashboardAboveFold = cache(async function loadDashboardAboveFold() {
   return getDashboardContext();
 });
 
 /**
- * Persisted OE recommendations — hydrate store + cached MI only.
- * Never awaits OE scan, MI pipeline, portfolio, watchlist, or heatmap.
+ * Persisted OE recommendations — prefer warm canonical snapshot intelligence.
  */
 export const loadDashboardRecommendations = cache(
   async function loadDashboardRecommendations(): Promise<SharedRecommendation[]> {
     const intelligence =
-      getCachedMarketIntelligenceSnapshot() ?? resolveCachedIntelligence();
+      getCachedMarketSnapshot()?.intelligence ??
+      getCachedMarketIntelligenceSnapshot() ??
+      resolveCachedIntelligence();
     const state = await ensureOpportunityEngineHydrated();
     return selectRecommendationsWithFallback(
       state,

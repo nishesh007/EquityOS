@@ -3,6 +3,7 @@
  */
 
 import type { EnrichedShareholding } from "@/lib/fundamentals/types";
+import { resolveLiveMarketPrice } from "@/lib/fundamentals/strip-market-fields";
 import type { AnalysisContext } from "@/lib/engine/analysis-context";
 import {
   buildResearchNarrative,
@@ -64,7 +65,7 @@ export function buildInvestmentThesis(
       name: profile.name,
       sector: profile.sector,
       industry: profile.industry,
-      price: profile.price,
+      price: resolveLiveMarketPrice({ quotePrice: profile.quote?.price }) ?? 0,
     },
     financials: {
       roe: f.roe,

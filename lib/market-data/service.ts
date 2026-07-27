@@ -4,7 +4,11 @@
  *
  * Architecture:
  *   UI → Services → MarketDataService → Provider Adapter → Provider
+ *
+ * Server-only — import via `@/lib/market-data/server`.
  */
+
+import "server-only";
 
 import {
   CACHE_TTL,
@@ -32,17 +36,13 @@ import type {
   NormalizedSymbol,
 } from "@/lib/market-data/types";
 import type { ProviderHealth } from "@/lib/market-data/provider-health";
+import type { ChartTimeframe, OhlcTimeframe } from "@/lib/market/ohlc-timeframes";
 import { getOhlcCandles, type OhlcResult } from "@/lib/market/ohlc-engine";
-import type { ChartTimeframe } from "@/types";
 import type { LiveQuote } from "@/lib/providers/types";
 import type { OhlcBar } from "@/lib/providers/types";
+import type { QuoteResult } from "@/lib/market-data/quote-result";
 
-export interface QuoteResult {
-  data: LiveQuote;
-  provider: string;
-  source: "live" | "cached" | "mock" | "unavailable";
-  attempted: string[];
-}
+export type { QuoteResult } from "@/lib/market-data/quote-result";
 
 function toQuoteResult(result: MarketDataResult): QuoteResult {
   return {
@@ -143,8 +143,8 @@ function readStaleQuoteResult(
 }
 
 /**
- * Live miss / mock → prefer last successful cached quote.
- * Never surface mock as a live price; only fall to unavailable when cache is empty.
+ * Live miss → Cache / last successful quote.
+ * NEVER surface mock prices — mock always becomes unavailable.
  */
 function preferCachedQuote(
   symbol: string,
@@ -157,12 +157,18 @@ function preferCachedQuote(
   if (cached) {
     return {
       ...cached,
+      stale: true,
+      quoteAge: Math.max(
+        0,
+        Date.now() - new Date(cached.data.fetchedAt).getTime()
+      ),
       attempted: [...result.attempted, "cache"],
     };
   }
 
+  // Mock is never a valid price — collapse to unavailable.
   if (result.source === "mock") {
-    return unavailableQuoteResult(symbol, result.attempted);
+    return unavailableQuoteResult(symbol, [...result.attempted, "mock_rejected"]);
   }
   return result.source === "unavailable"
     ? result
@@ -248,20 +254,59 @@ class MarketDataServiceImpl {
     return new Map(results);
   }
 
-  /** Batch enriched quotes — indices use the dedicated index pipeline */
+  /** Batch enriched quotes — institutional acquisition for equities (adaptive batching). */
   async getEnrichedQuotes(symbols: string[]): Promise<Map<string, EnrichedQuote>> {
     const normalizedSymbols = [
       ...new Set(symbols.map((symbol) => normalizeSymbol(symbol).internal)),
     ];
-    const results = await Promise.all(
-      normalizedSymbols.map(async (symbol) => {
-        const enriched = isIndexSymbol(symbol)
-          ? await this.getEnrichedIndex(symbol)
-          : await this.getEnrichedQuote(symbol);
-        return [symbol, enriched] as const;
+    const indexSymbols = normalizedSymbols.filter((symbol) => isIndexSymbol(symbol));
+    const equitySymbols = normalizedSymbols.filter((symbol) => !isIndexSymbol(symbol));
+
+    const map = new Map<string, EnrichedQuote>();
+
+    if (equitySymbols.length > 0) {
+      const { acquireQuotes } = await import("@/lib/market-data/quote-acquisition");
+      const { quotes } = await acquireQuotes(equitySymbols);
+      for (const symbol of equitySymbols) {
+        const acquired = quotes.get(symbol);
+        if (!acquired || acquired.price == null || acquired.price <= 0) {
+          map.set(symbol, toEnrichedQuote(symbol, null));
+          continue;
+        }
+        map.set(
+          symbol,
+          toEnrichedQuote(symbol, {
+            data: {
+              symbol: acquired.symbol,
+              ltp: acquired.price,
+              open: acquired.open ?? acquired.price,
+              high: acquired.high ?? acquired.price,
+              low: acquired.low ?? acquired.price,
+              previousClose: acquired.previousClose ?? acquired.price,
+              change: acquired.change ?? 0,
+              changePercent: acquired.changePercent ?? 0,
+              volume: acquired.volume,
+              provider: acquired.provider,
+              source: acquired.source === "live" ? "live" : "cached",
+              fetchedAt: acquired.timestamp,
+            },
+            provider: acquired.provider,
+            source: acquired.source === "live" ? "live" : "cached",
+            attempted: acquired.attempted,
+            stale: acquired.stale,
+            quoteAge: acquired.quoteAge,
+          })
+        );
+      }
+    }
+
+    await Promise.all(
+      indexSymbols.map(async (symbol) => {
+        map.set(symbol, await this.getEnrichedIndex(symbol));
       })
     );
-    return new Map(results);
+
+    return map;
   }
 
   /** Batch full market data */
@@ -314,7 +359,7 @@ class MarketDataServiceImpl {
   /** Historical OHLCV candles — reuses Sprint 8A cache via ohlc-engine */
   async getOhlcCandles(
     symbol: string,
-    timeframe: ChartTimeframe = "1Y"
+    timeframe: OhlcTimeframe = "1Y"
   ): Promise<OhlcResult> {
     const normalized = normalizeSymbol(symbol);
     return getOhlcCandles(normalized.internal, timeframe);
@@ -323,7 +368,7 @@ class MarketDataServiceImpl {
   /** Convenience accessor for candle close series */
   async getPriceHistory(
     symbol: string,
-    timeframe: ChartTimeframe = "1Y"
+    timeframe: OhlcTimeframe = "1Y"
   ): Promise<OhlcBar[]> {
     const result = await this.getOhlcCandles(symbol, timeframe);
     return result.data;

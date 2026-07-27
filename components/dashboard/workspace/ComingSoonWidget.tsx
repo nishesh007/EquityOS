@@ -4,10 +4,10 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { StatusBadge } from "@/src/design";
 import { CalendarClock } from "lucide-react";
 
-/** Presentation placeholder for widgets scheduled in a later sprint. */
+/** Reserved layout slot when a widget has no live feed on this surface. */
 export function ComingSoonWidget({
   title,
-  subtitle = "Coming in Sprint 10D",
+  subtitle = "Data unavailable",
 }: {
   title: string;
   subtitle?: string;
@@ -20,13 +20,14 @@ export function ComingSoonWidget({
         icon={<CalendarClock className="h-4 w-4 text-orange-400" />}
         badge={
           <StatusBadge tone="warning" size="sm">
-            Coming soon
+            Unavailable
           </StatusBadge>
         }
       />
       <p className="text-[12px] leading-relaxed text-text-muted">
-        This widget is reserved in the library so you can pin layout space now.
-        Live data arrives in a later sprint — no mock figures are shown.
+        This slot is reserved in the layout library. No placeholder sprint
+        roadmap is shown — open the linked live surface when noted in the
+        subtitle.
       </p>
     </Card>
   );

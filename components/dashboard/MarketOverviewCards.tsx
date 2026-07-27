@@ -11,22 +11,36 @@ import type { MarketIndex } from "@/types";
 
 interface MarketOverviewCardsProps {
   indices: MarketIndex[];
+  /** When true, render only snapshot quotes — no independent polling. */
+  snapshotLocked?: boolean;
+  /** Hide per-quote timestamps (page owns as-of). */
+  hideTimestamps?: boolean;
 }
 
-export function MarketOverviewCards({ indices }: MarketOverviewCardsProps) {
+export function MarketOverviewCards({
+  indices,
+  snapshotLocked = false,
+  hideTimestamps = false,
+}: MarketOverviewCardsProps) {
   const symbols = indices.map((i) => i.symbol);
   const { quotes } = useMarketQuotes(symbols, {
     initialQuotes: buildInitialQuotesMap(indices),
+    enabled: !snapshotLocked,
   });
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {indices.map((index) => {
-        const polled = quotes.get(index.symbol);
+        const polled = snapshotLocked ? undefined : quotes.get(index.symbol);
         const quote =
-          polled && polled.availability !== "unavailable" && polled.price !== null && polled.price > 0
+          polled &&
+          polled.availability !== "unavailable" &&
+          polled.price !== null &&
+          polled.price > 0
             ? polled
-            : index.quote ?? polled ?? createUnavailableQuote(index.symbol);
+            : index.quote ??
+              polled ??
+              createUnavailableQuote(index.symbol);
         const changePercent = quote.changePercent ?? index.changePercent;
         const high = quote.high ?? index.high;
         const low = quote.low ?? index.low;
@@ -49,7 +63,11 @@ export function MarketOverviewCards({ indices }: MarketOverviewCardsProps) {
             </div>
 
             <div className="mt-3">
-              <QuoteDisplay quote={quote} size="md" />
+              <QuoteDisplay
+                quote={quote}
+                size="md"
+                showTimestamp={!hideTimestamps}
+              />
             </div>
 
             <div className="mt-3 border-t border-surface-border-subtle pt-3">
@@ -76,7 +94,13 @@ export function MarketOverviewCards({ indices }: MarketOverviewCardsProps) {
                         changePercent >= 0 ? "bg-gain" : "bg-loss"
                       }`}
                       style={{
-                        left: `${Math.min(100, Math.max(0, ((quote.price - low) / (high - low)) * 100))}%`,
+                        left: `${Math.min(
+                          100,
+                          Math.max(
+                            0,
+                            ((quote.price - low) / (high - low)) * 100
+                          )
+                        )}%`,
                       }}
                     />
                   </div>

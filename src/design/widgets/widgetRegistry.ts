@@ -86,7 +86,7 @@ export interface WidgetDefinition {
 const BUILT_IN_WIDGETS: readonly WidgetDefinition[] = Object.freeze([
   { id: "market-snapshot", label: "Market Snapshot", description: "Indices with sparklines and session range", category: "charts", defaultRegion: "snapshot", defaultSize: "full", permanent: true },
   { id: "market-pulse", label: "Market Pulse", description: "VIX, flow cues and market session pulse", category: "market", defaultRegion: "snapshot", defaultSize: "full" },
-  { id: "market-breadth", label: "Market Internals", description: "Detailed breadth, participation, strength and mood — also on Research → Market Internals", category: "market", defaultRegion: "snapshot", defaultSize: "full" },
+  { id: "market-breadth", label: "Market Breadth", description: "Detailed breadth, participation, strength and mood — on Markets", category: "market", defaultRegion: "snapshot", defaultSize: "full" },
   { id: "market-heatmap", label: "Sector Heatmap", description: "Interactive NSE sector & stock heatmap with drilldowns", category: "market", defaultRegion: "snapshot", defaultSize: "full" },
   { id: "market-movers", label: "Market Movers", description: "Top gainers, losers and most active names", category: "market", defaultRegion: "snapshot", defaultSize: "full" },
   { id: "ai-opportunities", label: "EquityOS Recommendations", description: "AI-powered recommendations across every investment horizon", category: "recommendations", defaultRegion: "main", defaultSize: "full" },

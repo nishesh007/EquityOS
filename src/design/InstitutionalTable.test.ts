@@ -375,7 +375,7 @@ describe("professional cell rendering", () => {
     expect(renderCell("price", 4100.5).text).toBe("₹4,100.50");
     expect(renderCell("price", 4100.5).align).toBe("right");
     expect(renderCell("percent", 2.5)).toMatchObject({
-      text: "+2.50%",
+      text: "+2.5%",
       tone: "positive",
     });
     expect(renderCell("percent", -1.25).tone).toBe("negative");

@@ -56,6 +56,8 @@ function baseCandidate(
       availability: "live",
       provider: "test",
       source: "live",
+      stale: false,
+      quoteAge: 0,
     },
     scanMetrics: {
       cmp: 1550,

@@ -5,6 +5,7 @@
 import type { AnalysisContext } from "@/lib/engine/analysis-context";
 import { amountToCrore, clamp, round } from "@/lib/engine/utils";
 import { parseInrCrores } from "@/lib/fundamentals/normalize";
+import { resolveLiveMarketPrice } from "@/lib/fundamentals/strip-market-fields";
 import { isValidMarketPrice } from "@/lib/utils";
 import type { ValuationVerdict } from "@/types";
 import type { ValuationInputs, IntrinsicValuationResult, ValuationModelResult } from "@/lib/valuation/types";
@@ -254,7 +255,9 @@ export function extractValuationInputs(ctx: AnalysisContext): ValuationInputs {
   const f = profile.financials;
   const ratios = bundle?.ratios;
 
-  const price = safeValue(profile.price);
+  const price = safeValue(
+    resolveLiveMarketPrice({ quotePrice: profile.quote?.price }) ?? 0
+  );
   const pe = safeValue(ff?.pe ?? f.pe ?? ratios?.pe);
   const pb = safeValue(ff?.pb ?? f.pb ?? ratios?.pb);
   const evEbitda = safeValue(ff?.evEbitda ?? ratios?.evToEbitda ?? (pe > 0 ? pe * 0.7 : 0));

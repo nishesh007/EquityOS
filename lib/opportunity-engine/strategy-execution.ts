@@ -124,13 +124,15 @@ function weeklyCandles(candles: ReturnType<typeof datedCandles>) {
   return weeks;
 }
 
+/**
+ * Session bars for scalp — 1D intraday only.
+ * Never substitutes daily candles. Empty → unavailable.
+ */
 function sessionBarsForScalp(
-  sessionCandles: readonly OhlcBar[],
-  dailyCandles: readonly OhlcBar[]
-): readonly OhlcBar[] {
+  sessionCandles: readonly OhlcBar[]
+): readonly OhlcBar[] | null {
   if (sessionCandles.length >= 8) return sessionCandles;
-  // Last trading days as a sparse session sample when 1D bars are unavailable.
-  return dailyCandles.slice(-40);
+  return null;
 }
 
 function computeSessionVwap(bars: readonly OhlcBar[]): number {
@@ -161,10 +163,19 @@ function swingAnchors(bars: readonly OhlcBar[]): {
 
 function buildScalpSessionPayload(
   candidate: OpportunityCandidate,
-  sessionCandles: readonly OhlcBar[],
-  dailyCandles: readonly OhlcBar[]
-) {
-  const bars = sessionBarsForScalp(sessionCandles, dailyCandles);
+  sessionCandles: readonly OhlcBar[]
+): {
+  candles5m: ReturnType<typeof datedCandles>;
+  vwap: number;
+  atr: number | null;
+  relativeVolume: number | null;
+  averageVolume: number | null;
+  rsi: number | null;
+  recentSwingHigh: number | null;
+  recentSwingLow: number | null;
+} | null {
+  const bars = sessionBarsForScalp(sessionCandles);
+  if (!bars) return null;
   const dated = datedCandles(bars);
   const vwap =
     metric(candidate, "vwap") ??
@@ -189,11 +200,13 @@ function buildScalpSessionPayload(
  */
 function resolveExecutionTimestamp(
   pipeline: TradingPipelineResult,
-  sessionCandles: readonly OhlcBar[],
-  dailyCandles: readonly OhlcBar[]
+  sessionCandles: readonly OhlcBar[]
 ): Date {
-  const bars = sessionBarsForScalp(sessionCandles, dailyCandles);
-  const lastBar = bars.length > 0 ? new Date(bars[bars.length - 1].timestamp) : null;
+  const bars = sessionBarsForScalp(sessionCandles);
+  const lastBar =
+    bars && bars.length > 0
+      ? new Date(bars[bars.length - 1].timestamp)
+      : null;
   if (lastBar && Number.isFinite(lastBar.getTime())) {
     if (!isValidMarketHours(pipeline.timestamp, DEFAULT_VWAP_MEAN_REVERSION_CONFIG)) {
       return lastBar;
@@ -244,12 +257,8 @@ function buildStrategyInput(
   }
 
   if (strategyId === "vwap-mean-reversion") {
-    const scalp = buildScalpSessionPayload(
-      candidate,
-      sessionCandles,
-      dailyCandles
-    );
-    if (scalp.candles5m.length < 8 || !(scalp.vwap > 0)) return null;
+    const scalp = buildScalpSessionPayload(candidate, sessionCandles);
+    if (!scalp || scalp.candles5m.length < 8 || !(scalp.vwap > 0)) return null;
     return strategyInput({
       ...base,
       vwapMeanReversion: scalp,
@@ -257,12 +266,8 @@ function buildStrategyInput(
   }
 
   if (strategyId === "liquidity-sweep") {
-    const scalp = buildScalpSessionPayload(
-      candidate,
-      sessionCandles,
-      dailyCandles
-    );
-    if (scalp.candles5m.length < 8 || !(scalp.vwap > 0)) return null;
+    const scalp = buildScalpSessionPayload(candidate, sessionCandles);
+    if (!scalp || scalp.candles5m.length < 8 || !(scalp.vwap > 0)) return null;
     return strategyInput({
       ...base,
       liquiditySweep: scalp,
@@ -463,8 +468,7 @@ export function executeOpportunityStrategies(
 
   const executionTimestamp = resolveExecutionTimestamp(
     pipeline,
-    sessionCandles,
-    dailyCandles
+    sessionCandles
   );
 
   const results: StrategyEngineResult[] = [];

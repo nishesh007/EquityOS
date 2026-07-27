@@ -7,21 +7,14 @@ import {
 import { isValidNseSymbol, normalizeNseSymbol } from "@/lib/fundamentals/symbols";
 import { getCompanyEnrichment } from "@/lib/company-master/enrichment";
 import { lookupCompanyMaster } from "@/lib/company-master";
-import { coalescePriceHistory, getFullPriceHistory } from "@/lib/market/ohlc-engine";
-import { marketDataService } from "@/lib/market-data";
+import { getFullPriceHistory, emptyPriceHistory } from "@/lib/market/ohlc-engine";
+import { marketDataService } from "@/lib/market-data/server";
+import { resolveLiveMarketPrice } from "@/lib/fundamentals/strip-market-fields";
 import { isValidMarketPrice } from "@/lib/utils";
 import { CACHE_TTL, cacheKey, getCached, getStaleCachedSync } from "@/lib/cache";
 import type { OhlcBar } from "@/lib/providers/types";
 
-const EMPTY_PRICE_HISTORY: CompanyProfile["priceHistory"] = {
-  "1D": [],
-  "1W": [],
-  "1M": [],
-  "3M": [],
-  "6M": [],
-  "1Y": [],
-  "5Y": [],
-};
+const EMPTY_PRICE_HISTORY: CompanyProfile["priceHistory"] = emptyPriceHistory();
 
 function hasAnyHistoricalBars(
   history: Record<string, OhlcBar[]> | null | undefined
@@ -43,9 +36,10 @@ function buildDegradedProfile(
   if (!record) return null;
 
   const enrichment = getCompanyEnrichment(record.symbol);
+  // No coalesce — empty slots stay empty (loading / no-data in UI).
   const history =
     priceHistory && hasAnyHistoricalBars(priceHistory)
-      ? coalescePriceHistory(priceHistory)
+      ? priceHistory
       : EMPTY_PRICE_HISTORY;
 
   return {
@@ -97,7 +91,8 @@ function resolvePriceHistory(
   if (!priceHistory || !hasAnyHistoricalBars(priceHistory)) {
     return EMPTY_PRICE_HISTORY;
   }
-  return coalescePriceHistory(priceHistory);
+  // Pass-through — never fill empty timeframes from donors.
+  return priceHistory;
 }
 
 async function enrichPeersWithQuotes(peers: PeerCompany[]): Promise<PeerCompany[]> {
@@ -125,19 +120,27 @@ async function attachLatestMarketSnapshot(
     enrichPeersWithQuotes(profile.peers).catch(() => profile.peers),
   ]);
 
-  const livePrice = quote?.price ?? null;
-  if (!quote || !isValidMarketPrice(livePrice)) {
-    // Live miss — keep page alive; prefer any cached quote already on profile.
-    return { ...profile, peers };
+  const livePrice = resolveLiveMarketPrice({ quotePrice: quote?.price });
+  const liveMiss = !isValidMarketPrice(livePrice);
+  if (liveMiss) {
+    // Never retain fundamentals-sourced stub prices — force unavailable.
+    return {
+      ...profile,
+      price: 0,
+      change: 0,
+      changePercent: 0,
+      peers,
+      quote: quote ?? undefined,
+    };
   }
 
   return {
     ...profile,
-    price: livePrice,
-    change: quote.change ?? profile.change,
-    changePercent: quote.changePercent ?? profile.changePercent,
-    marketCap: quote.marketCap ?? profile.marketCap,
-    quote,
+    price: livePrice!,
+    change: quote!.change ?? 0,
+    changePercent: quote!.changePercent ?? 0,
+    marketCap: quote!.marketCap ?? profile.marketCap,
+    quote: quote!,
     peers,
   };
 }
@@ -172,24 +175,14 @@ export async function fetchCompanyProfile(
           return buildDegradedProfile(normalized, history);
         }
 
-        const bundle = {
-          ...fundamentalsResult.data,
-          price: 0,
-          change: 0,
-          changePercent: 0,
-        };
-
-        const liveProfile = bundleToCompanyProfile(bundle, history);
-
-        return attachFundamentalsToProfile(
-          {
-            ...liveProfile,
-            price: 0,
-            change: 0,
-            changePercent: 0,
-          },
-          bundle
+        // Fundamentals bundle has no market prices — profile starts at 0
+        // until attachLatestMarketSnapshot overlays live quotes.
+        const liveProfile = bundleToCompanyProfile(
+          fundamentalsResult.data,
+          history
         );
+
+        return attachFundamentalsToProfile(liveProfile, fundamentalsResult.data);
       }
     );
 

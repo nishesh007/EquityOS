@@ -5,11 +5,7 @@
  * Never import this module from Client Components.
  */
 
-import {
-  MarketPulseWidget,
-  PortfolioSummaryWidget,
-  WatchlistWidget,
-} from "@/components/dashboard/widgets/DashboardWidgets";
+import { MarketSnapshotWidget, MarketPulseWidget, PortfolioSummaryWidget, WatchlistWidget } from "@/components/dashboard/widgets/DashboardWidgets";
 import {
   MarketNewsWidget,
   ResultsCalendarWidget,
@@ -17,7 +13,6 @@ import {
 } from "@/components/dashboard/widgets/DeferredDashboardWidgets";
 import { HydratedAiOpportunities } from "@/components/dashboard/widgets/HydratedAiOpportunities";
 import { HydratedMarketMovers } from "@/components/dashboard/widgets/HydratedMarketMovers";
-import { HydratedMarketSnapshot } from "@/components/dashboard/widgets/HydratedMarketSnapshot";
 import { LazyMarketBreadthWidget } from "@/components/dashboard/widgets/LazyDashboardWidgets";
 import {
   loadDashboardAboveFold,
@@ -31,17 +26,21 @@ import { selectInstitutionalStrategyDashboard } from "@/lib/recommendations";
 import {
   resolveCachedIntelligence,
 } from "@/lib/market-orchestrator/dashboardContext";
+import { getCachedMarketSnapshot } from "@/lib/market-orchestrator/marketsSnapshot";
 import { getCachedMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
 import {
   loadOpportunityEngineState,
   toSharedSnapshot,
 } from "@/services/opportunityEngine";
 
-/** Above-fold: indices + pulse + cached MI/breadth only. */
+/**
+ * Above-fold: canonical Market Snapshot intelligence (identical to Markets page).
+ * No client enrich / no alternate Context-Regime path.
+ */
 export async function MarketSnapshotSlot() {
   const ctx = await loadDashboardAboveFold();
   return (
-    <HydratedMarketSnapshot
+    <MarketSnapshotWidget
       indices={ctx.indices}
       marketIntelligence={ctx.intelligence}
       breadth={ctx.breadth}
@@ -55,6 +54,9 @@ export async function MarketPulseSlot() {
     <MarketPulseWidget
       pulse={ctx.pulse}
       marketIntelligence={ctx.intelligence}
+      breadth={ctx.breadth}
+      marketStatus={ctx.marketStatus}
+      snapshotLocked
     />
   );
 }
@@ -67,7 +69,9 @@ export async function MarketPulseSlot() {
 export async function AiOpportunitiesSlot() {
   const state = await loadOpportunityEngineState();
   const marketIntelligence =
-    getCachedMarketIntelligenceSnapshot() ?? resolveCachedIntelligence();
+    getCachedMarketSnapshot()?.intelligence ??
+    getCachedMarketIntelligenceSnapshot() ??
+    resolveCachedIntelligence();
   const slots = selectInstitutionalStrategyDashboard(
     state,
     toSharedSnapshot(marketIntelligence)

@@ -111,10 +111,11 @@ export function InstitutionalCandlestick({
         )}
       >
         <p className="text-sm font-medium text-text-secondary">
-          Chart unavailable
+          No data for {timeframe}
         </p>
         <p className="mt-1 text-xs text-text-muted">
-          Historical data unavailable for {symbol}
+          Historical candles unavailable for {symbol} · {timeframe}. Retry or
+          choose another timeframe.
         </p>
       </div>
     );

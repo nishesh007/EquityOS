@@ -5,6 +5,7 @@
 
 import type { CompanyProfile, CompanyResearch, EquityIntelligence } from "@/types";
 import { fetchRecommendationForSymbol } from "@/services/opportunityEngine";
+import { resolveLiveMarketPrice } from "@/lib/fundamentals/strip-market-fields";
 import {
   WORKSPACE_EMPTY,
   LAYOUT_EMPTY,
@@ -167,9 +168,9 @@ export function buildCompanyWorkspaceSnapshot(input: {
     name: profile.name,
     sector: profile.sector,
     industry: profile.industry,
-    price: profile.price,
-    changePercent: profile.changePercent ?? 0,
-    marketCap: String(profile.marketCap ?? "—"),
+    price: resolveLiveMarketPrice({ quotePrice: profile.quote?.price }) ?? 0,
+    changePercent: profile.quote?.changePercent ?? 0,
+    marketCap: String(profile.quote?.marketCap ?? profile.marketCap ?? "—"),
     description: profile.description ?? profile.name,
     financials: {
       revenue: parseMoney(f.revenue),
@@ -209,7 +210,9 @@ export function buildCompanyWorkspaceSnapshot(input: {
         thesis?.valuationOpinion ??
         COMPANY_WORKSPACE_EMPTY.awaitingAnalysis,
       fairValue:
-        valuation?.estimatedFairValue ?? thesis?.fairValue ?? profile.price,
+        valuation?.estimatedFairValue ??
+        thesis?.fairValue ??
+        resolveLiveMarketPrice({ quotePrice: profile.quote?.price }) ?? 0,
       upsidePercent: valuation?.upsidePercent ?? 0,
     },
     quality: {

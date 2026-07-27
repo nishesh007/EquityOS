@@ -1,27 +1,17 @@
 /**
- * Lightweight dashboard context for summary widgets.
- * Reuses indices, pulse, and cached breadth / regime / MI snapshots.
- * Never invokes fetchMarketBreadth() or runTradingPipeline().
+ * Dashboard above-fold context — derived from the canonical Market Snapshot.
+ * Context / Regime / timestamp are identical to the Markets page.
  */
 
 import { cache } from "react";
-import {
-  cacheKey,
-  getCachedSync,
-  getStaleCachedSync,
-  seedCache,
-  CACHE_TTL,
-} from "@/lib/cache";
-import { readLastBreadthSnapshot } from "@/lib/market-breadth/last-snapshot";
-import {
-  serializeContextRegimeSnapshot,
-  serializePipelineSnapshot,
-} from "@/lib/market-intelligence/serialize";
 import type { MarketIntelligenceSnapshot } from "@/lib/market-intelligence";
 import {
   getCachedMarketIntelligenceSnapshot,
 } from "@/services/marketIntelligence";
-import { emptyMarketBreadth } from "@/services/emptyMarketBreadth";
+import {
+  serializeContextRegimeSnapshot,
+  serializePipelineSnapshot,
+} from "@/lib/market-intelligence/serialize";
 import {
   getMarketContextService,
   type InstitutionalMarketContext,
@@ -35,34 +25,42 @@ import {
   getTradingPipelineService,
 } from "@/src/modules/tradingPipeline";
 import type { MarketBreadth, MarketIndex, MarketPulse } from "@/types";
+import type { MarketStatus } from "@/lib/market/session";
 import { dedupeInFlight } from "./cache";
 import {
-  memoizedFetchMarketIndices,
-  memoizedFetchMarketPulse,
-} from "./memoizedReads";
+  getCachedMarketSnapshot,
+  loadMarketSnapshot,
+} from "./marketsSnapshot";
 
 const DASHBOARD_CONTEXT_KEY = "dashboard-context";
-const BREADTH_CACHE_KEY = cacheKey("market-breadth", "nse");
 
 /**
  * Lightweight summary surface for Market Snapshot / Market Pulse / MI strip.
+ * Intelligence is always taken from the canonical Market Snapshot.
  */
 export interface DashboardContext {
   indices: MarketIndex[];
   pulse: MarketPulse;
-  /** Cached breadth summary only — never computed on this path. */
   breadth: MarketBreadth;
   intelligence: MarketIntelligenceSnapshot;
+  /** Same as Markets page `MarketSnapshot.timestamp`. */
   timestamp: string;
+  marketStatus: MarketStatus;
+  marketStatusLabel: string;
 }
 
 /**
- * Resolve intelligence from warm caches only (MI → pipeline → context+regime → fallback).
- * Does not run the trading pipeline or refresh market context.
- * React cache() ensures one resolution per dashboard RSC request.
+ * Cache-only peek for non-UI consumers (OE filtering) that must not await
+ * a full snapshot build. Prefers the canonical process Market Snapshot when warm.
+ *
+ * UI surfaces (Dashboard strip / Pulse / Markets) must use `loadMarketSnapshot`
+ * / `getDashboardContext` instead — never this alone.
  */
 export const resolveCachedIntelligence = cache(
   function resolveCachedIntelligence(): MarketIntelligenceSnapshot {
+    const fromSnapshot = getCachedMarketSnapshot()?.intelligence;
+    if (fromSnapshot) return fromSnapshot;
+
     const mi = getCachedMarketIntelligenceSnapshot();
     if (mi) return mi;
 
@@ -80,64 +78,34 @@ export const resolveCachedIntelligence = cache(
     return serializePipelineSnapshot(
       createFallbackPipelineResult(
         new Date(),
-        "Dashboard summary using neutral fallback — full pipeline not invoked."
+        "Neutral fallback — canonical Market Snapshot not yet warm."
       )
     );
   }
 );
 
-function isUsableBreadth(breadth: MarketBreadth): boolean {
-  const movers =
-    (breadth.gainers?.length ?? 0) +
-    (breadth.losers?.length ?? 0) +
-    (breadth.mostActive?.length ?? 0);
-  const participation = breadth.advances + breadth.declines + breadth.unchanged;
-  return (
-    movers > 0 ||
-    participation > 0 ||
-    (breadth.sectors?.length ?? 0) > 0 ||
-    ((breadth.totalStocks ?? 0) > 0 && (breadth.quotedStocks ?? 0) > 0)
-  );
-}
-
-/**
- * Peek TTL / stale / previous-session breadth only. Never calls fetchMarketBreadth().
- */
-function resolveCachedBreadthSummary(): MarketBreadth {
-  const mem =
-    getCachedSync<MarketBreadth>(BREADTH_CACHE_KEY) ??
-    getStaleCachedSync<MarketBreadth>(BREADTH_CACHE_KEY);
-  if (mem && isUsableBreadth(mem)) return mem;
-
-  const disk = readLastBreadthSnapshot("nse");
-  if (disk && isUsableBreadth(disk)) {
-    seedCache(BREADTH_CACHE_KEY, disk, CACHE_TTL.FIFTEEN_MINUTES);
-    return disk;
+async function loadDashboardContext(): Promise<DashboardContext> {
+  const snapshot = await loadMarketSnapshot();
+  const intelligence = snapshot.intelligence;
+  if (!intelligence) {
+    throw new Error(
+      "Canonical Market Snapshot missing intelligence — cannot build Dashboard context."
+    );
   }
 
-  return mem ?? emptyMarketBreadth;
-}
-
-async function loadDashboardContext(): Promise<DashboardContext> {
-  const [indices, pulse] = await Promise.all([
-    memoizedFetchMarketIndices(),
-    memoizedFetchMarketPulse(),
-  ]);
-
-  const intelligence = resolveCachedIntelligence();
-  const breadth = resolveCachedBreadthSummary();
-
   return {
-    indices,
-    pulse,
-    breadth,
+    indices: snapshot.indices,
+    pulse: snapshot.pulse,
+    breadth: snapshot.breadth,
     intelligence,
-    timestamp: intelligence.timestamp,
+    timestamp: snapshot.timestamp,
+    marketStatus: snapshot.marketStatus,
+    marketStatusLabel: snapshot.marketStatusLabel,
   };
 }
 
 /**
- * Dashboard summary entry — React cache() per RSC request + in-flight coalesce.
+ * Dashboard summary entry — identical Context/Regime/timestamp to Markets.
  */
 export const getDashboardContext = cache(
   function getDashboardContext(): Promise<DashboardContext> {

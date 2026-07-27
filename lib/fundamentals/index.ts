@@ -60,6 +60,19 @@ export {
 export { getNseSymbolMeta, listNseRegistrySymbols } from "@/lib/fundamentals/nse-registry";
 
 export {
+  stripPeerMarketPrices,
+  fundamentalsPeersToDisplay,
+  resolveLiveMarketPrice,
+  findForbiddenMarketKeys,
+  assertNoMarketPricesOnFundamentals,
+  FUNDAMENTALS_FORBIDDEN_MARKET_KEYS,
+} from "@/lib/fundamentals/strip-market-fields";
+export type {
+  FundamentalsSeedProfile,
+  FundamentalsPeerSeed,
+} from "@/lib/fundamentals/seed-types";
+
+export {
   searchCompanies,
   resolveSearchQuery,
   preloadCompanySearch,

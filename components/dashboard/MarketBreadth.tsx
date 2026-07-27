@@ -49,10 +49,26 @@ const SectorBreadthPanel = dynamic(
   { ssr: false }
 );
 
+export type InstitutionalBreadthSection =
+  | "breadth"
+  | "strength"
+  | "sector"
+  | "movers"
+  | "full";
+
 interface MarketBreadthProps {
   breadth: MarketBreadthType;
   /** Dashboard omits Sector Breadth (engine + Markets page keep it). */
   showSectorBreadth?: boolean;
+  /** Consume only props — no /api/market/breadth or universe refetch. */
+  snapshotLocked?: boolean;
+  /** Hide widget-local timestamps (page owns as-of). */
+  hideTimestamps?: boolean;
+  /**
+   * Institutional Markets page section slice.
+   * When set, only that slice renders (defaults to full legacy layout).
+   */
+  institutionalSection?: InstitutionalBreadthSection;
 }
 
 interface MoverListProps {
@@ -61,6 +77,7 @@ interface MoverListProps {
   items: MarketMover[];
   valueLabel?: string;
   direction?: "gainers" | "losers";
+  snapshotLocked?: boolean;
 }
 
 const MAX_MOVER_ROWS = 5;
@@ -80,27 +97,11 @@ function formatTs(iso?: string): string {
 }
 
 /**
- * Prefer engine mood; when coverage is too thin for multi-factor classification
- * but we still have live A/D participation, show a provisional Neutral/Bullish/Bearish
- * instead of "Insufficient Data".
+ * Prefer engine mood only. Never reclassify from A/D alone in the UI —
+ * that would violate the multi-factor Market Mood contract.
  */
 function resolveDisplayMood(breadth: MarketBreadthType): string {
-  const mood = breadth.marketMood ?? "Insufficient Data";
-  if (mood !== "Insufficient Data") return mood;
-
-  const quoted =
-    breadth.quotedStocks ??
-    breadth.advances + breadth.declines + breadth.unchanged;
-  if (quoted < 30) return "Insufficient Data";
-
-  const pct =
-    breadth.breadthPercent ??
-    (quoted > 0 ? (breadth.advances / quoted) * 100 : 50);
-  const netHighs = (breadth.newHighs ?? 0) - (breadth.newLows ?? 0);
-
-  if (pct >= 62 && netHighs >= 0) return "Bullish";
-  if (pct <= 38 && netHighs <= 0) return "Bearish";
-  return "Neutral";
+  return breadth.marketMood ?? "Insufficient Data";
 }
 
 function resolveMoodGauge(breadth: MarketBreadthType): number {
@@ -111,13 +112,7 @@ function resolveMoodGauge(breadth: MarketBreadthType): number {
   ) {
     return breadth.moodGauge;
   }
-  const quoted =
-    breadth.quotedStocks ??
-    breadth.advances + breadth.declines + breadth.unchanged;
-  if (quoted <= 0) return 50;
-  return Math.round(
-    breadth.breadthPercent ?? (breadth.advances / quoted) * 100
-  );
+  return 50;
 }
 
 function asTrend(value?: TrendDirection): TrendDirection {
@@ -130,23 +125,28 @@ function MoverList({
   items,
   valueLabel = "LTP",
   direction,
+  snapshotLocked = false,
 }: MoverListProps) {
   const symbols = items.map((item) => item.symbol);
   const { quotes } = useMarketQuotes(symbols, {
     initialQuotes: buildInitialQuotesMap(items),
+    enabled: !snapshotLocked,
   });
   const displayItems = direction
     ? items
         .filter((item) => {
-          const change =
-            quotes.get(item.symbol)?.changePercent ?? item.changePercent;
+          const change = snapshotLocked
+            ? item.changePercent
+            : quotes.get(item.symbol)?.changePercent ?? item.changePercent;
           return direction === "gainers" ? change > 0 : change < 0;
         })
         .sort((a, b) => {
-          const aChange =
-            quotes.get(a.symbol)?.changePercent ?? a.changePercent;
-          const bChange =
-            quotes.get(b.symbol)?.changePercent ?? b.changePercent;
+          const aChange = snapshotLocked
+            ? a.changePercent
+            : quotes.get(a.symbol)?.changePercent ?? a.changePercent;
+          const bChange = snapshotLocked
+            ? b.changePercent
+            : quotes.get(b.symbol)?.changePercent ?? b.changePercent;
           return direction === "gainers"
             ? bChange - aChange
             : aChange - bChange;
@@ -171,11 +171,12 @@ function MoverList({
       ) : (
         <div className="space-y-0.5">
           {displayItems.map((item) => {
-            const quote =
-              quotes.get(item.symbol) ??
-              quotes.get(item.symbol.toUpperCase()) ??
-              item.quote ??
-              createUnavailableQuote(item.symbol);
+            const quote = snapshotLocked
+              ? item.quote ?? createUnavailableQuote(item.symbol)
+              : quotes.get(item.symbol) ??
+                quotes.get(item.symbol.toUpperCase()) ??
+                item.quote ??
+                createUnavailableQuote(item.symbol);
             return (
               <StockLink
                 key={item.symbol}
@@ -221,10 +222,14 @@ function InternalsSummary({
   breadth,
   onUniverseChange,
   pending,
+  snapshotLocked = false,
+  hideTimestamps = false,
 }: {
   breadth: MarketBreadthType;
   onUniverseChange: (id: BreadthUniverseId) => void;
   pending: boolean;
+  snapshotLocked?: boolean;
+  hideTimestamps?: boolean;
 }) {
   const universe = (breadth.universe ?? "nse") as BreadthUniverseId;
   const total = breadth.totalStocks ?? 0;
@@ -233,35 +238,45 @@ function InternalsSummary({
   return (
     <Card padding="lg" accent="emerald" className="h-full">
       <CardHeader
-        title="Market Internals"
+        title="Breadth Overview"
         subtitle="Institutional breadth · Entire NSE analytics"
         icon={<Activity className="h-4 w-4 text-emerald-400" />}
-        timestamp={`Updated ${formatTs(breadth.lastUpdated)}`}
+        timestamp={
+          hideTimestamps
+            ? undefined
+            : `Updated ${formatTs(breadth.lastUpdated)}`
+        }
         badge={
           <StatusBadge tone={statusToneFromLabel(mood)} size="sm">
             {mood}
           </StatusBadge>
         }
         action={
-          <select
-            aria-label="Breadth universe"
-            className="rounded-lg border border-surface-border bg-surface-overlay px-2 py-1 text-[11px] font-semibold text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-            value={universe}
-            disabled={pending}
-            onChange={(event) =>
-              onUniverseChange(event.target.value as BreadthUniverseId)
-            }
-          >
-            {BREADTH_UNIVERSE_OPTIONS.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+          snapshotLocked ? undefined : (
+            <select
+              aria-label="Breadth universe"
+              className="rounded-lg border border-surface-border bg-surface-overlay px-2 py-1 text-[11px] font-semibold text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              value={universe}
+              disabled={pending}
+              onChange={(event) =>
+                onUniverseChange(event.target.value as BreadthUniverseId)
+              }
+            >
+              {BREADTH_UNIVERSE_OPTIONS.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          )
         }
       />
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+      <div
+        className={`grid grid-cols-2 gap-2 sm:grid-cols-3 ${
+          hideTimestamps ? "lg:grid-cols-4" : "lg:grid-cols-5"
+        }`}
+      >
         <KpiCard
           label="Universe"
           value={breadth.universeLabel ?? "Entire NSE"}
@@ -279,12 +294,14 @@ function InternalsSummary({
           metricKey="totalStocks"
           tone="accent"
         />
-        <KpiCard
-          label="Last Updated"
-          value={formatTs(breadth.lastUpdated)}
-          metricKey="lastUpdated"
-          tone="neutral"
-        />
+        {!hideTimestamps ? (
+          <KpiCard
+            label="Last Updated"
+            value={formatTs(breadth.lastUpdated)}
+            metricKey="lastUpdated"
+            tone="neutral"
+          />
+        ) : null}
         <KpiCard
           label="Market Status"
           value={breadth.marketStatusLabel ?? "—"}
@@ -307,17 +324,10 @@ function BreadthPanel({ breadth }: MarketBreadthProps) {
   const quoted =
     breadth.quotedStocks ??
     breadth.advances + breadth.declines + breadth.unchanged;
-  const ratio =
-    breadth.advanceDeclineRatio ??
-    (breadth.declines > 0
-      ? breadth.advances / breadth.declines
-      : breadth.advances);
-  const breadthPct =
-    breadth.breadthPercent ??
-    (quoted > 0
-      ? Math.round((breadth.advances / quoted) * 1000) / 10
-      : 0);
-  const net = breadth.netAdvances ?? breadth.advances - breadth.declines;
+  // Display only engine-published metrics.ts values — no local recompute.
+  const ratio = breadth.advanceDeclineRatio ?? 0;
+  const breadthPct = breadth.breadthPercent ?? 0;
+  const net = breadth.netAdvances ?? 0;
 
   return (
     <Card padding="lg" accent="indigo" className="h-full">
@@ -691,12 +701,15 @@ function WeekHighLow({ breadth }: MarketBreadthProps) {
 export function MarketBreadth({
   breadth: initial,
   showSectorBreadth = true,
+  snapshotLocked = false,
+  hideTimestamps = false,
+  institutionalSection = "full",
 }: MarketBreadthProps) {
   const router = useRouter();
   const [breadth, setBreadth] = useState(initial);
   const [pending, startTransition] = useTransition();
   const [hydrating, setHydrating] = useState(
-    () => !isUsableMarketBreadth(initial)
+    () => !snapshotLocked && !isUsableMarketBreadth(initial)
   );
 
   useEffect(() => {
@@ -705,6 +718,10 @@ export function MarketBreadth({
 
   // Mirror heatmap: when SSR only had empty/cache-miss breadth, hydrate once.
   useEffect(() => {
+    if (snapshotLocked) {
+      setHydrating(false);
+      return;
+    }
     if (isUsableMarketBreadth(initial)) {
       setHydrating(false);
       return;
@@ -724,9 +741,10 @@ export function MarketBreadth({
     return () => {
       cancelled = true;
     };
-  }, [initial]);
+  }, [initial, snapshotLocked]);
 
   const onUniverseChange = (id: BreadthUniverseId) => {
+    if (snapshotLocked) return;
     startTransition(async () => {
       try {
         const next = await fetchClientMarketBreadth(id, { force: true });
@@ -742,57 +760,82 @@ export function MarketBreadth({
     return <WidgetSkeleton label="Market Internals" className="h-72" />;
   }
 
+  const showSummary =
+    institutionalSection === "full" || institutionalSection === "breadth";
+  const showBreadthPanels =
+    institutionalSection === "full" || institutionalSection === "breadth";
+  const showStrengthPanels =
+    institutionalSection === "full" || institutionalSection === "strength";
+  const showSector =
+    (institutionalSection === "full" && showSectorBreadth) ||
+    institutionalSection === "sector";
+  const showMovers =
+    institutionalSection === "full" || institutionalSection === "movers";
+
   return (
     <div
       className={
         pending || hydrating ? "opacity-70 transition-opacity" : undefined
       }
     >
-      <div className="mb-4">
-        <InternalsSummary
-          breadth={breadth}
-          onUniverseChange={onUniverseChange}
-          pending={pending || hydrating}
-        />
-      </div>
+      {showSummary ? (
+        <div className="mb-4">
+          <InternalsSummary
+            breadth={breadth}
+            onUniverseChange={onUniverseChange}
+            pending={pending || hydrating}
+            snapshotLocked={snapshotLocked}
+            hideTimestamps={hideTimestamps}
+          />
+        </div>
+      ) : null}
 
-      <div className="mb-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <BreadthPanel breadth={breadth} />
-        <ParticipationPanel breadth={breadth} />
-      </div>
+      {showBreadthPanels ? (
+        <div className="mb-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <BreadthPanel breadth={breadth} />
+          <ParticipationPanel breadth={breadth} />
+        </div>
+      ) : null}
 
-      <div className="mb-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <StrengthPanel breadth={breadth} />
-        <MarketMoodPanel breadth={breadth} />
-      </div>
+      {showStrengthPanels ? (
+        <div className="mb-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <StrengthPanel breadth={breadth} />
+          <MarketMoodPanel breadth={breadth} />
+        </div>
+      ) : null}
 
-      {showSectorBreadth ? (
+      {showSector ? (
         <div className="mb-4">
           <SectorBreadthPanel breadth={breadth} />
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MoverList
-          title="Top Gainers"
-          subtitle={breadth.universeLabel ?? "Selected universe"}
-          items={breadth.gainers}
-          direction="gainers"
-        />
-        <MoverList
-          title="Top Losers"
-          subtitle={breadth.universeLabel ?? "Selected universe"}
-          items={breadth.losers}
-          direction="losers"
-        />
-        <WeekHighLow breadth={breadth} />
-        <MoverList
-          title="Most Active"
-          subtitle="Ranked by volume"
-          items={breadth.mostActive}
-          valueLabel="Volume"
-        />
-      </div>
+      {showMovers ? (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <MoverList
+            title="Top Gainers"
+            subtitle={breadth.universeLabel ?? "Selected universe"}
+            items={breadth.gainers}
+            direction="gainers"
+            snapshotLocked={snapshotLocked}
+          />
+          <MoverList
+            title="Top Losers"
+            subtitle={breadth.universeLabel ?? "Selected universe"}
+            items={breadth.losers}
+            direction="losers"
+            snapshotLocked={snapshotLocked}
+          />
+          <WeekHighLow breadth={breadth} />
+          <MoverList
+            title="Most Active"
+            subtitle="Ranked by volume"
+            items={breadth.mostActive}
+            valueLabel="Volume"
+            snapshotLocked={snapshotLocked}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

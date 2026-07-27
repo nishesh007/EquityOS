@@ -20,7 +20,7 @@ interface ProviderHealthEntry {
   currentState: ProviderState;
 }
 
-const PROVIDERS = ["NSE", "Yahoo", "Finnhub"] as const;
+const PROVIDERS = ["Yahoo", "Finnhub", "Polygon", "NSE"] as const;
 const health = new Map<string, ProviderHealthEntry>();
 
 function ensure(provider: string): ProviderHealthEntry {

@@ -345,6 +345,14 @@ export interface ScanResult {
   rawCandidates?: number;
   /** Candidates retained after pipeline enrichment/filter. */
   pipelinePassed?: number;
+  /** Institutional quote acquisition freshness counters. */
+  quoteFreshness?: {
+    quotesFetched: number;
+    fresh: number;
+    stale: number;
+    providerFailures: number;
+    cacheHitRatio: number;
+  };
 }
 
 export interface CategoryScanCandidate {

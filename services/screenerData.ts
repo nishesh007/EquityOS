@@ -6,7 +6,7 @@
 
 import { CACHE_TTL, cacheKey, getCached } from "@/lib/cache";
 import { fetchRecommendationsForSymbols } from "@/services/opportunityEngine";
-import { marketDataService } from "@/lib/market-data";
+import { marketDataService } from "@/lib/market-data/server";
 import {
   getFilterCount,
   runScreener,

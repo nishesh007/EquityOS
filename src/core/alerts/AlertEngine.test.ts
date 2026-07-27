@@ -335,7 +335,9 @@ describe("Institutional AI Alert Engine (9C.R1)", () => {
     });
 
     it("getAlerts returns empty states without null", () => {
-      const empty = getAlerts();
+      // Use the same frozen clock as generateAlert — wall-clock now would
+      // expire 7-day alerts created at NOW (Jul 15) when run after Jul 22.
+      const empty = getAlerts(undefined, NOW);
       expect(empty.empty).toBe(true);
       expect([
         ALERT_ENGINE_EMPTY.noAlerts,
@@ -345,7 +347,7 @@ describe("Institutional AI Alert Engine (9C.R1)", () => {
       expect(empty.alerts).toEqual([]);
 
       generateAlert(baseEvent(), NOW);
-      const filled = getAlerts({ sourceEngine: "Earnings" });
+      const filled = getAlerts({ sourceEngine: "Earnings" }, NOW);
       expect(filled.empty).toBe(false);
       expect(filled.total).toBeGreaterThan(0);
       expect(filled.alerts[0]!.priority).toBeTruthy();

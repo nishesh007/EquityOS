@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { marketDataService } from "@/lib/market-data";
+import { marketDataService } from "@/lib/market-data/server";
 import { enrichedQuoteToJSON } from "@/lib/market-data/enriched-quote";
 import {
   getMarketStatus,

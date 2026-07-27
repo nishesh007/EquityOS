@@ -17,7 +17,10 @@ import { clamp, hashString, round, seededUnit } from "./utils";
 export function simulatePerformance(
   strategy: Pick<BuiltStrategy, "id" | "name" | "blocks" | "rules" | "tags">
 ): StrategyPerformance {
-  const seed = hashString(`${strategy.id}|${strategy.name}|${strategy.rules.stopLossPct}`);
+  // Seed from stable strategy fields — not Date.now()/random ids.
+  const seed = hashString(
+    `${strategy.name}|${strategy.rules.stopLossPct}|${strategy.rules.targetPct}|${strategy.rules.positionSizePct}|${strategy.blocks.marketRegime}|${strategy.blocks.universe}`
+  );
   const u = (s: number) => seededUnit(seed, s);
 
   const rr = Math.max(
@@ -227,6 +230,17 @@ export function generateImprovements(
       detail: "Cut low-quality setups; raise minimum RR to 1.8.",
       confidence: clamp(80 - p.profitFactor * 15, 55, 90),
       category: "Profit Factor",
+    });
+  }
+
+  // Always surface at least one actionable refinement for institutional review.
+  if (suggestions.length === 0) {
+    suggestions.push({
+      id: `${strategy.id}-refine`,
+      title: "Refine Entry Timing",
+      detail: "Require confirmation candle and relative volume ≥ 1.5× before entry.",
+      confidence: 62,
+      category: "Volume",
     });
   }
 

@@ -1,7 +1,11 @@
 import { adapterFetch } from "@/lib/adapters/http";
 import { BaseDataAdapter, type AdapterConfig } from "@/lib/adapters/types";
 import { toYahooSymbol } from "@/lib/market-data/symbols";
-import type { ChartTimeframe } from "@/types";
+import {
+  OHLC_PROVIDER_SPECS,
+  isOhlcTimeframe,
+  type OhlcTimeframe,
+} from "@/lib/market/ohlc-timeframes";
 import type { OhlcBar } from "@/lib/providers/types";
 
 export interface YahooQuoteParams {
@@ -49,15 +53,17 @@ interface YahooChartResponse {
   };
 }
 
-const TIMEFRAME_TO_YAHOO: Record<ChartTimeframe, { range: string; interval: string }> = {
-  "1D": { range: "1d", interval: "5m" },
-  "1W": { range: "5d", interval: "15m" },
-  "1M": { range: "1mo", interval: "1d" },
-  "3M": { range: "3mo", interval: "1d" },
-  "6M": { range: "6mo", interval: "1d" },
-  "1Y": { range: "1y", interval: "1d" },
-  "5Y": { range: "5y", interval: "1wk" },
-};
+const TIMEFRAME_TO_YAHOO: Record<OhlcTimeframe, { range: string; interval: string }> =
+  Object.fromEntries(
+    (
+      Object.entries(OHLC_PROVIDER_SPECS) as Array<
+        [OhlcTimeframe, (typeof OHLC_PROVIDER_SPECS)[OhlcTimeframe]]
+      >
+    ).map(([tf, spec]) => [
+      tf,
+      { range: spec.yahooRange, interval: spec.yahooInterval },
+    ])
+  ) as Record<OhlcTimeframe, { range: string; interval: string }>;
 
 export class YahooAdapter extends BaseDataAdapter<YahooQuoteParams, YahooQuoteResult> {
   readonly provider = "Yahoo";
@@ -82,6 +88,11 @@ export class YahooAdapter extends BaseDataAdapter<YahooQuoteParams, YahooQuoteRe
 
     const data = await adapterFetch<YahooChartResponse>(url, {
       timeout: this.config.timeout,
+      headers: {
+        // Same browser UA as candle fetches — EquityOS/1.0 is frequently rate-limited.
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      },
     });
 
     const error = data.chart?.error?.description;
@@ -112,7 +123,10 @@ export class YahooAdapter extends BaseDataAdapter<YahooQuoteParams, YahooQuoteRe
     };
   }
 
-  async fetchCandles(symbol: string, timeframe: ChartTimeframe): Promise<OhlcBar[]> {
+  async fetchCandles(symbol: string, timeframe: OhlcTimeframe): Promise<OhlcBar[]> {
+    if (!isOhlcTimeframe(timeframe)) {
+      throw new Error(`Yahoo: unsupported timeframe ${String(timeframe)}`);
+    }
     const yahooSymbol = toYahooSymbol(symbol);
     const config = TIMEFRAME_TO_YAHOO[timeframe];
     const primary =

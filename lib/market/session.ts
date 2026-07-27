@@ -124,6 +124,25 @@ export function isMarketOpen(now = new Date()): boolean {
 }
 
 /**
+ * Fraction of the cash session elapsed (09:15–15:30 IST = 375 minutes).
+ * Used to time-adjust cumulative session volume vs full-day ADV.
+ * Returns null when outside a live cash session (use raw full-day volume).
+ */
+export function getSessionElapsedFraction(now = new Date()): number | null {
+  const { dayOfWeek, dateKey, hours, minutes } = getISTParts(now);
+  if (!isTradingCalendarDay(dayOfWeek, dateKey)) return null;
+
+  const elapsed = minutesSinceMidnight(hours, minutes);
+  if (elapsed < SESSION.MARKET_OPEN || elapsed >= SESSION.MARKET_CLOSE) {
+    return null;
+  }
+
+  const sessionLength = SESSION.MARKET_CLOSE - SESSION.MARKET_OPEN;
+  const intoSession = Math.max(1, elapsed - SESSION.MARKET_OPEN);
+  return Math.min(1, intoSession / sessionLength);
+}
+
+/**
  * Opportunity Engine auto-scan window (IST): trading days 09:00–15:30 inclusive start.
  * Broader than live quote polling (09:15) so 09:00 / 09:05 / 09:10 ticks fire.
  */

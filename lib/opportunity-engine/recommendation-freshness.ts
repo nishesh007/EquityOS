@@ -7,6 +7,7 @@ import {
   getTradingDateKey,
   isMarketOpen,
   isOpportunityScanSession,
+  getISTDateKey,
 } from "@/lib/market/session";
 import { countCategoryCandidates } from "@/lib/opportunity-engine/pipeline-telemetry";
 import type { OpportunityEngineState } from "@/lib/opportunity-engine/types";
@@ -39,6 +40,17 @@ export function isMarketClosedForRecommendations(now = new Date()): boolean {
   return status === "closed" || status === "holiday" || status === "post_close";
 }
 
+/** True when stored scan timestamp is from a prior IST trading date. */
+export function isCarryForwardScan(
+  state: OpportunityEngineState,
+  now = new Date()
+): boolean {
+  if (!state.lastScannedAt) return false;
+  const scannedDay = getISTDateKey(new Date(state.lastScannedAt));
+  const tradingDay = state.tradingDate ?? getTradingDateKey(now);
+  return scannedDay !== tradingDay;
+}
+
 export function buildRecommendationFreshness(
   state: OpportunityEngineState,
   recommendationCount?: number,
@@ -53,14 +65,18 @@ export function buildRecommendationFreshness(
         (state.recommendations?.length ?? 0) > 0;
 
   const marketClosed = isMarketClosedForRecommendations(now);
+  const carryForward = isCarryForwardScan(state, now);
 
-  if (hasRecommendations && marketClosed) {
+  if (hasRecommendations && (marketClosed || carryForward)) {
     const when = generatedAt ? formatGeneratedAt(generatedAt) : marketDate;
+    const staleReason = marketClosed
+      ? "Market Closed"
+      : "Awaiting today's market scan";
     return {
       generatedAt,
       marketDate,
       stale: true,
-      staleReason: "Market Closed",
+      staleReason,
       displayMessage: `Showing latest validated recommendations generated on ${when}.`,
       hasRecommendations: true,
     };

@@ -5,7 +5,7 @@
 
 import { lookupCompanyMaster } from "@/lib/company-master";
 import type { EnrichedQuote } from "@/lib/market-data/enriched-quote";
-import { marketDataService } from "@/lib/market-data";
+import { marketDataService } from "@/lib/market-data/server";
 import { rsi } from "@/lib/technical/math";
 import {
   resolveBreadthUniverse,

@@ -50,4 +50,21 @@ describe("buildRecommendationFreshness", () => {
     expect(freshness.stale).toBe(false);
     expect(freshness.displayMessage).toBeNull();
   });
+
+  it("marks carry-forward scans stale while awaiting today's market scan", () => {
+    // Monday 10:00 IST while last scan is still Friday.
+    const mondayOpen = new Date("2026-07-27T04:30:00.000Z");
+    const freshness = buildRecommendationFreshness(
+      baseState({
+        tradingDate: "2026-07-27",
+        lastScannedAt: "2026-07-24T10:00:00.000Z",
+        scanCount: 0,
+      }),
+      12,
+      mondayOpen
+    );
+    expect(freshness.stale).toBe(true);
+    expect(freshness.staleReason).toBe("Awaiting today's market scan");
+    expect(freshness.hasRecommendations).toBe(true);
+  });
 });

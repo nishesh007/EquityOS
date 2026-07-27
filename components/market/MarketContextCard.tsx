@@ -338,8 +338,10 @@ function MetricTile({
 
 export function MarketContextCard({
   context,
+  hideTimestamps = false,
 }: {
   context: MarketContextView | null;
+  hideTimestamps?: boolean;
 }) {
   if (!context) {
     return (
@@ -373,7 +375,11 @@ export function MarketContextCard({
         title="Market Context"
         subtitle="Trend · volatility · breadth · risk"
         icon={<Activity className="h-4 w-4" />}
-        timestamp={`Updated ${formatUpdated(context.timestamp)} IST`}
+        timestamp={
+          hideTimestamps
+            ? undefined
+            : `Updated ${formatUpdated(context.timestamp)} IST`
+        }
       />
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -468,10 +474,12 @@ export function MarketContextCard({
         </div>
       )}
 
-      <p className="data-timestamp mt-2 flex items-center gap-1">
-        <Gauge className="data-icon h-3.5 w-3.5" />
-        Last updated {formatUpdated(context.timestamp)} IST
-      </p>
+      {!hideTimestamps ? (
+        <p className="data-timestamp mt-2 flex items-center gap-1">
+          <Gauge className="data-icon h-3.5 w-3.5" />
+          Last updated {formatUpdated(context.timestamp)} IST
+        </p>
+      ) : null}
     </Card>
   );
 }

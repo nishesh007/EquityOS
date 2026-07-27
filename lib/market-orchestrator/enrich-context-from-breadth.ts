@@ -2,7 +2,8 @@
  * Overlay Market Context / Regime / Pulse metrics from usable breadth when MI
  * fallback left zeros (A/D 0/0, momentum 0, participation 0%).
  *
- * Presentation consistency only — does not re-run institutional engines.
+ * Prefers engine-published fields from lib/market-breadth/metrics.ts.
+ * Does not invent an alternate breadth % formula (never A/(A+D)).
  */
 
 import type {
@@ -10,26 +11,18 @@ import type {
   MarketIntelligenceSnapshot,
   MarketRegimeView,
 } from "@/lib/market-intelligence";
+import { computeBreadthCoreMetrics } from "@/lib/market-breadth/metrics";
 import type { MarketBreadth } from "@/types";
 import { isUsableMarketBreadth } from "./client-breadth";
 
-function quotedCount(breadth: MarketBreadth): number {
-  return (
-    breadth.quotedStocks ??
-    breadth.advances + breadth.declines + breadth.unchanged
-  );
-}
-
-/**
- * Mover participation = (advances + declines) / total quoted.
- * Prefer this over quoteCoveragePercent, which can be ~1% while markets
- * still have nearly full A/D participation among printed quotes.
- */
-function moverParticipationPercent(breadth: MarketBreadth): number | null {
-  const total =
-    breadth.advances + breadth.declines + (breadth.unchanged ?? 0);
-  if (total <= 0) return null;
-  return Math.round(((breadth.advances + breadth.declines) / total) * 100);
+function coreFromPublishedCounts(breadth: MarketBreadth) {
+  return computeBreadthCoreMetrics([
+    ...Array.from({ length: breadth.advances }, () => ({ changePercent: 1 })),
+    ...Array.from({ length: breadth.declines }, () => ({ changePercent: -1 })),
+    ...Array.from({ length: breadth.unchanged ?? 0 }, () => ({
+      changePercent: 0,
+    })),
+  ]);
 }
 
 export function derivePulseMetricsFromBreadth(breadth: MarketBreadth): {
@@ -40,16 +33,11 @@ export function derivePulseMetricsFromBreadth(breadth: MarketBreadth): {
   sectorBreadth: number | null;
 } | null {
   if (!isUsableMarketBreadth(breadth)) return null;
-  const quoted = quotedCount(breadth);
-  const ad = breadth.advances + breadth.declines;
+  const core = coreFromPublishedCounts(breadth);
   const breadthScore =
     breadth.breadthPercent != null
       ? Math.round(breadth.breadthPercent)
-      : ad > 0
-        ? Math.round((breadth.advances / ad) * 100)
-        : quoted > 0
-          ? Math.round((breadth.advances / quoted) * 100)
-          : 50;
+      : Math.round(core.breadthPercent);
 
   const momentum =
     breadth.averageDailyReturn != null
@@ -59,47 +47,21 @@ export function derivePulseMetricsFromBreadth(breadth: MarketBreadth): {
         )
       : breadthScore;
 
-  /**
-   * Participation priority:
-   * 1) Engine participationPercent when it reflects movers (typically high)
-   * 2) Computed (A+D)/total from counts
-   * 3) Never prefer raw quoteCoverage alone when A/D counts exist
-   *
-   * Old: fell through to quoteCoveragePercent → ~1% mislabeled as participation.
-   */
-  const fromCounts = moverParticipationPercent(breadth);
-  const engineParticipation = breadth.participationPercent;
   const participation =
-    fromCounts != null
-      ? fromCounts
-      : engineParticipation != null && engineParticipation > 5
-        ? Math.round(engineParticipation)
-        : breadthScore;
+    breadth.participationPercent != null
+      ? Math.round(breadth.participationPercent)
+      : Math.round(core.moverParticipationPercent);
 
   const sectorRows = breadth.sectors ?? [];
   const sectorBreadth =
     sectorRows.length > 0
       ? Math.round(
-          sectorRows.reduce(
-            (sum, row) => {
-              const advances = row.advances ?? 0;
-              const declines = row.declines ?? 0;
-              const breadthPercent =
-                "breadthPercent" in row &&
-                typeof (row as { breadthPercent?: number }).breadthPercent ===
-                  "number"
-                  ? (row as { breadthPercent: number }).breadthPercent
-                  : advances + declines > 0
-                    ? (advances / (advances + declines)) * 100
-                    : 50;
-              return sum + breadthPercent;
-            },
-            0
-          ) / sectorRows.length
+          sectorRows.reduce((sum, row) => sum + (row.breadth ?? 0), 0) /
+            sectorRows.length
         )
       : breadth.breadthPercent != null
         ? Math.round(breadth.breadthPercent)
-        : null;
+        : Math.round(core.breadthPercent);
 
   return {
     breadthScore,
@@ -135,9 +97,10 @@ export function enrichContextFromBreadth(
     advanceCount: needsAd ? breadth.advances : context.advanceCount,
     declineCount: needsAd ? breadth.declines : context.declineCount,
     advanceDeclineRatio: needsAd
-      ? breadth.declines > 0
-        ? breadth.advances / breadth.declines
-        : breadth.advances
+      ? (breadth.advanceDeclineRatio ??
+        (breadth.declines > 0
+          ? breadth.advances / breadth.declines
+          : breadth.advances))
       : context.advanceDeclineRatio,
     breadthScore: needsBreadth ? derived.breadthScore : context.breadthScore,
     breadthQuality: needsBreadth

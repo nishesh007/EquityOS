@@ -1,16 +1,17 @@
 /**
  * Dynamic fundamentals seed — generates deterministic profiles for any valid NSE symbol.
+ * Never synthesizes LTP / change% — market prices come from market-data only.
  */
 
 import { round } from "@/lib/engine/utils";
 import { getMockSeed } from "@/lib/fundamentals/mock-data";
 import { getNseSymbolMeta } from "@/lib/fundamentals/nse-registry";
+import type { FundamentalsSeedProfile } from "@/lib/fundamentals/seed-types";
 import { normalizeNseSymbol, toDisplaySymbol } from "@/lib/fundamentals/symbols";
 import { createRng, hashSeed } from "@/lib/random";
 import type {
   AnnualFinancial,
   CompanyFinancials,
-  CompanyProfile,
   QuarterlyResult,
   ShareholdingPattern,
   ValuationMetric,
@@ -78,14 +79,8 @@ function buildValuation(financials: CompanyFinancials): ValuationMetric[] {
     {
       label: "ROE",
       value: `${financials.roe}%`,
-      industryAvg: "15.0%",
+      industryAvg: `${round(financials.roe * 0.85, 1)}%`,
       status: financials.roe >= 15 ? "undervalued" : "fair",
-    },
-    {
-      label: "Dividend Yield",
-      value: `${round(0.4 + financials.pe * 0.02, 2)}%`,
-      industryAvg: "1.0%",
-      status: "fair",
     },
   ];
 }
@@ -95,7 +90,7 @@ function buildValuation(financials: CompanyFinancials): ValuationMetric[] {
  */
 export function resolveFundamentalsSeed(
   symbol: string
-): Omit<CompanyProfile, "priceHistory"> {
+): FundamentalsSeedProfile {
   const normalized = normalizeNseSymbol(symbol);
   const staticSeed = getMockSeed(normalized);
   if (staticSeed) return staticSeed;
@@ -103,10 +98,6 @@ export function resolveFundamentalsSeed(
   const meta = getNseSymbolMeta(normalized);
   const rng = createRng(hashSeed(`fundamentals-seed-${normalized}`));
   const displaySymbol = toDisplaySymbol(normalized);
-
-  const price = meta?.price && meta.price > 0 ? meta.price : round(50 + rng() * 8000, 2);
-  const changePercent = meta?.changePercent ?? round((rng() - 0.5) * 3, 2);
-  const change = round(price * (changePercent / 100), 2);
 
   const revenueCr = meta
     ? parseRevenueCr(meta.marketCap) * (0.08 + rng() * 0.12)
@@ -143,26 +134,34 @@ export function resolveFundamentalsSeed(
     public: round(5 + rng() * 20, 2),
     lastUpdated: "Mar 2026",
   };
-  const publicPct = round(Math.max(0, 100 - shareholding.promoter - shareholding.fii - shareholding.dii), 2);
-  shareholding.public = publicPct;
+  shareholding.public = round(
+    Math.max(
+      0,
+      100 - shareholding.promoter - shareholding.fii - shareholding.dii
+    ),
+    2
+  );
 
   return {
     symbol: normalized,
     name: meta?.name ?? formatName(normalized),
-    price,
-    change,
-    changePercent,
-    marketCap: meta?.marketCap ?? `₹${round(revenueCr * pe / 1000, 1)}L Cr`,
+    marketCap: meta?.marketCap ?? `₹${round((revenueCr * pe) / 1000, 1)}L Cr`,
     sector: meta?.sector ?? "Equities",
     industry: meta?.industry ?? "Listed Company",
     description:
       meta?.description ??
-      `${displaySymbol} is a listed company on the National Stock Exchange of India (NSE). Fundamentals are synthesized from available market data.`,
+      `${displaySymbol} is a listed company on the National Stock Exchange of India (NSE). Fundamentals are synthesized without market prices.`,
     website: meta?.website ?? `${normalized.toLowerCase()}.com`,
     founded: `${1980 + Math.floor(rng() * 30)}`,
     employees: `${Math.round(1000 + rng() * 200_000).toLocaleString("en-IN")}+`,
     financials,
-    quarterlyResults: buildQuarterlyFromAnnual(revenueCr, profitCr, eps, margin, rng),
+    quarterlyResults: buildQuarterlyFromAnnual(
+      revenueCr,
+      profitCr,
+      eps,
+      margin,
+      rng
+    ),
     annualFinancials: buildAnnualFinancials(revenueCr, profitCr, eps, roe),
     shareholding,
     peers: [],
@@ -173,7 +172,8 @@ export function resolveFundamentalsSeed(
         title: `${meta?.name ?? normalized} in focus on NSE`,
         source: "EquityOS",
         timestamp: "Today",
-        summary: "Company page generated from NSE symbol lookup with fundamentals engine fallback.",
+        summary:
+          "Company page generated from NSE symbol lookup with fundamentals engine fallback.",
       },
     ],
     notes: [],

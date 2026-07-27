@@ -12,8 +12,9 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "generate:company-master": "node scripts/generate-company-master.mjs",
-    "validate:search": "node scripts/validate-search.mjs",
-    "seed:opportunity-engine": "npx tsx scripts/seed-opportunity-engine.mts"
+    "validate:market-internals": "npx tsx scripts/validate-live-market-internals.mts",
+    "seed:opportunity-engine": "npx tsx scripts/seed-opportunity-engine.mts",
+    "pg:local": "npx tsx scripts/start-local-postgres.mts"
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -22,6 +23,7 @@
     "pg": "^8.22.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "server-only": "^0.0.1",
     "tailwind-merge": "^2.6.0",
     "zod": "^4.4.3"
   },
@@ -33,6 +35,7 @@
     "@types/react-dom": "^19.0.2",
     "@vitest/coverage-v8": "^4.1.10",
     "autoprefixer": "^10.4.20",
+    "embedded-postgres": "^18.4.0-beta.17",
     "eslint": "^9.17.0",
     "eslint-config-next": "^15.1.0",
     "postcss": "^8.5.17",

@@ -140,12 +140,6 @@ function seedActiveDay(tradingDate: string, firstDetectedAt: string): void {
   });
 }
 
-function expectAllCategoriesEmpty(state: OpportunityEngineState): void {
-  for (const category of OPPORTUNITY_CATEGORIES) {
-    expect(state.categories[category]).toEqual([]);
-  }
-}
-
 beforeEach(() => {
   archivedSnapshots.clear();
   persistedData = null;
@@ -197,7 +191,7 @@ describe("shouldRolloverTradingDay", () => {
 });
 
 describe("ensureTradingDayLifecycle", () => {
-  it("day rollover archives prior day and clears all active categories", () => {
+  it("day rollover archives prior day and carry-forwards candidates until today's scan", () => {
     const mondayDetected = istDate(2026, 7, 13, 10, 0).toISOString();
     seedActiveDay("2026-07-13", mondayDetected);
 
@@ -218,7 +212,9 @@ describe("ensureTradingDayLifecycle", () => {
     expect(state.isFrozen).toBe(false);
     expect(state.postMarket).toBeNull();
     expect(state.scanCount).toBe(0);
-    expectAllCategoriesEmpty(state);
+    // Carry-forward: must NOT wipe recommendations at market open.
+    expect(state.categories.intraday[0]?.symbol).toBe("AAA");
+    expect(state.lastScannedAt).toBe(mondayDetected);
     expect(getFirstDetectedMapForTests().size).toBe(0);
   });
 
@@ -238,7 +234,8 @@ describe("ensureTradingDayLifecycle", () => {
     expect(monday.rolledOver).toBe(true);
     expect(monday.previousTradingDate).toBe("2026-07-10");
     expect(archivedSnapshots.has("2026-07-10")).toBe(true);
-    expectAllCategoriesEmpty(getOpportunityEngineState());
+    // Carry-forward Friday candidates into Monday until first scan.
+    expect(getOpportunityEngineState().categories.intraday[0]?.symbol).toBe("AAA");
   });
 
   it("holiday rollover archives pre-holiday day on the next session", () => {
@@ -258,7 +255,7 @@ describe("ensureTradingDayLifecycle", () => {
     expect(afterHoliday.rolledOver).toBe(true);
     expect(afterHoliday.previousTradingDate).toBe("2026-01-23");
     expect(archivedSnapshots.has("2026-01-23")).toBe(true);
-    expectAllCategoriesEmpty(getOpportunityEngineState());
+    expect(getOpportunityEngineState().categories.intraday[0]?.symbol).toBe("AAA");
     expect(getOpportunityEngineState().postMarket).toBeNull();
   });
 
@@ -308,7 +305,8 @@ describe("ensureTradingDayLifecycle", () => {
     expect(result.rolledOver).toBe(true);
     expect(result.previousTradingDate).toBe("2026-07-14");
     expect(archivedSnapshots.has("2026-07-14")).toBe(true);
-    expectAllCategoriesEmpty(getOpportunityEngineState());
+    // Carry-forward — dashboard stays populated across midnight.
+    expect(getOpportunityEngineState().categories.intraday[0]?.symbol).toBe("AAA");
     expect(getFirstDetectedMapForTests().size).toBe(0);
   });
 
@@ -374,6 +372,7 @@ describe("ensureTradingDayLifecycle", () => {
     expect(archivedSnapshots.get("2026-07-14")?.state.categories.swing[0]?.symbol).toBe(
       "ZZZ"
     );
-    expectAllCategoriesEmpty(getOpportunityEngineState());
+    // Active day keeps carry-forward until a full scan replaces categories.
+    expect(getOpportunityEngineState().categories.swing[0]?.symbol).toBe("ZZZ");
   });
 });

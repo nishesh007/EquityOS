@@ -5,7 +5,7 @@
  * volatility, and institutional aggregate APIs. No duplicate fetching.
  */
 
-import { marketDataService } from "@/lib/market-data";
+import { marketDataService } from "@/lib/market-data/server";
 import type { OhlcBar } from "@/lib/providers/types";
 import { fetchMarketIndices } from "@/services/marketData";
 import {
@@ -39,7 +39,10 @@ import { createFallbackVolatilityAnalysis } from "./VolatilityUtils";
 import { createFallbackMarketContext } from "./MarketContextUtils";
 import { getMarketContextAggregator } from "./MarketContextAggregator";
 
-const OHLC_TIMEFRAME = "3M" as const;
+import { OE_OHLC_USAGE } from "@/lib/market/ohlc-timeframes";
+
+/** Market pulse index structure — Entry context (3M), never a donor TF. */
+const OHLC_TIMEFRAME = OE_OHLC_USAGE.entry;
 
 function isUsableIndex(index: MarketIndex | undefined): boolean {
   return Boolean(

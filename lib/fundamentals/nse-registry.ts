@@ -1,5 +1,6 @@
 /**
  * NSE symbol metadata — resolved from Company Master + enrichment overlay.
+ * Never carries LTP / change% — market prices come from market-data.
  */
 
 import { getCompanyMasterRecords } from "@/lib/company-master";
@@ -11,8 +12,7 @@ export interface NseSymbolMeta {
   name: string;
   sector: string;
   industry: string;
-  price: number;
-  changePercent: number;
+  /** Static enrichment label only. */
   marketCap: string;
   description?: string;
   website?: string;
@@ -29,8 +29,6 @@ export function getNseSymbolMeta(symbol: string): NseSymbolMeta | null {
       name: master.name,
       sector: enrichment.sector,
       industry: enrichment.industry,
-      price: 0,
-      changePercent: 0,
       marketCap: enrichment.marketCap,
       description: enrichment.description,
       website: enrichment.website,
@@ -41,12 +39,10 @@ export function getNseSymbolMeta(symbol: string): NseSymbolMeta | null {
     name: master.name,
     sector: master.sector,
     industry: master.industry,
-    price: 0,
-    changePercent: 0,
     marketCap: "—",
   };
 }
 
 export function listNseRegistrySymbols(): string[] {
-  return getCompanyMasterRecords().map((record) => record.symbol);
+  return getCompanyMasterRecords().map((r) => r.symbol);
 }

@@ -5,11 +5,9 @@ import type {
   UpcomingResult,
   WatchlistItem,
 } from "@/types";
-import {
-  createUnavailableQuote,
-  marketDataService,
-  type EnrichedQuote,
-} from "@/lib/market-data";
+import { marketDataService } from "@/lib/market-data/server";
+import type { EnrichedQuote } from "@/lib/market-data";
+import { createUnavailableQuote } from "@/lib/market-data";
 import { formatVolume } from "@/lib/utils";
 import { CACHE_TTL, cacheKey, getCached } from "@/lib/cache";
 import { fetchVerifiedMarketNews } from "@/services/verifiedMarketNews";

@@ -1,5 +1,6 @@
 /**
  * Mock fundamentals provider — terminal fallback, always available.
+ * Never emits LTP / OHLC / volume / change% — those come from market-data.
  */
 
 import { generateCorporateActions } from "@/lib/fundamentals/corporate-actions";
@@ -16,6 +17,7 @@ import {
   derivePreviousShareholding,
   enrichShareholding,
 } from "@/lib/fundamentals/shareholding-engine";
+import { stripPeerMarketPrices } from "@/lib/fundamentals/strip-market-fields";
 import { buildCompanyTimeline } from "@/lib/fundamentals/timeline-engine";
 import type { FundamentalsBundle, FundamentalsProvider } from "@/lib/fundamentals/types";
 
@@ -23,11 +25,11 @@ function seedToBundle(symbol: string): FundamentalsBundle {
   const seed = resolveFundamentalsSeed(symbol);
 
   const statements = { income: [], balance: [], cashflow: [] };
+  // Never pass mock LTP into ratio math — PE/PB come from seed.financials.
   const computedRatios = computeRatiosFromStatements(
     statements.income,
     statements.balance,
-    statements.cashflow,
-    seed.price
+    statements.cashflow
   );
 
   const ratios = mergeRatios(computedRatios, {
@@ -66,9 +68,6 @@ function seedToBundle(symbol: string): FundamentalsBundle {
     founded: seed.founded,
     employees: seed.employees,
     marketCap: seed.marketCap,
-    price: seed.price,
-    change: seed.change,
-    changePercent: seed.changePercent,
     financials,
     statements,
     ratios,
@@ -84,7 +83,7 @@ function seedToBundle(symbol: string): FundamentalsBundle {
       news: seed.news,
     }),
     valuation,
-    peers: seed.peers,
+    peers: stripPeerMarketPrices(seed.peers),
     news: seed.news,
     notes: seed.notes,
     provider: "Mock",
@@ -102,10 +101,14 @@ export class MockFundamentalsProvider implements FundamentalsProvider {
   }
 
   async fetchFundamentals(symbol: string): Promise<FundamentalsBundle> {
-    return seedToBundle(symbol.toUpperCase());
+    return seedToBundle(symbol);
   }
 }
 
-export const mockFundamentalsProvider = new MockFundamentalsProvider();
+export function mockSeedToBundle(symbol: string): FundamentalsBundle {
+  return seedToBundle(symbol);
+}
 
-export { seedToBundle as mockSeedToBundle };
+export function createMockFundamentalsProvider(): MockFundamentalsProvider {
+  return new MockFundamentalsProvider();
+}

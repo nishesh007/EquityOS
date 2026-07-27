@@ -10,13 +10,15 @@ import type {
   TradingData,
 } from "@/types";
 import type { OhlcBar } from "@/lib/providers/types";
+import { OE_OHLC_USAGE } from "@/lib/market/ohlc-timeframes";
 import { fetchCompanyProfile } from "@/services/companyData";
 import { EquityIntelligenceEngine } from "@/lib/engine";
 import { round } from "@/lib/engine/utils";
 import { isValidMarketPrice } from "@/lib/utils";
 import { getCached, cacheKey, CACHE_TTL } from "@/lib/cache";
-import { marketDataService } from "@/lib/market-data";
+import { marketDataService } from "@/lib/market-data/server";
 import type { EnrichedQuote } from "@/lib/market-data";
+import { resolveLiveMarketPrice } from "@/lib/fundamentals/strip-market-fields";
 import type { SharedRecommendation } from "@/lib/recommendations";
 
 const REFERENCE_CAPITAL = 1_000_000;
@@ -30,7 +32,11 @@ function buildTradingData(
   liveQuote?: EnrichedQuote,
   candles: readonly OhlcBar[] = []
 ): TradingData {
-  const close = liveQuote?.price ?? profile.price;
+  const close =
+    resolveLiveMarketPrice({ quotePrice: liveQuote?.price }) ??
+    (candles.at(-1)?.close && candles.at(-1)!.close > 0
+      ? candles.at(-1)!.close
+      : null);
 
   if (!isValidMarketPrice(close)) {
     return {
@@ -139,7 +145,8 @@ function buildAI(
   trading: TradingData,
   candles: readonly OhlcBar[]
 ): AIAnalysis {
-  const hasPrice = isValidMarketPrice(profile.price);
+  const livePrice = profile.quote?.price ?? trading.close;
+  const hasPrice = isValidMarketPrice(livePrice);
   const recent = candles.slice(-20);
   const support =
     hasPrice && recent.length > 0
@@ -169,14 +176,14 @@ function buildAI(
   const trend = `Price data unavailable.`;
 
   const rangeDenom = trading.weekHigh52 - trading.weekLow52;
-  const rangePct = rangeDenom > 0
-    ? round(((profile.price - trading.weekLow52) / rangeDenom) * 100)
+  const rangePct = rangeDenom > 0 && hasPrice
+    ? round(((livePrice - trading.weekLow52) / rangeDenom) * 100)
     : 0;
 
-  const trendFull = isValidMarketPrice(profile.price)
+  const trendFull = hasPrice
     ? `${profile.name} is trading in ${trendWord}, with price ${
-        profile.price > profile.price * 0.98 ? "holding" : "slipping"
-      } near ₹${profile.price.toLocaleString("en-IN")}. The stock sits ${rangePct}% up its 52-week range.`
+        livePrice > livePrice * 0.98 ? "holding" : "slipping"
+      } near ₹${livePrice.toLocaleString("en-IN")}. The stock sits ${rangePct}% up its 52-week range.`
     : trend;
 
   const momentum = `Momentum is ${
@@ -358,7 +365,11 @@ export async function fetchCompanyResearch(
       let candles: OhlcBar[] | undefined;
 
       try {
-        const ohlcResult = await marketDataService.getOhlcCandles(symbol, "1Y");
+        // Canonical research technicals: Trend = 1Y (same as OE scan enrichment).
+        const ohlcResult = await marketDataService.getOhlcCandles(
+          symbol,
+          OE_OHLC_USAGE.trend
+        );
         candles = ohlcResult.data;
       } catch {
         candles = undefined;

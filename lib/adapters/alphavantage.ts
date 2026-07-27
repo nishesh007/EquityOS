@@ -1,7 +1,7 @@
 import { adapterFetch, hasApiKey } from "@/lib/adapters/http";
 import { loadProviderConfig } from "@/lib/providers/config";
 import { BaseDataAdapter, type AdapterConfig } from "@/lib/adapters/types";
-import type { ChartTimeframe } from "@/types";
+import type { ChartTimeframe } from "@/lib/market/ohlc-timeframes";
 import type { OhlcBar } from "@/lib/providers/types";
 
 export interface AlphaVantageParams {
@@ -31,11 +31,13 @@ interface AlphaVantageDailyResponse {
 
 const TIMEFRAME_POINT_LIMIT: Record<ChartTimeframe, number> = {
   "1D": 1,
+  "5D": 5,
   "1W": 5,
   "1M": 22,
   "3M": 66,
   "6M": 130,
   "1Y": 252,
+  "3Y": 756,
   "5Y": 1260,
 };
 

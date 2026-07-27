@@ -235,9 +235,27 @@ export function evaluateTradability(
     metricNum(candidate, "free_float_percent") ??
     metricNum(candidate, "free_float_pct") ??
     metricNum(candidate, "float_percent");
-  const impactCostPct =
+  // Ignore ATR%-as-impact_cost mislabel from older enrichment builds.
+  // True exchange impact cost is typically well below ATR%; when the stored
+  // impact_cost_pct ≈ ATR/price the hard-reject floor (2.5%) falsely wipes
+  // the entire horizon dashboard.
+  const rawImpactCostPct =
     metricNum(candidate, "impact_cost_pct") ??
     metricNum(candidate, "impact_cost");
+  const atr = metricNum(candidate, "atr");
+  const atrPctStored = metricNum(candidate, "atr_pct");
+  const priceForImpact = resolvePrice(candidate);
+  const atrPct =
+    atrPctStored ??
+    (atr != null && priceForImpact != null && priceForImpact > 0
+      ? (atr / priceForImpact) * 100
+      : null);
+  const impactCostPct =
+    rawImpactCostPct != null &&
+    atrPct != null &&
+    Math.abs(rawImpactCostPct - atrPct) < 0.2
+      ? null
+      : rawImpactCostPct;
 
   const reasons: string[] = [];
   const factors: TradabilityFactorScore[] = [];

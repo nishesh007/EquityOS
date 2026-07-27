@@ -1,6 +1,7 @@
 import { createScoreResult } from "@/lib/engine/framework";
 import type { ScoreResult } from "@/lib/engine/types";
 import { round } from "@/lib/engine/utils";
+import { resolveLiveMarketPrice } from "@/lib/fundamentals/strip-market-fields";
 import type { OhlcBar } from "@/lib/providers/types";
 import {
   adx,
@@ -500,7 +501,11 @@ export function buildTechnicalAnalysisFromMarketData(
   const hasEnoughData = candles.length >= MIN_CANDLES;
 
   const indicators = hasEnoughData
-    ? buildIndicatorCards(input.profile.price, input.trading, candles)
+    ? buildIndicatorCards(
+        resolveLiveMarketPrice({ quotePrice: input.profile.quote?.price }) ?? 0,
+        input.trading,
+        candles
+      )
     : buildPlaceholderIndicators();
 
   const bullishCount = indicators.filter((i) => i.signal === "bullish").length;

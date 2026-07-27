@@ -7,6 +7,7 @@ import { clamp, round } from "@/lib/engine/utils";
 import { computeFinancialFundamentals } from "@/lib/fundamentals/fundamentals-engine";
 import { findStatementValue } from "@/lib/fundamentals/normalize";
 import { normalizeScore, safeMetric } from "@/lib/fundamentals/registry";
+import { resolveLiveMarketPrice } from "@/lib/fundamentals/strip-market-fields";
 import {
   computeInstitutionalRatios,
   type InstitutionalRatios,
@@ -323,7 +324,8 @@ export function buildFinancialIntelligence(
     cashflow,
     bundleRatios: ratios,
     growth,
-    marketPrice: profile?.price ?? bundle.price,
+    marketPrice:
+      resolveLiveMarketPrice({ quotePrice: profile?.quote?.price }) ?? undefined,
     revenueCagr10Y: cagrSeries.revenue.cagr10Y,
     profitCagr10Y: cagrSeries.profit.cagr10Y,
     epsCagr3Y: cagrSeries.eps.cagr3Y,

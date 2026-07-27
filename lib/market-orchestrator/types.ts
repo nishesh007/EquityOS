@@ -1,14 +1,15 @@
 /**
  * Central Market Data Orchestrator — type contracts.
- * Concrete service return types so the dashboard page can pass slices through unchanged.
  */
 
 import type { MarketHeatmapSnapshot } from "@/lib/market-heatmap";
 import type {
   MarketContextView,
   MarketIntelligenceSnapshot,
+  MarketRegimeView,
 } from "@/lib/market-intelligence";
 import type { SharedRecommendation } from "@/lib/recommendations";
+import type { MarketStatus } from "@/lib/market/session";
 import type {
   MarketBreadth as DomainMarketBreadth,
   MarketIndex,
@@ -19,11 +20,16 @@ import type {
   WatchlistItem,
 } from "@/types";
 
-/** Index / pulse surface for the dashboard market snapshot. */
-export interface MarketSnapshot {
+/**
+ * Thin index/pulse slice for dashboard above-fold.
+ */
+export interface MarketCoreSnapshot {
   indices: MarketIndex[];
   pulse: MarketPulse;
 }
+
+/** @deprecated Use MarketCoreSnapshot — kept for dashboard compatibility. */
+export type MarketIndicesPulse = MarketCoreSnapshot;
 
 /** Market context view (trend, breadth, risk mode). */
 export type MarketContext = MarketContextView;
@@ -33,6 +39,29 @@ export type MarketBreadth = DomainMarketBreadth;
 
 /** Sector / market heatmap aggregate. */
 export type MarketHeatmapData = MarketHeatmapSnapshot;
+
+/** Shared market intelligence (context + regime). */
+export type MarketIntelligence = MarketIntelligenceSnapshot;
+
+/**
+ * Canonical Markets page snapshot.
+ * Every Markets widget consumes only this object and shares `timestamp`.
+ */
+export interface MarketSnapshot {
+  indices: MarketIndex[];
+  pulse: MarketPulse;
+  intelligence: MarketIntelligenceSnapshot | null;
+  breadth: DomainMarketBreadth;
+  heatmap: MarketHeatmapSnapshot | null;
+  /** Page-level as-of — the only timestamp Markets UI may display. */
+  timestamp: string;
+  marketStatus: MarketStatus;
+  marketStatusLabel: string;
+  tradingDate: string;
+}
+
+/** @deprecated Alias — prefer MarketSnapshot. */
+export type InstitutionalMarketSnapshot = MarketSnapshot;
 
 /** Portfolio holdings summary. */
 export type PortfolioSummary = DomainPortfolioSummary;
@@ -47,14 +76,11 @@ export interface OpportunitySummary {
   recommendations: SharedRecommendation[];
 }
 
-/** Shared market intelligence (context + regime). */
-export type MarketIntelligence = MarketIntelligenceSnapshot;
-
 /**
  * Dashboard entry aggregate — single source of truth for server-side widgets.
  */
 export interface DashboardMarketSnapshot {
-  market: MarketSnapshot;
+  market: MarketCoreSnapshot;
   context: MarketContext;
   breadth: MarketBreadth;
   /** Null when deferred to client LazyMarketHeatmap fetch. */
@@ -67,3 +93,5 @@ export interface DashboardMarketSnapshot {
   upcomingResults: UpcomingResult[];
   timestamp: string;
 }
+
+export type { MarketRegimeView };

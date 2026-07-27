@@ -17,6 +17,19 @@ export {
 export { runMarketBreadthEngine } from "./engine";
 export { classifyMarketMood } from "./mood";
 export {
+  classifyDayMove,
+  computeBreadthCoreMetrics,
+  computeSectorBreadthMetrics,
+  sectorAdvanceSharePercent,
+  validateBreadthCorePublication,
+  UNCHANGED_EPS_PCT,
+} from "./metrics";
+export type {
+  BreadthCoreMetrics,
+  MetricValidationRow,
+  SectorBreadthCoreRow,
+} from "./metrics";
+export {
   readLastBreadthSnapshot,
   writeLastBreadthSnapshot,
 } from "./last-snapshot";

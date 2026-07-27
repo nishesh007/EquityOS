@@ -107,9 +107,6 @@ export class FMPFundamentalsProvider implements FundamentalsProvider {
         ? `${profile.fullTimeEmployees.toLocaleString("en-IN")}+`
         : "—",
       marketCap: formatFmpMarketCap(profile.mktCap) || "—",
-      price: 0,
-      change: 0,
-      changePercent: 0,
       financials,
       statements,
       ratios,

@@ -9,8 +9,8 @@ import {
 import { FollowUpQuestions } from "@/components/ai/FollowUpQuestions";
 import { TypingIndicator } from "@/components/ai/TypingIndicator";
 import { postStream } from "@/lib/ai/core/stream";
-import type { ExplainTarget } from "@/lib/ai/explainEngine";
-import type { FollowUpBundle } from "@/lib/ai/followUpEngine";
+import type { ExplainTarget } from "@/lib/ai/explain-target";
+import type { FollowUpBundle } from "@/lib/ai/followUp-types";
 import {
   appendConversationMessages,
   getConversation,

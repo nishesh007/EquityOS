@@ -11,6 +11,7 @@ import {
 } from "@/lib/ai/decision/decisionEngine";
 import { buildDecisionScores } from "@/lib/ai/decision/scoringEngine";
 import { normalizeNseSymbol } from "@/lib/fundamentals/symbols";
+import { resolveLiveMarketPrice } from "@/lib/fundamentals/strip-market-fields";
 import {
   buildComparePeerRow,
   rankComparePeers,
@@ -266,7 +267,10 @@ export async function buildCompareResult(symbols: string[]): Promise<CompareResu
       name: company.bundle.profile.name,
       sector: company.bundle.profile.sector,
       industry: company.bundle.profile.industry,
-      price: company.bundle.profile.price,
+      price:
+        resolveLiveMarketPrice({
+          quotePrice: company.bundle.profile.quote?.price,
+        }) ?? 0,
       marketCap: company.bundle.profile.marketCap,
       overallScore: company.overallScore,
       scorecard: company.scorecard,

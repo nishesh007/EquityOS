@@ -15,8 +15,8 @@ export interface UnifiedMarketDataService {
   fetchNews(): Promise<MarketNews[]>;
   fetchUpcomingResults(): Promise<UpcomingResult[]>;
   fetchAIMarketSummary(): Promise<AIMarketSummary>;
-  getQuote(symbol: string): ReturnType<typeof import("@/lib/market-data").getQuote>;
-  getMarketData(symbol: string): ReturnType<typeof import("@/lib/market-data").getMarketData>;
+  getQuote(symbol: string): ReturnType<typeof import("@/lib/market-data/server").getQuote>;
+  getMarketData(symbol: string): ReturnType<typeof import("@/lib/market-data/server").getMarketData>;
   normalizeSymbol(symbol: string): NormalizedSymbol;
 }
 

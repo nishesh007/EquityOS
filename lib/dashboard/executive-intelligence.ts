@@ -201,35 +201,35 @@ export function buildMarketPulseChips(input: {
       label: "Market Regime",
       value: intelligence.regime.regime || "—",
       tone: regimeTone(intelligence.regime.regime || ""),
-      href: "/research/market-internals",
+      href: "/markets",
     },
     {
       id: "breadth",
       label: "Breadth",
       value: formatScore(intelligence.context.breadthScore),
       tone: breadthTone(intelligence.context.breadthScore),
-      href: "/research/market-internals",
+      href: "/markets#breadth-analytics",
     },
     {
       id: "risk",
       label: "Risk",
       value: intelligence.context.riskMode || "—",
       tone: riskTone(intelligence.context.riskMode || ""),
-      href: "/research/market-internals",
+      href: "/markets#market-pulse",
     },
     {
       id: "volatility",
       label: "Volatility",
       value: intelligence.context.volatilityRegime || "—",
       tone: volTone(intelligence.context.volatilityRegime || ""),
-      href: "/research/market-internals",
+      href: "/markets#market-pulse",
     },
     {
       id: "mood",
       label: "Market Mood",
       value: breadth?.marketMood ?? intelligence.context.marketTrend ?? "—",
       tone: moodTone(breadth?.marketMood ?? intelligence.context.marketTrend),
-      href: "/research/market-internals",
+      href: "/markets#strength-analytics",
     },
   ];
 
@@ -251,10 +251,14 @@ export function buildDailyBriefing(input: {
   const ctx = intelligence.context;
   const regime = intelligence.regime;
 
+  const breadthPctLabel =
+    breadth?.breadthPercent != null
+      ? breadth.breadthPercent.toFixed(1)
+      : String(Math.round(ctx.breadthScore));
   const regimeLine =
     regime.summary[0] ||
     ctx.summary[0] ||
-    `Market classified as ${regime.regime} with breadth at ${Math.round(ctx.breadthScore)}.`;
+    `Market classified as ${regime.regime} with breadth at ${breadthPctLabel}%.`;
   bullets.push({ id: "regime", text: regimeLine });
 
   if (ctx.leadingSectors.length > 0) {

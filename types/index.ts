@@ -191,7 +191,17 @@ export interface SwingTradeIdea {
   quote?: import("@/lib/market-data/enriched-quote").EnrichedQuote;
 }
 
-export type ChartTimeframe = "1D" | "1W" | "1M" | "3M" | "6M" | "1Y" | "5Y";
+import type {
+  ChartTimeframe,
+  IntradayInterval,
+  OhlcTimeframe,
+} from "@/lib/market/ohlc-timeframes";
+export type { ChartTimeframe, IntradayInterval, OhlcTimeframe };
+export {
+  CHART_TIMEFRAMES,
+  INTRADAY_INTERVALS,
+  ALL_OHLC_TIMEFRAMES,
+} from "@/lib/market/ohlc-timeframes";
 
 export type CompanyTab =
   | "overview"
@@ -315,11 +325,13 @@ export type RiskLevel = "Low" | "Moderate" | "High";
 /** Timeframes exposed by the embedded TradingView advanced chart. */
 export type TradingViewTimeframe =
   | "1D"
+  | "5D"
   | "1W"
   | "1M"
   | "3M"
   | "6M"
   | "1Y"
+  | "3Y"
   | "5Y";
 
 export interface TradingData {

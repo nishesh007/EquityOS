@@ -13,6 +13,8 @@ interface HeatmapControlsProps {
   pending?: boolean;
   onUniverseChange: (id: HeatmapUniverseId) => void;
   onColorMetricChange: (metric: HeatmapColorMetric) => void;
+  /** Lock universe when page is driven by a canonical snapshot. */
+  universeDisabled?: boolean;
 }
 
 export function HeatmapControls({
@@ -21,6 +23,7 @@ export function HeatmapControls({
   pending,
   onUniverseChange,
   onColorMetricChange,
+  universeDisabled = false,
 }: HeatmapControlsProps) {
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -28,7 +31,7 @@ export function HeatmapControls({
         Universe
         <select
           aria-label="Heatmap universe"
-          disabled={pending}
+          disabled={pending || universeDisabled}
           className="rounded-md border border-surface-border bg-surface-overlay px-2 py-1 text-xs font-semibold normal-case tracking-normal text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           value={universe}
           onChange={(event) =>
