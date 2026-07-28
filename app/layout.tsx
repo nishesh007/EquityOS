@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import { AppShell } from "@/components/layout/AppShell";
 import { SaasProvider } from "@/lib/saas";
 import { BillingProvider } from "@/lib/billing";
@@ -7,15 +7,10 @@ import { OpsProvider } from "@/lib/ops";
 import { ThemeProvider } from "@/src/design/theme/ThemeProvider";
 import "@/styles/globals.css";
 
+/** Sprint 10C — Inter Variable only (weights 400–700 via CSS). */
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
-  display: "swap",
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-jetbrains",
   display: "swap",
 });
 
@@ -32,7 +27,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark" data-scroll-behavior="smooth">
-      <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}>
+      <body className={`${inter.variable} font-sans antialiased`}>
         <ThemeProvider>
           <SaasProvider>
             <BillingProvider>

@@ -5,7 +5,7 @@
  * Never import this module from Client Components.
  */
 
-import { MarketSnapshotWidget, MarketPulseWidget, PortfolioSummaryWidget, WatchlistWidget } from "@/components/dashboard/widgets/DashboardWidgets";
+import { MarketSnapshotWidget, MarketInternalsWidget, MarketPulseWidget, PortfolioSummaryWidget, WatchlistWidget } from "@/components/dashboard/widgets/DashboardWidgets";
 import {
   MarketNewsWidget,
   ResultsCalendarWidget,
@@ -23,19 +23,10 @@ import {
   loadDashboardWatchlist,
 } from "@/lib/market-orchestrator/orchestrator";
 import {
-  filledSlotCount,
-  resolveDashboardSlotsFromRecommendations,
-  selectInstitutionalStrategyDashboard,
-  selectRecommendationsWithFallback,
-} from "@/lib/recommendations";
-import {
-  resolveCachedIntelligence,
-} from "@/lib/market-orchestrator/dashboardContext";
-import { getCachedMarketSnapshot } from "@/lib/market-orchestrator/marketsSnapshot";
-import { getCachedMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
+  loadPublishedRecommendations,
+} from "@/lib/recommendations/published/server";
 import {
   loadOpportunityEngineState,
-  toSharedSnapshot,
 } from "@/services/opportunityEngine";
 
 /**
@@ -52,6 +43,11 @@ export async function MarketSnapshotSlot() {
       session={ctx.session}
     />
   );
+}
+
+export async function MarketInternalsSlot() {
+  const ctx = await loadDashboardAboveFold();
+  return <MarketInternalsWidget marketIntelligence={ctx.intelligence} />;
 }
 
 export async function MarketPulseSlot() {
@@ -77,38 +73,30 @@ export async function MarketPulseSlot() {
  */
 export async function AiOpportunitiesSlot() {
   const state = await loadOpportunityEngineState();
-  const marketIntelligence =
-    getCachedMarketSnapshot()?.intelligence ??
-    getCachedMarketIntelligenceSnapshot() ??
-    resolveCachedIntelligence();
-  const shared = toSharedSnapshot(marketIntelligence);
-  const strategyDashboard = selectInstitutionalStrategyDashboard(
-    state,
-    shared
-  );
-  const recommendations = selectRecommendationsWithFallback(state, shared);
-  const slots = resolveDashboardSlotsFromRecommendations({
-    strategyDashboard,
-    recommendations,
-    lastScanTime: state.lastScannedAt,
-  });
-  const recommendationCount = filledSlotCount(slots);
+  const published = await loadPublishedRecommendations(state);
+  const slots = published?.strategyDashboard ?? [];
+  const recommendations = published?.recommendations ?? [];
+  const publishedCount = recommendations.length;
   const { buildRecommendationFreshness } = await import(
     "@/lib/opportunity-engine/recommendation-freshness"
   );
-  const freshness = buildRecommendationFreshness(
-    state,
-    Math.max(recommendationCount, recommendations.length)
-  );
+  const freshness = buildRecommendationFreshness(state, publishedCount);
   return (
     <HydratedAiOpportunities
       initialSlots={slots}
       initialFreshness={freshness}
+      initialPublishedRecommendations={recommendations}
+      initialPublishedMeta={{
+        sessionId: published?.sessionId ?? state.tradingDate,
+        scanId: published?.scanId ?? null,
+        generatedAt: published?.generatedAt ?? state.lastScannedAt,
+        recommendationVersion: published?.recommendationVersion ?? null,
+      }}
       initialStatus={{
         isScanning: state.isScanning,
         lastScannedAt: state.lastScannedAt,
         scanCount: state.scanCount,
-        recommendationCount,
+        recommendationCount: publishedCount,
       }}
     />
   );

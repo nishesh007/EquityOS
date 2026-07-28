@@ -9,6 +9,9 @@ import { fetchUpcomingResults } from "@/services/marketData";
 import { ensureOpportunityEngineHydrated } from "@/lib/opportunity-engine/store";
 import type { MarketIntelligenceSnapshot } from "@/lib/market-intelligence";
 import { selectRecommendationsWithFallback } from "@/lib/recommendations";
+import {
+  loadPublishedRecommendationsList,
+} from "@/lib/recommendations/published/server";
 import type { SharedRecommendation } from "@/lib/recommendations";
 import { getCachedMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
 import {
@@ -53,11 +56,14 @@ export const loadDashboardAboveFold = cache(async function loadDashboardAboveFol
  */
 export const loadDashboardRecommendations = cache(
   async function loadDashboardRecommendations(): Promise<SharedRecommendation[]> {
+    const state = await ensureOpportunityEngineHydrated();
+    const published = await loadPublishedRecommendationsList(state);
+    if (published.length > 0) return published;
+
     const intelligence =
       getCachedMarketSnapshot()?.intelligence ??
       getCachedMarketIntelligenceSnapshot() ??
       resolveCachedIntelligence();
-    const state = await ensureOpportunityEngineHydrated();
     return selectRecommendationsWithFallback(
       state,
       toSharedSnapshot(intelligence)

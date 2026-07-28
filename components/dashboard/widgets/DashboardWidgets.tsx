@@ -25,10 +25,9 @@ import type {
   WatchlistItem,
 } from "@/types";
 import { SectionHeader } from "@/src/design/components/SectionHeader";
-import { StatusBadge } from "@/src/design/components/StatusBadge";
 import { Activity, Sparkles } from "lucide-react";
 
-/** Indices + intelligence strip — presentation only. Eager (above-fold). */
+/** Indices + session — presentation only. Eager (above-fold). */
 export function MarketSnapshotWidget({
   indices,
   marketIntelligence,
@@ -53,24 +52,34 @@ export function MarketSnapshotWidget({
         : `Indian markets remain in a ${regime} regime.`;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       <SectionHeader
         title="Market Snapshot"
-        subtitle="Indices, session range and intelligence strip"
+        subtitle="Indices and session range"
         summary={marketPulseSummary}
         accent="emerald"
+        level={2}
         icon={<Activity className="h-5 w-5" />}
       />
       <MarketSessionBanner session={session} />
-      <MarketIntelligenceStrip
-        snapshot={
-          session.sessionValid && session.phase !== "updating"
-            ? marketIntelligence
-            : null
-        }
-      />
       <MarketOverviewCards indices={indices} />
     </div>
+  );
+}
+
+/** Sprint 10C — Market Internals as its own dashboard section. */
+export function MarketInternalsWidget({
+  marketIntelligence,
+}: {
+  marketIntelligence: MarketIntelligenceSnapshot;
+}) {
+  const intelligenceReady =
+    Boolean(marketIntelligence?.context) || Boolean(marketIntelligence?.regime);
+
+  return (
+    <MarketIntelligenceStrip
+      snapshot={intelligenceReady ? marketIntelligence : null}
+    />
   );
 }
 
@@ -103,17 +112,41 @@ export function AiOpportunitiesWidget({
   slots,
   phase = "empty",
   freshness = null,
+  publishedRecommendations = [],
+  publishedMeta = null,
 }: {
   slots: InstitutionalStrategySlot[];
   phase?: OpportunityUiPhase;
   freshness?: RecommendationFreshness | null;
+  /** Published SSOT list — banner derives ONLY from this length. */
+  publishedRecommendations?: SharedRecommendation[];
+  publishedMeta?: {
+    sessionId: string | null;
+    scanId: string | null;
+    generatedAt: string | null;
+    recommendationVersion?: string | null;
+  } | null;
 }) {
-  const filled = slots.filter((slot) => slot.pick != null).length;
-  const phaseCopy = opportunityPhaseCopy(filled > 0 ? "available" : phase);
+  const publishedLen = publishedRecommendations.length;
+  const effectivePhase: OpportunityUiPhase =
+    publishedLen > 0 ? "available" : phase;
+  const phaseCopy = opportunityPhaseCopy(effectivePhase);
+
   const opportunitiesSummary =
-    filled === 0
+    publishedLen === 0
       ? phaseCopy.summary
-      : `${filled} of 7 strategies show a high-conviction pick from the master market scan.`;
+      : [
+          `Recommendations: ${publishedLen}`,
+          publishedMeta?.generatedAt
+            ? `Generated: ${publishedMeta.generatedAt}`
+            : null,
+          publishedMeta?.sessionId
+            ? `Session: ${publishedMeta.sessionId}`
+            : null,
+          publishedMeta?.scanId ? `Scan: ${publishedMeta.scanId}` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ");
 
   const staleBanner =
     freshness?.displayMessage ??
@@ -122,22 +155,18 @@ export function AiOpportunitiesWidget({
       : null);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       <SectionHeader
         title="EquityOS Recommendations"
-        subtitle="AI-powered recommendations across every investment horizon."
+        subtitle="AI-powered recommendations across every investment horizon"
         summary={opportunitiesSummary}
         accent="blue"
+        level={2}
         icon={<Sparkles className="h-5 w-5" />}
-        actions={
-          <StatusBadge tone="success" size="sm">
-            AI Verified
-          </StatusBadge>
-        }
       />
-      {staleBanner && filled > 0 ? (
+      {staleBanner && publishedLen > 0 ? (
         <p
-          className="rounded-lg border border-border/60 bg-surface-elevated/40 px-3 py-2 text-sm text-text-secondary"
+          className="rounded-xl border border-surface-border-subtle bg-surface-raised px-4 py-3 text-caption text-text-secondary"
           role="status"
           data-stale={freshness?.stale ? "true" : "false"}
           data-stale-reason={freshness?.staleReason ?? undefined}

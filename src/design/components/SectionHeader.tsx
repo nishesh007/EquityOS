@@ -5,23 +5,29 @@ import {
 } from "@/lib/ui/section-accents";
 import { SectionDivider } from "./SectionDivider";
 
+/** Sprint 10C.1 — three-level visual hierarchy. */
+export type SectionHierarchy = 1 | 2 | 3;
+
 interface SectionHeaderProps {
   title: string;
   subtitle?: string;
-  /** Concise section summary built from existing live data. */
   summary?: string;
-  /** Right-aligned slot for actions (buttons, filters, badges). */
   actions?: React.ReactNode;
-  /** Section identity — colors icon chip, heading, divider and tint panel. */
   accent?: SectionAccent;
-  /** Optional section icon rendered inside an accent chip. */
   icon?: React.ReactNode;
   className?: string;
+  /** 1 = page · 2 = major widget · 3 = secondary widget */
+  level?: SectionHierarchy;
 }
 
+const TITLE_CLASS: Record<SectionHierarchy, string> = {
+  1: "text-page-title font-bold",
+  2: "text-major-section font-semibold",
+  3: "text-minor-section font-semibold",
+};
+
 /**
- * Premium section heading — accent chip, large title, subtitle, summary, divider.
- * Users should instantly distinguish sections while scrolling.
+ * Sprint 10C.1 — left-aligned section titles with hierarchy + compressed spacing.
  */
 export function SectionHeader({
   title,
@@ -31,27 +37,22 @@ export function SectionHeader({
   accent,
   icon,
   className,
+  level = 2,
 }: SectionHeaderProps) {
   const tokens = accent ? SECTION_ACCENTS[accent] : null;
 
   return (
-    <div
-      className={cn(
-        "mb-5 rounded-xl border border-transparent px-3 py-3 sm:px-4",
-        tokens && cn(tokens.tintBg, tokens.tintBorder, "border"),
-        className
-      )}
-    >
+    <div className={cn("mb-3 text-left", className)}>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex min-w-0 items-center gap-3">
           {icon ? (
             <span
               aria-hidden
               className={cn(
-                "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+                "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl",
                 tokens
                   ? cn(tokens.chipBg, tokens.text)
-                  : "data-icon bg-surface-overlay text-text-secondary"
+                  : "bg-surface-overlay text-text-secondary"
               )}
             >
               {icon}
@@ -60,29 +61,30 @@ export function SectionHeader({
           <div className="min-w-0">
             <h2
               className={cn(
-                "text-[26px] font-bold leading-tight tracking-tight",
+                "leading-[1.3] tracking-[-0.01em]",
+                TITLE_CLASS[level],
                 tokens ? tokens.text : "text-text-primary"
               )}
             >
               {title}
             </h2>
-            {subtitle && (
-              <p className="mt-0.5 text-sm font-medium text-text-secondary">
+            {subtitle ? (
+              <p className="mt-1 text-body font-medium text-text-secondary">
                 {subtitle}
               </p>
-            )}
+            ) : null}
             {summary ? (
-              <p className="data-secondary mt-1.5 max-w-2xl leading-relaxed">
+              <p className="mt-1 max-w-2xl text-caption text-text-secondary">
                 {summary}
               </p>
             ) : null}
           </div>
         </div>
-        {actions && (
+        {actions ? (
           <div className="flex shrink-0 items-center gap-2">{actions}</div>
-        )}
+        ) : null}
       </div>
-      <SectionDivider accent={accent} className="mt-3" />
+      {level <= 2 ? <SectionDivider accent={accent} className="mt-2" /> : null}
     </div>
   );
 }

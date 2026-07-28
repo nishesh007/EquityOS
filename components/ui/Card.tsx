@@ -5,31 +5,43 @@ import {
 } from "@/lib/ui/section-accents";
 
 /**
- * Shared card chrome with premium elevation, spacing and optional accent strip.
- * Presentation only — Sprint 10C.1.
+ * Shared card chrome — Sprint 10C institutional polish.
+ * Four sizes only: small | medium | large | full.
  */
+
+export type CardSize = "small" | "medium" | "large" | "full";
 
 interface CardProps {
   children: React.ReactNode;
   className?: string;
   padding?: "sm" | "md" | "lg";
+  /** Institutional card size system (equal radius/padding language). */
+  size?: CardSize;
   hover?: boolean;
   /** Optional 4px left accent strip. */
   accent?: SectionAccent;
-  /** Optional test id for institutional workspaces. */
   "data-testid"?: string;
 }
 
 const paddingMap = {
   sm: "p-4",
-  md: "p-5",
+  md: "p-4",
   lg: "p-6",
+} as const;
+
+/** Equal min-heights — no custom widget heights outside this system. */
+const sizeMap: Record<CardSize, string> = {
+  small: "min-h-[160px]",
+  medium: "min-h-[240px]",
+  large: "min-h-[320px]",
+  full: "min-h-0 w-full",
 };
 
 export function Card({
   children,
   className,
   padding = "md",
+  size = "full",
   hover = true,
   accent,
   "data-testid": dataTestId,
@@ -42,12 +54,12 @@ export function Card({
       className={cn(
         "rounded-xl border border-surface-border-subtle",
         "shadow-[var(--eos-shadow-card)]",
-        "transition-[box-shadow,border-color,transform] duration-300 ease-out",
-        hover &&
-          "hover:-translate-y-0.5 hover:border-surface-border hover:shadow-[var(--eos-shadow-floating)]",
+        "transition-[box-shadow,border-color] duration-200 ease-out",
+        hover && "hover:border-surface-border hover:shadow-[var(--eos-shadow-floating)]",
         "bg-surface-raised",
         paddingMap[padding],
-        tokens && "relative overflow-hidden pl-5 sm:pl-6",
+        sizeMap[size],
+        tokens && "relative overflow-hidden pl-5",
         className
       )}
     >
@@ -55,7 +67,7 @@ export function Card({
         <span
           aria-hidden
           className={cn(
-            "absolute inset-y-0 left-0 w-1 rounded-r-full transition-colors duration-300",
+            "absolute inset-y-0 left-0 w-1 rounded-r-full",
             tokens.strip
           )}
         />
@@ -69,15 +81,12 @@ interface CardHeaderProps {
   title: string;
   subtitle?: string;
   action?: React.ReactNode;
-  /** Optional status badge rendered next to the title. */
   badge?: React.ReactNode;
-  /** Lucide (or other) icon shown before the title. */
   icon?: React.ReactNode;
-  /** Optional timestamp / as-of label. */
   timestamp?: string;
 }
 
-/** Standard widget header: icon, larger title, muted subtitle, timestamp, actions. */
+/** Standard widget header — frozen typography (Card Title 22 / Caption 13). */
 export function CardHeader({
   title,
   subtitle,
@@ -87,29 +96,33 @@ export function CardHeader({
   timestamp,
 }: CardHeaderProps) {
   return (
-    <div className="mb-5 flex items-start justify-between gap-3">
-      <div className="min-w-0">
+    <div className="mb-4 flex items-start justify-between gap-3">
+      <div className="min-w-0 text-left">
         <div className="flex flex-wrap items-center gap-2">
           {icon ? (
-            <span className="data-icon text-text-secondary" aria-hidden>
+            <span className="text-text-secondary" aria-hidden>
               {icon}
             </span>
           ) : null}
-          <h2 className="text-[26px] font-bold leading-tight tracking-tight text-text-primary">
+          <h2 className="text-card-title font-semibold leading-[1.3] tracking-[-0.01em] text-text-primary">
             {title}
           </h2>
           {badge}
         </div>
-        {subtitle && (
-          <p className="mt-1 text-sm font-medium leading-relaxed text-text-secondary">
+        {subtitle ? (
+          <p className="mt-1 text-body font-medium leading-relaxed text-text-secondary">
             {subtitle}
           </p>
-        )}
+        ) : null}
         {timestamp ? (
-          <p className="data-timestamp mt-1.5">{timestamp}</p>
+          <p className="mt-2 text-caption font-medium text-text-secondary">
+            {timestamp}
+          </p>
         ) : null}
       </div>
-      {action && <div className="flex shrink-0 items-center gap-2">{action}</div>}
+      {action ? (
+        <div className="flex shrink-0 items-center gap-2">{action}</div>
+      ) : null}
     </div>
   );
 }
@@ -119,12 +132,11 @@ interface CardFooterProps {
   className?: string;
 }
 
-/** Optional footer strip for source / refresh / secondary actions. */
 export function CardFooter({ children, className }: CardFooterProps) {
   return (
     <div
       className={cn(
-        "data-timestamp mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-surface-border-subtle pt-3",
+        "mt-4 flex items-center justify-end gap-2 border-t border-surface-border-subtle pt-4",
         className
       )}
     >

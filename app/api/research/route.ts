@@ -5,10 +5,9 @@ import {
   POSITION_STRATEGY_IDS,
   SWING_STRATEGY_IDS,
 } from "@/lib/opportunity-engine/swing-position-catalog";
-import { selectRecommendationsWithFallback } from "@/lib/recommendations";
+import { loadPublishedRecommendationsList } from "@/lib/recommendations/published/server";
 import {
   ensureOpportunityEngineState,
-  toSharedSnapshot,
 } from "@/services/opportunityEngine";
 
 /**
@@ -28,10 +27,7 @@ export async function GET() {
       swing: [...SWING_STRATEGY_IDS],
       position: [...POSITION_STRATEGY_IDS],
     },
-    recommendations: selectRecommendationsWithFallback(
-      state,
-      toSharedSnapshot(marketIntelligence)
-    ),
+    recommendations: await loadPublishedRecommendationsList(state),
     context: marketIntelligence.context,
     regime: marketIntelligence.regime,
     confidence: marketIntelligence.confidence,

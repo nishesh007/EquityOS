@@ -44,24 +44,25 @@ export interface WidgetLayout {
  */
 const WIDGET_LAYOUTS: readonly WidgetLayout[] = Object.freeze([
   // Market snapshot row — full-width market state.
-  { id: "market-snapshot", title: "Market Snapshot", region: "snapshot", size: "xl", priority: "high", order: 0 },
-  { id: "market-pulse", title: "Market Pulse", region: "snapshot", size: "xl", priority: "high", order: 1 },
-  { id: "market-breadth", title: "Market Breadth", region: "snapshot", size: "xl", priority: "medium", order: 2 },
+  { id: "market-snapshot", title: "Market Snapshot", region: "snapshot", size: "full", priority: "high", order: 0 },
+  { id: "market-internals", title: "Market Internals", region: "snapshot", size: "full", priority: "high", order: 1 },
+  { id: "market-pulse", title: "Market Pulse", region: "snapshot", size: "full", priority: "high", order: 2 },
+  { id: "market-breadth", title: "Market Breadth", region: "snapshot", size: "full", priority: "medium", order: 3 },
 
   // Primary work column (70%).
-  { id: "executive-overview", title: "Executive Overview", region: "primary", size: "l", priority: "high", order: 0 },
-  { id: "ai-opportunities", title: "EquityOS Recommendations", region: "primary", size: "l", priority: "high", order: 1 },
-  { id: "portfolio-summary", title: "Portfolio", region: "primary", size: "m", priority: "high", order: 2 },
-  { id: "portfolio-health", title: "Portfolio Health", region: "primary", size: "m", priority: "high", order: 3 },
+  { id: "executive-overview", title: "Executive Overview", region: "primary", size: "large", priority: "high", order: 0 },
+  { id: "ai-opportunities", title: "EquityOS Recommendations", region: "primary", size: "large", priority: "high", order: 1 },
+  { id: "portfolio-summary", title: "Portfolio", region: "primary", size: "medium", priority: "high", order: 2 },
+  { id: "portfolio-health", title: "Portfolio Health", region: "primary", size: "medium", priority: "high", order: 3 },
 
   // Context rail (30%).
-  { id: "watchlist", title: "Watchlist", region: "rail", size: "s", priority: "high", order: 0 },
-  { id: "ai-brief", title: "AI Market Brief", region: "rail", size: "s", priority: "medium", order: 1 },
-  { id: "results-calendar", title: "Results Calendar", region: "rail", size: "s", priority: "medium", order: 2 },
-  { id: "market-news", title: "Market Events", region: "rail", size: "s", priority: "medium", order: 3 },
+  { id: "watchlist", title: "Watchlist", region: "rail", size: "small", priority: "high", order: 0 },
+  { id: "ai-brief", title: "AI Market Brief", region: "rail", size: "small", priority: "medium", order: 1 },
+  { id: "results-calendar", title: "Results Calendar", region: "rail", size: "small", priority: "medium", order: 2 },
+  { id: "market-news", title: "AI News", region: "rail", size: "small", priority: "medium", order: 3 },
 
   // Bottom band — history, timelines and secondary feeds.
-  { id: "upcoming-earnings", title: "Earnings Intelligence", region: "bottom", size: "xl", priority: "medium", order: 0 },
+  { id: "upcoming-earnings", title: "Earnings Intelligence", region: "bottom", size: "full", priority: "medium", order: 0 },
 ]);
 
 export interface DashboardLayout {

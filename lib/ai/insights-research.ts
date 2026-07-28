@@ -18,10 +18,11 @@ import {
 } from "@/lib/recommendations";
 import { STRATEGY_RECOMMENDATION_TITLES } from "@/lib/recommendations/institutional-horizons";
 import {
-  runHorizonPipelines,
   type HorizonRecommendation,
+  type HorizonPipelineSnapshot,
 } from "@/lib/recommendations/horizons";
 import { resolvePrice } from "@/lib/recommendations/horizons/metrics";
+import { readPublishedFromState } from "@/lib/recommendations/published/client";
 
 /** @deprecated Use STRATEGY_RECOMMENDATION_TITLES — kept as alias for imports. */
 export const STRATEGY_RESEARCH_TITLES = STRATEGY_RECOMMENDATION_TITLES;
@@ -185,22 +186,37 @@ function toInsightsRow(
 }
 
 /**
- * Build complete per-horizon research lists via Horizon-First pipelines.
+ * Research terminal from a pre-materialized horizon snapshot (published SSOT).
  */
-export function selectInsightsResearchTerminal(
-  state: OpportunityEngineState,
-  shared?: SharedMarketSnapshot
+export function selectInsightsResearchTerminalFromSnapshot(
+  snapshot: HorizonPipelineSnapshot,
+  lastScanTime: string
 ): InsightsResearchTerminal {
-  const snapshot = runHorizonPipelines(state, shared);
-  const lastScanTime = state.lastScannedAt ?? new Date(0).toISOString();
   const terminal = {} as InsightsResearchTerminal;
-
   for (const strategyId of INSTITUTIONAL_STRATEGY_IDS) {
     terminal[strategyId] = snapshot[strategyId].map((row) =>
       toInsightsRow(row, lastScanTime)
     );
   }
+  return terminal;
+}
 
+/**
+ * Read published research terminal — no request-time horizon pipeline.
+ */
+export function selectInsightsResearchTerminal(
+  state: OpportunityEngineState,
+  _shared?: SharedMarketSnapshot
+): InsightsResearchTerminal {
+  const published = readPublishedFromState(state);
+  if (published?.researchTerminal) {
+    return published.researchTerminal;
+  }
+
+  const terminal = {} as InsightsResearchTerminal;
+  for (const strategyId of INSTITUTIONAL_STRATEGY_IDS) {
+    terminal[strategyId] = [];
+  }
   return terminal;
 }
 

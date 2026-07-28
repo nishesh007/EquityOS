@@ -56,13 +56,14 @@ export const RADIUS_ALIASES: Readonly<Record<RadiusAlias, string>> =
 /** Standardized icon sizing (px) with consistent stroke widths. */
 export type IconSizeToken = "xs" | "sm" | "md" | "lg" | "xl";
 
+/** Sprint 10C — icon sizes only 16 · 20 · 24 · 32 (aliases map to nearest). */
 export const ICON_SIZES: Readonly<Record<IconSizeToken, number>> =
   Object.freeze({
-    xs: 12,
-    sm: 14,
-    md: 16,
-    lg: 20,
-    xl: 24,
+    xs: 16,
+    sm: 16,
+    md: 20,
+    lg: 24,
+    xl: 32,
   });
 
 /** Lucide stroke widths: slightly heavier for small glyph legibility. */

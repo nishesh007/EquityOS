@@ -78,7 +78,12 @@ async function main() {
   });
 
   console.info(`[local-pg] initialise cluster at ${DATA_DIR}…`);
-  await pg.initialise();
+  const alreadyInitialized = existsSync(resolve(DATA_DIR, "PG_VERSION"));
+  if (alreadyInitialized) {
+    console.info(`[local-pg] existing cluster detected — skipping initdb`);
+  } else {
+    await pg.initialise();
+  }
   console.info(`[local-pg] starting on 127.0.0.1:${PORT}…`);
   await pg.start();
 

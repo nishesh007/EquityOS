@@ -18,7 +18,6 @@ import {
   showShortcutHelp,
 } from "./uiBus";
 import { NotificationCenter } from "../productivity/NotificationCenter";
-import { FloatingActionMenu } from "../productivity/FloatingActionMenu";
 import { HelpCenter } from "../help/HelpCenter";
 import { OnboardingTour } from "../help/OnboardingTour";
 
@@ -84,7 +83,6 @@ export function TerminalExperience() {
       <NotificationCenter />
       <HelpCenter />
       <OnboardingTour />
-      <FloatingActionMenu />
     </>
   );
 }

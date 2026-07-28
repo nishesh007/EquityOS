@@ -2,11 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   requestBackgroundOpportunityScan,
   triggerOpportunityScan,
-  toSharedSnapshot,
 } from "@/services/opportunityEngine";
-import { getCachedMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
 import { getStrategyPlatformStatus } from "@/src/modules/strategies";
-import { selectRecommendationsWithFallback } from "@/lib/recommendations";
+import { readPublishedFromState } from "@/lib/recommendations/published/client";
 
 /**
  * POST /api/opportunities/scan
@@ -32,10 +30,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     success: true,
     state,
-    recommendations: selectRecommendationsWithFallback(
-      state,
-      toSharedSnapshot(result.marketIntelligence)
-    ),
+    recommendations: readPublishedFromState(state)?.recommendations ?? [],
     durationMs: result.durationMs,
     symbolsScanned: result.symbolsScanned,
     added: result.added,
@@ -66,11 +61,8 @@ export async function GET() {
     "@/lib/opportunity-engine/scheduler-observability"
   );
   const state = peekOpportunityEngineState();
-  const mi = getCachedMarketIntelligenceSnapshot();
-  const recommendationCount = selectRecommendationsWithFallback(
-    state,
-    toSharedSnapshot(mi)
-  ).length;
+  const published = readPublishedFromState(state);
+  const recommendationCount = published?.recommendations.length ?? 0;
   const obs = getSchedulerObservability();
   return NextResponse.json({
     isScanning: state.isScanning,
@@ -78,6 +70,8 @@ export async function GET() {
     lastScannedAt: state.lastScannedAt,
     scanCount: state.scanCount,
     recommendationCount,
+    publishedScanId: published?.scanId ?? null,
+    publishedVersion: published?.recommendationVersion ?? null,
     lastError: obs.lastError?.message ?? null,
   });
 }

@@ -46,10 +46,10 @@ import { WORKSPACE_SHORTCUTS } from "./workspaceShortcuts";
 import type { Workspace } from "./workspaceEngine";
 
 const MENU_ITEM_CLASS =
-  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary focus-visible:bg-surface-hover";
+  "flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-caption text-text-secondary transition-colors duration-150 hover:bg-surface-hover hover:text-text-primary focus-visible:bg-surface-hover";
 
 const TOOLBAR_BUTTON_CLASS =
-  "inline-flex shrink-0 items-center gap-1.5 rounded-md border border-transparent px-2 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary";
+  "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-transparent px-2 text-caption font-medium text-text-secondary transition-colors duration-150 hover:bg-surface-hover hover:text-text-primary";
 
 export interface WorkspaceToolbarProps {
   workspace: Workspace;
@@ -146,21 +146,21 @@ export function WorkspaceToolbar({
   return (
     <div
       ref={rootRef}
-      className="mb-3 animate-fade-in-up"
+      className="mb-2 animate-fade-in"
       role="group"
       aria-label="Dashboard workspace toolbar"
     >
-      <GlassToolbar className="flex-nowrap justify-start gap-1 overflow-x-auto">
+      <GlassToolbar className="flex-nowrap justify-start gap-0.5 overflow-x-auto !py-1.5">
         {leading}
         {showDashboardTitle ? (
           <div className="mr-2 flex shrink-0 items-center gap-2 border-r border-surface-border pr-3">
             <span
               aria-hidden
-              className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-400"
+              className="flex h-6 w-6 items-center justify-center rounded-md bg-white/5 text-text-secondary"
             >
               <LayoutDashboard className="h-4 w-4" />
             </span>
-            <h1 className="whitespace-nowrap text-sm font-semibold tracking-tight text-text-primary">
+            <h1 className="whitespace-nowrap text-card-title font-semibold tracking-[-0.01em] text-text-primary">
               EquityOS Dashboard
             </h1>
           </div>
@@ -176,9 +176,9 @@ export function WorkspaceToolbar({
               aria-expanded={openMenu === "layouts"}
               className={TOOLBAR_BUTTON_CLASS}
             >
-              <LayoutGrid className="h-3.5 w-3.5" />
+              <LayoutGrid className="h-4 w-4" />
               Layouts
-              <ChevronDown className="h-3 w-3 opacity-60" />
+              <ChevronDown className="h-4 w-4 opacity-60" />
             </button>
             <GlassDropdown open={openMenu === "layouts"} align="left" className="w-64">
               <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
@@ -211,7 +211,7 @@ export function WorkspaceToolbar({
 
           {/* Widget library */}
           <button type="button" onClick={() => onPickerOpenChange(true)} className={TOOLBAR_BUTTON_CLASS}>
-            <Plus className="h-3.5 w-3.5" /> Widgets
+            <Plus className="h-4 w-4" /> Add Widget
           </button>
 
           <button
@@ -223,8 +223,8 @@ export function WorkspaceToolbar({
               editMode && "border-accent/40 bg-accent/10 text-accent"
             )}
           >
-            <Pencil className="h-3.5 w-3.5" />
-            {editMode ? "Done editing" : "Edit Dashboard"}
+            <Pencil className="h-4 w-4" />
+            {editMode ? "Done" : "Edit"}
           </button>
 
           {/* Hidden widgets */}
@@ -237,8 +237,9 @@ export function WorkspaceToolbar({
               disabled={hidden.length === 0}
               className={cn(TOOLBAR_BUTTON_CLASS, "disabled:opacity-40")}
             >
-              <Eye className="h-3.5 w-3.5" />
-              Hidden ({hidden.length})
+              <Eye className="h-4 w-4" />
+              Hidden
+              {hidden.length > 0 ? ` (${hidden.length})` : ""}
             </button>
             <GlassDropdown open={openMenu === "hidden"} align="left" className="w-56">
               {hidden.map((placement) => (

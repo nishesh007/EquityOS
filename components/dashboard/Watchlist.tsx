@@ -119,7 +119,7 @@ export function Watchlist({
       {
         id: "remove",
         label: "Remove",
-        icon: <X className="h-3 w-3" />,
+        icon: <X className="h-4 w-4" />,
         onAction: (selected) => {
           selected.forEach((row) => removeItem(row.id));
         },
@@ -129,11 +129,11 @@ export function Watchlist({
   );
 
   return (
-    <Card padding="lg" accent="cyan" className="flex h-full flex-col">
+    <Card padding="md" className="flex h-full flex-col shadow-none">
       <CardHeader
         title="Watchlist"
-        subtitle={`${items.length} stocks tracked · live signals`}
-        icon={<Star className="h-4 w-4 text-cyan-400" />}
+        subtitle={`${items.length} stocks tracked`}
+        icon={<Star className="h-4 w-4 text-text-secondary" />}
       />
 
       {items.length === 0 ? (
@@ -154,15 +154,17 @@ export function Watchlist({
                 onClick={() =>
                   insight.primary && drawer?.openEvent(insight.primary.event)
                 }
-                className="flex w-full items-center justify-between gap-2 rounded-md border border-surface-border-subtle/70 bg-surface/25 px-2 py-1.5 text-left hover:bg-surface-hover/40"
+                className="flex w-full items-center justify-between gap-2 rounded-lg border border-surface-border-subtle/50 bg-white/[0.02] px-2 py-1 text-left transition-colors duration-150 hover:bg-white/[0.04]"
               >
-                <span className="text-[11px] font-semibold text-text-primary">
+                <span className="text-caption font-semibold text-text-primary">
                   {insight.symbol}
                 </span>
-                <EventAwarenessBadgeRow
-                  kinds={insight.primary!.awareness}
-                  max={2}
-                />
+                <span className="opacity-70">
+                  <EventAwarenessBadgeRow
+                    kinds={insight.primary!.awareness}
+                    max={2}
+                  />
+                </span>
               </button>
             ))}
           <ResearchDataGrid
@@ -170,7 +172,7 @@ export function Watchlist({
             rows={rows}
             getRowId={(row) => row.id}
             bulkActions={bulkActions}
-            maxHeight={280}
+            maxHeight={252}
             onRowClick={(row) => router.push(getCompanyRoute(row.symbol))}
             renderExpandedRow={(row) => {
               const insight = eventInsights.get(row.symbol.toUpperCase());

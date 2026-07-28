@@ -259,7 +259,7 @@ function revealEventIntelligenceWidget(workspace: Workspace): Workspace {
       placement.region === "main" &&
       (placement.size === "full" ||
         placement.size === "large" ||
-        placement.size === "xl")
+        (placement.size as string) === "xl")
     ) {
       return placement;
     }
@@ -339,16 +339,27 @@ function migrateWorkspaceStore(store: WorkspaceStore): WorkspaceStore {
 // Validation (used by persistence and import)
 // ---------------------------------------------------------------------------
 
+function normalizeWorkspaceSize(size: unknown): WorkspaceSize | null {
+  if (size === "xl") return "full";
+  if (typeof size === "string" && WORKSPACE_SIZES.includes(size as WorkspaceSize)) {
+    return size as WorkspaceSize;
+  }
+  return null;
+}
+
 function isValidPlacement(value: unknown): value is WidgetPlacement {
   if (!value || typeof value !== "object") return false;
   const placement = value as WidgetPlacement;
+  const size = normalizeWorkspaceSize(placement.size);
+  if (!size) return false;
+  // Mutate legacy xl → full so persisted workspaces stay valid.
+  (placement as WidgetPlacement).size = size;
   return (
     typeof placement.widgetId === "string" &&
     placement.widgetId.length > 0 &&
     WORKSPACE_REGIONS.includes(placement.region as WorkspaceRegion) &&
     typeof placement.order === "number" &&
     Number.isFinite(placement.order) &&
-    WORKSPACE_SIZES.includes(placement.size as WorkspaceSize) &&
     typeof placement.visible === "boolean" &&
     typeof placement.pinned === "boolean" &&
     typeof placement.collapsed === "boolean"

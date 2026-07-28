@@ -59,7 +59,19 @@ const config: Config = {
       },
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],
-        mono: ["var(--font-jetbrains)", "ui-monospace", "monospace"],
+        mono: ["var(--font-inter)", "system-ui", "sans-serif"],
+      },
+      fontSize: {
+        "page-title": ["34px", { lineHeight: "1.3", fontWeight: "700" }],
+        "major-section": ["26px", { lineHeight: "1.3", fontWeight: "600" }],
+        section: ["26px", { lineHeight: "1.3", fontWeight: "600" }],
+        "minor-section": ["22px", { lineHeight: "1.3", fontWeight: "600" }],
+        "card-title": ["18px", { lineHeight: "1.3", fontWeight: "600" }],
+        metric: ["32px", { lineHeight: "1.3", fontWeight: "600" }],
+        "large-number": ["40px", { lineHeight: "1.3", fontWeight: "700" }],
+        body: ["15px", { lineHeight: "1.3", fontWeight: "400" }],
+        caption: ["13px", { lineHeight: "1.3", fontWeight: "500" }],
+        micro: ["11px", { lineHeight: "1.3", fontWeight: "500" }],
       },
       boxShadow: {
         card: "var(--eos-shadow-card)",

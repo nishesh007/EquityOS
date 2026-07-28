@@ -81,10 +81,10 @@ describe("dashboard layout", () => {
 
   it("sortByHierarchy orders high before medium before low", () => {
     const widgets: WidgetLayout[] = [
-      { id: "c", title: "C", region: "primary", size: "s", priority: "low", order: 0 },
-      { id: "b", title: "B", region: "primary", size: "s", priority: "medium", order: 0 },
-      { id: "a2", title: "A2", region: "primary", size: "s", priority: "high", order: 1 },
-      { id: "a1", title: "A1", region: "primary", size: "s", priority: "high", order: 0 },
+      { id: "c", title: "C", region: "primary", size: "small", priority: "low", order: 0 },
+      { id: "b", title: "B", region: "primary", size: "small", priority: "medium", order: 0 },
+      { id: "a2", title: "A2", region: "primary", size: "small", priority: "high", order: 1 },
+      { id: "a1", title: "A1", region: "primary", size: "small", priority: "high", order: 0 },
     ];
     expect(sortByHierarchy(widgets).map((w) => w.id)).toEqual(["a1", "a2", "b", "c"]);
   });
@@ -131,26 +131,28 @@ describe("grid system", () => {
 });
 
 describe("widget sizing", () => {
-  it("defines all five sizes with ascending footprint", () => {
-    expect(WIDGET_SIZES).toEqual(["xs", "s", "m", "l", "xl"]);
+  it("defines four sizes with ascending footprint", () => {
+    expect(WIDGET_SIZES).toEqual(["small", "medium", "large", "full"]);
     const heights = WIDGET_SIZES.map((size) => WIDGET_SIZE_SPECS[size].minContentHeight);
     for (let i = 1; i < heights.length; i++) {
       expect(heights[i]).toBeGreaterThanOrEqual(heights[i - 1]);
     }
-    expect(WIDGET_SIZE_SPECS.xs.span).toBe(1);
-    expect(WIDGET_SIZE_SPECS.xl.span).toBe(4);
+    expect(WIDGET_SIZE_SPECS.small.span).toBe(1);
+    expect(WIDGET_SIZE_SPECS.full.span).toBe(4);
   });
 
   it("resolves the preferred size in a full-width grid", () => {
+    expect(resolveWidgetSize("medium").span).toBe(2);
+    expect(resolveWidgetSize("full").span).toBe(4);
     expect(resolveWidgetSize("m").span).toBe(2);
     expect(resolveWidgetSize("xl").span).toBe(4);
   });
 
   it("clamps widget spans to the grid they are mounted in", () => {
-    expect(resolveWidgetSize("xl", 2).span).toBe(2);
-    expect(resolveWidgetSize("l", 2).span).toBe(2);
-    expect(resolveWidgetSize("m", 1).span).toBe(1);
-    expect(resolveWidgetSize("xs", 4).span).toBe(1);
+    expect(resolveWidgetSize("full", 2).span).toBe(2);
+    expect(resolveWidgetSize("large", 2).span).toBe(2);
+    expect(resolveWidgetSize("medium", 1).span).toBe(1);
+    expect(resolveWidgetSize("small", 4).span).toBe(1);
   });
 
   it("scales skeleton rows with widget size", () => {
@@ -261,7 +263,7 @@ describe("cards and regression", () => {
         id: "hack",
         title: "Hack",
         region: "primary",
-        size: "s",
+        size: "small",
         priority: "low",
         order: 99,
       });

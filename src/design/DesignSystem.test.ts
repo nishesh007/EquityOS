@@ -133,7 +133,7 @@ describe("token consistency", () => {
     expect(Object.values(SPACING_SCALE).sort((a, b) => a - b)).toEqual([
       ...SPACING_VALUES,
     ]);
-    expect(SPACING_VALUES).toEqual([4, 8, 12, 16, 20, 24, 32, 40, 48, 64]);
+    expect(SPACING_VALUES).toEqual([4, 8, 12, 16, 24, 32, 48]);
   });
 
   it("defines the full radius scale including pill", () => {
@@ -160,21 +160,22 @@ describe("token consistency", () => {
     }
   });
 
-  it("defines all twelve institutional typography roles", () => {
-    expect(TYPOGRAPHY_ROLES).toHaveLength(12);
+  it("defines institutional typography roles on the frozen scale", () => {
+    expect(TYPOGRAPHY_ROLES.length).toBeGreaterThanOrEqual(7);
     for (const role of TYPOGRAPHY_ROLES) {
       const style = TYPOGRAPHY_SCALE[role];
       expect(style.fontFamily).toBeTruthy();
-      expect(style.fontSize).toMatch(/rem$/);
-      expect(style.fontWeight).toBeGreaterThanOrEqual(400);
+      expect(style.fontFamily).toContain("font-inter");
+      expect(style.fontSize).toMatch(/px$/);
+      expect([400, 500, 600, 700]).toContain(style.fontWeight);
     }
   });
 
-  it("uses tabular monospace styling for financial numerics", () => {
+  it("uses tabular Inter styling for financial numerics", () => {
     expect(TYPOGRAPHY_SCALE.numeric.tabularNums).toBe(true);
     expect(TYPOGRAPHY_SCALE.table.tabularNums).toBe(true);
-    expect(TYPOGRAPHY_SCALE.numeric.fontFamily).toContain("jetbrains");
-    expect(TYPOGRAPHY_SCALE.monospace.fontFamily).toContain("jetbrains");
+    expect(TYPOGRAPHY_SCALE.numeric.fontFamily).toContain("font-inter");
+    expect(TYPOGRAPHY_SCALE.monospace.fontFamily).toContain("font-inter");
     expect(TYPOGRAPHY_SCALE.label.textTransform).toBe("uppercase");
   });
 

@@ -1,12 +1,15 @@
 /**
- * Institutional typography hierarchy for the EquityOS design system.
- * Font families resolve through the CSS variables registered in the
- * root layout (Inter + JetBrains Mono).
+ * Sprint 10C.1 — Institutional typography freeze.
+ * Inter Variable ONLY. Weights 400 / 500 / 600 / 700.
+ * Line height 130% everywhere. Consistent letter-spacing.
+ *
+ * Page Title 34 · Major Section 26 · Minor Section 22 · Card Title 18
+ * Metric 32 · Large Number 40 · Body 15 · Caption 13 · Micro 11
  */
 
 export const FONT_FAMILIES = Object.freeze({
   sans: 'var(--font-inter), system-ui, sans-serif',
-  mono: 'var(--font-jetbrains), ui-monospace, monospace',
+  mono: 'var(--font-inter), system-ui, sans-serif',
 } as const);
 
 export interface TypographyStyle {
@@ -15,126 +18,203 @@ export interface TypographyStyle {
   lineHeight: string;
   fontWeight: number;
   letterSpacing: string;
-  /** Enables tabular numerals for financial figures. */
   tabularNums?: boolean;
   textTransform?: "uppercase" | "none";
 }
 
 export type TypographyRole =
+  | "pageTitle"
+  | "majorSection"
+  | "minorSection"
+  | "section"
+  | "cardTitle"
+  | "metric"
+  | "largeNumber"
+  | "body"
+  | "caption"
+  | "micro"
   | "display"
   | "h1"
   | "h2"
   | "h3"
   | "title"
   | "subtitle"
-  | "body"
-  | "caption"
   | "label"
   | "numeric"
   | "table"
   | "monospace";
 
 export const TYPOGRAPHY_ROLES: readonly TypographyRole[] = Object.freeze([
+  "pageTitle",
+  "majorSection",
+  "minorSection",
+  "section",
+  "cardTitle",
+  "metric",
+  "largeNumber",
+  "body",
+  "caption",
+  "micro",
   "display",
   "h1",
   "h2",
   "h3",
   "title",
   "subtitle",
-  "body",
-  "caption",
   "label",
   "numeric",
   "table",
   "monospace",
 ]);
 
+const inter = FONT_FAMILIES.sans;
+const LH = "1.3";
+const TRACK = "-0.01em";
+
 export const TYPOGRAPHY_SCALE: Readonly<Record<TypographyRole, TypographyStyle>> =
   Object.freeze({
-    display: {
-      fontFamily: FONT_FAMILIES.sans,
-      fontSize: "2.5rem",
-      lineHeight: "1.1",
+    pageTitle: {
+      fontFamily: inter,
+      fontSize: "34px",
+      lineHeight: LH,
       fontWeight: 700,
-      letterSpacing: "-0.02em",
+      letterSpacing: TRACK,
     },
-    h1: {
-      fontFamily: FONT_FAMILIES.sans,
-      fontSize: "1.875rem",
-      lineHeight: "1.2",
-      fontWeight: 700,
-      letterSpacing: "-0.015em",
-    },
-    h2: {
-      fontFamily: FONT_FAMILIES.sans,
-      fontSize: "1.5rem",
-      lineHeight: "1.25",
+    majorSection: {
+      fontFamily: inter,
+      fontSize: "26px",
+      lineHeight: LH,
       fontWeight: 600,
-      letterSpacing: "-0.01em",
+      letterSpacing: TRACK,
     },
-    h3: {
-      fontFamily: FONT_FAMILIES.sans,
-      fontSize: "1.25rem",
-      lineHeight: "1.3",
+    minorSection: {
+      fontFamily: inter,
+      fontSize: "22px",
+      lineHeight: LH,
       fontWeight: 600,
-      letterSpacing: "-0.005em",
+      letterSpacing: TRACK,
     },
-    title: {
-      fontFamily: FONT_FAMILIES.sans,
-      fontSize: "1.625rem",
-      lineHeight: "1.25",
+    section: {
+      fontFamily: inter,
+      fontSize: "26px",
+      lineHeight: LH,
+      fontWeight: 600,
+      letterSpacing: TRACK,
+    },
+    cardTitle: {
+      fontFamily: inter,
+      fontSize: "18px",
+      lineHeight: LH,
+      fontWeight: 600,
+      letterSpacing: TRACK,
+    },
+    metric: {
+      fontFamily: inter,
+      fontSize: "32px",
+      lineHeight: LH,
+      fontWeight: 600,
+      letterSpacing: TRACK,
+      tabularNums: true,
+    },
+    largeNumber: {
+      fontFamily: inter,
+      fontSize: "40px",
+      lineHeight: LH,
       fontWeight: 700,
-      letterSpacing: "-0.01em",
-    },
-    subtitle: {
-      fontFamily: FONT_FAMILIES.sans,
-      fontSize: "0.875rem",
-      lineHeight: "1.45",
-      fontWeight: 500,
-      letterSpacing: "0em",
+      letterSpacing: TRACK,
+      tabularNums: true,
     },
     body: {
-      fontFamily: FONT_FAMILIES.sans,
-      fontSize: "0.875rem",
-      lineHeight: "1.55",
+      fontFamily: inter,
+      fontSize: "15px",
+      lineHeight: LH,
       fontWeight: 400,
       letterSpacing: "0em",
     },
     caption: {
-      fontFamily: FONT_FAMILIES.sans,
-      fontSize: "0.75rem",
-      lineHeight: "1.4",
+      fontFamily: inter,
+      fontSize: "13px",
+      lineHeight: LH,
       fontWeight: 500,
-      letterSpacing: "0.01em",
+      letterSpacing: "0em",
+    },
+    micro: {
+      fontFamily: inter,
+      fontSize: "11px",
+      lineHeight: LH,
+      fontWeight: 500,
+      letterSpacing: "0.02em",
+    },
+    display: {
+      fontFamily: inter,
+      fontSize: "34px",
+      lineHeight: LH,
+      fontWeight: 700,
+      letterSpacing: TRACK,
+    },
+    h1: {
+      fontFamily: inter,
+      fontSize: "34px",
+      lineHeight: LH,
+      fontWeight: 700,
+      letterSpacing: TRACK,
+    },
+    h2: {
+      fontFamily: inter,
+      fontSize: "26px",
+      lineHeight: LH,
+      fontWeight: 600,
+      letterSpacing: TRACK,
+    },
+    h3: {
+      fontFamily: inter,
+      fontSize: "22px",
+      lineHeight: LH,
+      fontWeight: 600,
+      letterSpacing: TRACK,
+    },
+    title: {
+      fontFamily: inter,
+      fontSize: "18px",
+      lineHeight: LH,
+      fontWeight: 600,
+      letterSpacing: TRACK,
+    },
+    subtitle: {
+      fontFamily: inter,
+      fontSize: "15px",
+      lineHeight: LH,
+      fontWeight: 500,
+      letterSpacing: "0em",
     },
     label: {
-      fontFamily: FONT_FAMILIES.sans,
-      fontSize: "0.75rem",
-      lineHeight: "1.3",
+      fontFamily: inter,
+      fontSize: "11px",
+      lineHeight: LH,
       fontWeight: 600,
-      letterSpacing: "0.0125em",
+      letterSpacing: "0.04em",
       textTransform: "uppercase",
     },
     numeric: {
-      fontFamily: FONT_FAMILIES.mono,
-      fontSize: "0.875rem",
-      lineHeight: "1.4",
-      fontWeight: 500,
+      fontFamily: inter,
+      fontSize: "32px",
+      lineHeight: LH,
+      fontWeight: 600,
       letterSpacing: "0em",
       tabularNums: true,
     },
     table: {
-      fontFamily: FONT_FAMILIES.sans,
-      fontSize: "0.8125rem",
-      lineHeight: "1.45",
+      fontFamily: inter,
+      fontSize: "15px",
+      lineHeight: LH,
       fontWeight: 400,
       letterSpacing: "0em",
       tabularNums: true,
     },
     monospace: {
-      fontFamily: FONT_FAMILIES.mono,
-      fontSize: "0.8125rem",
-      lineHeight: "1.5",
+      fontFamily: inter,
+      fontSize: "13px",
+      lineHeight: LH,
       fontWeight: 400,
       letterSpacing: "0em",
     },

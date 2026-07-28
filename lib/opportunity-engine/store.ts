@@ -21,6 +21,7 @@ import {
   syncRecommendationMemory,
   transitionRecommendation,
 } from "@/lib/opportunity-engine/recommendation-memory";
+import { publishRecommendationsAfterScan } from "@/lib/recommendations/published/server";
 import type { RecommendationRecordStatus } from "@/lib/opportunity-engine/types";
 import { recordPersistenceWrite } from "@/lib/opportunity-engine/scheduler-observability";
 import {
@@ -456,6 +457,7 @@ export function finalizeScan(
     ...state,
     recommendations: syncRecommendationMemory(state, scannedAt),
   };
+  state = publishRecommendationsAfterScan(state);
   persistNow();
 }
 

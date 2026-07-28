@@ -2,6 +2,9 @@
  * Daily market session metadata — every market-derived module exposes this.
  */
 
+/** Hard cap — UI must never stay on "Updating…" longer than this. */
+export const MARKET_REBUILD_MAX_MS = 5_000;
+
 /** NSE trading session id: YYYY-MM-DD (IST session owner). */
 export type TradingSessionId = string;
 

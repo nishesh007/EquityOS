@@ -29,13 +29,23 @@ function stubRow(
   const entry = overrides.entry ?? 100;
   const stop = overrides.stop ?? 95;
   const targets = overrides.targets ?? [108, 112, 118];
-  const candidate = {
+  const candidate: OpportunityCandidate = {
+    id: "TEST:swing",
     symbol: "TEST",
     company: "Test Co",
     category: "swing",
     side: "Long",
+    rank: 1,
+    previousRank: null,
     aiConvictionScore: 70,
+    entryZone: { low: entry * 0.99, high: entry * 1.01 },
+    stopLoss: stop,
+    target1: targets[0],
+    target2: targets[1],
+    target3: targets[2],
+    riskReward: (targets[0] - entry) / (entry - stop),
     confidencePercent: 68,
+    reason: "Calibration stub",
     scanMetrics: {
       atr: 2.5,
       volume_ratio: 1.5,
@@ -47,7 +57,10 @@ function stubRow(
       volatility: 22,
     },
     strategyId: "ema-pullback",
-  } as OpportunityCandidate;
+    firstDetectedAt: "2026-07-25T04:00:00.000Z",
+    lastDetectedAt: "2026-07-25T04:00:00.000Z",
+    lastUpdatedAt: "2026-07-25T04:00:00.000Z",
+  };
 
   return {
     horizonId,

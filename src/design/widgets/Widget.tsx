@@ -73,7 +73,7 @@ export function Widget({
   badgeTone = "neutral",
   actions,
   menuItems,
-  size = "m",
+  size = "medium",
   collapsible = false,
   defaultCollapsed = false,
   onRefresh,

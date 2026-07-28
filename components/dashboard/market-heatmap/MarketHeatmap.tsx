@@ -132,7 +132,7 @@ function SectorTileButton({
       type="button"
       title={tooltip}
       onClick={() => onSelect(tile.name)}
-      className={`group relative flex h-[100px] w-full flex-col overflow-hidden rounded-md border px-2 py-1.5 text-left transition-all duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent xl:h-[105px] ${
+      className={`group relative flex h-[88px] w-full flex-col overflow-hidden rounded-xl border px-3 py-2 text-left transition-[border-color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent xl:h-[92px] ${
         selected
           ? "border-accent ring-1 ring-accent/40"
           : "border-white/10"
@@ -142,22 +142,22 @@ function SectorTileButton({
       aria-label={`${tile.name}: ${change >= 0 ? "+" : ""}${change.toFixed(2)}%, breadth ${tile.breadthPercent.toFixed(0)}%`}
     >
       <div className="flex min-w-0 items-start justify-between gap-1">
-        <p className="truncate text-[12px] font-bold leading-tight tracking-tight text-text-primary">
+        <p className="truncate text-caption font-semibold leading-[1.3] text-text-primary">
           {tile.name}
         </p>
         {trendUp ? (
-          <ArrowUpRight className="data-icon h-3 w-3 shrink-0 text-gain" aria-hidden />
+          <ArrowUpRight className="h-4 w-4 shrink-0 text-gain" aria-hidden />
         ) : trendDown ? (
-          <ArrowDownRight className="data-icon h-3 w-3 shrink-0 text-loss" aria-hidden />
+          <ArrowDownRight className="h-4 w-4 shrink-0 text-loss" aria-hidden />
         ) : null}
       </div>
 
-      <p className="mt-auto font-mono text-[20px] font-bold leading-none tabular-nums text-text-primary sm:text-[22px]">
+      <p className="mt-auto text-metric font-semibold leading-[1.3] tabular-nums text-text-primary">
         {change >= 0 ? "+" : ""}
         {change.toFixed(2)}%
       </p>
 
-      <p className="mt-1 text-xs font-medium tabular-nums text-text-primary/80">
+      <p className="mt-1 text-micro tabular-nums text-text-muted">
         Breadth {tile.breadthPercent.toFixed(0)}%
       </p>
     </button>
@@ -375,15 +375,15 @@ export function MarketHeatmap({
           </div>
         )}
 
-        <CardFooter className="!mt-3 !pt-2">
+        <CardFooter className="!mt-2 !py-2 !pt-2 text-micro">
           <span>
             {hideTimestamps
               ? `Source · ${snapshot?.dataSource ?? "Market Heatmap"}`
-              : `Last updated · ${formatTs(snapshot?.lastUpdated)} · Source · ${
+              : `Updated · ${formatTs(snapshot?.lastUpdated)} · ${
                   snapshot?.dataSource ?? "Market Heatmap"
                 }`}
           </span>
-          <span>Click a sector to drill down</span>
+          <span>Click sector to drill down</span>
         </CardFooter>
       </Card>
 

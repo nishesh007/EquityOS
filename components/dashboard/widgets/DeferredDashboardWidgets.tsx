@@ -29,17 +29,18 @@ export function ResultsCalendarWidget({
   results: UpcomingResult[];
 }) {
   return (
-    <div className="flex h-full min-h-[12rem] flex-col space-y-3">
+    <div className="flex h-full min-h-[12rem] flex-col space-y-2">
       <SectionHeader
         title="Results Calendar"
         subtitle="Compact earnings windows"
         summary={`${results.length} upcoming result windows.`}
         accent="orange"
+        level={3}
         icon={<CalendarDays className="h-5 w-5" />}
         actions={
           <Link
             href="/results"
-            className="text-xs font-semibold text-accent transition-colors hover:text-accent/80"
+            className="text-caption font-semibold text-accent transition-opacity duration-150 hover:opacity-80"
           >
             Open Earnings →
           </Link>

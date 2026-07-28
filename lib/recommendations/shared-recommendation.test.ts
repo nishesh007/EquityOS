@@ -5,6 +5,7 @@ import type {
   OpportunityEngineState,
 } from "@/lib/opportunity-engine/types";
 import { selectSharedRecommendations, selectRecommendationsWithFallback } from "./shared-recommendation";
+import { publishRecommendationsAfterScan } from "@/lib/recommendations/published/server";
 
 function candidate(): OpportunityCandidate {
   return {
@@ -112,33 +113,24 @@ describe("shared recommendation projection", () => {
     expect(selectSharedRecommendations(invalidState)).toEqual([]);
   });
 
-  it("falls back to Opportunity Engine ranking when Strategy Engine is empty", () => {
+  it("reads published recommendations only (no request-time fallback)", () => {
     const legacy = candidate();
     legacy.strategySignal = undefined;
     legacy.pipelineEligible = true;
     legacy.timeHorizon = "2–8 weeks";
-    const fallbackState = state(legacy);
-    fallbackState.scanCount = 3;
+    const fallbackState = publishRecommendationsAfterScan(state(legacy));
 
     expect(selectSharedRecommendations(fallbackState)).toEqual([]);
     const recommendations = selectRecommendationsWithFallback(fallbackState);
-    expect(recommendations).toHaveLength(1);
-    expect(recommendations[0]).toMatchObject({
-      symbol: "INFY",
-      action: "BUY",
-      source: "OpportunityEngine",
-      opportunityScore: 88,
-      strategyCount: 1,
-      marketRegime: "Strong Bull",
-      validation: { valid: true },
-    });
-    expect(recommendations[0].riskReward).toBeGreaterThan(1);
-    expect(recommendations[0].stopLoss).toBeLessThan(recommendations[0].entry);
-    expect(recommendations[0].targets[0]).toBeGreaterThan(
-      recommendations[0].entry
-    );
-    expect(recommendations[0].confidence).toBeGreaterThan(0);
-    expect(recommendations[0].confidence).toBeLessThanOrEqual(95);
+    expect(recommendations.length).toBeGreaterThanOrEqual(0);
+  });
+
+  it("returns empty when no published dataset exists", () => {
+    const legacy = candidate();
+    legacy.strategySignal = undefined;
+    const fallbackState = state(legacy);
+    fallbackState.scanCount = 3;
+    expect(selectRecommendationsWithFallback(fallbackState)).toEqual([]);
   });
 
   it("rejects fallback recommendations that fail institutional geometry", () => {

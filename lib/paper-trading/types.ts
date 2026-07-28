@@ -68,6 +68,10 @@ export interface PaperRecommendationSnapshot {
   marketRegime: string;
   timestamp: string;
   aiExplanation: string;
+  /** Published recommendations session (trading date) when available. */
+  sessionId?: string | null;
+  /** Published recommendations scan id when available. */
+  scanId?: string | null;
 }
 
 export interface PaperTrade {
@@ -97,6 +101,22 @@ export interface PaperTrade {
   recommendation: PaperRecommendationSnapshot;
   timeline: PaperTimelineEvent[];
   updatedAt: string;
+  /** Published session id (trading date) stamped at entry. */
+  sessionId?: string | null;
+  /** Published scan id stamped at entry. */
+  scanId?: string | null;
+  /** Horizon label (holding period / strategy id). */
+  horizon?: string;
+  /** Peak favorable excursion % vs entry (long). */
+  mfePercent?: number;
+  /** Peak adverse excursion % vs entry (long, ≤ 0). */
+  maePercent?: number;
+  /** Peak-to-trough drawdown % while open. */
+  maxDrawdownPercent?: number;
+  /** Ms from entry to first target hit (when applicable). */
+  timeToFirstTargetMs?: number | null;
+  /** Ms from entry to stop-loss hit (when applicable). */
+  timeToStopLossMs?: number | null;
 }
 
 export interface PaperTradingKpis {

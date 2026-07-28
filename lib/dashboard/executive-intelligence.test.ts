@@ -177,7 +177,7 @@ describe("executive intelligence builders", () => {
       "BANKNIFTY",
       "INDIA VIX",
       "Market Status",
-      "Market Regime",
+      "Market Internals",
       "Breadth",
       "Risk",
       "Volatility",
@@ -368,7 +368,7 @@ describe("executive intelligence builders", () => {
         marketContext: "",
         marketRegime: "",
         riskMode: "",
-        eligibility: "eligible",
+        eligibility: { eligible: true, score: 80, reasons: ["Eligible"] },
         reasons: [],
         evidence: [],
         matchedFrameworks: {
@@ -395,8 +395,8 @@ describe("executive intelligence builders", () => {
         longTermRanking: null,
         timestamp: "2026-07-25T06:00:00.000Z",
         source: "OpportunityEngine",
-      },
-    ] as SharedRecommendation[];
+      } satisfies SharedRecommendation,
+    ];
 
     const alerts = buildPortfolioAlerts({
       portfolio,

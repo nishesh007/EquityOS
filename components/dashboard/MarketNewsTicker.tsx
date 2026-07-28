@@ -69,14 +69,14 @@ export function MarketNewsTicker({
       <div className="h-full">
         <Card padding="md" className="flex h-full flex-col">
           <CardHeader
-            title="AI News Ticker"
+            title="AI News"
             subtitle="Approved institutional sources"
             action={
               <Link
                 href="/news"
-                className="text-[11px] font-semibold text-accent hover:underline"
+                className="text-caption font-semibold text-accent transition-opacity duration-150 hover:opacity-80"
               >
-                View All News →
+                View All →
               </Link>
             }
           />
@@ -117,14 +117,14 @@ export function MarketNewsTicker({
     >
       <Card padding="md" className="flex h-full flex-col">
         <CardHeader
-          title="AI News Ticker"
+          title="AI News"
           subtitle={statusLabel}
           action={
             <Link
               href="/news"
-              className="text-[11px] font-semibold text-accent hover:underline"
+              className="text-caption font-semibold text-accent transition-opacity duration-150 hover:opacity-80"
             >
-              View All News →
+              View All →
             </Link>
           }
         />
@@ -133,7 +133,7 @@ export function MarketNewsTicker({
           href={item.url}
           target="_blank"
           rel="noopener noreferrer"
-          className={`group relative flex min-h-[8.5rem] flex-1 flex-col justify-center overflow-hidden rounded-lg border border-surface-border-subtle bg-surface-overlay/40 px-4 py-3 transition-all duration-300 ease-out ${translate}`}
+          className={`group relative flex min-h-[7rem] flex-1 flex-col justify-center overflow-hidden rounded-xl border border-surface-border-subtle bg-white/[0.03] px-4 py-3 transition-[opacity,transform] duration-150 ease-out ${translate}`}
           aria-live="polite"
         >
           <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -149,26 +149,24 @@ export function MarketNewsTicker({
             >
               {item.sentiment}
             </Badge>
-            <Badge variant="default" size="sm">
-              {item.category}
-            </Badge>
-            <span className="data-timestamp">{item.timestamp}</span>
-            <span className="ml-auto data-secondary inline-flex items-center gap-1">
-              <ShieldCheck className="data-icon h-3.5 w-3.5 text-gain" />
+            <span className="text-micro text-text-muted">{item.category}</span>
+            <span className="text-micro text-text-muted">{item.timestamp}</span>
+            <span className="ml-auto inline-flex items-center gap-1 text-micro text-text-muted">
+              <ShieldCheck className="h-4 w-4 text-emerald-400" />
               {item.source}
             </span>
           </div>
+          <p className="text-card-title font-semibold leading-[1.3] text-text-primary transition-colors duration-150 group-hover:text-accent">
+            {item.title}
+          </p>
           {item.summary ? (
-            <p className="mb-1.5 text-[12px] leading-snug text-accent/90">
+            <p className="mt-2 text-caption text-text-secondary">
               {item.summary}
             </p>
           ) : null}
-          <p className="text-sm font-semibold leading-snug text-text-primary transition-colors group-hover:text-accent">
-            {item.title}
-          </p>
-          <span className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-accent opacity-0 transition-opacity group-hover:opacity-100">
+          <span className="mt-2 inline-flex items-center gap-1 text-micro font-semibold uppercase tracking-[0.04em] text-accent opacity-0 transition-opacity duration-150 group-hover:opacity-100">
             Open article
-            <ExternalLink className="h-3 w-3" />
+            <ExternalLink className="h-4 w-4" />
           </span>
         </a>
 

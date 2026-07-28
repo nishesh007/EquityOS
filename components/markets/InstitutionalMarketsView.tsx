@@ -191,8 +191,9 @@ export function InstitutionalMarketsView({
   }, [refresh]);
 
   const pageTs = snapshot.timestamp;
-  const sessionReady =
-    snapshot.session.sessionValid && snapshot.session.phase !== "updating";
+  const hasIntelligence =
+    Boolean(snapshot.intelligence?.context) ||
+    Boolean(snapshot.intelligence?.regime);
 
   return (
     <div data-markets-page-timestamp={pageTs} data-refresh-mode={refreshMode}>
@@ -243,7 +244,7 @@ export function InstitutionalMarketsView({
             hideTimestamps
           />
           <MarketIntelligenceStrip
-            snapshot={sessionReady ? snapshot.intelligence : null}
+            snapshot={hasIntelligence ? snapshot.intelligence : null}
             hideTimestamps
           />
         </div>

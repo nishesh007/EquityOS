@@ -51,11 +51,11 @@ export function DashboardResultsSnapshot({
     <div className="grid h-full gap-3 md:grid-cols-3">
       {cards.map((card) => (
         <Link key={card.label} href="/results" className="group h-full">
-          <Card hover padding="md" className="flex h-full flex-col">
+          <Card hover padding="md" className="flex h-full min-h-[140px] flex-col">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="data-label">{card.label}</p>
-                <p className="mt-1.5 font-mono text-2xl font-semibold text-text-primary tabular-nums">
+                <p className="mt-2 text-large-number font-bold text-text-primary tabular-nums">
                   {card.items.length}
                 </p>
               </div>

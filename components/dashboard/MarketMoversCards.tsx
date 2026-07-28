@@ -1,6 +1,5 @@
 /**
- * Sprint 10C — Market Movers as five institutional strategy-style cards.
- * Presentation only over existing breadth mover lists (no engine changes).
+ * Sprint 10C.1 — Market Movers compact cards (presentation only).
  */
 
 import { ChangeIndicator } from "@/components/ui/ChangeIndicator";
@@ -23,9 +22,8 @@ interface MoverCardTheme {
   title: string;
   metric: MoverMetric;
   icon: ReactNode;
-  background: string;
-  border: string;
   accent: string;
+  strip: string;
   viewAllHref: string;
 }
 
@@ -34,50 +32,45 @@ const CARD_THEMES: readonly MoverCardTheme[] = [
     id: "gainers",
     title: "Top Gainers",
     metric: "change",
-    icon: <TrendingUp className="h-3.5 w-3.5" />,
-    background: "bg-gradient-to-br from-emerald-500/20 via-emerald-500/5 to-transparent",
-    border: "border-emerald-500/30",
+    icon: <TrendingUp className="h-4 w-4" />,
     accent: "text-emerald-400",
+    strip: "bg-emerald-500",
     viewAllHref: "/markets",
   },
   {
     id: "losers",
     title: "Top Losers",
     metric: "change",
-    icon: <TrendingDown className="h-3.5 w-3.5" />,
-    background: "bg-gradient-to-br from-rose-500/20 via-rose-500/5 to-transparent",
-    border: "border-rose-500/30",
-    accent: "text-rose-400",
+    icon: <TrendingDown className="h-4 w-4" />,
+    accent: "text-red-400",
+    strip: "bg-red-500",
     viewAllHref: "/markets",
   },
   {
     id: "active",
     title: "Most Active",
     metric: "volume",
-    icon: <Activity className="h-3.5 w-3.5" />,
-    background: "bg-gradient-to-br from-sky-500/20 via-sky-500/5 to-transparent",
-    border: "border-sky-500/30",
-    accent: "text-sky-400",
+    icon: <Activity className="h-4 w-4" />,
+    accent: "text-blue-400",
+    strip: "bg-blue-500",
     viewAllHref: "/markets",
   },
   {
     id: "volume-shock",
     title: "Volume Shockers",
     metric: "volume",
-    icon: <Flame className="h-3.5 w-3.5" />,
-    background: "bg-gradient-to-br from-violet-500/20 via-violet-500/5 to-transparent",
-    border: "border-violet-500/30",
-    accent: "text-violet-400",
+    icon: <Flame className="h-4 w-4" />,
+    accent: "text-purple-400",
+    strip: "bg-purple-500",
     viewAllHref: "/markets",
   },
   {
     id: "delivery",
     title: "Delivery Leaders",
     metric: "delivery",
-    icon: <Package className="h-3.5 w-3.5" />,
-    background: "bg-gradient-to-br from-amber-500/20 via-amber-500/5 to-transparent",
-    border: "border-amber-500/30",
+    icon: <Package className="h-4 w-4" />,
     accent: "text-amber-400",
+    strip: "bg-amber-500",
     viewAllHref: "/markets",
   },
 ];
@@ -94,7 +87,6 @@ function uniqueMovers(items: MarketMover[]): MarketMover[] {
   return out;
 }
 
-/** Presentation-only: volume × |% change| as a shock proxy from existing quotes. */
 function deriveVolumeShockers(breadth: MarketBreadth): MarketMover[] {
   return uniqueMovers([
     ...breadth.mostActive,
@@ -110,7 +102,6 @@ function deriveVolumeShockers(breadth: MarketBreadth): MarketMover[] {
     .slice(0, 5);
 }
 
-/** Presentation-only: rank by delivery % already on enriched quotes. */
 function deriveDeliveryLeaders(breadth: MarketBreadth): {
   items: MarketMover[];
   unavailable: boolean;
@@ -132,10 +123,6 @@ function deriveDeliveryLeaders(breadth: MarketBreadth): {
     return { items: ranked, unavailable: false };
   }
 
-  // Fall back to most-active names but mark delivery as unavailable.
-  console.warn(
-    "[DeliveryLeaders] No deliveryPercent on mover quotes — showing Unavailable"
-  );
   return {
     items: breadth.mostActive.slice(0, 5),
     unavailable: true,
@@ -194,23 +181,21 @@ function MoverCard({
   deliveryUnavailable?: boolean;
 }) {
   return (
-    <article
-      className={`flex min-w-0 flex-col rounded-2xl border backdrop-blur-md ${theme.background} ${theme.border}`}
-    >
-      <header className="flex items-center justify-between gap-2 border-b border-white/5 px-3 py-2.5">
-        <div className={`flex items-center gap-2 ${theme.accent}`}>
-          <span className="flex h-6 w-6 items-center justify-center rounded-md bg-white/5">
-            {theme.icon}
-          </span>
-          <h3 className="text-[12px] font-bold tracking-tight text-white">
-            {theme.title}
-          </h3>
-        </div>
+    <article className="relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-surface-border-subtle bg-surface-raised">
+      <span
+        aria-hidden
+        className={`absolute inset-y-0 left-0 w-1 ${theme.strip}`}
+      />
+      <header className="flex items-center gap-2 px-3 py-2 pl-4">
+        <span className={theme.accent}>{theme.icon}</span>
+        <h3 className="text-caption font-semibold text-text-primary">
+          {theme.title}
+        </h3>
       </header>
 
-      <ul className="flex flex-1 flex-col gap-1.5 px-3 py-2.5">
+      <ul className="flex flex-1 flex-col gap-0.5 px-2 pb-2 pl-3">
         {items.length === 0 ? (
-          <li className="py-4 text-center text-[11px] text-white/45">
+          <li className="py-3 text-center text-micro text-text-muted">
             No names in this screen
           </li>
         ) : (
@@ -218,9 +203,9 @@ function MoverCard({
             <li key={`${theme.id}-${item.symbol}`}>
               <StockLink
                 symbol={item.symbol}
-                className="flex items-center justify-between gap-2 rounded-md px-1 py-1 transition-colors hover:bg-white/5"
+                className="flex items-center justify-between gap-2 rounded-md px-2 py-1 transition-colors duration-150 hover:bg-white/5"
               >
-                <span className="min-w-0 truncate text-[11px] font-semibold text-white/90">
+                <span className="min-w-0 truncate text-caption font-semibold text-text-primary">
                   {item.symbol}
                 </span>
                 {theme.metric === "change" ? (
@@ -230,7 +215,7 @@ function MoverCard({
                     showIcon={false}
                   />
                 ) : (
-                  <span className="shrink-0 font-mono text-[10px] tabular-nums text-white/70">
+                  <span className="shrink-0 text-micro tabular-nums text-text-secondary">
                     {metricLabel(item, theme.metric, deliveryUnavailable)}
                   </span>
                 )}
@@ -240,10 +225,10 @@ function MoverCard({
         )}
       </ul>
 
-      <footer className="border-t border-white/5 px-3 py-2">
+      <footer className="px-3 pb-2 pl-4">
         <Link
           href={theme.viewAllHref}
-          className={`inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider ${theme.accent} hover:underline`}
+          className={`text-micro font-semibold ${theme.accent} transition-opacity duration-150 hover:opacity-80`}
         >
           View All →
         </Link>
@@ -254,24 +239,24 @@ function MoverCard({
 
 export function MarketMoversCards({ breadth }: { breadth: MarketBreadth }) {
   return (
-    <div className="w-full space-y-3">
+    <div className="w-full space-y-2">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-text-primary">
+          <h2 className="text-minor-section font-semibold text-text-primary">
             Market Movers
           </h2>
-          <p className="mt-0.5 text-xs text-text-muted">
-            {breadth.universeLabel ?? "Entire NSE"} · institutional screens
+          <p className="mt-1 text-caption text-text-muted">
+            {breadth.universeLabel ?? "Entire NSE"}
           </p>
         </div>
         <Link
           href="/markets"
-          className="text-[11px] font-semibold text-accent hover:underline"
+          className="text-caption font-semibold text-accent transition-opacity duration-150 hover:opacity-80"
         >
-          Open Markets →
+          Markets →
         </Link>
       </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
         {CARD_THEMES.map((theme) => {
           const { items, deliveryUnavailable } = itemsForCard(theme, breadth);
           return (

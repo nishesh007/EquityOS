@@ -9,6 +9,7 @@ import { getMarketStatus, isMarketOpen } from "@/lib/market/session";
 import type { SharedRecommendation } from "@/lib/recommendations/shared-recommendation";
 import { PAPER_TRADING_CONFIG } from "@/lib/paper-trading/config";
 import { computeTradePnl } from "@/lib/paper-trading/kpis";
+import { applyPriceExcursion } from "@/lib/paper-trading/outcomes/lifecycle";
 import {
   loadPaperTradingState,
   savePaperTradingState,
@@ -25,6 +26,11 @@ import type {
 } from "@/lib/paper-trading/types";
 
 const STRATEGIES: PaperStrategy[] = ["intraday", "scalping", "swing"];
+
+export interface PaperTradeProvenance {
+  sessionId?: string | null;
+  scanId?: string | null;
+}
 
 function createId(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random()
@@ -61,7 +67,10 @@ function buildAiExplanation(rec: SharedRecommendation): string {
   return parts.join(" ");
 }
 
-function toSnapshot(rec: SharedRecommendation): PaperRecommendationSnapshot {
+function toSnapshot(
+  rec: SharedRecommendation,
+  provenance?: PaperTradeProvenance
+): PaperRecommendationSnapshot {
   return {
     recommendationId: rec.id,
     symbol: rec.symbol,
@@ -83,6 +92,8 @@ function toSnapshot(rec: SharedRecommendation): PaperRecommendationSnapshot {
     marketRegime: rec.marketRegime ?? "",
     timestamp: rec.timestamp,
     aiExplanation: buildAiExplanation(rec),
+    sessionId: provenance?.sessionId ?? null,
+    scanId: provenance?.scanId ?? null,
   };
 }
 
@@ -104,14 +115,17 @@ function timelineEvent(
 function createTradeFromRecommendation(
   rec: SharedRecommendation,
   strategy: PaperStrategy,
-  now: Date
+  now: Date,
+  provenance?: PaperTradeProvenance
 ): PaperTrade {
   const entryPrice = rec.entry;
   const shares = PAPER_TRADING_CONFIG.defaultShares;
   const targets = ensureThreeTargets(rec.targets, entryPrice);
-  const snapshot = toSnapshot(rec);
+  const snapshot = toSnapshot(rec, provenance);
   const entryAt = now.toISOString();
   const { pnl, returnPercent } = computeTradePnl(entryPrice, entryPrice, shares);
+  const horizon =
+    rec.holdingPeriod?.trim() || rec.primaryStrategyId || strategy;
 
   return {
     id: createId("pt"),
@@ -143,6 +157,14 @@ function createTradeFromRecommendation(
       timelineEvent("buy_executed", "BUY Executed", entryAt, entryPrice),
     ],
     updatedAt: entryAt,
+    sessionId: provenance?.sessionId ?? null,
+    scanId: provenance?.scanId ?? null,
+    horizon,
+    mfePercent: 0,
+    maePercent: 0,
+    maxDrawdownPercent: 0,
+    timeToFirstTargetMs: null,
+    timeToStopLossMs: null,
   };
 }
 
@@ -311,6 +333,7 @@ function closeTrade(
   const holdingMs = Math.max(0, now.getTime() - Date.parse(trade.entryAt));
   const targetsHit = Math.max(trade.targetsHit, highestTarget);
   const timeline = [...trade.timeline];
+  const excursions = applyPriceExcursion(trade, exitPrice);
 
   if (reason.startsWith("target_")) {
     for (let level = trade.targetsHit + 1; level <= highestTarget; level++) {
@@ -338,6 +361,15 @@ function closeTrade(
 
   timeline.push(timelineEvent("closed", "Closed", exitAt, exitPrice));
 
+  const timeToFirstTargetMs =
+    reason.startsWith("target_")
+      ? (trade.timeToFirstTargetMs ?? holdingMs)
+      : trade.timeToFirstTargetMs ?? null;
+  const timeToStopLossMs =
+    reason === "stop_loss"
+      ? (trade.timeToStopLossMs ?? holdingMs)
+      : trade.timeToStopLossMs ?? null;
+
   return {
     ...trade,
     status: statusFromExit(reason),
@@ -351,6 +383,9 @@ function closeTrade(
     holdingMs,
     timeline,
     updatedAt: exitAt,
+    ...excursions,
+    timeToFirstTargetMs,
+    timeToStopLossMs,
   };
 }
 
@@ -389,10 +424,15 @@ function openCountForStrategy(
  */
 export async function runPaperTradingCycle(
   recommendations: readonly SharedRecommendation[],
-  options?: { now?: Date; persist?: boolean }
+  options?: {
+    now?: Date;
+    persist?: boolean;
+    provenance?: PaperTradeProvenance;
+  }
 ): Promise<PaperTradingState> {
   const now = options?.now ?? new Date();
   const persist = options?.persist !== false;
+  const provenance = options?.provenance;
   const state = loadPaperTradingState();
   const testedIds = new Set(state.testedRecommendationIds);
   const marketClosed = !isMarketOpen(now);
@@ -426,7 +466,12 @@ export async function runPaperTradingCycle(
     });
 
     for (const rec of candidates) {
-      const trade = createTradeFromRecommendation(rec, strategy, now);
+      const trade = createTradeFromRecommendation(
+        rec,
+        strategy,
+        now,
+        provenance
+      );
       trades.push(trade);
       testedIds.add(rec.id);
       openSymbols.add(trade.symbol);
@@ -448,6 +493,7 @@ export async function runPaperTradingCycle(
       price,
       trade.shares
     );
+    const excursions = applyPriceExcursion(trade, price);
 
     const updated: PaperTrade = {
       ...trade,
@@ -456,6 +502,7 @@ export async function runPaperTradingCycle(
       returnPercent,
       holdingMs,
       updatedAt: nowIso,
+      ...excursions,
     };
 
     const exit = resolveExit(updated, price, now);

@@ -9,11 +9,14 @@ import type {
 import { shouldRunOpportunityScan } from "@/lib/opportunity-engine/scan-schedule";
 import { isOpportunityScanSession } from "@/lib/market/session";
 import type { MarketIntelligenceSnapshot } from "@/lib/market-intelligence";
-import {
-  selectRecommendationsWithFallback,
-  type SharedMarketSnapshot,
-  type SharedRecommendation,
+import type {
+  SharedMarketSnapshot,
+  SharedRecommendation,
 } from "@/lib/recommendations";
+import { selectRecommendationsWithFallback } from "@/lib/recommendations";
+import {
+  loadPublishedRecommendationsList,
+} from "@/lib/recommendations/published/server";
 import {
   getCachedMarketIntelligenceSnapshot,
 } from "@/services/marketIntelligence";
@@ -67,16 +70,7 @@ export async function fetchSharedRecommendationsFresh(
   limit?: number
 ): Promise<SharedRecommendation[]> {
   const state = await ensureOpportunityEngineHydrated();
-  // Cache-only MI — never run trading pipeline on recommendation reads.
-  const { resolveCachedIntelligence } = await import(
-    "@/lib/market-orchestrator/dashboardContext"
-  );
-  const marketIntelligence =
-    getCachedMarketIntelligenceSnapshot() ?? resolveCachedIntelligence();
-  const recommendations = selectRecommendationsWithFallback(
-    state,
-    toSharedSnapshot(marketIntelligence)
-  );
+  const recommendations = await loadPublishedRecommendationsList(state);
   logPipelineStages("api-recommendations", {
     universeReceived: state.universeSize,
     quotesReceived: 0,

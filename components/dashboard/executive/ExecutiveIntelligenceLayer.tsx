@@ -12,10 +12,10 @@ import {
   loadDashboardRecommendations,
   loadDashboardUpcomingResults,
 } from "@/lib/market-orchestrator/orchestrator";
-import { selectInstitutionalStrategyDashboard } from "@/lib/recommendations";
+import { selectVerifiedConsensusStrategyDashboard } from "@/lib/recommendations/verification";
+import { readPublishedFromState } from "@/lib/recommendations/published/client";
 import {
   loadOpportunityEngineState,
-  toSharedSnapshot,
 } from "@/services/opportunityEngine";
 
 export async function ExecutiveIntelligenceLayer() {
@@ -28,9 +28,19 @@ export async function ExecutiveIntelligenceLayer() {
   ]);
 
   const marketIntelligence = aboveFold.intelligence;
-  const slots = selectInstitutionalStrategyDashboard(
-    state,
-    toSharedSnapshot(marketIntelligence)
+  const published = readPublishedFromState(state);
+  const slots = selectVerifiedConsensusStrategyDashboard(
+    published?.recommendations ?? [],
+    published?.generatedAt ?? state.lastScannedAt ?? new Date(0).toISOString(),
+    {
+      breadthScore: marketIntelligence?.context?.breadthScore ?? null,
+      asOf: published?.generatedAt ?? state.lastScannedAt ?? null,
+      regime: marketIntelligence?.regime?.regime ?? null,
+      marketTrend:
+        marketIntelligence?.context?.marketTrend ??
+        marketIntelligence?.regime?.regime ??
+        null,
+    }
   );
 
   const briefing = buildDailyBriefing({

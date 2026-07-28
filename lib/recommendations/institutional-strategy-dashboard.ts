@@ -19,11 +19,11 @@ import {
   type InstitutionalStrategyId,
 } from "@/lib/recommendations/horizons/ids";
 import { validateInstitutionalTradeLevels } from "@/lib/recommendations/recommendation-validator";
+import { readPublishedFromState } from "@/lib/recommendations/published/client";
 import type {
   SharedMarketSnapshot,
   SharedRecommendation,
 } from "@/lib/recommendations/shared-recommendation";
-import { selectHorizonDashboardSlots } from "@/lib/recommendations/horizons/adapters";
 
 export type { InstitutionalStrategyId };
 export { INSTITUTIONAL_STRATEGY_IDS, INSTITUTIONAL_STRATEGY_META };
@@ -65,6 +65,24 @@ export interface InstitutionalStrategyPick {
   expectedUpsidePercent: number | null;
   conviction: number;
   lastScanTime: string;
+  /** Historical win rate % from completed paper outcomes (read-time). */
+  expectedWinRate?: number | null;
+  /** True when relevant cohort sample < display threshold. */
+  expectedWinRateEstimated?: boolean;
+  /** True only when sample ≥ 30 — UI may show Expected Win Rate. */
+  showExpectedWinRate?: boolean;
+  /** Model / AI confidence (0–100). Shown when win rate is suppressed. */
+  aiConfidence?: number | null;
+  /** Historical confidence from ranking sample depth (0–100). */
+  historicalConfidence?: number | null;
+  /** Reason when Expected Win Rate is hidden. */
+  winRateSuppressedReason?: string | null;
+  /** Consensus Engine score (0–100). */
+  consensusScore?: number | null;
+  /** 1-based consensus rank among quality-passed set. */
+  consensusRank?: number | null;
+  /** Win-rate sample size used by consensus. */
+  winRateSampleSize?: number | null;
 }
 
 export interface InstitutionalStrategySlot {
@@ -87,9 +105,6 @@ export const NO_RECOMMENDATION_AVAILABLE_MESSAGE = "No Recommendation Available"
 
 /** @deprecated Use NO_RECOMMENDATION_AVAILABLE_MESSAGE (Sprint 9F.6). */
 export const NO_HIGH_CONVICTION_MESSAGE = NO_RECOMMENDATION_AVAILABLE_MESSAGE;
-
-let cachedDashboardKey = "";
-let cachedDashboardSlots: InstitutionalStrategySlot[] = [];
 
 function convictionOf(recommendation: SharedRecommendation): number {
   return Math.max(recommendation.conviction, recommendation.confidence);
@@ -164,25 +179,27 @@ function toDashboardPick(
 }
 
 /**
- * Prefer populated strategyDashboard slots; otherwise project from the
- * shared recommendations list. Never let an empty dashboard override recs.
+ * Prefer Institutional Ranking when recommendations exist; otherwise keep
+ * baked published slots / empty shell. Does not mutate Published SSOT.
  */
 export function resolveDashboardSlotsFromRecommendations(options: {
   strategyDashboard?: InstitutionalStrategySlot[] | null;
   recommendations: SharedRecommendation[];
   lastScanTime?: string | null;
+  scoreOf?: (recommendation: SharedRecommendation) => number;
 }): InstitutionalStrategySlot[] {
-  const { strategyDashboard, recommendations, lastScanTime } = options;
-  if (strategyDashboard && filledSlotCount(strategyDashboard) > 0) {
-    return strategyDashboard;
-  }
+  const { strategyDashboard, recommendations, lastScanTime, scoreOf } = options;
   if (recommendations.length > 0) {
     return rankInstitutionalSlotsFromRecommendations(
       recommendations,
       lastScanTime ??
         recommendations[0]?.timestamp ??
-        new Date(0).toISOString()
+        new Date(0).toISOString(),
+      scoreOf ? { scoreOf } : undefined
     );
+  }
+  if (strategyDashboard && filledSlotCount(strategyDashboard) > 0) {
+    return strategyDashboard;
   }
   return (
     strategyDashboard ??
@@ -194,31 +211,48 @@ export function resolveDashboardSlotsFromRecommendations(options: {
 }
 
 /**
- * Build the seven institutional slots via Horizon-First pipelines.
- * Cached by tradingDate:scanCount:lastScannedAt (+ regime) — no I/O.
+ * Read published dashboard slots — no request-time horizon pipeline.
  */
 export function selectInstitutionalStrategyDashboard(
   state: OpportunityEngineState,
-  shared?: SharedMarketSnapshot
+  _shared?: SharedMarketSnapshot
 ): InstitutionalStrategySlot[] {
-  const key = `v9f6-dash:${state.tradingDate}:${state.scanCount}:${state.lastScannedAt}:${shared?.regime ?? ""}`;
-  if (key === cachedDashboardKey) return cachedDashboardSlots;
+  const published = readPublishedFromState(state);
+  if (published?.strategyDashboard?.length) {
+    return published.strategyDashboard;
+  }
 
-  const slots = selectHorizonDashboardSlots(state, shared);
-  cachedDashboardKey = key;
-  cachedDashboardSlots = slots;
-  return slots;
+  const lastScanTime = state.lastScannedAt ?? new Date(0).toISOString();
+  return INSTITUTIONAL_STRATEGY_IDS.map((strategyId) => {
+    const meta = INSTITUTIONAL_STRATEGY_META[strategyId];
+    return {
+      strategyId,
+      label: meta.label,
+      emoji: meta.emoji,
+      href: meta.href,
+      pick: null,
+      recommendationCount: 0,
+      lastScanTime,
+    };
+  });
 }
 
 /**
  * Project seven dashboard cards from SharedRecommendation[].
  * Matches primaryStrategyId, then OE category → horizon, then fills
- * remaining empty slots with unused high-conviction recommendations.
+ * remaining empty slots with unused high-ranked recommendations.
+ *
+ * By default ranks by conviction; pass `scoreOf` (e.g. institutionalRank)
+ * to prefer Institutional Ranking Engine scores.
  */
 export function rankInstitutionalSlotsFromRecommendations(
   recommendations: SharedRecommendation[],
-  lastScanTime: string
+  lastScanTime: string,
+  options?: { scoreOf?: (recommendation: SharedRecommendation) => number }
 ): InstitutionalStrategySlot[] {
+  const scoreOf =
+    options?.scoreOf ??
+    ((recommendation: SharedRecommendation) => convictionOf(recommendation));
   const scanTime =
     lastScanTime ||
     recommendations[0]?.timestamp ||
@@ -250,7 +284,7 @@ export function rankInstitutionalSlotsFromRecommendations(
     const matching = byHorizon.get(strategyId) ?? [];
     let best: SharedRecommendation | null = null;
     for (const recommendation of matching) {
-      if (!best || convictionOf(recommendation) > convictionOf(best)) {
+      if (!best || scoreOf(recommendation) > scoreOf(best)) {
         best = recommendation;
       }
     }
@@ -260,10 +294,10 @@ export function rankInstitutionalSlotsFromRecommendations(
     }
   }
 
-  // Fill remaining empty horizons so 20 valid recs can still show 7 cards.
+  // Fill remaining empty horizons so valid recs can still show 7 cards.
   const leftovers = actionable
     .filter((r) => !usedSymbols.has(r.symbol.toUpperCase()))
-    .sort((a, b) => convictionOf(b) - convictionOf(a));
+    .sort((a, b) => scoreOf(b) - scoreOf(a));
 
   for (const strategyId of INSTITUTIONAL_STRATEGY_IDS) {
     if (picks.has(strategyId)) continue;
@@ -303,6 +337,5 @@ export function parseInstitutionalStrategyId(
 
 /** @internal test helper */
 export function __resetInstitutionalDashboardCacheForTests(): void {
-  cachedDashboardKey = "";
-  cachedDashboardSlots = [];
+  // Published SSOT — no request-time dashboard cache.
 }

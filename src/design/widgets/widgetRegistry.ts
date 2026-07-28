@@ -14,14 +14,13 @@ export const WORKSPACE_REGIONS: readonly WorkspaceRegion[] = Object.freeze([
   "bottom",
 ]);
 
-/** Workspace widget sizes → 12-column grid spans (snap-to-grid). */
-export type WorkspaceSize = "small" | "medium" | "large" | "xl" | "full";
+/** Workspace widget sizes → 12-column grid spans (four sizes only). */
+export type WorkspaceSize = "small" | "medium" | "large" | "full";
 
 export const WORKSPACE_SIZES: readonly WorkspaceSize[] = Object.freeze([
   "small",
   "medium",
   "large",
-  "xl",
   "full",
 ]);
 
@@ -30,7 +29,6 @@ export const WORKSPACE_SIZE_SPANS: Readonly<Record<WorkspaceSize, number>> =
     small: 4,
     medium: 6,
     large: 8,
-    xl: 10,
     full: 12,
   });
 
@@ -39,7 +37,6 @@ export const WORKSPACE_SIZE_LABELS: Readonly<Record<WorkspaceSize, string>> =
     small: "Small",
     medium: "Medium",
     large: "Large",
-    xl: "Extra Large",
     full: "Full Width",
   });
 
@@ -85,6 +82,7 @@ export interface WidgetDefinition {
 /** Built-in dockable widget catalog (matches the dashboard's sections). */
 const BUILT_IN_WIDGETS: readonly WidgetDefinition[] = Object.freeze([
   { id: "market-snapshot", label: "Market Snapshot", description: "Indices with sparklines and session range", category: "charts", defaultRegion: "snapshot", defaultSize: "full", permanent: true },
+  { id: "market-internals", label: "Market Internals", description: "Institutional market health — bias, trend, momentum, volatility, confidence", category: "market", defaultRegion: "snapshot", defaultSize: "full", permanent: true },
   { id: "market-pulse", label: "Market Pulse", description: "VIX, flow cues and market session pulse", category: "market", defaultRegion: "snapshot", defaultSize: "full" },
   { id: "market-breadth", label: "Market Breadth", description: "Detailed breadth, participation, strength and mood — on Markets", category: "market", defaultRegion: "snapshot", defaultSize: "full" },
   { id: "market-heatmap", label: "Sector Heatmap", description: "Interactive NSE sector & stock heatmap with drilldowns", category: "market", defaultRegion: "snapshot", defaultSize: "full" },
@@ -98,7 +96,7 @@ const BUILT_IN_WIDGETS: readonly WidgetDefinition[] = Object.freeze([
   { id: "ai-brief", label: "AI Market Brief", description: "AI-generated market summary", category: "ai", defaultRegion: "main", defaultSize: "small" },
   { id: "economic-calendar", label: "Event Intelligence", description: "Critical events, earnings, corporate actions & macro — Event Intelligence", category: "calendar", defaultRegion: "main", defaultSize: "full" },
   { id: "results-calendar", label: "Results Calendar", description: "Upcoming earnings and events", category: "calendar", defaultRegion: "main", defaultSize: "medium" },
-  { id: "market-news", label: "News", description: "Verified market headlines ticker", category: "news", defaultRegion: "main", defaultSize: "medium" },
+  { id: "market-news", label: "AI News", description: "Verified market headlines ticker", category: "news", defaultRegion: "main", defaultSize: "medium" },
   { id: "earnings-intelligence", label: "Earnings Intelligence", description: "Ranked earnings dashboard, alerts and history", category: "tables", defaultRegion: "bottom", defaultSize: "full" },
   { id: "validation-center", label: "Research Confidence", description: "Link to the dedicated research confidence page", category: "validation", defaultRegion: "main", defaultSize: "small" },
 ]);

@@ -13,7 +13,10 @@ import {
 } from "@/lib/recommendations/horizons/ids";
 import type { SharedMarketSnapshot } from "@/lib/recommendations/shared-recommendation";
 import { runHorizonPipelines } from "@/lib/recommendations/horizons/pipeline";
-import type { HorizonRecommendation } from "@/lib/recommendations/horizons/types";
+import type {
+  HorizonPipelineSnapshot,
+  HorizonRecommendation,
+} from "@/lib/recommendations/horizons/types";
 import { resolvePrice } from "@/lib/recommendations/horizons/metrics";
 import type {
   InstitutionalStrategyPick,
@@ -60,16 +63,12 @@ function toDashboardPick(
 }
 
 /**
- * Dashboard slots from independent horizon pipelines.
- * Pick = highest-ranked row in that horizon's published table (same dataset).
+ * Dashboard slots from a pre-materialized horizon snapshot (published SSOT).
  */
-export function selectHorizonDashboardSlots(
-  state: OpportunityEngineState,
-  shared?: SharedMarketSnapshot
+export function selectHorizonDashboardSlotsFromSnapshot(
+  snapshot: HorizonPipelineSnapshot,
+  lastScanTime: string
 ): InstitutionalStrategySlot[] {
-  const snapshot = runHorizonPipelines(state, shared);
-  const lastScanTime = state.lastScannedAt ?? new Date(0).toISOString();
-
   return INSTITUTIONAL_STRATEGY_IDS.map((strategyId) => {
     const meta = INSTITUTIONAL_STRATEGY_META[strategyId];
     const rows = snapshot[strategyId];
@@ -88,4 +87,17 @@ export function selectHorizonDashboardSlots(
       lastScanTime,
     };
   });
+}
+
+/**
+ * Dashboard slots from independent horizon pipelines.
+ * Pick = highest-ranked row in that horizon's published table (same dataset).
+ */
+export function selectHorizonDashboardSlots(
+  state: OpportunityEngineState,
+  shared?: SharedMarketSnapshot
+): InstitutionalStrategySlot[] {
+  const snapshot = runHorizonPipelines(state, shared);
+  const lastScanTime = state.lastScannedAt ?? new Date(0).toISOString();
+  return selectHorizonDashboardSlotsFromSnapshot(snapshot, lastScanTime);
 }

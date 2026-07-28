@@ -123,6 +123,8 @@ export interface OpportunityLongTermRanking {
   risk: number;
   reward: number;
   frameworkScore: number;
+  /** Optional trend quality 0–100 when provided by enrichment layers. */
+  trendScore?: number;
 }
 
 export interface OpportunityCandidate {
@@ -321,6 +323,16 @@ export interface OpportunityEngineState {
       reasons: string[];
     }>;
   } | null;
+  /**
+   * Canonical published recommendations — materialized once per scan.
+   * All UI/API consumers must read this instead of recomputing projections.
+   */
+  published?: import("@/lib/recommendations/published/types").PublishedRecommendationsBundle | null;
+  /**
+   * Last Recommendation Quality Gate report (set at publish time).
+   * Diagnostics only — not a second recommendation source.
+   */
+  qualityGate?: import("@/lib/recommendations/quality-gate").QualityGateReport | null;
 }
 
 export interface OpportunityDaySnapshot {

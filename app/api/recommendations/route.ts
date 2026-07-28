@@ -12,13 +12,7 @@ import {
   wireWorkspaceHistory,
 } from "@/src/core/recommendations";
 import { getStrategyPlatformStatus } from "@/src/modules/strategies";
-import {
-  selectRecommendationsWithFallback,
-} from "@/lib/recommendations";
-import {
-  loadOpportunityEngineState,
-  toSharedSnapshot,
-} from "@/services/opportunityEngine";
+import { loadOpportunityEngineState } from "@/services/opportunityEngine";
 import { getCachedMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
 import { resolveCachedIntelligence } from "@/lib/market-orchestrator/dashboardContext";
 import {
@@ -30,7 +24,19 @@ import {
   peekMemoryPersistedData,
 } from "@/lib/opportunity-engine/persistence";
 import { buildRecommendationFreshness } from "@/lib/opportunity-engine/recommendation-freshness";
-import { reportRecommendationStages } from "@/lib/recommendations/stage-trace";
+import {
+  assertPublishedConsumerIntegrity,
+  loadPublishedRecommendations,
+  validatePublishedIntegrity,
+} from "@/lib/recommendations/published/server";
+import { filledSlotCount } from "@/lib/recommendations";
+import { enrichRankedRecommendations } from "@/lib/institutional-intelligence/enrich";
+import {
+  applyVerificationEngine,
+  filterPublishableRecommendations,
+  selectVerifiedConsensusStrategyDashboard,
+} from "@/lib/recommendations/verification";
+import { runRecommendationCalibration } from "@/lib/recommendations/calibration";
 
 const STATUSES = new Set<RecommendationRecordStatus>([
   "ACTIVE",
@@ -51,33 +57,94 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Hydrate Postgres → .data → /tmp → memory. Never await OE scan on this GET.
   const state = await loadOpportunityEngineState();
   const marketIntelligence =
     getCachedMarketIntelligenceSnapshot() ?? resolveCachedIntelligence();
-  const recommendations = requestedStatus
-    ? listRecommendationHistory(state, requestedStatus)
-    : [];
+
+  const published = await loadPublishedRecommendations(state);
+  if (published) {
+    validatePublishedIntegrity(published, state);
+  }
+
+  const apiConsumer = assertPublishedConsumerIntegrity("api", published, state);
+  if (apiConsumer.status === "rejected") {
+    return NextResponse.json(
+      {
+        error: "Published recommendations failed integrity validation.",
+        reason: apiConsumer.reason,
+      },
+      { status: 409 }
+    );
+  }
 
   const sharedRecommendations =
     !requestedStatus || requestedStatus === "ACTIVE"
-      ? selectRecommendationsWithFallback(
-          state,
-          toSharedSnapshot(marketIntelligence)
-        )
+      ? (published?.recommendations ?? [])
       : [];
 
-  const { slots: strategyDashboard, report: stageReport } =
-    reportRecommendationStages(
-      "GET /api/recommendations",
-      state,
-      sharedRecommendations,
-      toSharedSnapshot(marketIntelligence)
-    );
+  const rankingMarket = {
+    breadthScore: marketIntelligence?.context?.breadthScore ?? null,
+    asOf: published?.generatedAt ?? state.lastScannedAt ?? null,
+    regime: marketIntelligence?.regime?.regime ?? null,
+    marketTrend:
+      marketIntelligence?.context?.marketTrend ??
+      marketIntelligence?.regime?.regime ??
+      null,
+  };
+  const verifiedRecommendations = applyVerificationEngine(
+    sharedRecommendations,
+    rankingMarket
+  );
+  const publishableRecommendations = filterPublishableRecommendations(
+    verifiedRecommendations
+  );
+  const calibration = runRecommendationCalibration();
+  const winRateById = new Map(
+    publishableRecommendations.map((r) => [r.id, r] as const)
+  );
+  const enrichedRecommendations = enrichRankedRecommendations(
+    publishableRecommendations,
+    {
+      ...rankingMarket,
+      calibrationConfidence: calibration.confidence,
+    }
+  ).map((rec) => {
+    const wr = winRateById.get(rec.id);
+    const sampleSize = wr?.sampleSize ?? 0;
+    const showExpectedWinRate = sampleSize >= 30;
+    return {
+      ...rec,
+      expectedWinRate: wr?.expectedWinRate ?? rec.expectedWinRate,
+      sampleSize,
+      expectedWinRateEstimated: wr?.expectedWinRateEstimated ?? true,
+      showExpectedWinRate,
+      aiConfidence: Math.max(rec.confidence, rec.conviction),
+      historicalConfidence: Math.round(
+        (wr?.rankingConfidence ?? rec.rankingConfidence ?? 0) * 100
+      ),
+      winRateSuppressedReason: showExpectedWinRate
+        ? null
+        : "Historical dataset is insufficient for statistically meaningful win-rate estimation.",
+      verificationStatus: wr?.verificationStatus,
+      verificationScore: wr?.verificationScore,
+      verificationReasons: wr?.verificationReasons,
+    };
+  });
+  const strategyDashboard =
+    publishableRecommendations.length > 0
+      ? selectVerifiedConsensusStrategyDashboard(
+          sharedRecommendations,
+          published?.generatedAt ??
+            state.lastScannedAt ??
+            new Date(0).toISOString(),
+          rankingMarket
+        )
+      : (published?.strategyDashboard ?? []);
+  const recommendationCount = filledSlotCount(strategyDashboard);
 
   const freshness = buildRecommendationFreshness(
     state,
-    sharedRecommendations.length
+    Math.max(sharedRecommendations.length, recommendationCount)
   );
 
   logPipelineStages(
@@ -100,24 +167,30 @@ export async function GET(request: NextRequest) {
       lastScannedAt: state.lastScannedAt,
       stale: freshness.stale,
       staleReason: freshness.staleReason,
-      firstZeroStage: stageReport.firstZeroStage,
+      publishedScanId: published?.scanId ?? null,
+      publishedVersion: published?.recommendationVersion ?? null,
     }
   );
 
   return NextResponse.json({
-    recommendations: sharedRecommendations,
+    recommendations: enrichedRecommendations,
     strategyDashboard,
+    published: published
+      ? {
+          sessionId: published.sessionId,
+          scanId: published.scanId,
+          generatedAt: published.generatedAt,
+          recommendationVersion: published.recommendationVersion,
+        }
+      : null,
     history: requestedStatus
-      ? recommendations
+      ? listRecommendationHistory(state, requestedStatus)
       : listRecommendationHistory(state),
-    // Closed-market contract: serve latest successful scan with stale markers.
-    generatedAt: freshness.generatedAt,
+    generatedAt: published?.generatedAt ?? freshness.generatedAt,
     marketDate: freshness.marketDate,
     stale: freshness.stale,
     staleReason: freshness.staleReason,
     freshness,
-    // Production diagnostics — stage counts for empty-recs triage.
-    stageTrace: stageReport,
     marketIntelligence,
     strategyPlatform: getStrategyPlatformStatus(),
     pipeline: state.pipeline ?? null,

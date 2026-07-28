@@ -2,9 +2,9 @@
 
 /**
  * SSR: persisted institutional slots + OE status peek only.
- * On mount: immediately fetch GET /api/recommendations and upgrade slots
- * when the API has more populated picks than current React state.
- * Never wipe populated client picks with an empty SSR initialSlots.
+ * On mount: immediately fetch GET /api/recommendations.
+ * Banner state uses publishedRecommendations only.
+ * Strategy cards use strategyDashboard only.
  */
 
 import { AiOpportunitiesWidget } from "@/components/dashboard/widgets/DashboardWidgets";
@@ -21,9 +21,17 @@ import {
 import type { RecommendationFreshness } from "@/lib/opportunity-engine/recommendation-freshness";
 import { useEffect, useState } from "react";
 
+export interface PublishedMeta {
+  sessionId: string | null;
+  scanId: string | null;
+  generatedAt: string | null;
+  recommendationVersion: string | null;
+}
+
 async function fetchRecommendations(): Promise<{
   strategyDashboard: InstitutionalStrategySlot[] | null;
-  recommendations: SharedRecommendation[];
+  publishedRecommendations: SharedRecommendation[];
+  publishedMeta: PublishedMeta;
   status: OpportunityStatusSnapshot | null;
   freshness: RecommendationFreshness | null;
 }> {
@@ -32,24 +40,43 @@ async function fetchRecommendations(): Promise<{
     fetch("/api/opportunities/scan", { cache: "no-store" }),
   ]);
 
-  let recommendations: SharedRecommendation[] = [];
+  let publishedRecommendations: SharedRecommendation[] = [];
   let strategyDashboard: InstitutionalStrategySlot[] | null = null;
   let freshness: RecommendationFreshness | null = null;
+  let publishedMeta: PublishedMeta = {
+    sessionId: null,
+    scanId: null,
+    generatedAt: null,
+    recommendationVersion: null,
+  };
 
   if (recsRes.ok) {
     const json = (await recsRes.json()) as {
       recommendations?: SharedRecommendation[];
       strategyDashboard?: InstitutionalStrategySlot[];
+      published?: {
+        sessionId?: string;
+        scanId?: string;
+        generatedAt?: string;
+        recommendationVersion?: string;
+      } | null;
       freshness?: RecommendationFreshness;
       generatedAt?: string | null;
       marketDate?: string | null;
       stale?: boolean;
       staleReason?: string | null;
     };
-    recommendations = json.recommendations ?? [];
+    publishedRecommendations = json.recommendations ?? [];
     if (Array.isArray(json.strategyDashboard)) {
       strategyDashboard = json.strategyDashboard;
     }
+    publishedMeta = {
+      sessionId: json.published?.sessionId ?? null,
+      scanId: json.published?.scanId ?? null,
+      generatedAt:
+        json.published?.generatedAt ?? json.generatedAt ?? null,
+      recommendationVersion: json.published?.recommendationVersion ?? null,
+    };
     freshness =
       json.freshness ??
       (json.generatedAt || json.stale
@@ -59,7 +86,7 @@ async function fetchRecommendations(): Promise<{
             stale: Boolean(json.stale),
             staleReason: json.staleReason ?? null,
             displayMessage: null,
-            hasRecommendations: recommendations.length > 0,
+            hasRecommendations: publishedRecommendations.length > 0,
           }
         : null);
   }
@@ -82,7 +109,13 @@ async function fetchRecommendations(): Promise<{
     };
   }
 
-  return { strategyDashboard, recommendations, status, freshness };
+  return {
+    strategyDashboard,
+    publishedRecommendations,
+    publishedMeta,
+    status,
+    freshness,
+  };
 }
 
 function kickBackgroundScan(): void {
@@ -95,86 +128,120 @@ export function HydratedAiOpportunities({
   initialSlots,
   initialStatus,
   initialFreshness = null,
+  initialPublishedRecommendations = [],
+  initialPublishedMeta = null,
 }: {
   initialSlots: InstitutionalStrategySlot[];
   initialStatus: OpportunityStatusSnapshot;
   initialFreshness?: RecommendationFreshness | null;
+  initialPublishedRecommendations?: SharedRecommendation[];
+  initialPublishedMeta?: PublishedMeta | null;
 }) {
-  const [slots, setSlots] = useState(initialSlots);
+  const [strategyDashboard, setStrategyDashboard] = useState(initialSlots);
+  const [publishedRecommendations, setPublishedRecommendations] = useState(
+    initialPublishedRecommendations
+  );
+  const [publishedMeta, setPublishedMeta] = useState<PublishedMeta>(
+    () =>
+      initialPublishedMeta ?? {
+        sessionId: null,
+        scanId: null,
+        generatedAt: initialFreshness?.generatedAt ?? null,
+        recommendationVersion: null,
+      }
+  );
   const [freshness, setFreshness] = useState<RecommendationFreshness | null>(
     initialFreshness
   );
   const [status, setStatus] = useState<OpportunityStatusSnapshot>(() => ({
     ...initialStatus,
-    recommendationCount: filledSlotCount(initialSlots),
+    recommendationCount: initialPublishedRecommendations.length,
   }));
   const initialScanKey = `${initialStatus.scanCount}:${initialStatus.lastScannedAt ?? ""}`;
 
-  // Sync SSR props — never replace populated client picks with empty SSR slots.
+  // Sync SSR props — never replace populated client dashboard with empty SSR slots.
   useEffect(() => {
-    let keptPopulatedClientSlots = false;
-    setSlots((current) => {
+    setStrategyDashboard((current) => {
       if (
         filledSlotCount(initialSlots) === 0 &&
         filledSlotCount(current) > 0
       ) {
-        keptPopulatedClientSlots = true;
         return current;
       }
       return initialSlots;
     });
+    if (initialPublishedRecommendations.length > 0) {
+      setPublishedRecommendations(initialPublishedRecommendations);
+    }
+    if (initialPublishedMeta) {
+      setPublishedMeta(initialPublishedMeta);
+    }
     setFreshness(initialFreshness);
-    setStatus((prev) => ({
+    setStatus({
       isScanning: initialStatus.isScanning,
       lastScannedAt: initialStatus.lastScannedAt,
       scanCount: initialStatus.scanCount,
-      recommendationCount: keptPopulatedClientSlots
-        ? Math.max(prev.recommendationCount, filledSlotCount(initialSlots))
-        : filledSlotCount(initialSlots),
+      recommendationCount: Math.max(
+        initialPublishedRecommendations.length,
+        initialStatus.recommendationCount
+      ),
       lastError: initialStatus.lastError ?? null,
       scanQueued: false,
-    }));
+    });
   }, [
     initialSlots,
     initialFreshness,
+    initialPublishedRecommendations,
+    initialPublishedMeta,
     initialStatus.isScanning,
     initialStatus.lastScannedAt,
     initialStatus.scanCount,
+    initialStatus.recommendationCount,
     initialStatus.lastError,
   ]);
 
-  // On mount / scan-key change: immediately fetch recommendations (no idle / 8s wait).
+  // On mount / scan-key change: fetch published recommendations + dashboard.
   useEffect(() => {
     let cancelled = false;
 
     kickBackgroundScan();
 
     void fetchRecommendations().then(
-      ({ strategyDashboard, status: nextStatus, freshness: nextFreshness }) => {
+      ({
+        strategyDashboard: nextDashboard,
+        publishedRecommendations: nextPublished,
+        publishedMeta: nextMeta,
+        status: nextStatus,
+        freshness: nextFreshness,
+      }) => {
         if (cancelled) return;
 
         if (nextFreshness) setFreshness(nextFreshness);
+        setPublishedRecommendations(nextPublished);
+        setPublishedMeta(nextMeta);
 
-        const apiFilled = filledSlotCount(strategyDashboard);
-        if (strategyDashboard && apiFilled > 0) {
-          setSlots((current) => {
-            const currentFilled = filledSlotCount(current);
-            if (apiFilled > currentFilled) {
-              return strategyDashboard;
+        if (nextDashboard) {
+          setStrategyDashboard((current) => {
+            // Prefer API dashboard when it has more picks; otherwise keep current.
+            if (
+              filledSlotCount(nextDashboard) >= filledSlotCount(current)
+            ) {
+              return nextDashboard;
             }
             return current;
           });
         }
 
         if (nextStatus) {
-          setStatus((prev) => ({
+          setStatus({
             ...nextStatus,
             scanQueued: false,
-            recommendationCount: Math.max(
-              apiFilled,
-              prev.recommendationCount,
-              nextStatus.recommendationCount
-            ),
+            recommendationCount: nextPublished.length,
+          });
+        } else {
+          setStatus((prev) => ({
+            ...prev,
+            recommendationCount: nextPublished.length,
           }));
         }
       }
@@ -187,12 +254,14 @@ export function HydratedAiOpportunities({
 
   const phase: OpportunityUiPhase = deriveOpportunityUiPhase({
     ...status,
-    recommendationCount: filledSlotCount(slots),
+    recommendationCount: publishedRecommendations.length,
   });
 
   return (
     <AiOpportunitiesWidget
-      slots={slots}
+      slots={strategyDashboard}
+      publishedRecommendations={publishedRecommendations}
+      publishedMeta={publishedMeta}
       phase={phase}
       freshness={freshness}
     />

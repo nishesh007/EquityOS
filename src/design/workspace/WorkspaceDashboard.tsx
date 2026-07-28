@@ -716,7 +716,7 @@ export function WorkspaceDashboard({
             key={region}
             aria-label={REGION_LABELS[region]}
             className={cn(
-              "grid grid-cols-12 items-stretch gap-4 transition-all duration-300",
+              "grid grid-cols-12 items-stretch gap-3 transition-[opacity] duration-150",
               editMode &&
                 "min-h-[4.5rem] rounded-xl border border-dashed border-surface-border bg-surface-overlay/40 p-3"
             )}

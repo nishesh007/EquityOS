@@ -90,6 +90,29 @@ export {
   auditRecommendationIntegrity,
   verifyRecommendationIntegrity,
 } from "./trade-integrity";
+export {
+  readPublishedFromState,
+  validatePublishedIntegrity,
+  isPublishedIntegrityValid,
+  PUBLISHED_RECOMMENDATION_VERSION,
+  buildPublishedScanId,
+} from "./published/client";
+export type {
+  PublishedRecommendationsBundle,
+  PublishedConsumerId,
+  PublishedConsumerStatus,
+} from "./published/client";
+export {
+  evaluateRecommendationQuality,
+  applyRecommendationQualityGate,
+  getLastQualityGateReport,
+  QUALITY_GATE_THRESHOLDS,
+} from "./quality-gate";
+export type {
+  QualityGateReport,
+  QualityRejectionReason,
+  QualityGateRejection,
+} from "./quality-gate";
 export type {
   CanonicalTradeMetrics,
   IntegrityAuditReport,

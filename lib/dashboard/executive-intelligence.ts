@@ -198,7 +198,7 @@ export function buildMarketPulseChips(input: {
     },
     {
       id: "regime",
-      label: "Market Regime",
+      label: "Market Internals",
       value: intelligence.regime.regime || "—",
       tone: regimeTone(intelligence.regime.regime || ""),
       href: "/markets",

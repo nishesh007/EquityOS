@@ -6,6 +6,7 @@ import type {
   OpportunityStrategyConsensus,
   OpportunityStrategySignal,
 } from "@/lib/opportunity-engine/types";
+import { readPublishedFromState } from "@/lib/recommendations/published/client";
 import { constructDynamicTrade } from "@/lib/opportunity-engine/dynamic-trade-construction";
 import {
   computeTradeMetrics,
@@ -150,6 +151,16 @@ export interface SharedRecommendation {
   longTermRanking: OpportunityLongTermRanking | null;
   timestamp: string;
   source: "StrategyEngine" | "OpportunityEngine";
+  /** Read-time Institutional Ranking confidence (0–1 scale). */
+  rankingConfidence?: number;
+  /** Read-time historical confidence (0–100). */
+  historicalConfidence?: number;
+  /** Win-rate cohort sample size when win-rate filter is applied. */
+  sampleSize?: number;
+  winRateSampleSize?: number;
+  expectedWinRate?: number;
+  /** True when UI may show Expected Win Rate (sample ≥ threshold). */
+  showExpectedWinRate?: boolean;
 }
 
 function validTradeLevels(signal: OpportunityStrategySignal): boolean {
@@ -640,64 +651,13 @@ export function buildFallbackRecommendation(
   };
 }
 
-let cachedFallbackKey = "";
-let cachedFallbackRecommendations: SharedRecommendation[] = [];
-
 /**
- * Strategy Engine first, legacy Opportunity Engine second. A symbol only uses
- * the fallback when the Strategy Engine produced nothing validated for it, so
- * surfaces never go empty solely because of the 11B migration.
- *
- * `sharedOverride` lets callers supply the live Market Intelligence snapshot
- * (regime / trend / risk mode) when the persisted scan pre-dates pipeline
- * summary persistence, so fallback cards never show "Unknown" regime while
- * the Dashboard shows a live one.
+ * Read-only accessor for the canonical published recommendation list.
+ * Projection and fallback generation are disabled — OE publishes at scan time.
  */
 export function selectRecommendationsWithFallback(
   state: OpportunityEngineState,
-  sharedOverride?: SharedMarketSnapshot
+  _sharedOverride?: SharedMarketSnapshot
 ): SharedRecommendation[] {
-  const shared: SharedMarketSnapshot = {
-    regime: state.pipeline?.regime ?? sharedOverride?.regime ?? null,
-    marketTrend:
-      state.pipeline?.marketTrend ?? sharedOverride?.marketTrend ?? null,
-    riskMode: state.pipeline?.riskMode ?? sharedOverride?.riskMode ?? null,
-    confidence:
-      state.pipeline?.confidence ?? sharedOverride?.confidence ?? null,
-  };
-
-  const key = `v9f1-dyn:${state.tradingDate}:${state.scanCount}:${state.lastScannedAt}:${shared.regime}:${shared.marketTrend}`;
-  if (key === cachedFallbackKey) return cachedFallbackRecommendations;
-
-  const lastScanTime = state.lastScannedAt ?? new Date(0).toISOString();
-  const strict = selectSharedRecommendations(state);
-  const strictSymbols = new Set(
-    strict.map((recommendation) => recommendation.symbol.toUpperCase())
-  );
-
-  const fallbackBySymbol = new Map<string, SharedRecommendation>();
-  for (const candidate of Object.values(state.categories).flat()) {
-    const symbol = candidate.symbol.toUpperCase();
-    if (strictSymbols.has(symbol)) continue;
-    const fallback = buildFallbackRecommendation(
-      candidate,
-      lastScanTime,
-      shared
-    );
-    if (!fallback) continue;
-    const existing = fallbackBySymbol.get(symbol);
-    if (!existing || fallback.opportunityScore > existing.opportunityScore) {
-      fallbackBySymbol.set(symbol, fallback);
-    }
-  }
-
-  cachedFallbackKey = key;
-  cachedFallbackRecommendations = [...strict, ...fallbackBySymbol.values()]
-    .filter((recommendation) => recommendation.validation.valid)
-    .sort(
-      (left, right) =>
-        right.opportunityScore - left.opportunityScore ||
-        right.confidence - left.confidence
-    );
-  return cachedFallbackRecommendations;
+  return readPublishedFromState(state)?.recommendations ?? [];
 }

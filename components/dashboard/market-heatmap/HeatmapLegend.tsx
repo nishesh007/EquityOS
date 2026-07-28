@@ -14,7 +14,7 @@ const ORDER: PerformanceBand[] = [
 export function HeatmapLegend() {
   return (
     <div
-      className="flex flex-wrap items-center gap-1.5"
+      className="flex flex-wrap items-center gap-3"
       role="list"
       aria-label="Heatmap performance legend"
     >
@@ -22,14 +22,14 @@ export function HeatmapLegend() {
         <div
           key={band}
           role="listitem"
-          className="flex items-center gap-1 rounded border border-surface-border-subtle/70 px-1.5 py-0.5"
+          className="flex items-center gap-2"
         >
           <span
-            className="h-2 w-2 rounded-sm"
+            className="h-3 w-3 rounded-sm"
             style={{ backgroundColor: BAND_BG[band] }}
             aria-hidden
           />
-          <span className="text-[11px] font-medium text-text-secondary">
+          <span className="text-caption font-medium text-text-secondary">
             {BAND_LABEL[band]}
           </span>
         </div>

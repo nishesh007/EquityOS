@@ -23,6 +23,7 @@ import type {
   ModuleFreshness,
   TradingSessionId,
 } from "@/lib/market/market-state-types";
+import { MARKET_REBUILD_MAX_MS } from "@/lib/market/market-state-types";
 
 export type {
   MarketSessionEnvelope,
@@ -30,6 +31,7 @@ export type {
   ModuleFreshness,
   TradingSessionId,
 } from "@/lib/market/market-state-types";
+export { MARKET_REBUILD_MAX_MS } from "@/lib/market/market-state-types";
 
 const IST = "Asia/Kolkata";
 const NSE_CLOSE_HOUR = 15;
@@ -37,6 +39,7 @@ const NSE_CLOSE_MINUTE = 30;
 
 let lastValidatedSessionId: TradingSessionId | null = null;
 let rebuildInflight = false;
+let rebuildStartedAtMs = 0;
 let startupValidated = false;
 
 /** Current NSE trading session id (same as Opportunity Engine tradingDate). */
@@ -155,14 +158,32 @@ export function ensureSessionAlignment(
 
 export function markMarketRebuildStart(): void {
   rebuildInflight = true;
+  rebuildStartedAtMs = Date.now();
+  console.info("[MarketState] Refresh started");
 }
 
 export function markMarketRebuildEnd(): void {
+  if (rebuildInflight) {
+    console.info("[MarketState] Refresh completed");
+    console.info("[MarketState] Loading state cleared");
+  }
   rebuildInflight = false;
+  rebuildStartedAtMs = 0;
 }
 
-export function getMarketStatePhase(): MarketStatePhase {
-  return rebuildInflight ? "updating" : "ready";
+export function getMarketStatePhase(nowMs = Date.now()): MarketStatePhase {
+  if (!rebuildInflight) return "ready";
+  if (
+    rebuildStartedAtMs > 0 &&
+    nowMs - rebuildStartedAtMs >= MARKET_REBUILD_MAX_MS
+  ) {
+    rebuildInflight = false;
+    rebuildStartedAtMs = 0;
+    console.info("[MarketState] Refresh timed out");
+    console.info("[MarketState] Loading state cleared");
+    return "ready";
+  }
+  return "updating";
 }
 
 export function buildSessionEnvelope(input: {
@@ -210,5 +231,6 @@ export function runMarketStateStartupValidation(now = new Date()): void {
 export function __resetMarketStateManagerForTests(): void {
   lastValidatedSessionId = null;
   rebuildInflight = false;
+  rebuildStartedAtMs = 0;
   startupValidated = false;
 }

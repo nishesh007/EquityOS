@@ -105,6 +105,10 @@ async function buildMarketSnapshot(
 
     const tradingDate = getTradingDateKey(now);
 
+    // Clear inflight BEFORE stamping the session envelope — otherwise every
+    // cached snapshot is permanently phase="updating" and the banner never leaves.
+    markMarketRebuildEnd();
+
     return {
       indices,
       pulse,
@@ -122,8 +126,9 @@ async function buildMarketSnapshot(
         now,
       }),
     };
-  } finally {
+  } catch (error) {
     markMarketRebuildEnd();
+    throw error;
   }
 }
 

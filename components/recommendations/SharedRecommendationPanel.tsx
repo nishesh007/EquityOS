@@ -205,6 +205,35 @@ function OpportunityCard({
         <Badge size="sm" variant="neutral">
           Conviction {recommendation.conviction}
         </Badge>
+        {typeof recommendation.expectedWinRate === "number" &&
+        (recommendation.showExpectedWinRate === true ||
+          (recommendation.sampleSize ?? 0) >= 30) ? (
+          <Badge size="sm" variant="neutral">
+            Expected Win Rate: {recommendation.expectedWinRate.toFixed(0)}%
+          </Badge>
+        ) : (
+          <Badge size="sm" variant="neutral">
+            AI Confidence{" "}
+            {Math.max(
+              recommendation.confidence,
+              recommendation.conviction
+            ).toFixed(0)}
+            %
+            {" · "}
+            Hist{" "}
+            {typeof recommendation.rankingConfidence === "number"
+              ? (recommendation.rankingConfidence * 100).toFixed(0)
+              : typeof recommendation.historicalConfidence === "number"
+                ? recommendation.historicalConfidence.toFixed(0)
+                : "—"}
+            %
+            {" · "}
+            n=
+            {recommendation.sampleSize ??
+              recommendation.winRateSampleSize ??
+              0}
+          </Badge>
+        )}
         <StatusBadge
           size="sm"
           tone={statusToneFromLabel(recommendation.marketRegime)}

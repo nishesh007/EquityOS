@@ -12,8 +12,8 @@ import {
   resetPersistenceMemoryForTests,
 } from "@/lib/opportunity-engine/persistence";
 import { ensureOpportunityEngineHydrated, resetOpportunityEngineStoreForTests } from "@/lib/opportunity-engine/store";
-import { selectInstitutionalStrategyDashboard } from "@/lib/recommendations/institutional-strategy-dashboard";
-import { selectRecommendationsWithFallback } from "@/lib/recommendations/shared-recommendation";
+import type { OpportunityEngineState } from "@/lib/opportunity-engine/types";
+import { readPublishedFromState } from "@/lib/recommendations/published/client";
 import { INSTITUTIONAL_STRATEGY_IDS } from "@/lib/recommendations/horizons/ids";
 
 export interface OpportunityEngineSeedSummary {
@@ -40,8 +40,8 @@ function countGenerated(state: {
   categories: Record<string, unknown[]>;
   recommendations?: unknown[];
 }): number {
-  const shared = selectRecommendationsWithFallback(state as never);
-  return shared.length;
+  const shared = readPublishedFromState(state as OpportunityEngineState);
+  return shared?.recommendations.length ?? 0;
 }
 
 /**
@@ -86,8 +86,12 @@ export async function seedOpportunityEngineToPostgres(): Promise<OpportunityEngi
   }
 
   const storeState = await ensureOpportunityEngineHydrated({ forceReload: true });
-  const apiReturned = selectRecommendationsWithFallback(storeState).length;
-  const slots = selectInstitutionalStrategyDashboard(storeState);
+  const published = storeState.published;
+  if (!published) {
+    throw new Error("Published recommendations missing after seed scan");
+  }
+  const apiReturned = published.recommendations.length;
+  const slots = published.strategyDashboard;
   const byStrategy = Object.fromEntries(
     INSTITUTIONAL_STRATEGY_IDS.map((id) => {
       const slot = slots.find((s) => s.strategyId === id);

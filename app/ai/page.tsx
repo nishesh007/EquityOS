@@ -10,8 +10,9 @@ import {
   INSTITUTIONAL_STRATEGY_IDS,
   INSTITUTIONAL_STRATEGY_META,
   parseInstitutionalStrategyId,
-  selectInstitutionalStrategyDashboard,
 } from "@/lib/recommendations";
+import { selectVerifiedConsensusStrategyDashboard } from "@/lib/recommendations/verification";
+import { readPublishedFromState } from "@/lib/recommendations/published/client";
 import {
   loadOpportunityEngineState,
   toSharedSnapshot,
@@ -62,7 +63,20 @@ export default async function AIInsightsPage({
   // Cache-only MI for shared snapshot fallback — never runs trading pipeline.
   const marketIntelligence = getCachedMarketIntelligenceSnapshot();
   const shared = toSharedSnapshot(marketIntelligence);
-  const strategyDashboard = selectInstitutionalStrategyDashboard(state, shared);
+  const published = readPublishedFromState(state);
+  const strategyDashboard = selectVerifiedConsensusStrategyDashboard(
+    published?.recommendations ?? [],
+    published?.generatedAt ?? state.lastScannedAt ?? new Date(0).toISOString(),
+    {
+      breadthScore: marketIntelligence?.context?.breadthScore ?? null,
+      asOf: published?.generatedAt ?? state.lastScannedAt ?? null,
+      regime: marketIntelligence?.regime?.regime ?? null,
+      marketTrend:
+        marketIntelligence?.context?.marketTrend ??
+        marketIntelligence?.regime?.regime ??
+        null,
+    }
+  );
   const researchTerminal = selectInsightsResearchTerminal(state, shared);
 
   return (

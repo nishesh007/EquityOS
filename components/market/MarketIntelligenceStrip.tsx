@@ -1,9 +1,8 @@
 import type { MarketIntelligenceSnapshot } from "@/lib/market-intelligence";
-import { MarketContextCard } from "./MarketContextCard";
-import { MarketRegimeCard } from "./MarketRegimeCard";
+import { MarketInternalsCard } from "./MarketInternalsCard";
 
 /**
- * Side-by-side Market Context + Market Regime cards.
+ * Sprint 10C — single Market Internals card (replaces Context + Regime pair).
  * Shared across Dashboard, Markets, Research, Watchlist, Validation.
  */
 export function MarketIntelligenceStrip({
@@ -14,16 +13,9 @@ export function MarketIntelligenceStrip({
   hideTimestamps?: boolean;
 }) {
   return (
-    <div
-      className="grid gap-2.5 lg:grid-cols-2"
-      data-testid="market-intelligence-strip"
-    >
-      <MarketContextCard
-        context={snapshot?.context ?? null}
-        hideTimestamps={hideTimestamps}
-      />
-      <MarketRegimeCard
-        regime={snapshot?.regime ?? null}
+    <div data-testid="market-intelligence-strip">
+      <MarketInternalsCard
+        snapshot={snapshot}
         hideTimestamps={hideTimestamps}
       />
     </div>

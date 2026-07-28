@@ -42,6 +42,7 @@ export {
   runPaperTradingCycle,
   getPaperTradingState,
 } from "@/lib/paper-trading/engine";
+export type { PaperTradeProvenance } from "@/lib/paper-trading/engine";
 
 export {
   PAPER_STRATEGY_LABELS,

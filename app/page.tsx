@@ -7,6 +7,7 @@ import {
   AiOpportunitiesSlot,
   EarningsIntelligenceSlot,
   MarketBreadthSlot,
+  MarketInternalsSlot,
   MarketMoversSlot,
   MarketNewsSlot,
   MarketPulseSlot,
@@ -71,6 +72,11 @@ export default function DashboardPage() {
         <DashboardWidget id="market-snapshot">
           <Slot label="Market Snapshot" heightClass="h-64">
             <MarketSnapshotSlot />
+          </Slot>
+        </DashboardWidget>
+        <DashboardWidget id="market-internals">
+          <Slot label="Market Internals" heightClass="h-48">
+            <MarketInternalsSlot />
           </Slot>
         </DashboardWidget>
         <DashboardWidget id="market-pulse">

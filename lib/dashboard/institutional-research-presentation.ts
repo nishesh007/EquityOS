@@ -369,7 +369,7 @@ export function buildInstitutionalResearchDrawerView(
         { label: "Volume", contribution: components.volume },
         { label: "Liquidity", contribution: components.liquidity },
         { label: "Fundamentals", contribution: components.fundamentals },
-        { label: "Market Regime", contribution: components.marketRegime },
+        { label: "Market Internals", contribution: components.marketRegime },
         { label: "Reward / Risk", contribution: components.rewardRisk },
       ]
     : [];

@@ -24,13 +24,21 @@ function makeCandidate(
     Pick<OpportunityCandidate, "symbol" | "category">
 ): OpportunityCandidate {
   const conviction = overrides.aiConvictionScore ?? 90;
-  const { scanMetrics: scanOverride, quote: quoteOverride, ...rest } =
-    overrides;
+  const {
+    scanMetrics: scanOverride,
+    quote: quoteOverride,
+    firstDetectedAt: firstDetectedOverride,
+    lastDetectedAt: lastDetectedOverride,
+    lastUpdatedAt: lastUpdatedOverride,
+    symbol,
+    category,
+    ...rest
+  } = overrides;
   const price = quoteOverride?.price ?? scanOverride?.cmp ?? 101.5;
   const priceNum = typeof price === "number" ? price : 101.5;
   return {
-    id: `${overrides.symbol}:${overrides.category}`,
-    company: overrides.company ?? `${overrides.symbol} Ltd`,
+    id: `${symbol}:${category}`,
+    company: overrides.company ?? `${symbol} Ltd`,
     side: "Long",
     rank: 1,
     previousRank: null,
@@ -48,7 +56,7 @@ function makeCandidate(
     marketTrend: "Bullish",
     marketRegime: "Strong Bull",
     quote: {
-      symbol: overrides.symbol,
+      symbol,
       price: priceNum,
       change: 1.2,
       changePercent: 1.2,
@@ -91,6 +99,11 @@ function makeCandidate(
       ...scanOverride,
     },
     ...rest,
+    symbol,
+    category,
+    firstDetectedAt: firstDetectedOverride ?? "2026-07-25T04:00:00.000Z",
+    lastDetectedAt: lastDetectedOverride ?? "2026-07-25T04:00:00.000Z",
+    lastUpdatedAt: lastUpdatedOverride ?? "2026-07-25T04:00:00.000Z",
   };
 }
 
@@ -381,7 +394,7 @@ describe("dashboard slot projection fallback", () => {
     expect(filledSlotCount(resolved)).toBe(7);
   });
 
-  it("preserves populated strategyDashboard picks", () => {
+  it("re-ranks from recommendations when list is non-empty", () => {
     const populated = rankInstitutionalSlotsFromRecommendations(
       [
         makeSharedRecommendation({
@@ -393,10 +406,9 @@ describe("dashboard slot projection fallback", () => {
       ],
       "t"
     );
-    // Force a known pick on swing via leftover fill for other slots
     expect(filledSlotCount(populated)).toBeGreaterThan(0);
 
-    const ignored = [
+    const live = [
       makeSharedRecommendation({
         symbol: "OTHER",
         category: "intraday",
@@ -407,12 +419,34 @@ describe("dashboard slot projection fallback", () => {
 
     const resolved = resolveDashboardSlotsFromRecommendations({
       strategyDashboard: populated,
-      recommendations: ignored,
+      recommendations: live,
+      lastScanTime: "2026-07-25T04:00:00.000Z",
+    });
+
+    expect(resolved.find((s) => s.pick?.symbol === "OTHER")).toBeTruthy();
+    expect(resolved.find((s) => s.pick?.symbol === "KEEP1")).toBeFalsy();
+  });
+
+  it("keeps baked strategyDashboard when recommendations are empty", () => {
+    const populated = rankInstitutionalSlotsFromRecommendations(
+      [
+        makeSharedRecommendation({
+          symbol: "KEEP1",
+          category: "swing",
+          primaryStrategyId: "swing",
+          conviction: 99,
+        }),
+      ],
+      "t"
+    );
+
+    const resolved = resolveDashboardSlotsFromRecommendations({
+      strategyDashboard: populated,
+      recommendations: [],
+      lastScanTime: "t",
     });
 
     expect(resolved).toBe(populated);
-    expect(
-      resolved.find((s) => s.pick?.symbol === "KEEP1")
-    ).toBeTruthy();
+    expect(resolved.find((s) => s.pick?.symbol === "KEEP1")).toBeTruthy();
   });
 });

@@ -46,13 +46,11 @@ export function MarketOverviewCards({
         const low = quote.low ?? index.low;
 
         return (
-          <Card key={index.id} hover padding="md">
+          <Card key={index.id} hover padding="sm" className="!p-3">
             <div className="flex items-start justify-between">
               <div>
                 <p className="data-label">{index.name}</p>
-                <p className="mt-1 text-[10px] font-mono text-text-faint">
-                  {index.symbol}
-                </p>
+                <p className="mt-1 text-micro text-text-muted">{index.symbol}</p>
               </div>
               {index.sparkline.length > 0 && (
                 <Sparkline
@@ -62,25 +60,25 @@ export function MarketOverviewCards({
               )}
             </div>
 
-            <div className="mt-3">
+            <div className="mt-4">
               <QuoteDisplay
                 quote={quote}
-                size="md"
+                size="lg"
                 showTimestamp={!hideTimestamps}
               />
             </div>
 
-            <div className="mt-3 border-t border-surface-border-subtle pt-3">
+            <div className="mt-4 border-t border-surface-border-subtle pt-3">
               <div className="flex gap-4">
                 <div>
-                  <p className="text-[10px] text-text-faint">H</p>
-                  <p className="text-xs font-mono text-text-secondary tabular-nums">
+                  <p className="text-micro text-text-muted">H</p>
+                  <p className="text-caption tabular-nums text-text-secondary">
                     {formatNumber(high)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-text-faint">L</p>
-                  <p className="text-xs font-mono text-text-secondary tabular-nums">
+                  <p className="text-micro text-text-muted">L</p>
+                  <p className="text-caption tabular-nums text-text-secondary">
                     {formatNumber(low)}
                   </p>
                 </div>
