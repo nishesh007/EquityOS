@@ -46,3 +46,11 @@ export {
 } from "./marketsRefreshPolicy";
 export { compareDashboardMarketsIntelligence } from "./dashboard-markets-parity";
 export type { IntelligenceParityResult } from "./dashboard-markets-parity";
+export {
+  getCurrentTradingSessionId,
+  ensureSessionAlignment,
+  invalidateAllMarketCaches,
+  runMarketStateStartupValidation,
+  buildSessionEnvelope,
+} from "@/lib/market/market-state-manager";
+export type { MarketSessionEnvelope, TradingSessionId } from "@/lib/market/market-state-types";

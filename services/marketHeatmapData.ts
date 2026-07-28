@@ -13,6 +13,7 @@ import {
   readLastHeatmapSnapshot,
   writeLastHeatmapSnapshot,
 } from "@/lib/market-heatmap/last-snapshot";
+import { isTimestampInCurrentSession } from "@/lib/market/market-state-manager";
 import {
   getCachedStaleWhileRevalidate,
   getStaleCachedSync,
@@ -34,7 +35,11 @@ export async function fetchMarketHeatmap(
   // dashboard hydrate never waits on a full universe heatmap scan.
   if (!getStaleCachedSync<MarketHeatmapSnapshot>(key)) {
     const disk = readLastHeatmapSnapshot(universe);
-    if (disk && isUsableHeatmapSnapshot(disk)) {
+    if (
+      disk &&
+      isUsableHeatmapSnapshot(disk) &&
+      isTimestampInCurrentSession(disk.lastUpdated)
+    ) {
       seedCache(key, disk, ttl);
     }
   }

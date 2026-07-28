@@ -49,6 +49,7 @@ export async function MarketSnapshotSlot() {
       indices={ctx.indices}
       marketIntelligence={ctx.intelligence}
       breadth={ctx.breadth}
+      session={ctx.session}
     />
   );
 }

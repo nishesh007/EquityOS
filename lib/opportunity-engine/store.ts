@@ -257,6 +257,12 @@ export function ensureTradingDayLifecycle(
 
   persistNow();
 
+  void import("@/lib/market/market-state-manager").then(({ invalidateAllMarketCaches }) => {
+    invalidateAllMarketCaches(
+      `OE trading-day rollover ${previousTradingDate} → ${tradingDate}`
+    );
+  });
+
   return {
     rolledOver: true,
     initialized: false,

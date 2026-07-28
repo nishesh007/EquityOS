@@ -4,6 +4,9 @@
  *
  * Process-level cache + React cache() so both pages share identical
  * intelligence (values + timestamp) within the snapshot TTL.
+ *
+ * Session gate: snapshot.tradingDate must match current NSE session or
+ * MarketStateManager invalidates and rebuilds automatically.
  */
 
 import { cache } from "react";
@@ -12,6 +15,14 @@ import {
   getMarketStatusLabel,
   getTradingDateKey,
 } from "@/lib/market/session";
+import {
+  buildSessionEnvelope,
+  ensureSessionAlignment,
+  getCurrentTradingSessionId,
+  isSessionCurrent,
+  markMarketRebuildEnd,
+  markMarketRebuildStart,
+} from "@/lib/market/market-state-manager";
 import type { MarketSnapshot } from "@/lib/market-orchestrator/types";
 import { getMarketIntelligenceSnapshot } from "@/services/marketIntelligence";
 import { fetchMarketIndices } from "@/services/marketData";
@@ -21,6 +32,14 @@ import {
   fetchMarketPulse,
 } from "@/services/researchDashboardData";
 import { MARKETS_REFRESH_MS_OPEN } from "./marketsRefreshPolicy";
+import {
+  clearMarketSnapshotCache,
+  getProcessMarketSnapshot,
+  getProcessMarketSnapshotCachedAtMs,
+  getProcessMarketSnapshotInflight,
+  setProcessMarketSnapshot,
+  setProcessMarketSnapshotInflight,
+} from "./marketsSnapshotProcessCache";
 
 export {
   MARKETS_REFRESH_MS_OPEN,
@@ -30,73 +49,82 @@ export {
 } from "./marketsRefreshPolicy";
 
 export { assertUniformMarketSnapshotTimestamp } from "./marketsSnapshotGuard";
+export { clearMarketSnapshotCache } from "./marketsSnapshotProcessCache";
 
 /** Align process cache TTL with Markets open-hours refresh cadence. */
 export const MARKET_SNAPSHOT_TTL_MS = MARKETS_REFRESH_MS_OPEN;
 
-let processSnapshot: MarketSnapshot | null = null;
-let processCachedAtMs = 0;
-let processInflight: Promise<MarketSnapshot> | null = null;
-
 function isProcessCacheFresh(nowMs = Date.now()): boolean {
-  return (
-    processSnapshot != null &&
-    nowMs - processCachedAtMs < MARKET_SNAPSHOT_TTL_MS
-  );
+  const processSnapshot = getProcessMarketSnapshot();
+  if (processSnapshot == null) return false;
+  if (nowMs - getProcessMarketSnapshotCachedAtMs() >= MARKET_SNAPSHOT_TTL_MS) {
+    return false;
+  }
+  if (!isSessionCurrent(processSnapshot.tradingDate)) {
+    ensureSessionAlignment(processSnapshot.tradingDate);
+    clearMarketSnapshotCache();
+    return false;
+  }
+  return true;
 }
 
 /**
- * Synchronous peek of the shared process snapshot (null if cold / expired).
+ * Synchronous peek of the shared process snapshot (null if cold / expired / wrong session).
  */
 export function getCachedMarketSnapshot(): MarketSnapshot | null {
   if (!isProcessCacheFresh()) return null;
-  return processSnapshot;
-}
-
-export function clearMarketSnapshotCache(): void {
-  processSnapshot = null;
-  processCachedAtMs = 0;
-  processInflight = null;
+  return getProcessMarketSnapshot();
 }
 
 async function buildMarketSnapshot(
   forceRefresh: boolean
 ): Promise<MarketSnapshot> {
-  const [indices, pulse, breadth, heatmap, intelligence] = await Promise.all([
-    fetchMarketIndices(),
-    fetchMarketPulse(),
-    fetchMarketBreadth("nse", { forceRefresh }),
-    fetchMarketHeatmap("nse"),
-    getMarketIntelligenceSnapshot({ forceRefresh }),
-  ]);
+  markMarketRebuildStart();
+  try {
+    const [indices, pulse, breadth, heatmap, intelligence] = await Promise.all([
+      fetchMarketIndices(),
+      fetchMarketPulse(),
+      fetchMarketBreadth("nse", { forceRefresh }),
+      fetchMarketHeatmap("nse"),
+      getMarketIntelligenceSnapshot({ forceRefresh }),
+    ]);
 
-  // Canonical as-of = intelligence engine timestamp (shared across pages).
-  const timestamp = intelligence.timestamp;
-  const now = new Date();
-  const status = getMarketStatus(now);
+    const timestamp = intelligence.timestamp;
+    const now = new Date();
+    const status = getMarketStatus(now);
 
-  const stampedBreadth = {
-    ...breadth,
-    lastUpdated: timestamp,
-    marketStatus: status,
-    marketStatusLabel: getMarketStatusLabel(status),
-  };
-  const stampedHeatmap = heatmap
-    ? { ...heatmap, lastUpdated: timestamp }
-    : null;
+    const stampedBreadth = {
+      ...breadth,
+      lastUpdated: timestamp,
+      marketStatus: status,
+      marketStatusLabel: getMarketStatusLabel(status),
+    };
+    const stampedHeatmap = heatmap
+      ? { ...heatmap, lastUpdated: timestamp }
+      : null;
 
-  // Do not overwrite context/regime timestamps — they already equal intelligence.timestamp.
-  return {
-    indices,
-    pulse,
-    intelligence,
-    breadth: stampedBreadth,
-    heatmap: stampedHeatmap,
-    timestamp,
-    marketStatus: status,
-    marketStatusLabel: getMarketStatusLabel(status),
-    tradingDate: getTradingDateKey(now),
-  };
+    const tradingDate = getTradingDateKey(now);
+
+    return {
+      indices,
+      pulse,
+      intelligence,
+      breadth: stampedBreadth,
+      heatmap: stampedHeatmap,
+      timestamp,
+      marketStatus: status,
+      marketStatusLabel: getMarketStatusLabel(status),
+      tradingDate,
+      session: buildSessionEnvelope({
+        sessionDate: tradingDate,
+        generatedAt: timestamp,
+        sourceTimestamp: timestamp,
+        now,
+      }),
+    };
+  } finally {
+    markMarketRebuildEnd();
+  }
 }
 
 /**
@@ -108,31 +136,38 @@ export async function loadMarketSnapshotUncached(
 ): Promise<MarketSnapshot> {
   const forceRefresh = Boolean(options.forceRefresh);
   const nowMs = Date.now();
+  let mustRebuild = forceRefresh;
+  const processSnapshot = getProcessMarketSnapshot();
 
-  if (!forceRefresh && isProcessCacheFresh(nowMs) && processSnapshot) {
+  if (!mustRebuild && isProcessCacheFresh(nowMs) && processSnapshot) {
     return processSnapshot;
   }
 
-  if (!forceRefresh && processInflight) {
-    return processInflight;
+  if (processSnapshot && !isSessionCurrent(processSnapshot.tradingDate)) {
+    ensureSessionAlignment(processSnapshot.tradingDate);
+    mustRebuild = true;
+  }
+
+  const existingInflight = getProcessMarketSnapshotInflight();
+  if (!mustRebuild && existingInflight) {
+    return existingInflight;
   }
 
   const run = (async () => {
-    const snapshot = await buildMarketSnapshot(forceRefresh);
-    processSnapshot = snapshot;
-    processCachedAtMs = Date.now();
+    const snapshot = await buildMarketSnapshot(mustRebuild);
+    setProcessMarketSnapshot(snapshot, Date.now());
     return snapshot;
   })();
 
-  if (!forceRefresh) {
-    processInflight = run;
+  if (!mustRebuild) {
+    setProcessMarketSnapshotInflight(run);
   }
 
   try {
     return await run;
   } finally {
-    if (processInflight === run) {
-      processInflight = null;
+    if (getProcessMarketSnapshotInflight() === run) {
+      setProcessMarketSnapshotInflight(null);
     }
   }
 }

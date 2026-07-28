@@ -20,6 +20,7 @@ import {
   readLastBreadthSnapshot,
   writeLastBreadthSnapshot,
 } from "@/lib/market-breadth/last-snapshot";
+import { isTimestampInCurrentSession } from "@/lib/market/market-state-manager";
 import { emptyMarketBreadth } from "@/services/emptyMarketBreadth";
 import {
   fetchPortfolioSummary,
@@ -174,7 +175,11 @@ export async function fetchMarketBreadth(
   // dashboard hydrate never waits on a full universe scan.
   if (!getStaleCachedSync<MarketBreadth>(key)) {
     const disk = readLastBreadthSnapshot(universe);
-    if (disk && isUsableBreadthSnapshot(disk)) {
+    if (
+      disk &&
+      isUsableBreadthSnapshot(disk) &&
+      isTimestampInCurrentSession(disk.lastUpdated)
+    ) {
       seedCache(key, disk, ttl);
     }
   }

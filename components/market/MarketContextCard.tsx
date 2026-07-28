@@ -346,9 +346,9 @@ export function MarketContextCard({
   if (!context) {
     return (
       <Card padding="sm" data-testid="market-context-card-empty">
-        <CardHeader title="Market Context" subtitle="Awaiting market data" />
+        <CardHeader title="Market Context" subtitle="Updating today's market…" />
         <EmptyStatePanel
-          message="Market context is warming up and will appear automatically."
+          message="Updating today's market…"
           source="Market Intelligence"
           icon={Activity}
         />

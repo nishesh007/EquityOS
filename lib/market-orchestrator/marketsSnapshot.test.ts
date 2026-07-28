@@ -134,6 +134,18 @@ function buildSnapshot(
     marketStatus: "open",
     marketStatusLabel: "Open",
     tradingDate: "2026-07-27",
+    session: {
+      sessionId: "2026-07-27",
+      phase: "ready",
+      sessionValid: true,
+      freshness: {
+        sessionDate: "2026-07-27",
+        generatedAt: TS,
+        marketCloseTime: "2026-07-27T10:00:00.000Z",
+        sourceTimestamp: TS,
+        ageMinutes: 0,
+      },
+    },
     ...overrides,
   };
 }

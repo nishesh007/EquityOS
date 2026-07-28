@@ -5,7 +5,9 @@ import { MarketPulse } from "@/components/dashboard/MarketPulse";
 import { PortfolioSummary } from "@/components/dashboard/PortfolioSummary";
 import { Watchlist } from "@/components/dashboard/Watchlist";
 import { MarketIntelligenceStrip } from "@/components/market";
+import { MarketSessionBanner } from "@/components/market/MarketSessionBanner";
 import type { MarketIntelligenceSnapshot } from "@/lib/market-intelligence";
+import type { MarketSessionEnvelope } from "@/lib/market/market-state-types";
 import {
   opportunityPhaseCopy,
   type OpportunityUiPhase,
@@ -31,21 +33,24 @@ export function MarketSnapshotWidget({
   indices,
   marketIntelligence,
   breadth,
+  session,
 }: {
   indices: MarketIndex[];
   marketIntelligence: MarketIntelligenceSnapshot;
   breadth: MarketBreadthData;
+  session: MarketSessionEnvelope;
 }) {
   const regime = marketIntelligence.regime.regime;
-  // Use published breadth % from metrics.ts (via engine) — never recompute A/(A+D).
   const breadthScore =
     breadth.breadthPercent != null && breadth.breadthPercent > 0
       ? Math.round(breadth.breadthPercent)
       : null;
   const marketPulseSummary =
-    breadthScore != null
-      ? `Indian markets remain in a ${regime} regime with breadth at ${breadthScore}% advances.`
-      : `Indian markets remain in a ${regime} regime.`;
+    session.phase === "updating"
+      ? "Updating today's market…"
+      : breadthScore != null
+        ? `Indian markets remain in a ${regime} regime with breadth at ${breadthScore}% advances.`
+        : `Indian markets remain in a ${regime} regime.`;
 
   return (
     <div className="space-y-5">
@@ -56,7 +61,14 @@ export function MarketSnapshotWidget({
         accent="emerald"
         icon={<Activity className="h-5 w-5" />}
       />
-      <MarketIntelligenceStrip snapshot={marketIntelligence} />
+      <MarketSessionBanner session={session} />
+      <MarketIntelligenceStrip
+        snapshot={
+          session.sessionValid && session.phase !== "updating"
+            ? marketIntelligence
+            : null
+        }
+      />
       <MarketOverviewCards indices={indices} />
     </div>
   );

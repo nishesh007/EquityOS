@@ -5,6 +5,7 @@ import { MarketPulse } from "@/components/dashboard/MarketPulse";
 import { MarketBreadth } from "@/components/dashboard/MarketBreadth";
 import { MarketHeatmap } from "@/components/dashboard/market-heatmap";
 import { MarketIntelligenceStrip } from "@/components/market";
+import { MarketSessionBanner } from "@/components/market/MarketSessionBanner";
 import { Card, CardHeader } from "@/components/ui/Card";
 import {
   getMarketsRefreshIntervalMs,
@@ -190,10 +191,13 @@ export function InstitutionalMarketsView({
   }, [refresh]);
 
   const pageTs = snapshot.timestamp;
+  const sessionReady =
+    snapshot.session.sessionValid && snapshot.session.phase !== "updating";
 
   return (
     <div data-markets-page-timestamp={pageTs} data-refresh-mode={refreshMode}>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-surface-border-subtle bg-surface-elevated/40 px-4 py-3">
+      <MarketSessionBanner session={snapshot.session} />
+      <div className="mb-6 mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-surface-border-subtle bg-surface-elevated/40 px-4 py-3">
         <div>
           <p className="text-xs font-medium uppercase tracking-wider text-text-faint">
             Market as-of
@@ -239,7 +243,7 @@ export function InstitutionalMarketsView({
             hideTimestamps
           />
           <MarketIntelligenceStrip
-            snapshot={snapshot.intelligence}
+            snapshot={sessionReady ? snapshot.intelligence : null}
             hideTimestamps
           />
         </div>

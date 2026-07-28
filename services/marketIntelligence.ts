@@ -3,10 +3,13 @@
  * Single shared source of truth for Dashboard, Opportunity Engine,
  * Research, Watchlists, Recommendations, and Validation.
  *
- * Reuses existing Market Context + Market Regime + Trading Pipeline
- * modules. Never recalculates domain scores.
+ * Session-aware: cache is invalidated when trading session changes.
  */
 
+import {
+  getCurrentTradingSessionId,
+  isSessionCurrent,
+} from "@/lib/market/market-state-manager";
 import {
   getInstitutionalMarketContext,
   type InstitutionalMarketContext,
@@ -45,7 +48,16 @@ export interface MarketIntelligenceOptions {
 }
 
 let snapshotCache: MarketIntelligenceSnapshot | null = null;
+let cachedSessionDate: string | null = null;
 let snapshotInflight: Promise<MarketIntelligenceSnapshot> | null = null;
+
+function rejectStaleIntelligenceCache(): void {
+  if (snapshotCache && !isSessionCurrent(cachedSessionDate)) {
+    snapshotCache = null;
+    cachedSessionDate = null;
+    getTradingPipelineService().clearCache();
+  }
+}
 
 /**
  * Canonical application snapshot. All UI / API consumers should call this
@@ -57,7 +69,9 @@ export async function getMarketIntelligenceSnapshot(
   const forceRefresh = Boolean(options.forceRefresh);
   const usePipeline = options.usePipeline !== false;
 
-  if (!forceRefresh && snapshotCache) {
+  rejectStaleIntelligenceCache();
+
+  if (!forceRefresh && snapshotCache && isSessionCurrent(cachedSessionDate)) {
     return snapshotCache;
   }
 
@@ -67,10 +81,12 @@ export async function getMarketIntelligenceSnapshot(
 
   snapshotInflight = (async () => {
     try {
+      const sessionDate = getCurrentTradingSessionId();
       if (usePipeline) {
         const pipeline = await runTradingPipeline({ forceRefresh });
         const snapshot = serializePipelineSnapshot(pipeline);
         snapshotCache = snapshot;
+        cachedSessionDate = sessionDate;
         return snapshot;
       }
 
@@ -80,13 +96,14 @@ export async function getMarketIntelligenceSnapshot(
       ]);
       const snapshot = serializeContextRegimeSnapshot(context, regime);
       snapshotCache = snapshot;
+      cachedSessionDate = sessionDate;
       return snapshot;
     } catch {
-      // Recover via context + regime services independently.
       const context = await getInstitutionalMarketContext({ forceRefresh });
       const regime = await getMarketRegime({ forceRefresh: false });
       const snapshot = serializeContextRegimeSnapshot(context, regime);
       snapshotCache = snapshot;
+      cachedSessionDate = getCurrentTradingSessionId();
       return snapshot;
     } finally {
       snapshotInflight = null;
@@ -100,6 +117,7 @@ export async function getMarketIntelligenceSnapshot(
 export async function getMarketContextView(
   options: MarketIntelligenceOptions = {}
 ): Promise<MarketContextView> {
+  rejectStaleIntelligenceCache();
   if (!options.forceRefresh && snapshotCache) {
     return snapshotCache.context;
   }
@@ -111,6 +129,7 @@ export async function getMarketContextView(
 export async function getMarketRegimeView(
   options: MarketIntelligenceOptions = {}
 ): Promise<MarketRegimeView> {
+  rejectStaleIntelligenceCache();
   if (!options.forceRefresh && snapshotCache) {
     return snapshotCache.regime;
   }
@@ -118,13 +137,15 @@ export async function getMarketRegimeView(
   return snapshot.regime;
 }
 
-/** Synchronous peek — null before first refresh. */
+/** Synchronous peek — null before first refresh or when session stale. */
 export function getCachedMarketIntelligenceSnapshot(): MarketIntelligenceSnapshot | null {
+  rejectStaleIntelligenceCache();
   return snapshotCache;
 }
 
 export function clearMarketIntelligenceCache(): void {
   snapshotCache = null;
+  cachedSessionDate = null;
   getTradingPipelineService().clearCache();
 }
 

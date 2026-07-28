@@ -5,6 +5,11 @@
 
 export async function registerNodeBootstrap(): Promise<void> {
   const started = Date.now();
+  const { runMarketStateStartupValidation } = await import(
+    "@/lib/market/market-state-manager"
+  );
+  runMarketStateStartupValidation();
+
   const {
     queueInstitutionalPlatformBootstrap,
     queueOpportunitySchedulerBootstrap,

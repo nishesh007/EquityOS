@@ -170,9 +170,9 @@ export function MarketRegimeCard({
   if (!regime) {
     return (
       <Card padding="sm" data-testid="market-regime-card-empty">
-        <CardHeader title="Market Regime" subtitle="Awaiting classification" />
+        <CardHeader title="Market Regime" subtitle="Updating today's market…" />
         <EmptyStatePanel
-          message="Market regime is warming up and will appear automatically."
+          message="Updating today's market…"
           source="Market Intelligence"
           icon={Compass}
         />

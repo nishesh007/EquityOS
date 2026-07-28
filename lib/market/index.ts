@@ -25,4 +25,20 @@ export type {
   MarketDataResult,
   NormalizedSymbol,
 } from "@/lib/market-data";
+export {
+  getCurrentTradingSessionId,
+  ensureSessionAlignment,
+  invalidateAllMarketCaches,
+  runMarketStateStartupValidation,
+  buildSessionEnvelope,
+  buildModuleFreshness,
+  isSessionCurrent,
+  isTimestampInCurrentSession,
+} from "@/lib/market/market-state-manager";
+export type {
+  TradingSessionId,
+  MarketSessionEnvelope,
+  ModuleFreshness,
+  MarketStatePhase,
+} from "@/lib/market/market-state-types";
 /** Live quotes / MarketDataService: `@/lib/market-data/server` or `@/lib/market/quote-engine`. */

@@ -155,6 +155,16 @@ export function invalidateCache(key: string): void {
   inFlight.delete(key);
 }
 
+/** Remove all entries whose key starts with `prefix`. */
+export function invalidateCacheByPrefix(prefix: string): void {
+  for (const key of [...store.keys()]) {
+    if (key.startsWith(prefix)) store.delete(key);
+  }
+  for (const key of [...inFlight.keys()]) {
+    if (key.startsWith(prefix)) inFlight.delete(key);
+  }
+}
+
 export function clearCache(): void {
   store.clear();
   inFlight.clear();

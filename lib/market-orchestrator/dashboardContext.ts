@@ -5,6 +5,7 @@
 
 import { cache } from "react";
 import type { MarketIntelligenceSnapshot } from "@/lib/market-intelligence";
+import { isSessionCurrent } from "@/lib/market/market-state-manager";
 import {
   getCachedMarketIntelligenceSnapshot,
 } from "@/services/marketIntelligence";
@@ -47,6 +48,8 @@ export interface DashboardContext {
   timestamp: string;
   marketStatus: MarketStatus;
   marketStatusLabel: string;
+  /** NSE session envelope from canonical snapshot. */
+  session: import("@/lib/market/market-state-types").MarketSessionEnvelope;
 }
 
 /**
@@ -58,8 +61,14 @@ export interface DashboardContext {
  */
 export const resolveCachedIntelligence = cache(
   function resolveCachedIntelligence(): MarketIntelligenceSnapshot {
-    const fromSnapshot = getCachedMarketSnapshot()?.intelligence;
-    if (fromSnapshot) return fromSnapshot;
+    const cachedSnapshot = getCachedMarketSnapshot();
+    const fromSnapshot = cachedSnapshot?.intelligence;
+    if (
+      fromSnapshot &&
+      isSessionCurrent(cachedSnapshot?.tradingDate ?? cachedSnapshot?.session?.sessionId)
+    ) {
+      return fromSnapshot;
+    }
 
     const mi = getCachedMarketIntelligenceSnapshot();
     if (mi) return mi;
@@ -101,6 +110,7 @@ async function loadDashboardContext(): Promise<DashboardContext> {
     timestamp: snapshot.timestamp,
     marketStatus: snapshot.marketStatus,
     marketStatusLabel: snapshot.marketStatusLabel,
+    session: snapshot.session,
   };
 }
 

@@ -9,6 +9,7 @@ import type {
   MarketRegimeView,
 } from "@/lib/market-intelligence";
 import type { SharedRecommendation } from "@/lib/recommendations";
+import type { MarketSessionEnvelope } from "@/lib/market/market-state-types";
 import type { MarketStatus } from "@/lib/market/session";
 import type {
   MarketBreadth as DomainMarketBreadth,
@@ -57,7 +58,10 @@ export interface MarketSnapshot {
   timestamp: string;
   marketStatus: MarketStatus;
   marketStatusLabel: string;
+  /** NSE trading session owner (YYYY-MM-DD). */
   tradingDate: string;
+  /** Session envelope — freshness + validation for all market modules. */
+  session: MarketSessionEnvelope;
 }
 
 /** @deprecated Alias — prefer MarketSnapshot. */
